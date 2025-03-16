@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Ruler } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
+import PDFExportDialog from '@/components/PDFExportDialog';
+import { useMeasurements } from '@/hooks/useMeasurements';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -162,6 +164,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Get measurements data for PDF export
+  const { measurements } = useMeasurements();
 
   useEffect(() => {
     // Clean up when component unmounts
@@ -232,6 +237,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       {/* UI Controls */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <ScreenshotDialog onTakeScreenshot={handleTakeScreenshot} />
+        
+        {/* Add PDF Export button */}
+        <PDFExportDialog 
+          onTakeScreenshot={handleTakeScreenshot}
+          measurements={measurements}
+        />
         
         <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
           {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
