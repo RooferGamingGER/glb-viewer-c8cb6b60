@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 
-export type MeasurementMode = 'length' | 'height' | 'area';
+export type MeasurementMode = 'length' | 'height' | 'area' | 'none';
 
 export interface Point {
   x: number;
@@ -16,8 +16,31 @@ export interface Measurement {
   type: MeasurementMode;
   points: Point[];
   value: number;
+  inclination?: number;
   label?: string;
 }
+
+// Utility function to determine if inclination is significant
+const isInclinationSignificant = (inclination: number): boolean => {
+  return inclination >= 5; // Consider inclinations of 5 degrees or more as significant
+};
+
+// Format measurement with inclination
+const formatMeasurementWithInclination = (
+  value: number, 
+  inclination: number | undefined,
+  type: MeasurementMode
+): string => {
+  if (type === 'area') {
+    return `${value.toFixed(2)} m²`;
+  }
+  
+  if (type === 'height' && inclination !== undefined && isInclinationSignificant(inclination)) {
+    return `${value.toFixed(2)} m | ${inclination.toFixed(1)}°`;
+  }
+  
+  return `${value.toFixed(2)} m`;
+};
 
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
@@ -44,6 +67,23 @@ export const useMeasurements = () => {
   const calculateHeight = useCallback((point1: Point, point2: Point): number => {
     // Height is strictly the absolute difference along the Y axis
     return Math.abs(point2.y - point1.y);
+  }, []);
+  
+  const calculateInclination = useCallback((point1: Point, point2: Point): number => {
+    // Calculate horizontal distance (XZ-plane)
+    const horizontalDistance = new THREE.Vector2(
+      point2.x - point1.x, 
+      point2.z - point1.z
+    ).length();
+    
+    // Calculate height difference
+    const heightDifference = Math.abs(point2.y - point1.y);
+    
+    // Calculate inclination angle in degrees
+    const angleInRadians = Math.atan2(heightDifference, horizontalDistance);
+    const angleInDegrees = THREE.MathUtils.radToDeg(angleInRadians);
+    
+    return parseFloat(angleInDegrees.toFixed(1));
   }, []);
 
   const calculateArea = useCallback((points: Point[]): number => {
@@ -102,10 +142,11 @@ export const useMeasurements = () => {
     
     let value = 0;
     let label = '';
+    let inclination: number | undefined;
     
     if (activeMode === 'length' && currentPoints.length >= 2) {
       value = calculateDistance(currentPoints[0], currentPoints[1]);
-      label = `${value.toFixed(2)} Einh`;
+      label = formatMeasurementWithInclination(value, undefined, 'length');
       
       setMeasurements(prev => [
         ...prev,
@@ -121,7 +162,8 @@ export const useMeasurements = () => {
     } 
     else if (activeMode === 'height' && currentPoints.length >= 2) {
       value = calculateHeight(currentPoints[0], currentPoints[1]);
-      label = `${value.toFixed(2)} Einh`;
+      inclination = calculateInclination(currentPoints[0], currentPoints[1]);
+      label = formatMeasurementWithInclination(value, inclination, 'height');
       
       setMeasurements(prev => [
         ...prev,
@@ -130,6 +172,7 @@ export const useMeasurements = () => {
           type: 'height',
           points: [currentPoints[0], currentPoints[1]],
           value,
+          inclination,
           label
         }
       ]);
@@ -137,7 +180,7 @@ export const useMeasurements = () => {
     }
     else if (activeMode === 'area' && currentPoints.length >= 3) {
       value = calculateArea(currentPoints);
-      label = `${value.toFixed(2)} Einh²`;
+      label = formatMeasurementWithInclination(value, undefined, 'area');
       
       setMeasurements(prev => [
         ...prev,
@@ -151,7 +194,7 @@ export const useMeasurements = () => {
       ]);
       setCurrentPoints([]);
     }
-  }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateArea]);
+  }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateInclination, calculateArea]);
 
   return {
     measurements,

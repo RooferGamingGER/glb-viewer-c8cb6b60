@@ -216,6 +216,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           sphere.position.set(point.x, point.y, point.z);
           measurementsRef.current?.add(sphere);
         });
+        
+        // Add text label at midpoint
+        if (measurement.label) {
+          const midpoint = new THREE.Vector3(
+            (p1.x + p2.x) / 2,
+            (p1.y + p2.y) / 2 + 0.1, // Slightly above the line
+            (p1.z + p2.z) / 2
+          );
+          
+          // Create a custom HTML element for the label in drei
+          // Since we can't use HTML directly in this context, we'll use a simple sphere marker
+          const labelMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 8, 8),
+            new THREE.MeshBasicMaterial({ 
+              color: measurement.type === 'length' ? 0x00ff00 : 0x0000ff 
+            })
+          );
+          labelMarker.position.copy(midpoint);
+          measurementsRef.current?.add(labelMarker);
+        }
       } 
       else if (measurement.type === 'area') {
         // For area, draw filled polygon
@@ -246,6 +266,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
           sphere.position.set(p1.x, p1.y, p1.z);
           measurementsRef.current?.add(sphere);
+        }
+        
+        // Add a semi-transparent fill
+        if (points.length >= 3) {
+          // Find centroid for label placement
+          const centroid = new THREE.Vector3(0, 0, 0);
+          points.forEach(p => {
+            centroid.x += p.x;
+            centroid.y += p.y;
+            centroid.z += p.z;
+          });
+          centroid.divideScalar(points.length);
+          
+          // Add a marker at centroid
+          const labelMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+          );
+          labelMarker.position.copy(centroid);
+          measurementsRef.current?.add(labelMarker);
         }
       }
     });
@@ -477,7 +517,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                          m.type === 'height' ? 'Höhe' : 'Fläche'}
                       </div>
                       <div className="text-muted-foreground">
-                        {m.value.toFixed(2)} {m.type === 'area' ? 'Einh²' : 'Einh'}
+                        {m.label}
                       </div>
                     </div>
                   </div>
