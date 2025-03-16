@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -860,4 +861,232 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <SidebarMenuButton
                   isActive={activeMode === 'area'}
                   onClick={() => selectTool('area')}
-                  tooltip={activeMode === 'area' ? "Fl
+                  tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                >
+                  <Square />
+                  <span>Fläche</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Additional controls */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Steuerung</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {/* Complete/Finalize Button (only shown for area measurements with 3+ points) */}
+              {activeMode === 'area' && currentPoints.length >= 3 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={handleFinalizeMeasurement}
+                    tooltip="Flächenmessung abschließen"
+                  >
+                    <CheckCircle2 />
+                    <span>Fertigstellen</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              
+              {/* Cancel Button (only shown during active measurement) */}
+              {currentPoints.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={clearCurrentPoints}
+                    tooltip="Aktuelle Messung abbrechen"
+                  >
+                    <X />
+                    <span>Abbrechen</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              
+              {/* Cancel Editing Button (only shown during point editing) */}
+              {editMeasurementId !== null && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={handleCancelEditing}
+                    tooltip="Punktbearbeitung abbrechen"
+                  >
+                    <AlertCircle />
+                    <span>Bearbeitung abbrechen</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              
+              {/* Toggle Visibility Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={toggleVisibility}
+                  tooltip={visible ? "Messungen ausblenden" : "Messungen einblenden"}
+                >
+                  {visible ? <EyeOff /> : <Eye />}
+                  <span>{visible ? "Ausblenden" : "Einblenden"}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              {/* Clear All Button */}
+              {measurements.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={handleClearMeasurements}
+                    tooltip="Alle Messungen löschen"
+                  >
+                    <Trash2 />
+                    <span>Alle löschen</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Measurements List */}
+        {measurements.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Messungen</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <ScrollArea className="h-[300px] pr-4">
+                {measurements.map((measurement) => (
+                  <div key={measurement.id} className="mb-3 last:mb-0">
+                    <Alert variant="outline" className={`${measurement.visible ? '' : 'opacity-50'}`}>
+                      <div className="flex justify-between items-start">
+                        <AlertTitle className="text-xs font-medium">
+                          {measurement.type === 'length' ? 'Länge' : 
+                           measurement.type === 'height' ? 'Höhe' : 'Fläche'}
+                        </AlertTitle>
+                        <div className="flex space-x-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5" 
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible === false ? <Eye size={12} /> : <EyeOff size={12} />}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5" 
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil size={12} />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5" 
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <AlertDescription className="text-xs mt-2">
+                        <div className="font-medium">
+                          {measurement.type === 'length' && 
+                            `${measurement.value.toFixed(2)} m (Neigung: ${(measurement.inclination || 0).toFixed(1)}°)`
+                          }
+                          {measurement.type === 'height' && 
+                            `${measurement.value.toFixed(2)} m`
+                          }
+                          {measurement.type === 'area' && 
+                            `${measurement.value.toFixed(2)} m²`
+                          }
+                        </div>
+                        
+                        {/* Description area - editable */}
+                        {editingId === measurement.id ? (
+                          <div className="mt-2 flex space-x-2">
+                            <Input
+                              className="h-6 text-xs"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              placeholder="Beschreibung hinzufügen..."
+                            />
+                            <Button 
+                              size="sm" 
+                              className="h-6 px-2 text-xs" 
+                              onClick={() => handleEditSave(measurement.id)}
+                            >
+                              <Save size={12} className="mr-1" />
+                              OK
+                            </Button>
+                          </div>
+                        ) : (
+                          <div 
+                            className="mt-1 text-xs text-muted-foreground cursor-pointer hover:underline"
+                            onClick={() => handleEditStart(measurement.id, measurement.description)}
+                          >
+                            {measurement.description || "Beschreibung hinzufügen..."}
+                          </div>
+                        )}
+                        
+                        {/* Segment list for area measurements */}
+                        {measurement.type === 'area' && measurement.segments && (
+                          <Collapsible
+                            open={segmentsOpen[measurement.id]}
+                            onOpenChange={() => toggleSegments(measurement.id)}
+                            className="mt-2"
+                          >
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" className="flex items-center justify-between w-full h-6 px-2 text-xs">
+                                <span>Segmente</span>
+                                {segmentsOpen[measurement.id] ? (
+                                  <ChevronDown size={12} />
+                                ) : (
+                                  <ChevronRight size={12} />
+                                )}
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-1">
+                              <ul className="space-y-1 text-xs">
+                                {measurement.segments.map((segment, idx) => (
+                                  <li key={segment.id} className="flex justify-between items-center">
+                                    <span>Segment {idx + 1}</span>
+                                    <span className="font-medium">{segment.length.toFixed(2)} m</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                ))}
+              </ScrollArea>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+      
+      <SidebarFooter>
+        <div className="p-4 text-xs text-muted-foreground">
+          {activeMode !== 'none' ? (
+            <Alert>
+              <AlertTitle>
+                {activeMode === 'length' ? 'Längenmessung' : 
+                 activeMode === 'height' ? 'Höhenmessung' : 'Flächenmessung'} aktiv
+              </AlertTitle>
+              <AlertDescription>
+                Klicken Sie auf das Modell, um Messpunkte zu setzen.
+                {activeMode === 'area' && currentPoints.length >= 3 && (
+                  <div className="mt-1">
+                    Klicken Sie auf 'Fertigstellen', um die Flächenmessung abzuschließen.
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div>Wählen Sie ein Messwerkzeug, um zu beginnen.</div>
+          )}
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+};
+
+export default MeasurementTools;
