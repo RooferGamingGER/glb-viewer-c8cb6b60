@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -111,7 +110,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Effect to open the sidebar when measurement tools are first enabled
   useEffect(() => {
     if (enabled && autoOpenSidebar && !open) {
       setOpen(true);
@@ -134,7 +132,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      true // Always render measurements regardless of sidebar state
+      true
     );
   }, [measurements]);
 
@@ -144,7 +142,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       measurements, 
       editMeasurementId, 
       editingPointIndex, 
-      true // Always visible
+      true
     );
   }, [measurements, editMeasurementId, editingPointIndex]);
 
@@ -161,7 +159,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled]);
 
-  // This effect now only controls visibility of measurements based on their individual visible property
   useEffect(() => {
     if (labelsRef.current && segmentLabelsRef.current) {
       measurements.forEach(measurement => {

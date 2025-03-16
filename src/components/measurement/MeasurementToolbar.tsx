@@ -19,6 +19,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
+import ExportPdfButton from './ExportPdfButton';
 
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
@@ -116,6 +117,13 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        
+        {/* PDF Export Button */}
+        {measurements.length > 0 && (
+          <div className="mt-4 px-2">
+            <ExportPdfButton measurements={measurements} />
+          </div>
+        )}
       </SidebarGroupContent>
     </SidebarGroup>
   );
