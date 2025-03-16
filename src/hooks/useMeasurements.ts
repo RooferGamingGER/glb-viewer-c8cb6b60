@@ -52,7 +52,7 @@ const formatMeasurement = (value: number, type: MeasurementMode): string => {
 
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [activeMode, setActiveMode] = useState<MeasurementMode>('length');
+  const [activeMode, setActiveMode] = useState<MeasurementMode>('none'); // Default to 'none' instead of 'length'
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
@@ -482,6 +482,18 @@ export const useMeasurements = () => {
     return nearestIndex;
   }, []);
 
+  const undoLastPoint = useCallback((): boolean => {
+    if (currentPoints.length === 0) {
+      return false;
+    }
+    
+    const newPoints = [...currentPoints];
+    newPoints.pop();
+    setCurrentPoints(newPoints);
+    currentPointsRef.current = newPoints;
+    return true;
+  }, [currentPoints]);
+
   return {
     measurements,
     currentPoints,
@@ -500,6 +512,7 @@ export const useMeasurements = () => {
     updateMeasurement,
     deleteMeasurement,
     deletePoint,
+    undoLastPoint,
     // New editing functionality
     editMeasurementId,
     editingPointIndex,

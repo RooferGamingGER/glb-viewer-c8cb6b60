@@ -15,7 +15,9 @@ import {
   Move,
   Save,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft, // Added for undo functionality
+  X as CloseIcon
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements, Segment } from '@/hooks/useMeasurements';
 import { 
@@ -84,6 +86,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurement,
     deleteMeasurement,
     deletePoint,
+    undoLastPoint, // Add the new undoLastPoint function
     // New editing functionality
     editMeasurementId,
     editingPointIndex,
@@ -102,7 +105,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const segmentLabelsRef = useRef<THREE.Group | null>(null); // New ref for segment labels
 
   useEffect(() => {
-    // Ensure sidebar is open when measurements are enabled
+    // Just ensure sidebar is open when measurements are enabled
+    // but don't activate any tool by default
     if (enabled && !open) {
       setOpen(true);
     }
@@ -816,6 +820,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info(visible ? 'Messungen ausgeblendet' : 'Messungen eingeblendet');
   };
 
+  const handleUndoLastPoint = () => {
+    if (undoLastPoint()) {
+      toast.info('Letzter Messpunkt entfernt');
+    } else {
+      toast.error('Keine Messpunkte zum Entfernen vorhanden');
+    }
+  };
+
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
@@ -898,8 +910,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <Sidebar side="right" variant="floating" className="z-20">
       <SidebarRail />
       <SidebarHeader>
-        <h3 className="text-lg font-semibold px-4 py-2">Messwerkzeuge</h3>
-        <SidebarTrigger className="absolute right-4 top-4" />
+        <div className="flex justify-between items-center px-4 py-2">
+          <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
+          <SidebarTrigger className="h-7 w-7" />
+        </div>
       </SidebarHeader>
       
       <SidebarContent>
@@ -943,27 +957,54 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           </SidebarGroupContent>
         </SidebarGroup>
         
-        {activeMode === 'area' && currentPoints.length >= 3 && (
+        {activeMode !== 'none' && currentPoints.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Aktive Messung</SidebarGroupLabel>
             <SidebarGroupContent>
-              <Button 
-                variant="default" 
-                className="w-full mb-2"
-                onClick={handleFinalizeMeasurement}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Messung abschließen ({currentPoints.length} Punkte)
-              </Button>
+              {activeMode === 'area' && currentPoints.length >= 3 && (
+                <Button 
+                  variant="default" 
+                  className="w-full mb-2"
+                  onClick={handleFinalizeMeasurement}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Messung abschließen ({currentPoints.length} Punkte)
+                </Button>
+              )}
               
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={clearCurrentPoints}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Abbrechen
-              </Button>
+              <div className="flex gap-2 w-full">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={handleUndoLastPoint}
+                  disabled={currentPoints.length === 0}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Zurück
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={clearCurrentPoints}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Abbrechen
+                </Button>
+              </div>
+              
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-1">Messpunkte ({currentPoints.length}):</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto pl-2 pr-1">
+                  {currentPoints.map((point, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
+                      <span>
+                        Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
