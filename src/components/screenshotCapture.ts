@@ -1,6 +1,6 @@
 
 import { toast } from 'sonner';
-import { storeScreenshot, StoredScreenshot } from './screenshotStore';
+import { storeScreenshot, StoredScreenshot } from '@/utils/screenshot/screenshotStore';
 
 export interface ScreenshotOptions {
   quality?: number;
