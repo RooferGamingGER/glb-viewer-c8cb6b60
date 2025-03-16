@@ -31,13 +31,9 @@ const Viewer = () => {
     fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
     document.head.appendChild(fontLink);
     
-    // Explicitly mark the font as active to enhance rendering
-    document.documentElement.classList.add('font-loaded');
-    
     return () => {
       // Clean up the font link when component unmounts
       document.head.removeChild(fontLink);
-      document.documentElement.classList.remove('font-loaded');
     };
   }, []);
 

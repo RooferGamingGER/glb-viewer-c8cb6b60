@@ -228,19 +228,9 @@ export const useMeasurements = () => {
         
         // Recalculate the measurement value
         let newValue: number;
-        let newInclination: number | undefined;
         
         if (m.type === 'length') {
           newValue = calculateDistance(newPoints[0], newPoints[1]);
-          
-          // Recalculate inclination for length measurements with positive value
-          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
-          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
-          
-          // Calculate inclination and ensure it's positive
-          const deltaY = p2.y - p1.y;
-          const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
-          newInclination = Math.abs(Math.atan2(deltaY, horizontalDistance) * (180 / Math.PI));
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
@@ -255,8 +245,7 @@ export const useMeasurements = () => {
           ...m,
           points: newPoints,
           value: newValue,
-          label: formatMeasurement(newValue, m.type),
-          inclination: newInclination !== undefined ? newInclination : m.inclination
+          label: formatMeasurement(newValue, m.type)
         };
       });
     });
@@ -312,7 +301,7 @@ export const useMeasurements = () => {
     }));
   }, [calculateDistance, calculateHeight, calculateArea]);
 
-  // Calculate inclination - ensure it's always positive
+  // Dedicated function to create a Length measurement
   const calculateInclination = useCallback((p1: THREE.Vector3, p2: THREE.Vector3): number => {
     const deltaY = p2.y - p1.y;
     const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
@@ -320,8 +309,8 @@ export const useMeasurements = () => {
     // Calculate inclination in radians
     const inclinationRad = Math.atan2(deltaY, horizontalDistance);
     
-    // Convert radians to degrees and ensure positive value
-    return Math.abs(inclinationRad * (180 / Math.PI));
+    // Convert radians to degrees
+    return inclinationRad * (180 / Math.PI);
   }, []);
 
   const createLengthMeasurement = useCallback((points: Point[]) => {
@@ -330,10 +319,10 @@ export const useMeasurements = () => {
     const value = calculateDistance(points[0], points[1]);
     const label = formatMeasurement(value, 'length');
     
-    // Calculate inclination for length measurements (ensure positive)
+    // Calculate inclination for length measurements
     const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
     const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-    const inclination = Math.abs(calculateInclination(p1, p2));
+    const inclination = calculateInclination(p1, p2);
     
     setMeasurements(prev => [
       ...prev,
@@ -346,14 +335,40 @@ export const useMeasurements = () => {
         visible: true,
         unit: 'm',
         description: '',
-        inclination // Store inclination (always positive)
+        inclination // Store inclination
       }
     ]);
     
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, [calculateDistance, calculateInclination]);
+  }, [calculateDistance]);
+
+  // Dedicated function to create a Height measurement
+  const createHeightMeasurement = useCallback((points: Point[]) => {
+    if (points.length !== 2) return;
+    
+    const value = calculateHeight(points[0], points[1]);
+    const label = formatMeasurement(value, 'height');
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'height',
+        points: [...points],
+        value,
+        label,
+        visible: true,
+        unit: 'm',
+        description: ''
+      }
+    ]);
+    
+    // Clear points after creating the measurement
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+  }, [calculateHeight]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -509,4 +524,3 @@ export const useMeasurements = () => {
     calculateSegmentLength
   };
 };
-

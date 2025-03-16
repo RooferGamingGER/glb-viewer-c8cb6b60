@@ -129,7 +129,6 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
 
 /**
  * Updates the scale of a label sprite based on camera distance
- * Using a logarithmic scale for better readability at all distances
  */
 export function updateLabelScale(
   sprite: THREE.Sprite, 
@@ -144,28 +143,14 @@ export function updateLabelScale(
   
   const distance = position.distanceTo(camera.position);
   
-  // Use logarithmic scaling for better readability at all distances
-  // Apply upper and lower bounds to prevent labels from becoming too large or too small
-  const minScale = 0.6; // Minimum scale factor
-  const maxScale = 1.5; // Maximum scale factor
-  
-  // Calculate scale factor using logarithmic function with bounds
-  const scaleFactor = Math.min(maxScale, Math.max(minScale, 0.8 + Math.log10(1 + distance * 0.3)));
-  
-  // Get perspective camera FOV if available for additional scaling adjustment
-  let fovAdjustment = 1.0;
-  if (camera instanceof THREE.PerspectiveCamera && camera.fov) {
-    // Wider FOV should make labels slightly larger
-    fovAdjustment = 75 / camera.fov; // Normalized to standard 75 degree FOV
-    fovAdjustment = Math.min(1.3, Math.max(0.8, fovAdjustment)); // Limit adjustment range
-  }
-  
+  // Scale based on distance (increase scale as distance increases)
+  const scaleFactor = Math.max(0.8, distance * 0.15);
   const aspectRatio = sprite.scale.x / sprite.scale.y;
   
-  // Apply scale with FOV adjustment
+  // Apply scale
   sprite.scale.set(
-    baseScale * aspectRatio * scaleFactor * fovAdjustment,
-    baseScale * scaleFactor * fovAdjustment,
+    baseScale * aspectRatio * scaleFactor,
+    baseScale * scaleFactor,
     1
   );
 }
@@ -189,9 +174,9 @@ export function formatMeasurementLabel(
   // Format length or height measurements
   const baseLabel = `${value.toFixed(2)} m`;
   
-  // Add inclination if provided and significant, always as positive value
-  if (inclination !== undefined && Math.abs(inclination) > 1.0) {
-    return `${baseLabel} | ${Math.abs(inclination).toFixed(1)}°`;
+  // Add inclination if provided and significant
+  if (inclination !== undefined && inclination > 1.0) {
+    return `${baseLabel} | ${inclination.toFixed(1)}°`;
   }
   
   return baseLabel;
@@ -250,7 +235,6 @@ export function calculateCentroid(points: THREE.Vector3[]): THREE.Vector3 {
 
 /**
  * Calculate inclination angle between two points in degrees
- * Always returns a positive value
  */
 export function calculateInclination(point1: THREE.Vector3, point2: THREE.Vector3): number {
   // Calculate the horizontal distance
@@ -259,11 +243,11 @@ export function calculateInclination(point1: THREE.Vector3, point2: THREE.Vector
     point2.z - point1.z
   ).length();
   
-  // Calculate the vertical distance (absolute value to ensure positive result)
+  // Calculate the vertical distance
   const verticalDistance = Math.abs(point2.y - point1.y);
   
-  // Calculate angle in degrees (always positive)
+  // Calculate angle in degrees
   const angle = Math.atan2(verticalDistance, horizontalDistance) * (180 / Math.PI);
   
-  return Math.abs(angle); // Ensure the result is always positive
+  return angle;
 }
