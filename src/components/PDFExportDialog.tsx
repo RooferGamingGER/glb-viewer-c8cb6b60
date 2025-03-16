@@ -102,6 +102,9 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     }
   };
 
+  // Check if the button should be enabled
+  const hasMeasurements = measurements.length > 0;
+
   return (
     <>
       <Button 
@@ -110,7 +113,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
         className="glass-button"
         onClick={() => setOpen(true)}
         title="Als PDF exportieren"
-        disabled={measurements.length === 0}
+        disabled={!hasMeasurements}
       >
         <FileText size={16} />
         <span className="sr-only">Als PDF exportieren</span>

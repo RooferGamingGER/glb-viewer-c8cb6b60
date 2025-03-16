@@ -238,7 +238,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <ScreenshotDialog onTakeScreenshot={handleTakeScreenshot} />
         
-        {/* Add PDF Export button */}
+        {/* PDF Export button - pass measurements correctly */}
         <PDFExportDialog 
           onTakeScreenshot={handleTakeScreenshot}
           measurements={measurements}
