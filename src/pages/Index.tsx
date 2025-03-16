@@ -1,7 +1,7 @@
 
 import React from 'react';
 import FileUpload from '@/components/FileUpload';
-import { Motion, Cubes, ViewportIcon, Smartphone } from 'lucide-react';
+import { Smartphone, Box, Layers, MoveHorizontal } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -27,7 +27,7 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-16">
           <div className="glass-panel p-6 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Motion className="w-6 h-6 text-primary" />
+              <MoveHorizontal className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-lg font-medium mb-2">Interaktive Darstellung</h3>
             <p className="text-sm text-muted-foreground">
@@ -37,7 +37,7 @@ const Index = () => {
           
           <div className="glass-panel p-6 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Cubes className="w-6 h-6 text-primary" />
+              <Box className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-lg font-medium mb-2">GLB-Format</h3>
             <p className="text-sm text-muted-foreground">

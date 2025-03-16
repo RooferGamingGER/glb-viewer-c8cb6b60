@@ -69,15 +69,24 @@ function Model({ url }: { url: string }) {
       
       // Adjust camera to fit the model
       const maxDim = Math.max(size.x, size.y, size.z);
-      const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
       
-      // Set a minimum distance to prevent tiny models
-      cameraZ = Math.max(cameraZ, 2);
-      
-      // Position camera slightly above and to the side for better viewing
-      camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.3, center.z + cameraZ);
-      camera.lookAt(center);
+      // Check if camera is a PerspectiveCamera before accessing fov
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const fov = camera.fov * (Math.PI / 180);
+        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+        
+        // Set a minimum distance to prevent tiny models
+        cameraZ = Math.max(cameraZ, 2);
+        
+        // Position camera slightly above and to the side for better viewing
+        camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.3, center.z + cameraZ);
+        camera.lookAt(center);
+      } else {
+        // Handle OrthographicCamera case
+        const distance = maxDim * 2;
+        camera.position.set(center.x + distance, center.y + distance * 0.6, center.z + distance);
+        camera.lookAt(center);
+      }
       
       // Center the model
       modelRef.current.position.x = -center.x;
@@ -144,12 +153,21 @@ function Model({ url }: { url: string }) {
                     const size = box.getSize(new THREE.Vector3());
                     
                     const maxDim = Math.max(size.x, size.y, size.z);
-                    const fov = camera.fov * (Math.PI / 180);
-                    let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
                     
-                    // Position camera
-                    camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.3, center.z + cameraZ);
-                    camera.lookAt(center);
+                    // Check if camera is a PerspectiveCamera before accessing fov
+                    if (camera instanceof THREE.PerspectiveCamera) {
+                      const fov = camera.fov * (Math.PI / 180);
+                      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+                      
+                      // Position camera
+                      camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.3, center.z + cameraZ);
+                      camera.lookAt(center);
+                    } else {
+                      // Handle OrthographicCamera case
+                      const distance = maxDim * 2;
+                      camera.position.set(center.x + distance, center.y + distance * 0.6, center.z + distance);
+                      camera.lookAt(center);
+                    }
                   }
                 }}
               >
