@@ -23,20 +23,27 @@ interface PDFExportOptions {
   screenshotUrl: string;
   measurements: Measurement[];
   filename?: string;
+  includeScreenshot?: boolean;
 }
 
 export const exportMeasurementsToPDF = async ({
   title,
   screenshotUrl,
   measurements,
-  filename = 'messungen.pdf'
+  filename = 'messungen.pdf',
+  includeScreenshot = true
 }: PDFExportOptions): Promise<void> => {
   try {
-    // Convert the screenshot URL to a base64 data URL
-    const imageBase64 = await urlToBase64(screenshotUrl);
+    let imageBase64 = '';
+    
+    // Only process screenshot if it's included and a URL is provided
+    if (includeScreenshot && screenshotUrl) {
+      // Convert the screenshot URL to a base64 data URL
+      imageBase64 = await urlToBase64(screenshotUrl);
+    }
     
     // Generate the document definition
-    const docDefinition = createDocumentDefinition(title, imageBase64, measurements);
+    const docDefinition = createDocumentDefinition(title, imageBase64, measurements, includeScreenshot);
     
     // Create and download the PDF
     const pdfDoc = pdfMake.createPdf(docDefinition);
@@ -99,35 +106,43 @@ interface TableCell {
 const createDocumentDefinition = (
   title: string,
   imageBase64: string,
-  measurements: Measurement[]
+  measurements: Measurement[],
+  includeScreenshot: boolean = true
 ): TDocumentDefinitions => {
+  const content: Content[] = [
+    // Header
+    {
+      text: title,
+      style: 'header',
+      margin: [0, 0, 0, 10]
+    }
+  ];
+  
+  // Add screenshot if included
+  if (includeScreenshot && imageBase64) {
+    content.push({
+      image: imageBase64,
+      width: 500,
+      alignment: 'center',
+      margin: [0, 0, 0, 20]
+    });
+  }
+  
+  // Add measurements section
+  content.push(
+    // Measurements section title
+    {
+      text: 'Messungen',
+      style: 'subheader',
+      margin: [0, 10, 0, 10]
+    },
+    
+    // Generate measurements table
+    createMeasurementsTable(measurements)
+  );
+  
   return {
-    content: [
-      // Header
-      {
-        text: title,
-        style: 'header',
-        margin: [0, 0, 0, 10]
-      },
-      
-      // Screenshot
-      {
-        image: imageBase64,
-        width: 500,
-        alignment: 'center',
-        margin: [0, 0, 0, 20]
-      },
-      
-      // Measurements section title
-      {
-        text: 'Messungen',
-        style: 'subheader',
-        margin: [0, 10, 0, 10]
-      },
-      
-      // Generate measurements table
-      createMeasurementsTable(measurements)
-    ],
+    content: content,
     
     // Define styles
     styles: {
