@@ -9,8 +9,7 @@ import {
   Eye, 
   EyeOff,
   CheckCircle2,
-  AlertCircle,
-  X
+  AlertCircle
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
 import { 
@@ -25,15 +24,16 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-  SidebarRail
+  SidebarRail,
+  useSidebar
 } from "@/components/ui/sidebar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as THREE from 'three';
 
 interface MeasurementToolsProps {
   enabled: boolean;
-  scene: THREE.Scene | null;
-  camera: THREE.Camera | null;
+  scene: THREE.Scene;
+  camera: THREE.Camera;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
@@ -41,8 +41,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   scene,
   camera
 }) => {
+  const { open, setOpen } = useSidebar();
   const [visible, setVisible] = useState(true);
-  const [expanded, setExpanded] = useState(true);
   const { 
     measurements,
     currentPoints,
@@ -57,6 +57,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Points display reference for updating visual indicators
   const pointsRef = useRef<THREE.Group | null>(null);
   const linesRef = useRef<THREE.Group | null>(null);
+
+  useEffect(() => {
+    // Ensure sidebar is open when measurements are enabled
+    if (enabled && !open) {
+      setOpen(true);
+    }
+  }, [enabled, open, setOpen]);
 
   // Add point markers to the scene
   useEffect(() => {
@@ -131,29 +138,99 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       }
     });
 
+    // Add special final connecting line for area measurement to close the shape
+    if (activeMode === 'area' && currentPoints.length >= 3) {
+      const firstPoint = currentPoints[0];
+      const lastPoint = currentPoints[currentPoints.length - 1];
+      const closingPoints = [
+        new THREE.Vector3(lastPoint.x, lastPoint.y, lastPoint.z),
+        new THREE.Vector3(firstPoint.x, firstPoint.y, firstPoint.z)
+      ];
+      const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
+      const closingMaterial = new THREE.LineBasicMaterial({ 
+        color: 0xffaa00,
+        linewidth: 2,
+        opacity: 0.5,
+        transparent: true,
+        dashSize: 0.1,
+        gapSize: 0.1
+      });
+      const closingLine = new THREE.Line(closingGeometry, closingMaterial);
+      linesRef.current?.add(closingLine);
+    }
+
   }, [currentPoints, visible, activeMode]);
 
-  // Also visualize completed measurements
+  // Setup the event listener for clicks on the canvas
   useEffect(() => {
-    if (!pointsRef.current || !visible) return;
-
-    // Add completed measurement points and lines
-    measurements.forEach(measurement => {
-      measurement.points.forEach((point, index) => {
-        // Skip drawing for completed measurements as that would make the scene too cluttered
-        // Only draw if really needed
+    if (!enabled || !scene || !camera) return;
+    
+    // Find canvas element
+    const canvasElement = document.querySelector('canvas');
+    if (!canvasElement) return;
+    
+    const handleClick = (event: MouseEvent) => {
+      // Only handle clicks if enabled and sidebar is open
+      if (!enabled || !open) return;
+      
+      // Calculate mouse position in normalized device coordinates (-1 to +1)
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const mouseX = ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1;
+      const mouseY = -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1;
+      
+      // Create raycaster
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(mouseX, mouseY);
+      
+      // Set raycaster from camera and mouse position
+      raycaster.setFromCamera(mouse, camera);
+      
+      // Get all intersected objects
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      // Filter out measurement points/lines from intersections
+      const validIntersects = intersects.filter(intersect => {
+        // Check if the object or any of its parents are measurement points/lines
+        let currentObj = intersect.object;
+        while (currentObj) {
+          if (currentObj.name === "measurementPoints" || currentObj.name === "measurementLines") {
+            return false;
+          }
+          // @ts-ignore - parent property exists on THREE.Object3D
+          currentObj = currentObj.parent;
+        }
+        return true;
       });
-    });
-  }, [measurements, visible]);
-
-  // Handle the toggling of the sidebar when the tool state changes
-  useEffect(() => {
-    if (!enabled && expanded) {
-      setExpanded(false);
-    } else if (enabled && !expanded) {
-      setExpanded(true);
-    }
-  }, [enabled, expanded]);
+      
+      // If there are valid intersections, use the closest one
+      if (validIntersects.length > 0) {
+        const intersect = validIntersects[0];
+        const point = {
+          x: intersect.point.x,
+          y: intersect.point.y,
+          z: intersect.point.z
+        };
+        
+        // Add point to current points array
+        setCurrentPoints(prev => [...prev, point]);
+        
+        // Auto-finalize for length and height after 2 points
+        if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
+          setTimeout(() => {
+            finalizeMeasurement();
+          }, 0);
+        }
+      }
+    };
+    
+    // Add click event listener to canvas
+    canvasElement.addEventListener('click', handleClick);
+    
+    // Clean up event listener when component unmounts or when disabled
+    return () => {
+      canvasElement.removeEventListener('click', handleClick);
+    };
+  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement, setCurrentPoints, open]);
 
   const selectTool = (mode: MeasurementMode) => {
     setActiveMode(mode);
@@ -164,72 +241,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setVisible(!visible);
   };
 
-  // Setup the event listener for clicks on the canvas
-  useEffect(() => {
-    if (!enabled || !scene || !camera) return;
-    
-    // Add click event listener to the renderer's DOM element
-    const canvasElement = document.querySelector('canvas');
-    if (!canvasElement) return;
-    
-    const handleClick = (event: MouseEvent) => {
-      if (!enabled || !scene || !camera) return;
-      
-      const canvasRect = canvasElement.getBoundingClientRect();
-      const mouseX = ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1;
-      const mouseY = -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1;
-      
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2(mouseX, mouseY);
-      
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(scene.children, true);
-      
-      if (intersects.length > 0) {
-        // Skip intersections with measurement points and lines
-        const validIntersects = intersects.filter(intersect => {
-          let currentObj = intersect.object;
-          while (currentObj) {
-            if (currentObj.name === "measurementPoints" || currentObj.name === "measurementLines") {
-              return false;
-            }
-            // @ts-ignore - parent property exists on THREE.Object3D
-            currentObj = currentObj.parent;
-          }
-          return true;
-        });
-        
-        if (validIntersects.length > 0) {
-          const intersect = validIntersects[0];
-          const point = {
-            x: intersect.point.x,
-            y: intersect.point.y,
-            z: intersect.point.z
-          };
-          
-          setCurrentPoints(prev => [...prev, point]);
-          
-          // Auto-finalize for length and height after 2 points
-          if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
-            setTimeout(() => {
-              finalizeMeasurement();
-            }, 0);
-          }
-        }
-      }
-    };
-    
-    canvasElement.addEventListener('click', handleClick);
-    
-    return () => {
-      canvasElement.removeEventListener('click', handleClick);
-    };
-  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement, setCurrentPoints]);
-
-  // If sidebar is not enabled, return null but don't hide the model
+  // If measurements are not enabled, don't render the sidebar
   if (!enabled) return null;
 
-  // Use SidebarRail with the "right" side to fix the overlay
   return (
     <Sidebar side="right" variant="floating" className="z-20">
       <SidebarRail />

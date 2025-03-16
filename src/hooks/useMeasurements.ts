@@ -48,25 +48,37 @@ export const useMeasurements = () => {
   const calculateArea = useCallback((points: Point[]): number => {
     if (points.length < 3) return 0;
     
-    // Simple implementation for triangular area using Heron's formula
-    if (points.length === 3) {
-      const a = calculateDistance(points[0], points[1]);
-      const b = calculateDistance(points[1], points[2]);
-      const c = calculateDistance(points[2], points[0]);
+    // For polygons, triangulate and sum the areas of the triangles
+    const triangleCount = points.length - 2;
+    let totalArea = 0;
+    
+    // Simple triangulation using the first point as a pivot
+    for (let i = 0; i < triangleCount; i++) {
+      const p0 = points[0];
+      const p1 = points[i + 1];
+      const p2 = points[i + 2];
+      
+      // Create 3D vectors
+      const v0 = new THREE.Vector3(p0.x, p0.y, p0.z);
+      const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+      const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+      
+      // Calculate sides of the triangle
+      const a = v0.distanceTo(v1);
+      const b = v1.distanceTo(v2);
+      const c = v2.distanceTo(v0);
+      
+      // Calculate semi-perimeter
       const s = (a + b + c) / 2;
-      return Math.sqrt(s * (s - a) * (s - b) * (s - c));
+      
+      // Calculate triangle area using Heron's formula
+      const triangleArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
+      
+      totalArea += triangleArea;
     }
     
-    // For polygons with more than 3 points, use the Shoelace formula
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      const j = (i + 1) % points.length;
-      // Using a simplified 2D projection on the XZ plane for area calculation
-      area += points[i].x * points[j].z;
-      area -= points[j].x * points[i].z;
-    }
-    return Math.abs(area) / 2;
-  }, [calculateDistance]);
+    return totalArea;
+  }, []);
 
   const finalizeMeasurement = useCallback(() => {
     if (currentPoints.length === 0) return;

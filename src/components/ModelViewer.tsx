@@ -207,7 +207,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
 
   return (
     <div className="relative w-full h-full">
-      {/* Model Canvas is always visible, not tied to measurement tools state */}
+      {/* Model Canvas is always visible */}
       <div className="absolute inset-0 z-0">
         <ModelCanvas 
           fileUrl={fileUrl}
@@ -224,7 +224,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
           className="glass-button" 
           onClick={() => setShowStats(!showStats)}
         >
-          <Eye size={16} className={showStats ? 'text-primary' : ''} />
+          {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
         </Button>
         
         <Button 
@@ -246,8 +246,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
         </div>
       </div>
       
-      {/* Measurement Tools - Now overlaid as a sidebar, not affecting model visibility */}
-      {scene && camera && (
+      {/* Measurement Tools */}
+      {scene && camera && measurementsEnabled && (
         <MeasurementTools 
           enabled={measurementsEnabled}
           scene={scene}
