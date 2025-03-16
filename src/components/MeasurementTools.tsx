@@ -12,6 +12,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import * as THREE from 'three';
+import { ChevronRight } from 'lucide-react';
 
 // Import custom hooks
 import { useThreeObjects } from '@/hooks/useThreeObjects';
@@ -157,6 +158,33 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled]);
 
+  // Add this effect to properly update label visibility when measurements are toggled
+  useEffect(() => {
+    if (labelsRef.current && segmentLabelsRef.current) {
+      // Update visibility for measurement labels
+      measurements.forEach(measurement => {
+        const labels = labelsRef.current?.children.filter(
+          obj => obj.userData && obj.userData.measurementId === measurement.id
+        );
+        
+        labels?.forEach(label => {
+          label.visible = measurement.visible !== false && visible;
+        });
+        
+        // Update segment labels visibility too if it's an area measurement
+        if (measurement.type === 'area') {
+          const segmentLabels = segmentLabelsRef.current?.children.filter(
+            obj => obj.userData && obj.userData.measurementId === measurement.id
+          );
+          
+          segmentLabels?.forEach(label => {
+            label.visible = measurement.visible !== false && visible;
+          });
+        }
+      });
+    }
+  }, [measurements, visible]);
+
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
@@ -270,65 +298,81 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
+  const toggleSidebar = () => {
+    setOpen(!open);
+  };
+
   if (!enabled) return null;
 
   return (
-    <Sidebar side="right" variant="floating" className="z-20">
-      <SidebarRail />
-      <SidebarHeader>
-        <div className="flex justify-between items-center px-4 py-2">
-          <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
-          <SidebarTrigger className="h-7 w-7" />
-        </div>
-      </SidebarHeader>
+    <div className="relative z-20">
+      {!open && (
+        <button 
+          onClick={toggleSidebar}
+          className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-secondary border border-border border-r-0 rounded-l-md p-2 z-30"
+          aria-label="Öffne Messwerkzeuge"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      )}
       
-      <SidebarContent>
-        <EditingAlert 
-          editMeasurementId={editMeasurementId}
-          editingSegmentId={editingSegmentId}
-          movingPointInfo={movingPointInfo}
-          handleCancelEditing={handleCancelEditing}
-        />
+      <Sidebar side="right" variant="floating">
+        <SidebarRail />
+        <SidebarHeader>
+          <div className="flex justify-between items-center px-4 py-2">
+            <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
+            <SidebarTrigger className="h-7 w-7" />
+          </div>
+        </SidebarHeader>
         
-        <MeasurementToolbar 
-          activeMode={activeMode}
-          toggleMeasurementTool={toggleMeasurementTool}
-          visible={visible}
-          setVisible={setVisible}
-          handleClearMeasurements={handleClearMeasurements}
-          measurements={measurements}
-        />
+        <SidebarContent>
+          <EditingAlert 
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            movingPointInfo={movingPointInfo}
+            handleCancelEditing={handleCancelEditing}
+          />
+          
+          <MeasurementToolbar 
+            activeMode={activeMode}
+            toggleMeasurementTool={toggleMeasurementTool}
+            visible={visible}
+            setVisible={setVisible}
+            handleClearMeasurements={handleClearMeasurements}
+            measurements={measurements}
+          />
+          
+          <ActiveMeasurement 
+            activeMode={activeMode}
+            currentPoints={currentPoints}
+            handleFinalizeMeasurement={handleFinalizeMeasurement}
+            handleUndoLastPoint={handleUndoLastPoint}
+            clearCurrentPoints={clearCurrentPoints}
+          />
+          
+          <MeasurementList 
+            measurements={measurements}
+            toggleMeasurementVisibility={toggleMeasurementVisibility}
+            handleStartPointEdit={handleStartPointEdit}
+            handleDeleteMeasurement={handleDeleteMeasurement}
+            updateMeasurement={updateMeasurement}
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            handleCancelEditing={handleCancelEditing}
+            segmentsOpen={segmentsOpen}
+            toggleSegments={toggleSegments}
+            setEditingSegmentId={setEditingSegmentId}
+            movingPointInfo={movingPointInfo}
+          />
+        </SidebarContent>
         
-        <ActiveMeasurement 
-          activeMode={activeMode}
-          currentPoints={currentPoints}
-          handleFinalizeMeasurement={handleFinalizeMeasurement}
-          handleUndoLastPoint={handleUndoLastPoint}
-          clearCurrentPoints={clearCurrentPoints}
-        />
-        
-        <MeasurementList 
-          measurements={measurements}
-          toggleMeasurementVisibility={toggleMeasurementVisibility}
-          handleStartPointEdit={handleStartPointEdit}
-          handleDeleteMeasurement={handleDeleteMeasurement}
-          updateMeasurement={updateMeasurement}
-          editMeasurementId={editMeasurementId}
-          editingSegmentId={editingSegmentId}
-          handleCancelEditing={handleCancelEditing}
-          segmentsOpen={segmentsOpen}
-          toggleSegments={toggleSegments}
-          setEditingSegmentId={setEditingSegmentId}
-          movingPointInfo={movingPointInfo}
-        />
-      </SidebarContent>
-      
-      <SidebarFooter>
-        <div className="p-4 text-xs text-muted-foreground">
-          <p>Messungswerkzeuge v1.0</p>
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+        <SidebarFooter>
+          <div className="p-4 text-xs text-muted-foreground">
+            <p>Messungswerkzeuge v1.0</p>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+    </div>
   );
 };
 
