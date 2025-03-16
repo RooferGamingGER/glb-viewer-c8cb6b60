@@ -42,9 +42,9 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   if (measurements.length === 0 && !editMeasurementId && !editingSegmentId) return null;
   
   return (
-    <SidebarGroup>
+    <SidebarGroup className="flex-1 flex flex-col min-h-0">
       <SidebarGroupLabel>Messungen</SidebarGroupLabel>
-      <SidebarGroupContent>
+      <SidebarGroupContent className="flex-1 flex flex-col min-h-0">
         <EditingAlert 
           editMeasurementId={editMeasurementId}
           editingSegmentId={editingSegmentId}
@@ -52,7 +52,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
           handleCancelEditing={handleCancelEditing}
         />
         
-        <ScrollArea className="h-[200px]">
+        <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 500px)' }}>
           {measurements.map((measurement) => (
             <MeasurementItem
               key={measurement.id}

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
+import { toast } from 'sonner';
 
 export type MeasurementMode = 'length' | 'height' | 'area' | 'none';
 
@@ -357,6 +358,9 @@ export const useMeasurements = () => {
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
+    
+    // Auto-deactivate the tool after measurement is done
+    setActiveMode('none');
   }, [calculateDistance, calculateInclination]);
 
   // Dedicated function to create a Height measurement
@@ -383,6 +387,9 @@ export const useMeasurements = () => {
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
+    
+    // Auto-deactivate the tool after measurement is done
+    setActiveMode('none');
   }, [calculateHeight]);
 
   const finalizeMeasurement = useCallback(() => {
@@ -443,8 +450,10 @@ export const useMeasurements = () => {
     if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
       if (currentMode === 'length') {
         createLengthMeasurement(updatedPoints);
+        toast.success('Längenmessung abgeschlossen - Messwerkzeug deaktiviert');
       } else if (currentMode === 'height') {
         createHeightMeasurement(updatedPoints);
+        toast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
       }
     }
   }, [activeMode, createLengthMeasurement, createHeightMeasurement, editMeasurementId, editingPointIndex, updateMeasurementPoint]);

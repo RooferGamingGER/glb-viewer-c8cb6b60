@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Pencil, Trash2, Save, X } from 'lucide-react';
@@ -95,7 +94,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         <strong>Wert:</strong> {measurement.label}
         {measurement.type === 'length' && measurement.inclination !== undefined && (
           <span className="ml-2">
-            <strong>Neigung:</strong> {measurement.inclination.toFixed(1)}°
+            <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
           </span>
         )}
       </div>

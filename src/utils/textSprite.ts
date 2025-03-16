@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -129,6 +130,7 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
 
 /**
  * Updates the scale of a label sprite based on camera distance
+ * with improved scaling for better readability at different zoom levels
  */
 export function updateLabelScale(
   sprite: THREE.Sprite, 
@@ -143,16 +145,59 @@ export function updateLabelScale(
   
   const distance = position.distanceTo(camera.position);
   
-  // Scale based on distance (increase scale as distance increases)
-  const scaleFactor = Math.max(0.8, distance * 0.15);
+  // Get the camera's field of view for better scaling calculations
+  let fov = 45;  // Default FOV
+  if ((camera as THREE.PerspectiveCamera).fov) {
+    fov = (camera as THREE.PerspectiveCamera).fov;
+  }
+  
+  // Calculate logarithmic scale factor with min/max bounds
+  // This gives better scaling across a wide range of distances
+  const minScaleFactor = 0.3;  // Lower minimum for distant labels
+  const maxScaleFactor = 2.0;  // Higher maximum for close-up labels
+  const logBase = 4;           // Higher log base for more aggressive scaling
+  const scaleFactor = Math.min(
+    maxScaleFactor,
+    Math.max(
+      minScaleFactor,
+      0.6 + Math.log(Math.max(1, distance)) / Math.log(logBase) * 0.4
+    )
+  );
+  
+  // Apply FOV compensation - smaller FOV (zoomed in) = smaller labels
+  const fovCompensation = Math.min(1.4, Math.max(0.7, fov / 40));
+  
+  // Get aspect ratio from sprite's current scale
   const aspectRatio = sprite.scale.x / sprite.scale.y;
+  
+  // Calculate final scale values
+  const finalScale = baseScale * scaleFactor / fovCompensation;
   
   // Apply scale
   sprite.scale.set(
-    baseScale * aspectRatio * scaleFactor,
-    baseScale * scaleFactor,
+    finalScale * aspectRatio,
+    finalScale,
     1
   );
+  
+  // Apply a minimum size for text to remain readable at far distances
+  const minSize = 0.08;  // Smaller minimum size for better readability
+  if (sprite.scale.y < minSize) {
+    const adjustedAspectRatio = sprite.scale.x / sprite.scale.y;
+    sprite.scale.set(
+      minSize * adjustedAspectRatio,
+      minSize,
+      1
+    );
+  }
+  
+  // Apply distance-based opacity for labels
+  if (sprite.material instanceof THREE.SpriteMaterial) {
+    // Far labels are more transparent, close labels more opaque
+    const baseOpacity = sprite.material.opacity;
+    const distanceOpacity = Math.min(1, Math.max(0.4, 1.2 - (distance * 0.05)));
+    sprite.material.opacity = baseOpacity * distanceOpacity;
+  }
 }
 
 /**
@@ -174,9 +219,9 @@ export function formatMeasurementLabel(
   // Format length or height measurements
   const baseLabel = `${value.toFixed(2)} m`;
   
-  // Add inclination if provided and significant
-  if (inclination !== undefined && inclination > 1.0) {
-    return `${baseLabel} | ${inclination.toFixed(1)}°`;
+  // Add inclination if provided and significant - always use absolute value
+  if (inclination !== undefined && Math.abs(inclination) > 1.0) {
+    return `${baseLabel} | ${Math.abs(inclination).toFixed(1)}°`;
   }
   
   return baseLabel;

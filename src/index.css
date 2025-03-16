@@ -44,6 +44,7 @@
     --sidebar-background: var(--background);
     --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-transition: 0.3s ease-in-out;
   }
 
   .dark {
@@ -84,6 +85,7 @@
     --sidebar-background: var(--background);
     --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-transition: 0.3s ease-in-out;
   }
 }
 
@@ -103,5 +105,28 @@
   
   .glass-button {
     @apply bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90;
+  }
+  
+  /* Sidebar transition classes */
+  .sidebar-enter {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  
+  .sidebar-enter-active {
+    transform: translateX(0);
+    opacity: 1;
+    transition: transform var(--sidebar-transition), opacity var(--sidebar-transition);
+  }
+  
+  .sidebar-exit {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  
+  .sidebar-exit-active {
+    transform: translateX(100%);
+    opacity: 0;
+    transition: transform var(--sidebar-transition), opacity var(--sidebar-transition);
   }
 }

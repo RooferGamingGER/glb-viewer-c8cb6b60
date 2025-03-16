@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -8,6 +7,74 @@ import {
   calculateCentroid,
   calculateInclination
 } from '@/utils/textSprite';
+
+/**
+ * Safely disposes of Three.js object's geometry and material
+ */
+function safelyDisposeObject(object: THREE.Object3D) {
+  // Check for geometry property and ensure it has a dispose method
+  if ('geometry' in object && object.geometry) {
+    // Type assertion to access the dispose method
+    const geometry = object.geometry as { dispose?: () => void };
+    if (geometry.dispose) {
+      geometry.dispose();
+    }
+  }
+  
+  // Check for material property and ensure it has a dispose method
+  if ('material' in object && object.material) {
+    if (Array.isArray(object.material)) {
+      // Handle array of materials
+      object.material.forEach(mat => {
+        const material = mat as { dispose?: () => void };
+        if (material.dispose) {
+          material.dispose();
+        }
+      });
+    } else {
+      // Handle single material
+      const material = object.material as { dispose?: () => void };
+      if (material.dispose) {
+        material.dispose();
+      }
+    }
+  }
+}
+
+/**
+ * Clears all visual elements from groups
+ */
+export function clearAllVisuals(
+  pointsRef: THREE.Group | null,
+  linesRef: THREE.Group | null,
+  measurementsRef: THREE.Group | null,
+  editPointsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  segmentLabelsRef: THREE.Group | null
+) {
+  // Helper function to clear a group and dispose of geometries and materials
+  const clearGroup = (group: THREE.Group | null) => {
+    if (!group) return;
+    
+    while (group.children.length > 0) {
+      const object = group.children[0];
+      
+      // Safely dispose of object resources
+      safelyDisposeObject(object);
+      
+      // Remove from parent
+      group.remove(object);
+    }
+  };
+  
+  // Clear all groups
+  clearGroup(pointsRef);
+  clearGroup(linesRef);
+  clearGroup(measurementsRef);
+  clearGroup(editPointsRef);
+  clearGroup(labelsRef);
+  clearGroup(segmentLabelsRef);
+}
 
 /**
  * Renders current measurement points being placed
@@ -23,12 +90,16 @@ export function renderCurrentPoints(
 
   // Clear existing points
   while (pointsRef.children.length > 0) {
-    pointsRef.remove(pointsRef.children[0]);
+    const object = pointsRef.children[0];
+    safelyDisposeObject(object);
+    pointsRef.remove(object);
   }
 
   // Clear existing lines
   while (linesRef.children.length > 0) {
-    linesRef.remove(linesRef.children[0]);
+    const object = linesRef.children[0];
+    safelyDisposeObject(object);
+    linesRef.remove(object);
   }
 
   // Clear preview labels
@@ -179,7 +250,9 @@ export function renderEditPoints(
   
   // Clear existing edit points
   while (editPointsRef.children.length > 0) {
-    editPointsRef.remove(editPointsRef.children[0]);
+    const object = editPointsRef.children[0];
+    safelyDisposeObject(object);
+    editPointsRef.remove(object);
   }
   
   // If we're not in edit mode, we don't need to show edit points
@@ -233,7 +306,9 @@ export function renderMeasurements(
   
   // Clear existing measurement elements
   while (measurementsRef.children.length > 0) {
-    measurementsRef.remove(measurementsRef.children[0]);
+    const object = measurementsRef.children[0];
+    safelyDisposeObject(object);
+    measurementsRef.remove(object);
   }
   
   // Clear existing text labels (except preview labels)
@@ -294,9 +369,17 @@ function renderLengthMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   
-  measurement.points.forEach(point => {
+  measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y, point.z);
+    
+    // Add userData for interactive selection
+    sphere.userData = {
+      isMeasurementPoint: true,
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
     measurementsRef.add(sphere);
   });
   
@@ -370,9 +453,17 @@ function renderHeightMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
   
-  [point1, point2].forEach(point => {
+  [point1, point2].forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.copy(point);
+    
+    // Add userData for interactive selection
+    sphere.userData = {
+      isMeasurementPoint: true,
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
     measurementsRef.add(sphere);
   });
   

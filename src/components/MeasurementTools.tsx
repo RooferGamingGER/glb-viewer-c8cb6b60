@@ -12,6 +12,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import * as THREE from 'three';
+import { ChevronLeft, X } from 'lucide-react';
 
 // Import custom hooks
 import { useThreeObjects } from '@/hooks/useThreeObjects';
@@ -23,7 +24,8 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { 
   renderCurrentPoints, 
   renderEditPoints, 
-  renderMeasurements 
+  renderMeasurements,
+  clearAllVisuals
 } from '@/utils/measurementVisuals';
 
 // Import smaller components
@@ -43,12 +45,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   scene,
   camera
 }) => {
-  const { open, setOpen } = useSidebar();
+  const { open, setOpen, toggleSidebar } = useSidebar();
   const [visible, setVisible] = useState(true);
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
 
-  // Initialize measurement hooks
   const { 
     measurements,
     currentPoints,
@@ -70,7 +71,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint
   } = useMeasurements();
 
-  // Initialize Three.js object references
   const {
     pointsRef,
     linesRef,
@@ -80,14 +80,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     segmentLabelsRef
   } = useThreeObjects(scene, enabled);
 
-  // Set up interaction handlers
   const interactionHandlers = {
     addPoint,
     startPointEdit,
     updateMeasurementPoint
   };
 
-  // Initialize user interaction handling
   const { movingPointInfo, setMovingPointInfo } = useMeasurementInteraction(
     enabled,
     scene,
@@ -109,17 +107,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editingPointIndex
   );
 
-  // Set up label scaling
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Auto-open sidebar when measurements are enabled
-  useEffect(() => {
-    if (enabled && !open) {
-      setOpen(true);
-    }
-  }, [enabled, open, setOpen]);
+  // Remove the auto-opening behavior when measurements are enabled
+  // Instead, we'll let the user control the sidebar visibility manually
 
-  // Update visual representation of points when currentPoints changes
   useEffect(() => {
     renderCurrentPoints(
       pointsRef.current, 
@@ -130,7 +122,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [currentPoints, visible, activeMode]);
 
-  // Update visual representation of completed measurements
   useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
@@ -141,7 +132,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, visible]);
 
-  // Update the editable points visualizations
   useEffect(() => {
     renderEditPoints(
       editPointsRef.current, 
@@ -152,11 +142,53 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, editMeasurementId, editingPointIndex, visible]);
 
-  // Handlers
+  useEffect(() => {
+    if (!enabled) {
+      clearAllVisuals(
+        pointsRef.current,
+        linesRef.current,
+        measurementsRef.current,
+        editPointsRef.current,
+        labelsRef.current,
+        segmentLabelsRef.current
+      );
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    if (labelsRef.current && segmentLabelsRef.current) {
+      measurements.forEach(measurement => {
+        const labels = labelsRef.current?.children.filter(
+          obj => obj.userData && obj.userData.measurementId === measurement.id
+        );
+        
+        labels?.forEach(label => {
+          label.visible = measurement.visible !== false && visible;
+        });
+        
+        if (measurement.type === 'area') {
+          const segmentLabels = segmentLabelsRef.current?.children.filter(
+            obj => obj.userData && obj.userData.measurementId === measurement.id
+          );
+          
+          segmentLabels?.forEach(label => {
+            label.visible = measurement.visible !== false && visible;
+          });
+        }
+      });
+    }
+  }, [measurements, visible]);
+
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
-      toast.success('Flächenmessung abgeschlossen');
+      
+      if (activeMode === 'area') {
+        toggleMeasurementTool('none');
+        toast.success('Flächenmessung abgeschlossen - Messwerkzeug deaktiviert');
+      } else {
+        toast.success('Flächenmessung abgeschlossen');
+      }
     } else {
       toast.error('Mindestens 3 Punkte für eine Flächenmessung erforderlich');
     }
@@ -172,20 +204,73 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleClearMeasurements = () => {
     clearMeasurements();
+    clearAllVisuals(
+      pointsRef.current,
+      linesRef.current,
+      measurementsRef.current,
+      editPointsRef.current,
+      labelsRef.current,
+      segmentLabelsRef.current
+    );
     toast.info('Alle Messungen gelöscht');
   };
 
   const handleDeleteMeasurement = (id: string) => {
-    // Before deleting, make sure to remove all associated visual elements
+    const measurementToDelete = measurements.find(m => m.id === id);
+    if (measurementToDelete) {
+      clearMeasurementVisuals(
+        id,
+        measurementsRef.current,
+        labelsRef.current,
+        segmentLabelsRef.current
+      );
+    }
+    
     deleteMeasurement(id);
     toast.info('Messung gelöscht');
   };
 
+  const clearMeasurementVisuals = (
+    measurementId: string,
+    measurementsGroup: THREE.Group | null,
+    labelsGroup: THREE.Group | null,
+    segmentLabelsGroup: THREE.Group | null
+  ) => {
+    if (!measurementsGroup || !labelsGroup || !segmentLabelsGroup) return;
+    
+    const measurementObjects = measurementsGroup.children.filter(obj => 
+      obj.userData && obj.userData.measurementId === measurementId
+    );
+    measurementObjects.forEach(obj => {
+      if ('geometry' in obj && (obj as THREE.Mesh).geometry) {
+        ((obj as THREE.Mesh).geometry as THREE.BufferGeometry).dispose();
+      }
+      
+      if ('material' in obj && (obj as THREE.Mesh).material) {
+        if (Array.isArray((obj as THREE.Mesh).material)) {
+          ((obj as THREE.Mesh).material as THREE.Material[]).forEach(mat => mat.dispose());
+        } else {
+          ((obj as THREE.Mesh).material as THREE.Material).dispose();
+        }
+      }
+      
+      measurementsGroup.remove(obj);
+    });
+    
+    const labels = labelsGroup.children.filter(obj => 
+      obj.userData && obj.userData.measurementId === measurementId
+    );
+    labels.forEach(obj => labelsGroup.remove(obj));
+    
+    const segmentLabels = segmentLabelsGroup.children.filter(obj => 
+      obj.userData && obj.userData.measurementId === measurementId
+    );
+    segmentLabels.forEach(obj => segmentLabelsGroup.remove(obj));
+  };
+
   const handleStartPointEdit = (id: string) => {
-    // Toggle the edit mode for this measurement
     toggleEditMode(id);
     
-    // If it was already in edit mode, it's now turned off
     if (editMeasurementId === id) {
       toast.info('Punktbearbeitung beendet');
     } else {
@@ -200,7 +285,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Bearbeitung abgebrochen');
   };
 
-  // Toggle segment list for a measurement
   const toggleSegments = (id: string) => {
     setSegmentsOpen(prev => ({
       ...prev,
@@ -208,70 +292,96 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
-  // If measurements are not enabled, don't render anything
+  const handleSidebarToggle = () => {
+    toggleSidebar();
+  };
+
+  const closeSidebar = () => {
+    setOpen(false);
+  };
+
   if (!enabled) return null;
 
   return (
-    <Sidebar side="right" variant="floating" className="z-20">
-      <SidebarRail />
-      <SidebarHeader>
-        <div className="flex justify-between items-center px-4 py-2">
-          <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
-          <SidebarTrigger className="h-7 w-7" />
-        </div>
-      </SidebarHeader>
+    <div className="relative z-20">
+      {!open && (
+        <button 
+          onClick={handleSidebarToggle}
+          className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-secondary border border-border border-r-0 rounded-l-md p-2 z-30 transition-opacity duration-200 ease-in-out"
+          aria-label="Öffne Messwerkzeuge"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      )}
       
-      <SidebarContent>
-        {/* Editing Alert */}
-        <EditingAlert 
-          editMeasurementId={editMeasurementId}
-          editingSegmentId={editingSegmentId}
-          movingPointInfo={movingPointInfo}
-          handleCancelEditing={handleCancelEditing}
-        />
+      <Sidebar 
+        side="right" 
+        variant="floating" 
+        collapsible="offcanvas"
+        className="mt-24 transition-transform duration-200 ease-in-out"
+      >
+        <SidebarRail />
+        <SidebarHeader>
+          <div className="flex justify-between items-center px-4 py-2">
+            <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
+            <button
+              onClick={closeSidebar}
+              className="h-7 w-7 rounded-md hover:bg-sidebar-accent/50 flex items-center justify-center"
+              aria-label="Messwerkzeuge schließen"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </SidebarHeader>
         
-        {/* Measurement Tools */}
-        <MeasurementToolbar 
-          activeMode={activeMode}
-          toggleMeasurementTool={toggleMeasurementTool}
-          visible={visible}
-          setVisible={setVisible}
-          handleClearMeasurements={handleClearMeasurements}
-          measurements={measurements}
-        />
+        <SidebarContent className="flex flex-col h-[calc(100vh-220px)]">
+          <EditingAlert 
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            movingPointInfo={movingPointInfo}
+            handleCancelEditing={handleCancelEditing}
+          />
+          
+          <MeasurementToolbar 
+            activeMode={activeMode}
+            toggleMeasurementTool={toggleMeasurementTool}
+            visible={visible}
+            setVisible={setVisible}
+            handleClearMeasurements={handleClearMeasurements}
+            measurements={measurements}
+          />
+          
+          <ActiveMeasurement 
+            activeMode={activeMode}
+            currentPoints={currentPoints}
+            handleFinalizeMeasurement={handleFinalizeMeasurement}
+            handleUndoLastPoint={handleUndoLastPoint}
+            clearCurrentPoints={clearCurrentPoints}
+          />
+          
+          <MeasurementList 
+            measurements={measurements}
+            toggleMeasurementVisibility={toggleMeasurementVisibility}
+            handleStartPointEdit={handleStartPointEdit}
+            handleDeleteMeasurement={handleDeleteMeasurement}
+            updateMeasurement={updateMeasurement}
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            handleCancelEditing={handleCancelEditing}
+            segmentsOpen={segmentsOpen}
+            toggleSegments={toggleSegments}
+            setEditingSegmentId={setEditingSegmentId}
+            movingPointInfo={movingPointInfo}
+          />
+        </SidebarContent>
         
-        {/* Active Measurement */}
-        <ActiveMeasurement 
-          activeMode={activeMode}
-          currentPoints={currentPoints}
-          handleFinalizeMeasurement={handleFinalizeMeasurement}
-          handleUndoLastPoint={handleUndoLastPoint}
-          clearCurrentPoints={clearCurrentPoints}
-        />
-        
-        {/* Measurements List */}
-        <MeasurementList 
-          measurements={measurements}
-          toggleMeasurementVisibility={toggleMeasurementVisibility}
-          handleStartPointEdit={handleStartPointEdit}
-          handleDeleteMeasurement={handleDeleteMeasurement}
-          updateMeasurement={updateMeasurement}
-          editMeasurementId={editMeasurementId}
-          editingSegmentId={editingSegmentId}
-          handleCancelEditing={handleCancelEditing}
-          segmentsOpen={segmentsOpen}
-          toggleSegments={toggleSegments}
-          setEditingSegmentId={setEditingSegmentId}
-          movingPointInfo={movingPointInfo}
-        />
-      </SidebarContent>
-      
-      <SidebarFooter>
-        <div className="p-4 text-xs text-muted-foreground">
-          <p>Messungswerkzeuge v1.0</p>
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+        <SidebarFooter>
+          <div className="p-4 text-xs text-muted-foreground">
+            <p>Messungswerkzeuge v1.0</p>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+    </div>
   );
 };
 
