@@ -6,9 +6,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import * as THREE from 'three';
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Ruler } from 'lucide-react';
+import { Eye, EyeOff, Ruler, Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
+import PDFExportDialog from '@/components/PDFExportDialog';
+import { useMeasurements } from '@/hooks/useMeasurements';
+import { captureCanvasScreenshot, StoredScreenshot } from '@/utils/screenshot';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -19,14 +22,11 @@ function Loader3D() {
   const { progress } = useProgress();
   return <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
-        <Loader className="animate-spin mb-4 h-8 w-8 text-primary" />
+        <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
         <div className="text-sm font-medium">{progress.toFixed(0)}% geladen</div>
       </div>
     </Html>;
 }
-
-// Import Loader icon from lucide-react
-import { Loader } from 'lucide-react';
 
 function Model({
   url,
@@ -39,45 +39,27 @@ function Model({
   const modelRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
-  // Clone the scene to avoid issues with reusing the same object
   const modelScene = React.useMemo(() => scene.clone(), [scene]);
 
   useEffect(() => {
-    // Reset model position
     if (modelRef.current) {
       modelRef.current.position.set(0, 0, 0);
-
-      // Apply a -90 degree rotation around the X-axis to fix the orientation
       modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
-
-      // Center the model
       const box = new THREE.Box3().setFromObject(modelRef.current);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
-
-      // Adjust camera to fit the model
       const maxDim = Math.max(size.x, size.y, size.z);
-
-      // Check if camera is a PerspectiveCamera before accessing fov
       if (camera instanceof THREE.PerspectiveCamera) {
         const fov = camera.fov * (Math.PI / 180);
-        // Adjust cameraZ to make the object appear closer/larger
         let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
-
-        // Set a minimum distance to prevent tiny models
         cameraZ = Math.max(cameraZ, 1.0);
-
-        // Position camera to get a good view of the now-rotated model
         camera.position.set(center.x, center.y + cameraZ * 0.15, center.z + cameraZ);
         camera.lookAt(center);
       } else {
-        // Handle OrthographicCamera case
         const distance = maxDim * 1.0;
         camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
         camera.lookAt(center);
       }
-
-      // Center the model
       modelRef.current.position.x = -center.x;
       modelRef.current.position.y = -center.y;
       modelRef.current.position.z = -center.z;
@@ -132,21 +114,16 @@ const ModelCanvas = ({
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
         
-        {/* Lighting */}
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
         <directionalLight position={[-10, -10, -5]} intensity={0.8} />
         
-        {/* Environment map for reflections */}
         <Environment preset="city" />
         
-        {/* The 3D model */}
         <Model url={fileUrl} onClick={() => {}} />
         
-        {/* Controls */}
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} rotateSpeed={1} zoomSpeed={1} panSpeed={1} minDistance={0.5} maxDistance={100} />
         
-        {/* Stats display (FPS, etc.) */}
         {showStats && <Stats />}
       </Suspense>
     </Canvas>;
@@ -159,14 +136,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const isMobile = useIsMobile();
   const [showStats, setShowStats] = useState(false);
   const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
+  const [measurementToolsEverEnabled, setMeasurementToolsEverEnabled] = useState(false);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  const { measurements } = useMeasurements();
 
   useEffect(() => {
-    // Clean up when component unmounts
     return () => {
-      // Release the blob URL when the component unmounts
       if (fileUrl.startsWith('blob:')) {
         URL.revokeObjectURL(fileUrl);
       }
@@ -179,16 +157,22 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   };
 
   const handleMeasurementClick = (event: React.MouseEvent) => {
-    // This will be passed to the MeasurementTools
-    // Just a pass-through for events
   };
 
   const toggleMeasurements = () => {
-    setMeasurementsEnabled(prev => !prev);
+    const newState = !measurementsEnabled;
+    setMeasurementsEnabled(newState);
+    
+    // If this is the first time enabling measurement tools, 
+    // track it so we can open the sidebar
+    if (newState && !measurementToolsEverEnabled) {
+      setMeasurementToolsEverEnabled(true);
+    }
+    
     toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
   };
 
-  const handleTakeScreenshot = async (): Promise<string> => {
+  const handleTakeScreenshot = async (): Promise<StoredScreenshot> => {
     return new Promise((resolve, reject) => {
       if (!canvasRef.current) {
         reject(new Error('Canvas not found'));
@@ -196,7 +180,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       }
 
       try {
-        // Wait for next frame to ensure renderer is updated
         requestAnimationFrame(() => {
           const canvas = canvasRef.current;
           if (!canvas) {
@@ -204,17 +187,19 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
             return;
           }
 
-          // Create a blob from the canvas
-          canvas.toBlob((blob) => {
-            if (!blob) {
-              reject(new Error('Failed to create blob from canvas'));
-              return;
-            }
-            
-            // Create a URL from the blob
-            const url = URL.createObjectURL(blob);
-            resolve(url);
-          }, 'image/png');
+          captureCanvasScreenshot(canvas, { 
+            quality: 1.0, 
+            type: 'image/png',
+            storeResult: true 
+          })
+            .then((screenshot) => {
+              if (typeof screenshot === 'string') {
+                reject(new Error('Expected StoredScreenshot but got string URL'));
+                return;
+              }
+              resolve(screenshot as StoredScreenshot);
+            })
+            .catch(reject);
         });
       } catch (error) {
         console.error('Screenshot error:', error);
@@ -224,14 +209,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   };
 
   return <div className="relative w-full h-full">
-      {/* Model Canvas is always visible */}
       <div className="absolute inset-0 z-0">
         <ModelCanvas fileUrl={fileUrl} onMeasurementClick={handleMeasurementClick} onSceneReady={handleSceneReady} canvasRef={canvasRef} />
       </div>
       
-      {/* UI Controls */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <ScreenshotDialog onTakeScreenshot={handleTakeScreenshot} />
+        
+        <PDFExportDialog 
+          onTakeScreenshot={handleTakeScreenshot}
+          measurements={measurements}
+        />
         
         <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
           {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -249,13 +237,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         </Button>
       </div>
       
-      {/* Model name display */}
       <div className="absolute top-4 left-4 z-10 bg-background/75 px-3 py-1.5 rounded-md text-sm font-medium">
         {fileName}
       </div>
       
-      {/* Measurement Tools */}
-      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} />}
+      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} autoOpenSidebar={measurementToolsEverEnabled} />}
     </div>;
 };
 

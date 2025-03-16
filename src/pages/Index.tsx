@@ -59,6 +59,7 @@ const Index = () => {
       
       <footer className="w-full text-center text-sm text-muted-foreground mt-auto pt-8">
         <p>© {new Date().getFullYear()} 3D-Viewer | Alle Rechte vorbehalten</p>
+        <p className="text-xs mt-1">Unterstützt GLB-Dateien bis zu 100MB</p>
       </footer>
     </div>
   );

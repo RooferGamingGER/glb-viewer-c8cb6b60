@@ -38,12 +38,14 @@ interface MeasurementToolsProps {
   enabled: boolean;
   scene: THREE.Scene;
   camera: THREE.Camera;
+  autoOpenSidebar?: boolean;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
-  camera
+  camera,
+  autoOpenSidebar = false
 }) => {
   const { open, setOpen, toggleSidebar } = useSidebar();
   const [visible, setVisible] = useState(true);
@@ -109,8 +111,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Remove the auto-opening behavior when measurements are enabled
-  // Instead, we'll let the user control the sidebar visibility manually
+  // Effect to open the sidebar when measurement tools are first enabled
+  useEffect(() => {
+    if (enabled && autoOpenSidebar && !open) {
+      setOpen(true);
+    }
+  }, [enabled, autoOpenSidebar, open, setOpen]);
 
   useEffect(() => {
     renderCurrentPoints(
@@ -120,7 +126,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       currentPoints, 
       activeMode
     );
-  }, [currentPoints, visible, activeMode]);
+  }, [currentPoints, activeMode]);
 
   useEffect(() => {
     renderMeasurements(
@@ -128,9 +134,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      visible
+      true // Always render measurements regardless of sidebar state
     );
-  }, [measurements, visible]);
+  }, [measurements]);
 
   useEffect(() => {
     renderEditPoints(
@@ -138,9 +144,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       measurements, 
       editMeasurementId, 
       editingPointIndex, 
-      visible
+      true // Always visible
     );
-  }, [measurements, editMeasurementId, editingPointIndex, visible]);
+  }, [measurements, editMeasurementId, editingPointIndex]);
 
   useEffect(() => {
     if (!enabled) {
@@ -155,6 +161,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled]);
 
+  // This effect now only controls visibility of measurements based on their individual visible property
   useEffect(() => {
     if (labelsRef.current && segmentLabelsRef.current) {
       measurements.forEach(measurement => {
@@ -163,7 +170,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         );
         
         labels?.forEach(label => {
-          label.visible = measurement.visible !== false && visible;
+          label.visible = measurement.visible !== false;
         });
         
         if (measurement.type === 'area') {
@@ -172,12 +179,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           );
           
           segmentLabels?.forEach(label => {
-            label.visible = measurement.visible !== false && visible;
+            label.visible = measurement.visible !== false;
           });
         }
       });
     }
-  }, [measurements, visible]);
+  }, [measurements]);
 
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
@@ -319,6 +326,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         variant="floating" 
         collapsible="offcanvas"
         className="mt-24 transition-transform duration-200 ease-in-out"
+        data-sidebar="true"
       >
         <SidebarRail />
         <SidebarHeader>

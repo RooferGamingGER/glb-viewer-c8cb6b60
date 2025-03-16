@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Download, X } from 'lucide-react';
+import { Camera, Download, X, FileText, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,21 +12,31 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { 
+  downloadScreenshot, 
+  StoredScreenshot,
+  removeScreenshot
+} from '@/utils/screenshot';
 
 interface ScreenshotDialogProps {
-  onTakeScreenshot: () => Promise<string>;
+  onTakeScreenshot: () => Promise<StoredScreenshot>;
+  onAddToPDF?: (screenshot: StoredScreenshot) => void;
 }
 
-const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot }) => {
+const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ 
+  onTakeScreenshot,
+  onAddToPDF 
+}) => {
   const [open, setOpen] = useState(false);
-  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [screenshot, setScreenshot] = useState<StoredScreenshot | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleScreenshot = async () => {
     try {
       setLoading(true);
-      const url = await onTakeScreenshot();
-      setScreenshotUrl(url);
+      // Take a new screenshot and store it
+      const newScreenshot = await onTakeScreenshot();
+      setScreenshot(newScreenshot);
       setLoading(false);
     } catch (error) {
       console.error('Failed to take screenshot:', error);
@@ -36,25 +46,26 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
   };
 
   const handleDownload = () => {
-    if (!screenshotUrl) return;
+    if (!screenshot) return;
     
-    const link = document.createElement('a');
-    link.href = screenshotUrl;
-    link.download = `screenshot-${new Date().toISOString().replace(/:/g, '-')}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Use our utility to download the screenshot
+    downloadScreenshot(screenshot);
+  };
+
+  const handleAddToPDF = () => {
+    if (!screenshot || !onAddToPDF) return;
     
-    toast.success('Screenshot heruntergeladen');
+    onAddToPDF(screenshot);
+    toast.success('Screenshot wurde zum PDF-Bericht hinzugefügt');
+    setOpen(false);
   };
 
   const handleClose = () => {
     setOpen(false);
-    // Revoke the blob URL when closing to free up memory
-    if (screenshotUrl && screenshotUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(screenshotUrl);
-    }
-    setScreenshotUrl(null);
+    
+    // Clear current screenshot reference
+    setScreenshot(null);
+    // We don't need to revoke the URL here as it's handled by the store
   };
 
   return (
@@ -84,10 +95,10 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
           </DialogHeader>
 
           <div className="flex flex-col items-center justify-center p-2">
-            {screenshotUrl ? (
+            {screenshot ? (
               <div className="relative border border-border rounded-md overflow-hidden">
                 <img 
-                  src={screenshotUrl} 
+                  src={screenshot.url} 
                   alt="Screenshot" 
                   className="max-w-full max-h-[400px] object-contain"
                 />
@@ -102,8 +113,8 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
             )}
           </div>
 
-          <DialogFooter>
-            {!screenshotUrl ? (
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            {!screenshot ? (
               <Button 
                 onClick={handleScreenshot} 
                 disabled={loading}
@@ -113,14 +124,25 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
                 {loading ? 'Wird erstellt...' : 'Screenshot erstellen'}
               </Button>
             ) : (
-              <Button 
-                onClick={handleDownload}
-                className="w-full sm:w-auto"
-                variant="default"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Herunterladen
-              </Button>
+              <>
+                <Button 
+                  onClick={handleAddToPDF}
+                  className="w-full sm:w-auto"
+                  variant="default"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Zum Bericht hinzufügen
+                </Button>
+                
+                <Button 
+                  onClick={handleDownload}
+                  className="w-full sm:w-auto"
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Herunterladen
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
