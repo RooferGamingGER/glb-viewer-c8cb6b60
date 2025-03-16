@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileText } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
 import { Measurement } from '@/hooks/useMeasurements';
 import { toast } from 'sonner';
+import { Progress } from "@/components/ui/progress";
 
 interface PDFExportButtonProps {
   measurements: Measurement[];
@@ -25,7 +26,9 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({
       }
       
       setIsExporting(true);
-      toast.info('PDF wird erstellt...');
+      toast.info('PDF wird erstellt...', {
+        duration: 3000
+      });
       
       const success = await generateMeasurementsPDF(measurements, 'messungen-export.pdf');
       
@@ -52,7 +55,11 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({
       className="h-7 w-7"
       title="Als PDF exportieren"
     >
-      <FileText className="h-4 w-4" />
+      {isExporting ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <FileText className="h-4 w-4" />
+      )}
       <span className="sr-only">Als PDF exportieren</span>
     </Button>
   );

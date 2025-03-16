@@ -2,6 +2,7 @@
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { ProjectDataType } from '@/components/measurement/ProjectDataForm';
+import { toast } from 'sonner';
 
 /**
  * Formats a measurement type to a readable string
@@ -24,6 +25,11 @@ const formatValue = (value: number, type: string): string => {
   }
   return `${value.toFixed(2)} m`;
 };
+
+/**
+ * Base64 encoded logo to avoid loading issues
+ */
+const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAAALZJREFUeJztwQENAAAAwqD3T20ON6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/mMGqzMAARZuDgIAAAAASUVORK5CYII=';
 
 /**
  * Creates an HTML template for the measurements export
@@ -192,6 +198,7 @@ const createHtmlTemplate = (
     <html lang="de">
     <head>
       <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Messungsbericht</title>
       <style>
         body {
@@ -276,7 +283,7 @@ const createHtmlTemplate = (
     </head>
     <body>
       <div class="header">
-        <img src="/drohnenglb-logo.png" alt="DrohnenGLB Logo" class="logo">
+        <img src="${LOGO_BASE64}" alt="DrohnenGLB Logo" class="logo">
         <div class="title-section">
           <h1 class="title">DrohnenGLB by RooferGaming</h1>
           <p class="subtitle">Messungsbericht</p>
@@ -301,6 +308,61 @@ const createHtmlTemplate = (
 };
 
 /**
+ * Creates a download link for a blob
+ */
+const createDownloadLink = (blob: Blob, filename: string): HTMLAnchorElement => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  return link;
+};
+
+/**
+ * Triggers a download dialog for mobile
+ */
+const triggerMobileDownload = (blob: Blob, filename: string): void => {
+  // For mobile devices, create an invisible link and click it
+  const link = createDownloadLink(blob, filename);
+  link.click();
+  
+  // Clean up after a timeout
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }, 100);
+};
+
+/**
+ * Uses the File System Access API if available
+ */
+const saveWithFileSystemAccessAPI = async (blob: Blob, filename: string): Promise<boolean> => {
+  try {
+    // @ts-ignore - File System Access API might not be typed
+    if (window.showSaveFilePicker) {
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{
+          description: 'PDF Document',
+          accept: { 'application/pdf': ['.pdf'] },
+        }],
+      });
+      
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    }
+    return false;
+  } catch (err) {
+    // User cancelled or API not available
+    return false;
+  }
+};
+
+/**
  * Generates and exports a PDF with measurement data
  */
 export const generateMeasurementsPDF = async (
@@ -319,6 +381,8 @@ export const generateMeasurementsPDF = async (
     container.style.left = '-9999px';
     document.body.appendChild(container);
     
+    toast.info('PDF wird generiert...');
+    
     // Configure html2pdf options
     const opt = {
       margin: [10, 10, 10, 10],
@@ -333,21 +397,33 @@ export const generateMeasurementsPDF = async (
         unit: 'mm', 
         format: 'a4', 
         orientation: 'portrait'
-      }
+      },
+      // On mobile, we want to output as a blob instead of automatically saving
+      outputPdf: 'blob'
     };
     
-    // Generate PDF
     try {
-      await html2pdf().set(opt).from(container).save();
+      // Generate PDF as blob
+      const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
       document.body.removeChild(container);
+
+      // First try using File System Access API (modern browsers)
+      const savedWithFSAPI = await saveWithFileSystemAccessAPI(pdfBlob, defaultFilename);
+      
+      if (!savedWithFSAPI) {
+        // Fallback to traditional download method for mobile
+        triggerMobileDownload(pdfBlob, defaultFilename);
+      }
+      
       return true;
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('Error generating or saving PDF:', error);
       document.body.removeChild(container);
       throw error;
     }
   } catch (error) {
     console.error('Error in PDF generation process:', error);
+    toast.error('Fehler beim Erstellen des PDFs: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
     throw error;
   }
 };

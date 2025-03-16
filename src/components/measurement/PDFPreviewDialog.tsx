@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { X, FileText } from 'lucide-react';
+import { X, FileText, Loader2 } from 'lucide-react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
 import { toast } from 'sonner';
 import ProjectDataForm, { ProjectDataType } from './ProjectDataForm';
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PDFPreviewDialogProps {
   measurements: Measurement[];
@@ -53,7 +55,9 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      toast.info('PDF wird erstellt und gespeichert...');
+      toast.info('PDF wird erstellt...', {
+        duration: 3000
+      });
       
       const success = await generateMeasurementsPDF(measurements, 'messungen-export.pdf', projectData);
       
@@ -147,15 +151,36 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
           </TabsContent>
         </Tabs>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            <X className="mr-2 h-4 w-4" />
-            Abbrechen
-          </Button>
-          <Button onClick={handleExport} disabled={isExporting}>
-            <FileText className="mr-2 h-4 w-4" />
-            {isExporting ? 'Wird exportiert...' : 'PDF herunterladen'}
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Alert variant="info" className="mb-4 text-xs">
+            <AlertDescription>
+              Auf mobilen Geräten wird die PDF-Datei automatisch zum Download angeboten oder im Browser geöffnet.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <X className="mr-2 h-4 w-4" />
+              Abbrechen
+            </Button>
+            <Button 
+              onClick={handleExport} 
+              disabled={isExporting}
+              className="relative"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Wird exportiert...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  PDF herunterladen
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
