@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
@@ -242,12 +241,13 @@ export const useMeasurementInteraction = (
         }
       }
       
-      // Check for clicks on measurement points in area measurements
+      // Check for clicks on measurement points in any type of measurement
       const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
       for (const intersect of allSceneIntersects) {
         if (
           intersect.object.userData && 
-          intersect.object.userData.isAreaPoint
+          (intersect.object.userData.isAreaPoint || 
+           intersect.object.userData.isMeasurementPoint)
         ) {
           const userData = intersect.object.userData;
           

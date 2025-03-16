@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -294,9 +293,17 @@ function renderLengthMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   
-  measurement.points.forEach(point => {
+  measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y, point.z);
+    
+    // Add userData for interactive selection
+    sphere.userData = {
+      isMeasurementPoint: true,
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
     measurementsRef.add(sphere);
   });
   
@@ -370,9 +377,17 @@ function renderHeightMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
   
-  [point1, point2].forEach(point => {
+  [point1, point2].forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.copy(point);
+    
+    // Add userData for interactive selection
+    sphere.userData = {
+      isMeasurementPoint: true,
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
     measurementsRef.add(sphere);
   });
   

@@ -210,9 +210,9 @@ export function formatMeasurementLabel(
   // Format length or height measurements
   const baseLabel = `${value.toFixed(2)} m`;
   
-  // Add inclination if provided and significant
-  if (inclination !== undefined && inclination > 1.0) {
-    return `${baseLabel} | ${inclination.toFixed(1)}°`;
+  // Add inclination if provided and significant - always use absolute value
+  if (inclination !== undefined && Math.abs(inclination) > 1.0) {
+    return `${baseLabel} | ${Math.abs(inclination).toFixed(1)}°`;
   }
   
   return baseLabel;
