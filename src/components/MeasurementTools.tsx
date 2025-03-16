@@ -316,7 +316,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </button>
       )}
       
-      <Sidebar side="right" variant="floating">
+      <Sidebar side="right" variant="floating" className="mt-16"> {/* Add margin-top to avoid overlapping with top controls */}
         <SidebarRail />
         <SidebarHeader>
           <div className="flex justify-between items-center px-4 py-2">
@@ -325,7 +325,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           </div>
         </SidebarHeader>
         
-        <SidebarContent>
+        <SidebarContent className="flex flex-col h-[calc(100vh-200px)]">
           <EditingAlert 
             editMeasurementId={editMeasurementId}
             editingSegmentId={editingSegmentId}
