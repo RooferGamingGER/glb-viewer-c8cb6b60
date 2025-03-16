@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -8,14 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Ruler } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { MeasurementMode } from '@/hooks/useMeasurements';
+
 type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
 };
+
 function Loader3D() {
-  const {
-    progress
-  } = useProgress();
+  const { progress } = useProgress();
   return <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
         <Loader className="animate-spin mb-4 h-8 w-8 text-primary" />
@@ -26,6 +27,7 @@ function Loader3D() {
 
 // Import Loader icon from lucide-react
 import { Loader } from 'lucide-react';
+
 function Model({
   url,
   onClick
@@ -33,16 +35,13 @@ function Model({
   url: string;
   onClick: (event: THREE.Intersection) => void;
 }) {
-  const {
-    scene
-  } = useGLTF(url);
+  const { scene } = useGLTF(url);
   const modelRef = useRef<THREE.Group>(null);
-  const {
-    camera
-  } = useThree();
+  const { camera } = useThree();
 
   // Clone the scene to avoid issues with reusing the same object
   const modelScene = React.useMemo(() => scene.clone(), [scene]);
+
   useEffect(() => {
     // Reset model position
     if (modelRef.current) {
@@ -85,26 +84,28 @@ function Model({
       toast.success('Modell erfolgreich geladen');
     }
   }, [modelScene, camera]);
+
   return <group ref={modelRef}>
       <primitive object={modelScene} />
     </group>;
 }
+
 function SceneSetup({
   onSceneReady
 }: {
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
 }) {
-  const {
-    scene,
-    camera
-  } = useThree();
+  const { scene, camera } = useThree();
+
   useEffect(() => {
     if (scene && camera) {
       onSceneReady(scene, camera);
     }
   }, [scene, camera, onSceneReady]);
+
   return null;
 }
+
 const ModelCanvas = ({
   fileUrl,
   onMeasurementClick,
@@ -115,11 +116,13 @@ const ModelCanvas = ({
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
 }) => {
   const [showStats, setShowStats] = useState(false);
+
   const handleCanvasClick = (event: React.MouseEvent) => {
     if (onMeasurementClick) {
       onMeasurementClick(event);
     }
   };
+
   return <Canvas shadows style={{
     background: '#222222'
   }} onClick={handleCanvasClick} className="w-full h-full">
@@ -146,6 +149,7 @@ const ModelCanvas = ({
       </Suspense>
     </Canvas>;
 };
+
 const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
   fileName
@@ -155,6 +159,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
+
   useEffect(() => {
     // Clean up when component unmounts
     return () => {
@@ -164,14 +169,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       }
     };
   }, [fileUrl]);
+
   const handleSceneReady = (newScene: THREE.Scene, newCamera: THREE.Camera) => {
     setScene(newScene);
     setCamera(newCamera);
   };
+
   const handleMeasurementClick = (event: React.MouseEvent) => {
     // This will be passed to the MeasurementTools
     // Just a pass-through for events
   };
+
   return <div className="relative w-full h-full">
       {/* Model Canvas is always visible */}
       <div className="absolute inset-0 z-0">
@@ -190,12 +198,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       </div>
       
       {/* Model name display */}
-      <div className="absolute top-4 left-4 z-10">
-        
+      <div className="absolute top-4 left-4 z-10 bg-background/75 px-3 py-1.5 rounded-md text-sm font-medium">
+        {fileName}
       </div>
       
       {/* Measurement Tools */}
       {scene && camera && measurementsEnabled && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} />}
     </div>;
 };
+
 export default ModelViewer;

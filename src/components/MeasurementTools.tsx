@@ -49,6 +49,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     measurements,
     currentPoints,
     setCurrentPoints,
+    addPoint,
     activeMode,
     setActiveMode,
     clearMeasurements,
@@ -345,16 +346,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           z: intersect.point.z
         };
         
-        // Add point to current points array
-        setCurrentPoints(prev => [...prev, point]);
+        // Add point using the new addPoint method that handles auto-finalization
+        addPoint(point);
         
-        // Auto-finalize for length and height after 2 points
+        // Show appropriate toast based on the measurement mode and point count
         if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
-          // Use setTimeout to ensure the point is added before finalization
-          setTimeout(() => {
-            finalizeMeasurement();
-            toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
-          }, 100);
+          // This will be the second point, so the measurement will auto-finalize
+          toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
+        } else if (activeMode === 'area') {
+          if (currentPoints.length === 0) {
+            // First point for area
+            toast.info("Ersten Punkt für Flächenmessung gesetzt");
+          } else {
+            // Additional area point
+            toast.info(`Punkt ${currentPoints.length + 1} für Flächenmessung gesetzt`);
+          }
+        } else {
+          // First point for length/height
+          toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
         }
       }
     };
@@ -366,7 +375,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => {
       canvasElement.removeEventListener('click', handleClick);
     };
-  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement, setCurrentPoints, open]);
+  }, [enabled, scene, camera, activeMode, currentPoints.length, addPoint, open]);
 
   const selectTool = (mode: MeasurementMode) => {
     setActiveMode(mode);

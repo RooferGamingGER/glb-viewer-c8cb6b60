@@ -196,10 +196,34 @@ export const useMeasurements = () => {
     }
   }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateInclination, calculateArea]);
 
+  // New method to add points and auto-finalize if needed
+  const addPoint = useCallback((point: Point) => {
+    setCurrentPoints(prev => {
+      const newPoints = [...prev, point];
+      
+      // Don't auto-finalize for area mode or if not enough points
+      if (activeMode === 'area' || newPoints.length < 2) {
+        return newPoints;
+      }
+      
+      // For length and height, auto-finalize after 2 points
+      if ((activeMode === 'length' || activeMode === 'height') && newPoints.length === 2) {
+        // We will handle finalization in a setTimeout to ensure state update
+        // completes first
+        setTimeout(() => {
+          finalizeMeasurement();
+        }, 10);
+      }
+      
+      return newPoints;
+    });
+  }, [activeMode, finalizeMeasurement]);
+
   return {
     measurements,
     currentPoints,
     setCurrentPoints,
+    addPoint,
     activeMode,
     setActiveMode,
     clearMeasurements,
