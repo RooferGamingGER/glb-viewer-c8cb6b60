@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, X, Camera, Building, Plus, Trash, Image, Check } from 'lucide-react';
+import { FileText, Download, X, Camera, Building, Plus, Trash, Image, Check, AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import { exportMeasurementsToPDF } from '@/utils/pdfExport';
 import { StoredScreenshot, getLatestScreenshot, getAllScreenshots, removeScreenshot } from '@/utils/screenshot';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import MeasurementTable from './measurement/MeasurementTable';
 
 interface PDFExportDialogProps {
   onTakeScreenshot: () => Promise<StoredScreenshot>;
@@ -37,6 +39,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [currentScreenshot, setCurrentScreenshot] = useState<StoredScreenshot | null>(null);
   const [selectedScreenshots, setSelectedScreenshots] = useState<StoredScreenshot[]>([]);
+  const [screenshotError, setScreenshotError] = useState<string | null>(null);
   
   // Company information
   const [companyName, setCompanyName] = useState('');
@@ -64,6 +67,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     if (!isOpen) {
       // Reset current preview screenshot when dialog closes
       setCurrentScreenshot(null);
+      setScreenshotError(null);
     }
   };
 
@@ -106,6 +110,8 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   };
 
   const handleAddCurrentScreenshot = async () => {
+    setScreenshotError(null);
+    
     try {
       setLoading(true);
       
@@ -121,22 +127,8 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       toast.success('Screenshot für PDF hinzugefügt');
     } catch (error) {
       console.error('Failed to add screenshot:', error);
+      setScreenshotError('Fehler beim Erstellen des Screenshots. Bitte stellen Sie sicher, dass die 3D-Ansicht korrekt geladen ist.');
       toast.error('Fehler beim Hinzufügen des Screenshots');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePreviewScreenshot = async () => {
-    try {
-      setLoading(true);
-      
-      // Take a new screenshot and store it
-      const newScreenshot = await onTakeScreenshot();
-      setCurrentScreenshot(newScreenshot);
-    } catch (error) {
-      console.error('Failed to take screenshot preview:', error);
-      toast.error('Fehler beim Erstellen der Vorschau');
     } finally {
       setLoading(false);
     }
@@ -220,9 +212,10 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
           )}
 
           <Tabs defaultValue="general">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">Allgemein</TabsTrigger>
-              <TabsTrigger value="company">Unternehmen & Projekt</TabsTrigger>
+              <TabsTrigger value="company">Unternehmen</TabsTrigger>
+              <TabsTrigger value="preview">Vorschau</TabsTrigger>
               <TabsTrigger value="screenshots">Screenshots ({selectedScreenshots.length})</TabsTrigger>
             </TabsList>
             
@@ -258,6 +251,57 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                 <Label htmlFor="includeScreenshot" className="cursor-pointer">
                   Screenshots einbinden
                 </Label>
+              </div>
+              
+              {/* Project Details */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="text-sm font-semibold mb-3">Projektdetails</h3>
+                
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="projectName">Projektname</Label>
+                      <Input
+                        id="projectName"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        placeholder="Name des Projekts"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="projectNumber">Projektnummer</Label>
+                      <Input
+                        id="projectNumber"
+                        value={projectNumber}
+                        onChange={(e) => setProjectNumber(e.target.value)}
+                        placeholder="Projektnummer"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="location">Standort</Label>
+                      <Input
+                        id="location"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Ort der Messung"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="userName">Erstellt von</Label>
+                      <Input
+                        id="userName"
+                        value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                        placeholder="Ihr Name"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
             
@@ -296,48 +340,20 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                     )}
                   </div>
                 </div>
-                
-                <h3 className="text-sm font-semibold pt-2">Projektdetails</h3>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="projectName">Projektname</Label>
-                  <Input
-                    id="projectName"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Name des Projekts"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="projectNumber">Projektnummer</Label>
-                  <Input
-                    id="projectNumber"
-                    value={projectNumber}
-                    onChange={(e) => setProjectNumber(e.target.value)}
-                    placeholder="Projektnummer"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Standort</Label>
-                  <Input
-                    id="location"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Ort der Messung"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="userName">Erstellt von</Label>
-                  <Input
-                    id="userName"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    placeholder="Ihr Name"
-                  />
-                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="preview" className="space-y-4 pt-4">
+              <h3 className="text-sm font-semibold mb-3">Messungen Vorschau</h3>
+              
+              <div className="border rounded-md p-4 max-h-[400px] overflow-y-auto">
+                {measurements.length > 0 ? (
+                  <MeasurementTable measurements={measurements} showTableHeaders={true} />
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    Keine Messungen vorhanden
+                  </div>
+                )}
               </div>
             </TabsContent>
             
@@ -377,6 +393,11 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                           <Trash className="h-4 w-4" />
                         </Button>
                       </div>
+                    </div>
+                  ) : screenshotError ? (
+                    <div className="flex flex-col items-center justify-center h-[150px] text-destructive px-4">
+                      <AlertCircle className="h-8 w-8 mb-2" />
+                      <p className="text-sm text-center">{screenshotError}</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">

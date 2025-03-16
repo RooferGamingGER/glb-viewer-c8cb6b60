@@ -1,4 +1,3 @@
-
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
@@ -550,6 +549,7 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
   // Define table headers based on type
   const headers: TableCell[] = [
     { text: 'Nr.', style: 'tableHeader' },
+    { text: 'Bezeichnung', style: 'tableHeader' },
     { text: 'Wert', style: 'tableHeader' }
   ];
   
@@ -558,16 +558,14 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
     headers.push({ text: 'Neigung', style: 'tableHeader' });
   }
   
-  // Add description column
-  headers.push({ text: 'Beschreibung', style: 'tableHeader' });
-  
   // Create the table body rows
   const body: (TableCell | string)[][] = [headers];
   
   measurements.forEach((measurement, index) => {
     const row: TableCell[] = [
       { text: (index + 1).toString() },
-      { text: measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}` }
+      { text: measurement.description || '–' },
+      { text: measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}` }
     ];
     
     // Add inclination for length measurements
@@ -579,9 +577,6 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
       });
     }
     
-    // Add description
-    row.push({ text: measurement.description || '–' });
-    
     body.push(row);
     
     // Add segment information for area measurements
@@ -592,7 +587,7 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
         { 
           text: 'Segmente:', 
           style: 'segmentTitle',
-          colSpan: headers.length - 1
+          colSpan: type === 'length' ? 3 : 2 
         }
       ];
       // Fill remaining cells with empty objects to match column count
@@ -607,7 +602,7 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
           { text: '', colSpan: 1 },
           { 
             text: `Segment ${segIndex + 1}: ${segment.length.toFixed(2)} m`, 
-            colSpan: headers.length - 1
+            colSpan: type === 'length' ? 3 : 2
           }
         ];
         // Fill remaining cells with empty objects to match column count
@@ -632,3 +627,4 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
     }
   };
 };
+
