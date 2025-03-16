@@ -5,7 +5,8 @@ import { Measurement } from '@/hooks/useMeasurements';
 import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 
 // Register fonts
-pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
+// Fix for TypeScript error - directly access vfs property
+pdfMake.vfs = pdfFonts.vfs;
 
 // Define fonts
 const fonts = {
