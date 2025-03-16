@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -877,3 +878,138 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             <Button 
               variant="outline" 
               size="sm"
+              className="flex-1 flex items-center justify-center gap-2"
+              onClick={toggleVisibility}
+            >
+              {visible ? (
+                <>
+                  <EyeOff size={16} />
+                  Ausblenden
+                </>
+              ) : (
+                <>
+                  <Eye size={16} />
+                  Einblenden
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex-1 flex items-center justify-center gap-2 border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleClearMeasurements}
+            >
+              <Trash2 size={16} />
+              Löschen
+            </Button>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {measurements.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              Messungen
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1 absolute right-0 top-0.5"
+                onClick={toggleAllMeasurementsVisibility}
+              >
+                {allMeasurementsVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+              </Button>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <ScrollArea className="h-[200px] pr-4">
+                {measurements.map((measurement) => (
+                  <div 
+                    key={measurement.id} 
+                    className={`mb-2 p-2 rounded-md border ${
+                      measurement.visible ? 'opacity-100' : 'opacity-50'
+                    } ${
+                      editMeasurementId === measurement.id ? 'bg-accent/50 border-accent' : 'bg-card border-border'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center space-x-2">
+                        {measurement.type === 'length' && <Ruler size={14} className="text-green-500" />}
+                        {measurement.type === 'height' && <ArrowUpDown size={14} className="text-blue-500" />}
+                        {measurement.type === 'area' && <Square size={14} className="text-amber-500" />}
+                        <span className="font-medium text-sm">
+                          {measurement.type === 'length' && 'Länge'}
+                          {measurement.type === 'height' && 'Höhe'}
+                          {measurement.type === 'area' && 'Fläche'}
+                        </span>
+                      </span>
+                      
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => toggleMeasurementVisibility(measurement.id)}
+                        >
+                          {measurement.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-blue-500"
+                          onClick={() => handleStartPointEdit(measurement.id)}
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-destructive"
+                          onClick={() => handleDeleteMeasurement(measurement.id)}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-1 text-sm font-mono">
+                      {measurement.label}
+                    </div>
+                    
+                    {editingId === measurement.id ? (
+                      <div className="mt-2 flex gap-2">
+                        <Input
+                          size={1}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          placeholder="Beschreibung"
+                          className="h-7 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 w-7 p-0 shrink-0"
+                          onClick={() => handleEditSave(measurement.id)}
+                        >
+                          <Save size={14} />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="mt-1 text-xs text-muted-foreground cursor-pointer hover:underline"
+                        onClick={() => handleEditStart(measurement.id, measurement.description)}
+                      >
+                        {measurement.description || "Beschreibung hinzufügen..."}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </ScrollArea>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+    </Sidebar>
+  );
+};
+
+export default MeasurementTools;
