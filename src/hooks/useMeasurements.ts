@@ -42,6 +42,7 @@ export const useMeasurements = () => {
   }, []);
 
   const calculateHeight = useCallback((point1: Point, point2: Point): number => {
+    // Height is strictly the absolute difference along the Y axis
     return Math.abs(point2.y - point1.y);
   }, []);
 
@@ -51,6 +52,22 @@ export const useMeasurements = () => {
     // For polygons, triangulate and sum the areas of the triangles
     const triangleCount = points.length - 2;
     let totalArea = 0;
+    
+    // Project points to best-fit plane for more accurate area calculation
+    // First, find the normal of the polygon by cross product of two edges
+    const edge1 = new THREE.Vector3(
+      points[1].x - points[0].x,
+      points[1].y - points[0].y,
+      points[1].z - points[0].z
+    );
+    
+    const edge2 = new THREE.Vector3(
+      points[2].x - points[0].x,
+      points[2].y - points[0].y,
+      points[2].z - points[0].z
+    );
+    
+    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
     
     // Simple triangulation using the first point as a pivot
     for (let i = 0; i < triangleCount; i++) {

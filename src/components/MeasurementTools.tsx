@@ -9,7 +9,8 @@ import {
   Eye, 
   EyeOff,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Save
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
 import { 
@@ -28,6 +29,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from 'sonner';
 import * as THREE from 'three';
 
 interface MeasurementToolsProps {
@@ -57,6 +59,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Points display reference for updating visual indicators
   const pointsRef = useRef<THREE.Group | null>(null);
   const linesRef = useRef<THREE.Group | null>(null);
+  const measurementsRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
     // Ensure sidebar is open when measurements are enabled
@@ -65,11 +68,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled, open, setOpen]);
 
-  // Add point markers to the scene
+  // Create measurement groups in the scene
   useEffect(() => {
     if (!scene || !enabled) return;
 
-    // Create groups to hold points and lines if they don't exist
+    // Create groups to hold points, lines, and measurements if they don't exist
     if (!pointsRef.current) {
       pointsRef.current = new THREE.Group();
       pointsRef.current.name = "measurementPoints";
@@ -81,6 +84,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       linesRef.current.name = "measurementLines";
       scene.add(linesRef.current);
     }
+    
+    if (!measurementsRef.current) {
+      measurementsRef.current = new THREE.Group();
+      measurementsRef.current.name = "measurementLabels";
+      scene.add(measurementsRef.current);
+    }
 
     // Clean up scene when unmounting or when disabled
     return () => {
@@ -91,6 +100,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (linesRef.current) {
         scene.remove(linesRef.current);
         linesRef.current = null;
+      }
+      if (measurementsRef.current) {
+        scene.remove(measurementsRef.current);
+        measurementsRef.current = null;
       }
     };
   }, [scene, enabled]);
@@ -163,6 +176,81 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   }, [currentPoints, visible, activeMode]);
 
+  // Update visual representation of completed measurements
+  useEffect(() => {
+    if (!measurementsRef.current || !visible) return;
+    
+    // Clear existing measurement labels
+    while (measurementsRef.current.children.length > 0) {
+      measurementsRef.current.remove(measurementsRef.current.children[0]);
+    }
+    
+    // Add visual representation for each finalized measurement
+    measurements.forEach((measurement) => {
+      // Create different visualizations based on measurement type
+      if (measurement.type === 'length' || measurement.type === 'height') {
+        // For length and height, draw line between the two points
+        const [p1, p2] = measurement.points;
+        
+        // Draw the line
+        const linePoints = [
+          new THREE.Vector3(p1.x, p1.y, p1.z),
+          new THREE.Vector3(p2.x, p2.y, p2.z)
+        ];
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+          color: measurement.type === 'length' ? 0x00ff00 : 0x0000ff,
+          linewidth: 3
+        });
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        measurementsRef.current?.add(line);
+        
+        // Add small spheres at endpoints
+        const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ 
+          color: measurement.type === 'length' ? 0x00ff00 : 0x0000ff
+        });
+        
+        measurement.points.forEach(point => {
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(point.x, point.y, point.z);
+          measurementsRef.current?.add(sphere);
+        });
+      } 
+      else if (measurement.type === 'area') {
+        // For area, draw filled polygon
+        // Create triangulated mesh from points
+        const points = measurement.points;
+        
+        // Create outline from points
+        for (let i = 0; i < points.length; i++) {
+          const p1 = points[i];
+          const p2 = points[(i + 1) % points.length]; // Connect back to first point
+          
+          // Draw the line segment
+          const linePoints = [
+            new THREE.Vector3(p1.x, p1.y, p1.z),
+            new THREE.Vector3(p2.x, p2.y, p2.z)
+          ];
+          const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+          const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xffaa00,
+            linewidth: 3
+          });
+          const line = new THREE.Line(lineGeometry, lineMaterial);
+          measurementsRef.current?.add(line);
+          
+          // Add small sphere at each vertex
+          const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+          const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(p1.x, p1.y, p1.z);
+          measurementsRef.current?.add(sphere);
+        }
+      }
+    });
+  }, [measurements, visible]);
+
   // Setup the event listener for clicks on the canvas
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
@@ -195,7 +283,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         // Check if the object or any of its parents are measurement points/lines
         let currentObj = intersect.object;
         while (currentObj) {
-          if (currentObj.name === "measurementPoints" || currentObj.name === "measurementLines") {
+          if (
+            currentObj.name === "measurementPoints" || 
+            currentObj.name === "measurementLines" ||
+            currentObj.name === "measurementLabels"
+          ) {
             return false;
           }
           // @ts-ignore - parent property exists on THREE.Object3D
@@ -218,9 +310,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         
         // Auto-finalize for length and height after 2 points
         if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
+          // Use setTimeout to ensure the point is added before finalization
           setTimeout(() => {
             finalizeMeasurement();
-          }, 0);
+            toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
+          }, 100);
         }
       }
     };
@@ -237,10 +331,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const selectTool = (mode: MeasurementMode) => {
     setActiveMode(mode);
     clearCurrentPoints(); // Clear current points when changing tools
+    toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : 'Flächen'}messung ausgewählt`);
   };
 
   const toggleVisibility = () => {
     setVisible(!visible);
+    toast.info(visible ? 'Messungen ausgeblendet' : 'Messungen eingeblendet');
+  };
+
+  const handleFinalizeMeasurement = () => {
+    if (currentPoints.length >= 3) {
+      finalizeMeasurement();
+      toast.success('Flächenmessung abgeschlossen');
+    } else {
+      toast.error('Mindestens 3 Punkte für eine Flächenmessung erforderlich');
+    }
+  };
+
+  const handleClearMeasurements = () => {
+    clearMeasurements();
+    toast.info('Alle Messungen gelöscht');
   };
 
   // If measurements are not enabled, don't render the sidebar
@@ -300,7 +410,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             <SidebarGroupContent>
               <Button 
                 className="w-full flex items-center justify-center gap-2"
-                onClick={finalizeMeasurement}
+                onClick={handleFinalizeMeasurement}
               >
                 <CheckCircle2 size={16} />
                 Fläche schließen
@@ -318,7 +428,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               <AlertDescription>
                 Klicken Sie auf das Modell, um Messpunkte zu setzen. 
                 {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
-                {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung."}
+                {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung (Y-Achse)."}
                 {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
               </AlertDescription>
             </Alert>
@@ -341,7 +451,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={clearMeasurements}
+              onClick={handleClearMeasurements}
               className="flex-1 flex items-center justify-center gap-2"
             >
               <Trash2 size={16} />
@@ -356,13 +466,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             <SidebarGroupContent>
               <div className="space-y-2 p-2 bg-muted/50 rounded-md">
                 {measurements.map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 text-sm">
+                  <div key={m.id} className="flex items-center gap-2 text-sm border-b border-muted-foreground/20 pb-2 last:border-0 last:pb-0">
                     <div className={`w-3 h-3 rounded-full ${
                       m.type === 'length' ? 'bg-green-500' : 
                       m.type === 'height' ? 'bg-blue-500' : 'bg-amber-500'
                     }`} />
-                    <span>{m.type === 'length' ? 'Länge' : m.type === 'height' ? 'Höhe' : 'Fläche'}: 
-                    {' '}{m.value.toFixed(2)} {m.type === 'area' ? 'Einh²' : 'Einh'}</span>
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {m.type === 'length' ? 'Länge' : 
+                         m.type === 'height' ? 'Höhe' : 'Fläche'}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {m.value.toFixed(2)} {m.type === 'area' ? 'Einh²' : 'Einh'}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -381,4 +498,3 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 };
 
 export default MeasurementTools;
-
