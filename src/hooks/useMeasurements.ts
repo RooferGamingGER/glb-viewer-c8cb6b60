@@ -1,5 +1,4 @@
-
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 
@@ -62,14 +61,24 @@ export const useMeasurements = () => {
   const [activeMode, setActiveMode] = useState<MeasurementMode>('length');
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
+  
+  // Use a ref to track points separately from state to avoid timing issues
+  const currentPointsRef = useRef<Point[]>([]);
+
+  // Keep the ref in sync with the state
+  useEffect(() => {
+    currentPointsRef.current = currentPoints;
+  }, [currentPoints]);
 
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);
     setCurrentPoints([]);
+    currentPointsRef.current = [];
   }, []);
 
   const clearCurrentPoints = useCallback(() => {
     setCurrentPoints([]);
+    currentPointsRef.current = [];
   }, []);
 
   const calculateDistance = useCallback((point1: Point, point2: Point): number => {
@@ -219,65 +228,81 @@ export const useMeasurements = () => {
     }));
   }, [calculateDistance, calculateHeight, calculateInclination, calculateArea]);
 
+  // Dedicated function to create a Length measurement
+  const createLengthMeasurement = useCallback((points: Point[]) => {
+    if (points.length !== 2) return;
+    
+    const value = calculateDistance(points[0], points[1]);
+    const label = formatMeasurementWithInclination(value, undefined, 'length');
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'length',
+        points: [...points],
+        value,
+        label,
+        visible: true,
+        unit: 'm',
+        description: ''
+      }
+    ]);
+    
+    // Clear points after creating the measurement
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+  }, [calculateDistance]);
+
+  // Dedicated function to create a Height measurement
+  const createHeightMeasurement = useCallback((points: Point[]) => {
+    if (points.length !== 2) return;
+    
+    const value = calculateHeight(points[0], points[1]);
+    const inclination = calculateInclination(points[0], points[1]);
+    const label = formatMeasurementWithInclination(value, inclination, 'height');
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'height',
+        points: [...points],
+        value,
+        inclination,
+        label,
+        visible: true,
+        unit: 'm',
+        description: ''
+      }
+    ]);
+    
+    // Clear points after creating the measurement
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+  }, [calculateHeight, calculateInclination]);
+
   const finalizeMeasurement = useCallback(() => {
-    if (currentPoints.length === 0) return;
+    const points = [...currentPointsRef.current];
     
-    let value = 0;
-    let label = '';
-    let inclination: number | undefined;
+    if (points.length === 0) return;
     
-    if (activeMode === 'length' && currentPoints.length >= 2) {
-      // Calculate true 3D distance for length measurement
-      value = calculateDistance(currentPoints[0], currentPoints[1]);
-      label = formatMeasurementWithInclination(value, undefined, 'length');
-      
-      setMeasurements(prev => [
-        ...prev,
-        {
-          id: nanoid(),
-          type: 'length',
-          points: [currentPoints[0], currentPoints[1]],
-          value,
-          label,
-          visible: true,
-          unit: 'm',
-          description: ''
-        }
-      ]);
-      // Clear points after finalizing the measurement
-      setCurrentPoints([]);
+    if (activeMode === 'length' && points.length >= 2) {
+      createLengthMeasurement([points[0], points[1]]);
     } 
-    else if (activeMode === 'height' && currentPoints.length >= 2) {
-      value = calculateHeight(currentPoints[0], currentPoints[1]);
-      inclination = calculateInclination(currentPoints[0], currentPoints[1]);
-      label = formatMeasurementWithInclination(value, inclination, 'height');
-      
-      setMeasurements(prev => [
-        ...prev,
-        {
-          id: nanoid(),
-          type: 'height',
-          points: [currentPoints[0], currentPoints[1]],
-          value,
-          inclination,
-          label,
-          visible: true,
-          unit: 'm',
-          description: ''
-        }
-      ]);
-      setCurrentPoints([]);
+    else if (activeMode === 'height' && points.length >= 2) {
+      createHeightMeasurement([points[0], points[1]]);
     }
-    else if (activeMode === 'area' && currentPoints.length >= 3) {
-      value = calculateArea(currentPoints);
-      label = formatMeasurementWithInclination(value, undefined, 'area');
+    else if (activeMode === 'area' && points.length >= 3) {
+      const value = calculateArea(points);
+      const label = formatMeasurementWithInclination(value, undefined, 'area');
       
       setMeasurements(prev => [
         ...prev,
         {
           id: nanoid(),
           type: 'area',
-          points: [...currentPoints],
+          points: [...points],
           value,
           label,
           visible: true,
@@ -286,30 +311,34 @@ export const useMeasurements = () => {
         }
       ]);
       setCurrentPoints([]);
+      currentPointsRef.current = [];
     }
-  }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateInclination, calculateArea]);
+  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
 
   const addPoint = useCallback((point: Point) => {
     setCurrentPoints(prev => {
       const newPoints = [...prev, point];
-      
-      // Don't auto-finalize for area mode
-      if (activeMode === 'area') {
-        return newPoints;
-      }
-      
-      // For length and height measurements, auto-finalize after 2 points
-      if ((activeMode === 'length' || activeMode === 'height') && newPoints.length === 2) {
-        // We need to set the new points first, then finalize in the next tick
-        // to ensure the state is updated correctly
-        setTimeout(() => {
-          finalizeMeasurement();
-        }, 10);
-      }
+      currentPointsRef.current = newPoints;
       
       return newPoints;
     });
-  }, [activeMode, finalizeMeasurement]);
+    
+    // Check for auto-finalization outside setState callback
+    // This ensures we use the latest state after it's been updated
+    setTimeout(() => {
+      const currentMode = activeMode;
+      const points = currentPointsRef.current;
+      
+      // Auto-finalize length and height measurements after exactly 2 points
+      if ((currentMode === 'length' || currentMode === 'height') && points.length === 2) {
+        if (currentMode === 'length') {
+          createLengthMeasurement(points);
+        } else if (currentMode === 'height') {
+          createHeightMeasurement(points);
+        }
+      }
+    }, 10);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
 
   return {
     measurements,
