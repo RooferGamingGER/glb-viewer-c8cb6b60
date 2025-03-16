@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Download, X, FileText } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
@@ -53,11 +53,17 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      await generateMeasurementsPDF(measurements, 'messungen-export.pdf', projectData);
-      toast.success('PDF erfolgreich erstellt');
-      setTimeout(() => {
-        onOpenChange(false);
-      }, 500);
+      const success = await generateMeasurementsPDF(measurements, 'messungen-export.pdf', projectData);
+      
+      if (success) {
+        toast.success('PDF erfolgreich erstellt');
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 500);
+      } else {
+        // User cancelled the operation
+        toast.info('PDF-Export abgebrochen');
+      }
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast.error('Fehler beim Erstellen des PDFs');
@@ -93,9 +99,9 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
               {projectData && (
                 <div className="mb-4 p-4 border rounded-md bg-muted/30">
                   <h3 className="font-medium mb-2">Projektinformationen</h3>
-                  <p><strong>Projekt:</strong> {projectData.projectName}</p>
-                  <p><strong>Vorgang:</strong> {projectData.currentProcess}</p>
-                  <p><strong>Erstellt von:</strong> {projectData.creator}</p>
+                  <p><strong>Projekt:</strong> {projectData.projectName || '-'}</p>
+                  <p><strong>Vorgang:</strong> {projectData.currentProcess || '-'}</p>
+                  <p><strong>Erstellt von:</strong> {projectData.creator || '-'}</p>
                   {projectData.contactInfo && (
                     <p><strong>Kontakt:</strong> {projectData.contactInfo}</p>
                   )}
