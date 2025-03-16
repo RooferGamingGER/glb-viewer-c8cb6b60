@@ -19,7 +19,8 @@ export const useLabelScaling = (
       if (labelsRef.current && camera) {
         labelsRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
-            updateLabelScale(child, camera);
+            // Regular labels use standard scaling
+            updateLabelScale(child, camera, 0.5);
           }
         });
       }
@@ -27,8 +28,8 @@ export const useLabelScaling = (
       if (segmentLabelsRef.current && camera) {
         segmentLabelsRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
-            // Make segment labels slightly smaller
-            updateLabelScale(child, camera, 0.4);
+            // Segment labels are made smaller for less visual clutter
+            updateLabelScale(child, camera, 0.35);
           }
         });
       }

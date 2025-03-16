@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -156,7 +155,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
-      toast.success('Flächenmessung abgeschlossen');
+      
+      // Deactivate measurement tool after finalizing an area measurement
+      if (activeMode === 'area') {
+        toggleMeasurementTool('none');
+        toast.success('Flächenmessung abgeschlossen - Messwerkzeug deaktiviert');
+      } else {
+        toast.success('Flächenmessung abgeschlossen');
+      }
     } else {
       toast.error('Mindestens 3 Punkte für eine Flächenmessung erforderlich');
     }
