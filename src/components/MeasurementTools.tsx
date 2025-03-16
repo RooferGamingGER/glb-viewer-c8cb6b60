@@ -36,6 +36,14 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from 'sonner';
 import * as THREE from 'three';
+import {
+  createMeasurementLabel,
+  updateLabelScale,
+  formatMeasurementLabel,
+  calculateMidpoint,
+  calculateCentroid,
+  calculateInclination
+} from '@/utils/textSprite';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -84,6 +92,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const linesRef = useRef<THREE.Group | null>(null);
   const measurementsRef = useRef<THREE.Group | null>(null);
   const editPointsRef = useRef<THREE.Group | null>(null);
+  const labelsRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
     // Ensure sidebar is open when measurements are enabled
@@ -96,7 +105,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   useEffect(() => {
     if (!scene || !enabled) return;
 
-    // Create groups to hold points, lines, and measurements if they don't exist
+    // Create groups to hold points, lines, measurements, and labels if they don't exist
     if (!pointsRef.current) {
       pointsRef.current = new THREE.Group();
       pointsRef.current.name = "measurementPoints";
@@ -120,6 +129,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       editPointsRef.current.name = "editPoints";
       scene.add(editPointsRef.current);
     }
+    
+    if (!labelsRef.current) {
+      labelsRef.current = new THREE.Group();
+      labelsRef.current.name = "textLabels";
+      scene.add(labelsRef.current);
+    }
 
     // Clean up scene when unmounting or when disabled
     return () => {
@@ -138,6 +153,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (editPointsRef.current) {
         scene.remove(editPointsRef.current);
         editPointsRef.current = null;
+      }
+      if (labelsRef.current) {
+        scene.remove(labelsRef.current);
+        labelsRef.current = null;
       }
     };
   }, [scene, enabled]);
@@ -194,7 +213,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         new THREE.Vector3(firstPoint.x, firstPoint.y, firstPoint.z)
       ];
       const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
-      // Use a dashed line material instead of LineBasicMaterial with invalid properties
+      // Use a dashed line material
       const closingMaterial = new THREE.LineDashedMaterial({ 
         color: 0xffaa00,
         linewidth: 2,
@@ -207,17 +226,106 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       closingLine.computeLineDistances();
       linesRef.current?.add(closingLine);
     }
+    
+    // Create preview label if we have enough points for a complete measurement
+    if (labelsRef.current && currentPoints.length >= 2) {
+      // Clear existing preview labels
+      labelsRef.current.children.forEach(child => {
+        if (child.userData.isPreview) {
+          labelsRef.current?.remove(child);
+        }
+      });
+      
+      if (activeMode === 'length' && currentPoints.length >= 2) {
+        // For length measurement preview
+        const p1 = new THREE.Vector3(currentPoints[0].x, currentPoints[0].y, currentPoints[0].z);
+        const p2 = new THREE.Vector3(currentPoints[1].x, currentPoints[1].y, currentPoints[1].z);
+        
+        // Calculate distance
+        const distance = p1.distanceTo(p2);
+        
+        // Calculate inclination
+        const inclination = calculateInclination(p1, p2);
+        
+        // Format label text
+        const labelText = formatMeasurementLabel(distance, 'length', inclination);
+        
+        // Create label at midpoint
+        const midpoint = calculateMidpoint(p1, p2);
+        const label = createMeasurementLabel(labelText, midpoint, true);
+        label.userData.isPreview = true;
+        
+        labelsRef.current.add(label);
+      }
+      else if (activeMode === 'height' && currentPoints.length >= 2) {
+        // For height measurement preview
+        const p1 = new THREE.Vector3(currentPoints[0].x, currentPoints[0].y, currentPoints[0].z);
+        const p2 = new THREE.Vector3(currentPoints[1].x, currentPoints[1].y, currentPoints[1].z);
+        
+        // Height is specifically the Y-axis difference
+        const height = Math.abs(p2.y - p1.y);
+        
+        // Format label text
+        const labelText = formatMeasurementLabel(height, 'height');
+        
+        // Create label positioned beside the vertical line
+        const higher = p1.y > p2.y ? p1 : p2;
+        const lower = p1.y > p2.y ? p2 : p1;
+        const labelPos = new THREE.Vector3(
+          higher.x + 0.2, 
+          (higher.y + lower.y) / 2, 
+          higher.z
+        );
+        
+        const label = createMeasurementLabel(labelText, labelPos, true);
+        label.userData.isPreview = true;
+        
+        labelsRef.current.add(label);
+      }
+      else if (activeMode === 'area' && currentPoints.length >= 3) {
+        // For area measurement preview, create a temporary polygon
+        const points3D = currentPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+        
+        // Calculate area (simplified - for preview only)
+        // Note: This is a simplification and may not be accurate for all 3D polygons
+        let area = 0;
+        const n = points3D.length;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          area += points3D[i].x * points3D[j].z;
+          area -= points3D[j].x * points3D[i].z;
+        }
+        area = Math.abs(area) / 2;
+        
+        // Format label text
+        const labelText = formatMeasurementLabel(area, 'area');
+        
+        // Create label at centroid
+        const centroid = calculateCentroid(points3D);
+        const label = createMeasurementLabel(labelText, centroid, true);
+        label.userData.isPreview = true;
+        
+        labelsRef.current.add(label);
+      }
+    }
 
   }, [currentPoints, visible, activeMode]);
 
   // Update visual representation of completed measurements
   useEffect(() => {
-    if (!measurementsRef.current || !visible) return;
+    if (!measurementsRef.current || !visible || !labelsRef.current) return;
     
     // Clear existing measurement labels
     while (measurementsRef.current.children.length > 0) {
       measurementsRef.current.remove(measurementsRef.current.children[0]);
     }
+    
+    // Clear existing text labels (except preview labels)
+    labelsRef.current.children.forEach(child => {
+      if (!child.userData.isPreview) {
+        labelsRef.current?.remove(child);
+      }
+    });
     
     // Add visual representation for each finalized measurement
     measurements.forEach((measurement) => {
@@ -229,11 +337,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         // For length, draw line between the two points
         const [p1, p2] = measurement.points;
         
+        // Convert to THREE.Vector3
+        const point1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+        const point2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+        
         // Draw the line
-        const linePoints = [
-          new THREE.Vector3(p1.x, p1.y, p1.z),
-          new THREE.Vector3(p2.x, p2.y, p2.z)
-        ];
+        const linePoints = [point1, point2];
         const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
         const lineMaterial = new THREE.LineBasicMaterial({ 
           color: 0x00ff00,
@@ -252,44 +361,41 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           measurementsRef.current?.add(sphere);
         });
         
+        // Calculate inclination
+        const inclination = calculateInclination(point1, point2);
+        
         // Add text label at midpoint
-        if (measurement.label) {
-          const midpoint = new THREE.Vector3(
-            (p1.x + p2.x) / 2,
-            (p1.y + p2.y) / 2 + 0.1, // Slightly above the line
-            (p1.z + p2.z) / 2
-          );
-          
-          // Create a custom HTML element for the label in drei
-          // Since we can't use HTML directly in this context, we'll use a simple sphere marker
-          const labelMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-          );
-          labelMarker.position.copy(midpoint);
-          measurementsRef.current?.add(labelMarker);
-        }
+        const midpoint = calculateMidpoint(point1, point2);
+        const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
+        const label = createMeasurementLabel(labelText, midpoint);
+        
+        // Store measurement ID in user data for reference
+        label.userData.measurementId = measurement.id;
+        
+        // Add to labels group
+        labelsRef.current?.add(label);
       } 
       else if (measurement.type === 'height') {
         // For height, draw a vertical line to show the height difference
         const [p1, p2] = measurement.points;
         
+        // Convert to THREE.Vector3
+        const point1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+        const point2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+        
         // Determine which point is higher
-        const higherPoint = p1.y > p2.y ? p1 : p2;
-        const lowerPoint = p1.y > p2.y ? p2 : p1;
+        const higherPoint = point1.y > point2.y ? point1 : point2;
+        const lowerPoint = point1.y > point2.y ? point2 : point1;
         
         // Create a vertical projection point below/above the higher point
-        const verticalPoint = {
-          x: higherPoint.x,
-          y: lowerPoint.y,
-          z: higherPoint.z
-        };
+        const verticalPoint = new THREE.Vector3(
+          higherPoint.x,
+          lowerPoint.y,
+          higherPoint.z
+        );
         
         // Draw the main line between the two points
-        const mainLinePoints = [
-          new THREE.Vector3(p1.x, p1.y, p1.z),
-          new THREE.Vector3(p2.x, p2.y, p2.z)
-        ];
+        const mainLinePoints = [point1, point2];
         const mainLineGeometry = new THREE.BufferGeometry().setFromPoints(mainLinePoints);
         const mainLineMaterial = new THREE.LineBasicMaterial({ 
           color: 0x0000ff,
@@ -299,10 +405,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         measurementsRef.current?.add(mainLine);
         
         // Draw the vertical line
-        const verticalLinePoints = [
-          new THREE.Vector3(higherPoint.x, higherPoint.y, higherPoint.z),
-          new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z)
-        ];
+        const verticalLinePoints = [higherPoint, verticalPoint];
         const verticalLineGeometry = new THREE.BufferGeometry().setFromPoints(verticalLinePoints);
         const verticalLineMaterial = new THREE.LineBasicMaterial({ 
           color: 0x0000ff,
@@ -312,10 +415,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         measurementsRef.current?.add(verticalLine);
         
         // Optional: Draw horizontal reference line
-        const horizontalLinePoints = [
-          new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z),
-          new THREE.Vector3(lowerPoint.x, lowerPoint.y, lowerPoint.z)
-        ];
+        const horizontalLinePoints = [verticalPoint, lowerPoint];
         const horizontalLineGeometry = new THREE.BufferGeometry().setFromPoints(horizontalLinePoints);
         const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
           color: 0x0000ff,
@@ -331,43 +431,39 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
         const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
         
-        [p1, p2, verticalPoint].forEach(point => {
+        [point1, point2, verticalPoint].forEach(point => {
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-          sphere.position.set(point.x, point.y, point.z);
+          sphere.position.copy(point);
           measurementsRef.current?.add(sphere);
         });
         
         // Add text label at midpoint of vertical line
-        if (measurement.label) {
-          const midpoint = new THREE.Vector3(
-            verticalPoint.x + 0.1, // Slightly offset from vertical line
-            (higherPoint.y + verticalPoint.y) / 2,
-            verticalPoint.z
-          );
-          
-          const labelMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0x0000ff })
-          );
-          labelMarker.position.copy(midpoint);
-          measurementsRef.current?.add(labelMarker);
-        }
+        const labelPos = new THREE.Vector3(
+          verticalPoint.x + 0.2, // Slightly offset from vertical line
+          (higherPoint.y + verticalPoint.y) / 2,
+          verticalPoint.z
+        );
+        
+        const labelText = formatMeasurementLabel(measurement.value, 'height');
+        const label = createMeasurementLabel(labelText, labelPos);
+        
+        // Store measurement ID in user data for reference
+        label.userData.measurementId = measurement.id;
+        
+        // Add to labels group
+        labelsRef.current?.add(label);
       } 
       else if (measurement.type === 'area') {
         // For area, draw filled polygon
-        // Create triangulated mesh from points
-        const points = measurement.points;
+        const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
         
         // Create outline from points
-        for (let i = 0; i < points.length; i++) {
-          const p1 = points[i];
-          const p2 = points[(i + 1) % points.length]; // Connect back to first point
+        for (let i = 0; i < points3D.length; i++) {
+          const p1 = points3D[i];
+          const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
           
           // Draw the line segment
-          const linePoints = [
-            new THREE.Vector3(p1.x, p1.y, p1.z),
-            new THREE.Vector3(p2.x, p2.y, p2.z)
-          ];
+          const linePoints = [p1, p2];
           const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
           const lineMaterial = new THREE.LineBasicMaterial({ 
             color: 0xffaa00,
@@ -380,32 +476,58 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
           const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-          sphere.position.set(p1.x, p1.y, p1.z);
+          sphere.position.copy(p1);
           measurementsRef.current?.add(sphere);
         }
         
         // Add a semi-transparent fill
-        if (points.length >= 3) {
-          // Find centroid for label placement
-          const centroid = new THREE.Vector3(0, 0, 0);
-          points.forEach(p => {
-            centroid.x += p.x;
-            centroid.y += p.y;
-            centroid.z += p.z;
-          });
-          centroid.divideScalar(points.length);
+        if (points3D.length >= 3) {
+          // Calculate centroid for label placement
+          const centroid = calculateCentroid(points3D);
           
-          // Add a marker at centroid
-          const labelMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
-          );
-          labelMarker.position.copy(centroid);
-          measurementsRef.current?.add(labelMarker);
+          // Create label
+          const labelText = formatMeasurementLabel(measurement.value, 'area');
+          const label = createMeasurementLabel(labelText, centroid);
+          
+          // Store measurement ID in user data for reference
+          label.userData.measurementId = measurement.id;
+          
+          // Add to labels group
+          labelsRef.current?.add(label);
         }
       }
     });
   }, [measurements, visible]);
+
+  // Update label scales based on camera distance
+  useEffect(() => {
+    if (!camera || !labelsRef.current) return;
+    
+    // Update function for animation loop
+    const updateLabels = () => {
+      if (labelsRef.current && camera) {
+        labelsRef.current.children.forEach(child => {
+          if (child instanceof THREE.Sprite) {
+            updateLabelScale(child, camera);
+          }
+        });
+      }
+    };
+    
+    // Setup animation loop
+    const animate = () => {
+      updateLabels();
+      animationId = requestAnimationFrame(animate);
+    };
+    
+    // Start animation
+    let animationId = requestAnimationFrame(animate);
+    
+    // Cleanup
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [camera]);
 
   // Update the editable points visualizations
   useEffect(() => {

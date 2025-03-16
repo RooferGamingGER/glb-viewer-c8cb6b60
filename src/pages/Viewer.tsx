@@ -23,6 +23,20 @@ const Viewer = () => {
     }
   }, [fileUrl, navigate]);
 
+  // Add font preloading for the Inter font we use in text sprites
+  useEffect(() => {
+    // Preload the Inter font for text sprites
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+    document.head.appendChild(fontLink);
+    
+    return () => {
+      // Clean up the font link when component unmounts
+      document.head.removeChild(fontLink);
+    };
+  }, []);
+
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
