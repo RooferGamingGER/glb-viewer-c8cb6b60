@@ -1,46 +1,24 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
-import * as THREE from 'three';
 import { nanoid } from 'nanoid';
+import { 
+  Point, 
+  Measurement, 
+  MeasurementMode 
+} from './measurements/types';
+import { 
+  calculateDistance, 
+  calculateHeight, 
+  calculateArea, 
+  formatMeasurement, 
+  getNearestPointIndex 
+} from './measurements/measurementUtils';
+import { 
+  createLengthMeasurement, 
+  createHeightMeasurement, 
+  createAreaMeasurement 
+} from './measurements/measurementCreators';
 
-export type MeasurementMode = 'length' | 'height' | 'area' | 'none';
-
-export interface Point {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export interface MeasurementPoint {
-  position: THREE.Vector3;
-  worldPosition: THREE.Vector3;
-}
-
-export interface Measurement {
-  id: string;
-  type: MeasurementMode;
-  points: Point[];
-  value: number;
-  label?: string;
-  visible?: boolean;
-  editMode?: boolean;
-  unit?: string;
-  description?: string;
-}
-
-// Format measurement value based on measurement type
-const formatMeasurement = (value: number, type: MeasurementMode): string => {
-  if (type === 'area') {
-    // Format area measurements
-    if (value < 0.01) {
-      return `${(value * 10000).toFixed(2)} cm²`;
-    }
-    return `${value.toFixed(2)} m²`;
-  }
-  
-  // Format length or height measurements
-  return `${value.toFixed(2)} m`;
-};
+export type { MeasurementMode, Point, Measurement };
 
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
@@ -69,71 +47,6 @@ export const useMeasurements = () => {
   const clearCurrentPoints = useCallback(() => {
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, []);
-
-  const calculateDistance = useCallback((point1: Point, point2: Point): number => {
-    // Calculate true 3D distance between points using Euclidean distance formula
-    return Math.sqrt(
-      Math.pow(point2.x - point1.x, 2) +
-      Math.pow(point2.y - point1.y, 2) +
-      Math.pow(point2.z - point1.z, 2)
-    );
-  }, []);
-
-  const calculateHeight = useCallback((point1: Point, point2: Point): number => {
-    // Height is strictly the absolute difference along the Y axis
-    return Math.abs(point2.y - point1.y);
-  }, []);
-
-  const calculateArea = useCallback((points: Point[]): number => {
-    if (points.length < 3) return 0;
-    
-    // For polygons, triangulate and sum the areas of the triangles
-    const triangleCount = points.length - 2;
-    let totalArea = 0;
-    
-    // Project points to best-fit plane for more accurate area calculation
-    // First, find the normal of the polygon by cross product of two edges
-    const edge1 = new THREE.Vector3(
-      points[1].x - points[0].x,
-      points[1].y - points[0].y,
-      points[1].z - points[0].z
-    );
-    
-    const edge2 = new THREE.Vector3(
-      points[2].x - points[0].x,
-      points[2].y - points[0].y,
-      points[2].z - points[0].z
-    );
-    
-    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-    
-    // Simple triangulation using the first point as a pivot
-    for (let i = 0; i < triangleCount; i++) {
-      const p0 = points[0];
-      const p1 = points[i + 1];
-      const p2 = points[i + 2];
-      
-      // Create 3D vectors
-      const v0 = new THREE.Vector3(p0.x, p0.y, p0.z);
-      const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
-      const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
-      
-      // Calculate sides of the triangle
-      const a = v0.distanceTo(v1);
-      const b = v1.distanceTo(v2);
-      const c = v2.distanceTo(v0);
-      
-      // Calculate semi-perimeter
-      const s = (a + b + c) / 2;
-      
-      // Calculate triangle area using Heron's formula
-      const triangleArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
-      
-      totalArea += triangleArea;
-    }
-    
-    return totalArea;
   }, []);
 
   const toggleMeasurementVisibility = useCallback((id: string) => {
@@ -207,7 +120,7 @@ export const useMeasurements = () => {
         };
       });
     });
-  }, [calculateDistance, calculateHeight, calculateArea]);
+  }, []);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
@@ -257,59 +170,7 @@ export const useMeasurements = () => {
       }
       return m;
     }));
-  }, [calculateDistance, calculateHeight, calculateArea]);
-
-  // Dedicated function to create a Length measurement
-  const createLengthMeasurement = useCallback((points: Point[]) => {
-    if (points.length !== 2) return;
-    
-    const value = calculateDistance(points[0], points[1]);
-    const label = formatMeasurement(value, 'length');
-    
-    setMeasurements(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        type: 'length',
-        points: [...points],
-        value,
-        label,
-        visible: true,
-        unit: 'm',
-        description: ''
-      }
-    ]);
-    
-    // Clear points after creating the measurement
-    setCurrentPoints([]);
-    currentPointsRef.current = [];
-  }, [calculateDistance]);
-
-  // Dedicated function to create a Height measurement
-  const createHeightMeasurement = useCallback((points: Point[]) => {
-    if (points.length !== 2) return;
-    
-    const value = calculateHeight(points[0], points[1]);
-    const label = formatMeasurement(value, 'height');
-    
-    setMeasurements(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        type: 'height',
-        points: [...points],
-        value,
-        label,
-        visible: true,
-        unit: 'm',
-        description: ''
-      }
-    ]);
-    
-    // Clear points after creating the measurement
-    setCurrentPoints([]);
-    currentPointsRef.current = [];
-  }, [calculateHeight]);
+  }, []);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -317,32 +178,30 @@ export const useMeasurements = () => {
     if (points.length === 0) return;
     
     if (activeMode === 'length' && points.length >= 2) {
-      createLengthMeasurement([points[0], points[1]]);
+      const measurement = createLengthMeasurement([points[0], points[1]]);
+      if (measurement) {
+        setMeasurements(prev => [...prev, measurement]);
+        setCurrentPoints([]);
+        currentPointsRef.current = [];
+      }
     } 
     else if (activeMode === 'height' && points.length >= 2) {
-      createHeightMeasurement([points[0], points[1]]);
+      const measurement = createHeightMeasurement([points[0], points[1]]);
+      if (measurement) {
+        setMeasurements(prev => [...prev, measurement]);
+        setCurrentPoints([]);
+        currentPointsRef.current = [];
+      }
     }
     else if (activeMode === 'area' && points.length >= 3) {
-      const value = calculateArea(points);
-      const label = formatMeasurement(value, 'area');
-      
-      setMeasurements(prev => [
-        ...prev,
-        {
-          id: nanoid(),
-          type: 'area',
-          points: [...points],
-          value,
-          label,
-          visible: true,
-          unit: 'm²',
-          description: ''
-        }
-      ]);
-      setCurrentPoints([]);
-      currentPointsRef.current = [];
+      const measurement = createAreaMeasurement(points);
+      if (measurement) {
+        setMeasurements(prev => [...prev, measurement]);
+        setCurrentPoints([]);
+        currentPointsRef.current = [];
+      }
     }
-  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
+  }, [activeMode]);
 
   const addPoint = useCallback((point: Point) => {
     // If we're in edit mode and have a point selected, update that point
@@ -366,12 +225,22 @@ export const useMeasurements = () => {
     // Auto-finalize length and height measurements after exactly 2 points
     if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
       if (currentMode === 'length') {
-        createLengthMeasurement(updatedPoints);
+        const measurement = createLengthMeasurement(updatedPoints);
+        if (measurement) {
+          setMeasurements(prev => [...prev, measurement]);
+          setCurrentPoints([]);
+          currentPointsRef.current = [];
+        }
       } else if (currentMode === 'height') {
-        createHeightMeasurement(updatedPoints);
+        const measurement = createHeightMeasurement(updatedPoints);
+        if (measurement) {
+          setMeasurements(prev => [...prev, measurement]);
+          setCurrentPoints([]);
+          currentPointsRef.current = [];
+        }
       }
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement, editMeasurementId, editingPointIndex, updateMeasurementPoint]);
+  }, [activeMode, editMeasurementId, editingPointIndex, updateMeasurementPoint]);
 
   // Toggle measurement tool function
   const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
@@ -398,27 +267,6 @@ export const useMeasurements = () => {
     setEditMeasurementId(null);
     setEditingPointIndex(null);
     setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
-  }, []);
-
-  const getNearestPointIndex = useCallback((measurement: Measurement, position: Point): number => {
-    // Find the index of the closest point in the measurement
-    let nearestIndex = 0;
-    let minDistance = Number.MAX_VALUE;
-    
-    measurement.points.forEach((point, index) => {
-      const distance = Math.sqrt(
-        Math.pow(position.x - point.x, 2) +
-        Math.pow(position.y - point.y, 2) +
-        Math.pow(position.z - point.z, 2)
-      );
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestIndex = index;
-      }
-    });
-    
-    return nearestIndex;
   }, []);
 
   return {
