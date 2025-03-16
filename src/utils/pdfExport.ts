@@ -2,10 +2,10 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
-import { TDocumentDefinitions } from 'pdfmake/interfaces';
+import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 
 // Register fonts
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
 // Define fonts
 const fonts = {
@@ -87,6 +87,13 @@ const urlToBase64 = (url: string): Promise<string> => {
   });
 };
 
+// Define TableCell interface to allow colSpan
+interface TableCell {
+  text: string;
+  style?: string;
+  colSpan?: number;
+}
+
 // Create the full document definition
 const createDocumentDefinition = (
   title: string,
@@ -164,7 +171,7 @@ const createDocumentDefinition = (
 };
 
 // Create the measurements table
-const createMeasurementsTable = (measurements: Measurement[]) => {
+const createMeasurementsTable = (measurements: Measurement[]): Content => {
   // If no measurements, return message
   if (measurements.length === 0) {
     return {
@@ -179,7 +186,7 @@ const createMeasurementsTable = (measurements: Measurement[]) => {
   const heightMeasurements = measurements.filter(m => m.type === 'height');
   const areaMeasurements = measurements.filter(m => m.type === 'area');
   
-  const tableContent = [];
+  const tableContent: Content[] = [];
   
   // Add length measurements
   if (lengthMeasurements.length > 0) {
@@ -211,7 +218,7 @@ const createMeasurementsTable = (measurements: Measurement[]) => {
 // Create table for a specific measurement type
 const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length' | 'height' | 'area') => {
   // Define table headers based on type
-  const headers = [
+  const headers: TableCell[] = [
     { text: 'Nr.', style: 'tableHeader' },
     { text: 'Wert', style: 'tableHeader' }
   ];
@@ -225,10 +232,10 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
   headers.push({ text: 'Beschreibung', style: 'tableHeader' });
   
   // Create the table body rows
-  const body = [headers];
+  const body: TableCell[][] = [headers];
   
   measurements.forEach((measurement, index) => {
-    const row = [
+    const row: TableCell[] = [
       { text: (index + 1).toString() },
       { text: measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}` }
     ];
@@ -250,24 +257,34 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
     // Add segment information for area measurements
     if (type === 'area' && measurement.segments && measurement.segments.length > 0) {
       // Add a row for segments header
-      body.push([
+      const segmentRow: TableCell[] = [
         { text: '', colSpan: 1 },
         { 
           text: 'Segmente:', 
           style: 'segmentTitle',
           colSpan: headers.length - 1
         }
-      ]);
+      ];
+      // Fill remaining cells with empty objects to match column count
+      for (let i = 2; i < headers.length; i++) {
+        segmentRow.push({ text: '' });
+      }
+      body.push(segmentRow);
       
       // Add rows for each segment
       measurement.segments.forEach((segment, segIndex) => {
-        body.push([
+        const segmentDetailRow: TableCell[] = [
           { text: '', colSpan: 1 },
           { 
             text: `Segment ${segIndex + 1}: ${segment.length.toFixed(2)} m`, 
             colSpan: headers.length - 1
           }
-        ]);
+        ];
+        // Fill remaining cells with empty objects to match column count
+        for (let i = 2; i < headers.length; i++) {
+          segmentDetailRow.push({ text: '' });
+        }
+        body.push(segmentDetailRow);
       });
     }
   });
