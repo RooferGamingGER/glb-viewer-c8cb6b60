@@ -147,15 +147,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         new THREE.Vector3(firstPoint.x, firstPoint.y, firstPoint.z)
       ];
       const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
-      const closingMaterial = new THREE.LineBasicMaterial({ 
+      // Use a dashed line material instead of LineBasicMaterial with invalid properties
+      const closingMaterial = new THREE.LineDashedMaterial({ 
         color: 0xffaa00,
         linewidth: 2,
-        opacity: 0.5,
-        transparent: true,
+        scale: 1,
         dashSize: 0.1,
         gapSize: 0.1
       });
       const closingLine = new THREE.Line(closingGeometry, closingMaterial);
+      // Must call computeLineDistances for the dashed line to work
+      closingLine.computeLineDistances();
       linesRef.current?.add(closingLine);
     }
 
@@ -379,3 +381,4 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 };
 
 export default MeasurementTools;
+
