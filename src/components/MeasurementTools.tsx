@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Pencil,
-  X
+  X,
+  Move,
+  Save
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
 import { 
@@ -58,7 +60,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     addPoint,
     activeMode,
     setActiveMode,
-    toggleMeasurementTool, // Use the new toggle function
+    toggleMeasurementTool,
     clearMeasurements,
     clearCurrentPoints,
     finalizeMeasurement,
@@ -68,13 +70,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,
-    deletePoint
+    deletePoint,
+    // New editing functionality
+    editMeasurementId,
+    editingPointIndex,
+    startPointEdit,
+    cancelEditing,
+    getNearestPointIndex
   } = useMeasurements();
 
   // Points display reference for updating visual indicators
   const pointsRef = useRef<THREE.Group | null>(null);
   const linesRef = useRef<THREE.Group | null>(null);
   const measurementsRef = useRef<THREE.Group | null>(null);
+  const editPointsRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
     // Ensure sidebar is open when measurements are enabled
@@ -106,6 +115,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       scene.add(measurementsRef.current);
     }
 
+    if (!editPointsRef.current) {
+      editPointsRef.current = new THREE.Group();
+      editPointsRef.current.name = "editPoints";
+      scene.add(editPointsRef.current);
+    }
+
     // Clean up scene when unmounting or when disabled
     return () => {
       if (pointsRef.current) {
@@ -119,6 +134,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (measurementsRef.current) {
         scene.remove(measurementsRef.current);
         measurementsRef.current = null;
+      }
+      if (editPointsRef.current) {
+        scene.remove(editPointsRef.current);
+        editPointsRef.current = null;
       }
     };
   }, [scene, enabled]);
@@ -206,8 +225,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (measurement.visible === false) return;
       
       // Create different visualizations based on measurement type
-      if (measurement.type === 'length' || measurement.type === 'height') {
-        // For length and height, draw line between the two points
+      if (measurement.type === 'length') {
+        // For length, draw line between the two points
         const [p1, p2] = measurement.points;
         
         // Draw the line
@@ -217,7 +236,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         ];
         const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
         const lineMaterial = new THREE.LineBasicMaterial({ 
-          color: measurement.type === 'length' ? 0x00ff00 : 0x0000ff,
+          color: 0x00ff00,
           linewidth: 3
         });
         const line = new THREE.Line(lineGeometry, lineMaterial);
@@ -225,9 +244,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         
         // Add small spheres at endpoints
         const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ 
-          color: measurement.type === 'length' ? 0x00ff00 : 0x0000ff
-        });
+        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         
         measurement.points.forEach(point => {
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
@@ -247,9 +264,90 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           // Since we can't use HTML directly in this context, we'll use a simple sphere marker
           const labelMarker = new THREE.Mesh(
             new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ 
-              color: measurement.type === 'length' ? 0x00ff00 : 0x0000ff 
-            })
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+          );
+          labelMarker.position.copy(midpoint);
+          measurementsRef.current?.add(labelMarker);
+        }
+      } 
+      else if (measurement.type === 'height') {
+        // For height, draw a vertical line to show the height difference
+        const [p1, p2] = measurement.points;
+        
+        // Determine which point is higher
+        const higherPoint = p1.y > p2.y ? p1 : p2;
+        const lowerPoint = p1.y > p2.y ? p2 : p1;
+        
+        // Create a vertical projection point below/above the higher point
+        const verticalPoint = {
+          x: higherPoint.x,
+          y: lowerPoint.y,
+          z: higherPoint.z
+        };
+        
+        // Draw the main line between the two points
+        const mainLinePoints = [
+          new THREE.Vector3(p1.x, p1.y, p1.z),
+          new THREE.Vector3(p2.x, p2.y, p2.z)
+        ];
+        const mainLineGeometry = new THREE.BufferGeometry().setFromPoints(mainLinePoints);
+        const mainLineMaterial = new THREE.LineBasicMaterial({ 
+          color: 0x0000ff,
+          linewidth: 2
+        });
+        const mainLine = new THREE.Line(mainLineGeometry, mainLineMaterial);
+        measurementsRef.current?.add(mainLine);
+        
+        // Draw the vertical line
+        const verticalLinePoints = [
+          new THREE.Vector3(higherPoint.x, higherPoint.y, higherPoint.z),
+          new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z)
+        ];
+        const verticalLineGeometry = new THREE.BufferGeometry().setFromPoints(verticalLinePoints);
+        const verticalLineMaterial = new THREE.LineBasicMaterial({ 
+          color: 0x0000ff,
+          linewidth: 3
+        });
+        const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
+        measurementsRef.current?.add(verticalLine);
+        
+        // Optional: Draw horizontal reference line
+        const horizontalLinePoints = [
+          new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z),
+          new THREE.Vector3(lowerPoint.x, lowerPoint.y, lowerPoint.z)
+        ];
+        const horizontalLineGeometry = new THREE.BufferGeometry().setFromPoints(horizontalLinePoints);
+        const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
+          color: 0x0000ff,
+          linewidth: 2,
+          dashSize: 0.1,
+          gapSize: 0.05,
+        });
+        const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
+        horizontalLine.computeLineDistances();
+        measurementsRef.current?.add(horizontalLine);
+        
+        // Add small spheres at all points
+        const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        
+        [p1, p2, verticalPoint].forEach(point => {
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(point.x, point.y, point.z);
+          measurementsRef.current?.add(sphere);
+        });
+        
+        // Add text label at midpoint of vertical line
+        if (measurement.label) {
+          const midpoint = new THREE.Vector3(
+            verticalPoint.x + 0.1, // Slightly offset from vertical line
+            (higherPoint.y + verticalPoint.y) / 2,
+            verticalPoint.z
+          );
+          
+          const labelMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0x0000ff })
           );
           labelMarker.position.copy(midpoint);
           measurementsRef.current?.add(labelMarker);
@@ -309,6 +407,52 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     });
   }, [measurements, visible]);
 
+  // Update the editable points visualizations
+  useEffect(() => {
+    if (!editPointsRef.current || !visible) return;
+    
+    // Clear existing edit points
+    while (editPointsRef.current.children.length > 0) {
+      editPointsRef.current.remove(editPointsRef.current.children[0]);
+    }
+    
+    // If we're not in edit mode, we don't need to show edit points
+    if (!editMeasurementId) return;
+    
+    // Find the measurement being edited
+    const measurement = measurements.find(m => m.id === editMeasurementId);
+    if (!measurement) return;
+    
+    // Add editable points with a different appearance
+    measurement.points.forEach((point, index) => {
+      const isSelected = index === editingPointIndex;
+      
+      // Create a larger, highlighted sphere for editable points
+      const size = isSelected ? 0.08 : 0.06; // Selected point is bigger
+      const sphereGeometry = new THREE.SphereGeometry(size, 16, 16);
+      
+      // Use a bright color for the selected point, different color for others
+      const color = isSelected ? 0xff00ff : 0xffff00;
+      const sphereMaterial = new THREE.MeshBasicMaterial({ 
+        color,
+        opacity: 0.8,
+        transparent: true
+      });
+      
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(point.x, point.y, point.z);
+      
+      // Add user data to the sphere for identification when clicking
+      sphere.userData = {
+        isEditPoint: true,
+        measurementId: measurement.id,
+        pointIndex: index
+      };
+      
+      editPointsRef.current?.add(sphere);
+    });
+  }, [measurements, editMeasurementId, editingPointIndex, visible]);
+
   // Setup the event listener for clicks on the canvas
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
@@ -320,9 +464,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     const handleClick = (event: MouseEvent) => {
       // Only handle clicks if enabled and sidebar is open
       if (!enabled || !open) return;
-      
-      // Only process clicks if an active measurement mode is selected (not 'none')
-      if (activeMode === 'none') return;
       
       // Calculate mouse position in normalized device coordinates (-1 to +1)
       const canvasRect = canvasElement.getBoundingClientRect();
@@ -336,7 +477,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       // Set raycaster from camera and mouse position
       raycaster.setFromCamera(mouse, camera);
       
-      // Get all intersected objects
+      // First check if we're clicking on an edit point
+      if (editMeasurementId && editPointsRef.current) {
+        const editPointIntersects = raycaster.intersectObjects(editPointsRef.current.children, false);
+        
+        if (editPointIntersects.length > 0) {
+          const intersect = editPointIntersects[0];
+          const userData = intersect.object.userData;
+          
+          if (userData.isEditPoint) {
+            // Start editing this point
+            startPointEdit(userData.measurementId, userData.pointIndex);
+            toast.info(`Messpunkt ${userData.pointIndex + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
+            return; // Don't process further
+          }
+        }
+      }
+      
+      // Get all other intersected objects (excluding measurement points/lines)
       const intersects = raycaster.intersectObjects(scene.children, true);
       
       // Filter out measurement points/lines from intersections
@@ -347,7 +505,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           if (
             currentObj.name === "measurementPoints" || 
             currentObj.name === "measurementLines" ||
-            currentObj.name === "measurementLabels"
+            currentObj.name === "measurementLabels" ||
+            currentObj.name === "editPoints"
           ) {
             return false;
           }
@@ -366,30 +525,40 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           z: intersect.point.z
         };
         
-        // Current count before adding the new point
-        const currentCount = currentPoints.length;
+        // If we're editing a point, update it
+        if (editMeasurementId !== null && editingPointIndex !== null) {
+          addPoint(point); // This will handle updating the point
+          toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
+          return;
+        }
         
-        // Add point using the addPoint method
-        addPoint(point);
-        
-        // Show appropriate toast based on the measurement mode and point count
-        if (activeMode === 'length' || activeMode === 'height') {
-          if (currentCount === 0) {
-            // First point for length/height
-            toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
-          } else if (currentCount === 1) {
-            // Second point for length/height (will auto-finalize)
-            toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
-            // The measurement is complete, so we'll show a success toast
-            toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
-          }
-        } else if (activeMode === 'area') {
-          if (currentCount === 0) {
-            // First point for area
-            toast.info("Ersten Punkt für Flächenmessung gesetzt");
-          } else {
-            // Additional area point
-            toast.info(`Punkt ${currentCount + 1} für Flächenmessung gesetzt`);
+        // If we're in normal measurement mode
+        if (activeMode !== 'none') {
+          // Current count before adding the new point
+          const currentCount = currentPoints.length;
+          
+          // Add point using the addPoint method
+          addPoint(point);
+          
+          // Show appropriate toast based on the measurement mode and point count
+          if (activeMode === 'length' || activeMode === 'height') {
+            if (currentCount === 0) {
+              // First point for length/height
+              toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
+            } else if (currentCount === 1) {
+              // Second point for length/height (will auto-finalize)
+              toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
+              // The measurement is complete, so we'll show a success toast
+              toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
+            }
+          } else if (activeMode === 'area') {
+            if (currentCount === 0) {
+              // First point for area
+              toast.info("Ersten Punkt für Flächenmessung gesetzt");
+            } else {
+              // Additional area point
+              toast.info(`Punkt ${currentCount + 1} für Flächenmessung gesetzt`);
+            }
           }
         }
       }
@@ -402,7 +571,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => {
       canvasElement.removeEventListener('click', handleClick);
     };
-  }, [enabled, scene, camera, activeMode, currentPoints, addPoint, open]);
+  }, [enabled, scene, camera, activeMode, currentPoints, editMeasurementId, editingPointIndex, open, addPoint, startPointEdit]);
 
   const selectTool = (mode: MeasurementMode) => {
     // Use the new toggle function instead of direct state setting
@@ -450,6 +619,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Messung gelöscht');
   };
 
+  const handleStartPointEdit = (id: string) => {
+    // Toggle the edit mode for this measurement
+    toggleEditMode(id);
+    
+    // If it was already in edit mode, it's now turned off
+    if (editMeasurementId === id) {
+      toast.info('Punktbearbeitung beendet');
+    } else {
+      toast.info('Klicken Sie auf einen Punkt, um ihn zu bearbeiten');
+    }
+  };
+
+  const handleCancelEditing = () => {
+    cancelEditing();
+    toast.info('Punktbearbeitung abgebrochen');
+  };
+
   // If measurements are not enabled, don't render the sidebar
   if (!enabled) return null;
 
@@ -466,8 +652,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Navigation button removed as requested */}
-              
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={activeMode === 'length'}
@@ -513,6 +697,30 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               >
                 <CheckCircle2 size={16} />
                 Fläche schließen
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        
+        {editMeasurementId && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Punktbearbeitung</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <Alert className="bg-muted/50 border-muted">
+                <Move className="h-4 w-4" />
+                <AlertTitle>Punkt bearbeiten</AlertTitle>
+                <AlertDescription>
+                  Klicken Sie auf einen Punkt (gelb markiert) und dann auf eine neue Position im Modell.
+                </AlertDescription>
+              </Alert>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEditing}
+                className="mt-2 w-full flex items-center justify-center gap-2"
+              >
+                <X size={16} />
+                Bearbeitung abbrechen
               </Button>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -615,10 +823,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => handleStartPointEdit(m.id)}
+                            className={`h-6 w-6 ${m.editMode ? 'bg-primary text-primary-foreground' : ''}`}
+                            title="Punkte bearbeiten"
+                          >
+                            <Move size={14} />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => editingId === m.id ? handleEditSave(m.id) : handleEditStart(m.id, m.description)}
                             className="h-6 w-6"
                           >
-                            {editingId === m.id ? <CheckCircle2 size={14} /> : <Pencil size={14} />}
+                            {editingId === m.id ? <Save size={14} /> : <Pencil size={14} />}
                           </Button>
                           
                           <Button

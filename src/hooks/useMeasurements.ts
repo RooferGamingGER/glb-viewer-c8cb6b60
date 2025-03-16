@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
@@ -46,6 +47,8 @@ export const useMeasurements = () => {
   const [activeMode, setActiveMode] = useState<MeasurementMode>('length');
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
+  const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
+  const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
   
   // Use a ref to track points separately from state to avoid timing issues
   const currentPointsRef = useRef<Point[]>([]);
@@ -59,6 +62,8 @@ export const useMeasurements = () => {
     setMeasurements([]);
     setCurrentPoints([]);
     currentPointsRef.current = [];
+    setEditMeasurementId(null);
+    setEditingPointIndex(null);
   }, []);
 
   const clearCurrentPoints = useCallback(() => {
@@ -143,10 +148,66 @@ export const useMeasurements = () => {
   }, [allMeasurementsVisible]);
 
   const toggleEditMode = useCallback((id: string) => {
-    setMeasurements(prev => prev.map(m => 
-      m.id === id ? { ...m, editMode: !m.editMode } : m
-    ));
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => {
+        // Turn off edit mode for all other measurements
+        if (m.id !== id) {
+          return { ...m, editMode: false };
+        }
+        // Toggle for the selected measurement
+        return { ...m, editMode: !m.editMode };
+      });
+      
+      // If we're turning off edit mode for the current measurement
+      const measurement = prev.find(m => m.id === id);
+      if (measurement?.editMode) {
+        setEditMeasurementId(null);
+        setEditingPointIndex(null);
+      } else {
+        setEditMeasurementId(id);
+        setEditingPointIndex(null); // Reset point index when entering edit mode
+      }
+      
+      return updatedMeasurements;
+    });
   }, []);
+
+  const startPointEdit = useCallback((measurementId: string, pointIndex: number) => {
+    setEditMeasurementId(measurementId);
+    setEditingPointIndex(pointIndex);
+  }, []);
+
+  const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
+    setMeasurements(prev => {
+      return prev.map(m => {
+        if (m.id !== measurementId) return m;
+        
+        // Create a new points array with the updated point
+        const newPoints = [...m.points];
+        newPoints[pointIndex] = newPoint;
+        
+        // Recalculate the measurement value
+        let newValue: number;
+        
+        if (m.type === 'length') {
+          newValue = calculateDistance(newPoints[0], newPoints[1]);
+        } else if (m.type === 'height') {
+          newValue = calculateHeight(newPoints[0], newPoints[1]);
+        } else if (m.type === 'area') {
+          newValue = calculateArea(newPoints);
+        } else {
+          newValue = m.value; // Fallback
+        }
+        
+        return {
+          ...m,
+          points: newPoints,
+          value: newValue,
+          label: formatMeasurement(newValue, m.type)
+        };
+      });
+    });
+  }, [calculateDistance, calculateHeight, calculateArea]);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
@@ -156,7 +217,12 @@ export const useMeasurements = () => {
 
   const deleteMeasurement = useCallback((id: string) => {
     setMeasurements(prev => prev.filter(m => m.id !== id));
-  }, []);
+    // Cancel edit mode if the deleted measurement was being edited
+    if (editMeasurementId === id) {
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+    }
+  }, [editMeasurementId]);
 
   const deletePoint = useCallback((measurementId: string, pointIndex: number) => {
     setMeasurements(prev => prev.map(m => {
@@ -279,6 +345,14 @@ export const useMeasurements = () => {
   }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
 
   const addPoint = useCallback((point: Point) => {
+    // If we're in edit mode and have a point selected, update that point
+    if (editMeasurementId && editingPointIndex !== null) {
+      updateMeasurementPoint(editMeasurementId, editingPointIndex, point);
+      setEditingPointIndex(null); // Finish editing this point
+      return;
+    }
+    
+    // Regular point adding behavior for new measurements
     // First update the ref directly to ensure we have accurate count
     const updatedPoints = [...currentPointsRef.current, point];
     currentPointsRef.current = updatedPoints;
@@ -297,20 +371,55 @@ export const useMeasurements = () => {
         createHeightMeasurement(updatedPoints);
       }
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, editMeasurementId, editingPointIndex, updateMeasurementPoint]);
 
-  // New function to toggle measurement tool
+  // Toggle measurement tool function
   const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
     if (activeMode === mode) {
       // If the same tool is clicked again, disable it by setting mode to 'none'
       setActiveMode('none');
       clearCurrentPoints();
+      // Also clear edit mode
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+      setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
     } else {
       // If a different tool is clicked, activate it
       setActiveMode(mode);
       clearCurrentPoints();
+      // Clear edit mode
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+      setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
     }
   }, [activeMode, clearCurrentPoints]);
+
+  const cancelEditing = useCallback(() => {
+    setEditMeasurementId(null);
+    setEditingPointIndex(null);
+    setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
+  }, []);
+
+  const getNearestPointIndex = useCallback((measurement: Measurement, position: Point): number => {
+    // Find the index of the closest point in the measurement
+    let nearestIndex = 0;
+    let minDistance = Number.MAX_VALUE;
+    
+    measurement.points.forEach((point, index) => {
+      const distance = Math.sqrt(
+        Math.pow(position.x - point.x, 2) +
+        Math.pow(position.y - point.y, 2) +
+        Math.pow(position.z - point.z, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    
+    return nearestIndex;
+  }, []);
 
   return {
     measurements,
@@ -329,6 +438,13 @@ export const useMeasurements = () => {
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,
-    deletePoint
+    deletePoint,
+    // New editing functionality
+    editMeasurementId,
+    editingPointIndex,
+    startPointEdit,
+    updateMeasurementPoint,
+    cancelEditing,
+    getNearestPointIndex
   };
 };
