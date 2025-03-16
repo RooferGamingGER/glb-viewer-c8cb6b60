@@ -12,16 +12,31 @@ import {
  * Safely disposes of Three.js object's geometry and material
  */
 function safelyDisposeObject(object: THREE.Object3D) {
-  // Only try to dispose geometry and material if they exist
+  // Check for geometry property and ensure it has a dispose method
   if ('geometry' in object && object.geometry) {
-    object.geometry.dispose();
+    // Type assertion to access the dispose method
+    const geometry = object.geometry as { dispose?: () => void };
+    if (geometry.dispose) {
+      geometry.dispose();
+    }
   }
   
+  // Check for material property and ensure it has a dispose method
   if ('material' in object && object.material) {
     if (Array.isArray(object.material)) {
-      object.material.forEach(mat => mat.dispose());
+      // Handle array of materials
+      object.material.forEach(mat => {
+        const material = mat as { dispose?: () => void };
+        if (material.dispose) {
+          material.dispose();
+        }
+      });
     } else {
-      object.material.dispose();
+      // Handle single material
+      const material = object.material as { dispose?: () => void };
+      if (material.dispose) {
+        material.dispose();
+      }
     }
   }
 }
