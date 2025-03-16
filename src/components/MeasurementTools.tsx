@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -299,6 +298,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setOpen(!open);
   };
 
+  const closeSidebar = () => {
+    setOpen(false);
+  };
+
   if (!enabled) return null;
 
   return (
@@ -313,13 +316,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </button>
       )}
       
-      <Sidebar side="right" variant="floating" className="mt-16"> {/* Add margin-top to avoid overlapping with top controls */}
+      <Sidebar side="right" variant="floating" className="mt-16">
         <SidebarRail />
         <SidebarHeader>
           <div className="flex justify-between items-center px-4 py-2">
             <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
             <button
-              onClick={() => setOpen(false)}
+              onClick={closeSidebar}
               className="h-7 w-7 rounded-md hover:bg-sidebar-accent/50 flex items-center justify-center"
               aria-label="Messwerkzeuge schließen"
             >
@@ -380,3 +383,4 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 };
 
 export default MeasurementTools;
+
