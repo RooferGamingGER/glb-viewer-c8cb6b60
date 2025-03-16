@@ -50,7 +50,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
 
   const toggleVisibility = () => {
     setVisible(!visible);
-    toast.info(visible ? 'Messungen ausgeblendet' : 'Messungen eingeblendet');
+    toast.info(visible ? 'Messungen in der Seitenleiste ausgeblendet' : 'Messungen in der Seitenleiste eingeblendet');
   };
   
   return (
@@ -64,7 +64,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               size="icon" 
               className="h-7 w-7"
               onClick={toggleVisibility}
-              title={visible ? "Messungen ausblenden" : "Messungen einblenden"}
+              title={visible ? "Messungen in der Seitenleiste ausblenden" : "Messungen in der Seitenleiste einblenden"}
             >
               {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>

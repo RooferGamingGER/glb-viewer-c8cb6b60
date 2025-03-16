@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -246,7 +247,7 @@ export function renderEditPoints(
   editingPointIndex: number | null,
   visible: boolean
 ) {
-  if (!editPointsRef || !visible) return;
+  if (!editPointsRef) return;
   
   // Clear existing edit points
   while (editPointsRef.children.length > 0) {
@@ -260,7 +261,7 @@ export function renderEditPoints(
   
   // Find the measurement being edited
   const measurement = measurements.find(m => m.id === editMeasurementId);
-  if (!measurement) return;
+  if (!measurement || measurement.visible === false) return;
   
   // Add editable points with a different appearance
   measurement.points.forEach((point, index) => {
@@ -302,7 +303,7 @@ export function renderMeasurements(
   measurements: Measurement[],
   visible: boolean
 ) {
-  if (!measurementsRef || !visible || !labelsRef || !segmentLabelsRef) return;
+  if (!measurementsRef || !labelsRef || !segmentLabelsRef) return;
   
   // Clear existing measurement elements
   while (measurementsRef.children.length > 0) {
