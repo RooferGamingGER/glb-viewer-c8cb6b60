@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -152,19 +153,19 @@ export function updateLabelScale(
   
   // Calculate logarithmic scale factor with min/max bounds
   // This gives better scaling across a wide range of distances
-  const minScaleFactor = 0.4;
-  const maxScaleFactor = 1.5;
-  const logBase = 2;
+  const minScaleFactor = 0.3;  // Lower minimum for distant labels
+  const maxScaleFactor = 2.0;  // Higher maximum for close-up labels
+  const logBase = 4;           // Higher log base for more aggressive scaling
   const scaleFactor = Math.min(
     maxScaleFactor,
     Math.max(
       minScaleFactor,
-      0.8 + Math.log(Math.max(1, distance)) / Math.log(logBase) * 0.2
+      0.6 + Math.log(Math.max(1, distance)) / Math.log(logBase) * 0.4
     )
   );
   
   // Apply FOV compensation - smaller FOV (zoomed in) = smaller labels
-  const fovCompensation = Math.min(1.2, Math.max(0.8, fov / 45));
+  const fovCompensation = Math.min(1.4, Math.max(0.7, fov / 40));
   
   // Get aspect ratio from sprite's current scale
   const aspectRatio = sprite.scale.x / sprite.scale.y;
@@ -180,7 +181,7 @@ export function updateLabelScale(
   );
   
   // Apply a minimum size for text to remain readable at far distances
-  const minSize = 0.1;
+  const minSize = 0.08;  // Smaller minimum size for better readability
   if (sprite.scale.y < minSize) {
     const adjustedAspectRatio = sprite.scale.x / sprite.scale.y;
     sprite.scale.set(
@@ -188,6 +189,14 @@ export function updateLabelScale(
       minSize,
       1
     );
+  }
+  
+  // Apply distance-based opacity for labels
+  if (sprite.material instanceof THREE.SpriteMaterial) {
+    // Far labels are more transparent, close labels more opaque
+    const baseOpacity = sprite.material.opacity;
+    const distanceOpacity = Math.min(1, Math.max(0.4, 1.2 - (distance * 0.05)));
+    sprite.material.opacity = baseOpacity * distanceOpacity;
   }
 }
 

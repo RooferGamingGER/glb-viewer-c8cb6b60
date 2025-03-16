@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -12,7 +11,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import * as THREE from 'three';
-import { ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 // Import custom hooks
 import { useThreeObjects } from '@/hooks/useThreeObjects';
@@ -158,10 +157,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled]);
 
-  // Add this effect to properly update label visibility when measurements are toggled
   useEffect(() => {
     if (labelsRef.current && segmentLabelsRef.current) {
-      // Update visibility for measurement labels
       measurements.forEach(measurement => {
         const labels = labelsRef.current?.children.filter(
           obj => obj.userData && obj.userData.measurementId === measurement.id
@@ -171,7 +168,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           label.visible = measurement.visible !== false && visible;
         });
         
-        // Update segment labels visibility too if it's an area measurement
         if (measurement.type === 'area') {
           const segmentLabels = segmentLabelsRef.current?.children.filter(
             obj => obj.userData && obj.userData.measurementId === measurement.id
@@ -308,11 +304,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div className="relative z-20">
       {!open && (
         <button 
-          onClick={toggleSidebar}
+          onClick={() => setOpen(true)}
           className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-secondary border border-border border-r-0 rounded-l-md p-2 z-30"
           aria-label="Öffne Messwerkzeuge"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronLeft className="h-5 w-5" />
         </button>
       )}
       
