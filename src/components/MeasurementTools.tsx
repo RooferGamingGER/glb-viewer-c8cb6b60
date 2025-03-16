@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -63,6 +64,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
+  const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
 
   const { 
     measurements,
@@ -668,6 +670,22 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         }
       }
       
+      // Check if we're clicking on a segment label (for segment editing)
+      if (segmentLabelsRef.current) {
+        const labelIntersects = raycaster.intersectObjects(segmentLabelsRef.current.children, false);
+        
+        if (labelIntersects.length > 0) {
+          const intersect = labelIntersects[0];
+          const userData = intersect.object.userData;
+          
+          if (userData.measurementId && userData.segmentId) {
+            setEditingSegmentId(userData.segmentId);
+            toast.info("Segment wird bearbeitet. Klicken Sie an eine Position, um es zu verschieben.");
+            return; // Don't process further
+          }
+        }
+      }
+      
       // Get all other intersected objects (excluding measurement points/lines)
       const intersects = raycaster.intersectObjects(scene.children, true);
       
@@ -680,7 +698,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             currentObj.name === "measurementPoints" || 
             currentObj.name === "measurementLines" ||
             currentObj.name === "measurementLabels" ||
-            currentObj.name === "editPoints"
+            currentObj.name === "editPoints" ||
+            currentObj.name === "textLabels" ||
+            currentObj.name === "segmentLabels"
           ) {
             return false;
           }
@@ -704,6 +724,38 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           addPoint(point); // This will handle updating the point
           toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
           return;
+        }
+        
+        // If we're editing a segment, update it
+        if (editingSegmentId !== null) {
+          // Find the measurement containing this segment
+          const measurement = measurements.find(m => 
+            m.segments?.some(s => s.id === editingSegmentId)
+          );
+          
+          if (measurement && measurement.segments) {
+            // Find the segment
+            const segmentIndex = measurement.segments.findIndex(s => s.id === editingSegmentId);
+            
+            if (segmentIndex >= 0) {
+              // Update the points for this segment in the measurement
+              // This requires updating both the segment and the measurement point it's connected to
+              const updatedSegments = [...measurement.segments];
+              const updatedPoints = [...measurement.points];
+              
+              // Update the point at the given index
+              updatedPoints[segmentIndex] = point;
+              
+              // Update the measurement
+              updateMeasurement(measurement.id, { 
+                points: updatedPoints 
+              });
+              
+              setEditingSegmentId(null);
+              toast.success("Segment wurde verschoben.");
+              return;
+            }
+          }
         }
         
         // If we're in normal measurement mode
@@ -745,7 +797,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => {
       canvasElement.removeEventListener('click', handleClick);
     };
-  }, [enabled, scene, camera, activeMode, currentPoints, editMeasurementId, editingPointIndex, open, addPoint, startPointEdit]);
+  }, [enabled, scene, camera, activeMode, currentPoints, editMeasurementId, editingPointIndex, editingSegmentId, open, addPoint, startPointEdit, measurements, updateMeasurement]);
 
   const selectTool = (mode: MeasurementMode) => {
     // Use the new toggle function instead of direct state setting
@@ -789,6 +841,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleDeleteMeasurement = (id: string) => {
+    // Before deleting, make sure to remove all associated visual elements
+    if (labelsRef.current) {
+      // Remove main measurement labels
+      labelsRef.current.children.forEach(child => {
+        if (child.userData.measurementId === id) {
+          labelsRef.current?.remove(child);
+        }
+      });
+    }
+    
+    if (segmentLabelsRef.current) {
+      // Remove segment labels
+      segmentLabelsRef.current.children.forEach(child => {
+        if (child.userData.measurementId === id) {
+          segmentLabelsRef.current?.remove(child);
+        }
+      });
+    }
+    
+    // Now delete the measurement
     deleteMeasurement(id);
     toast.info('Messung gelöscht');
   };
@@ -807,7 +879,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleCancelEditing = () => {
     cancelEditing();
-    toast.info('Punktbearbeitung abgebrochen');
+    setEditingSegmentId(null);
+    toast.info('Bearbeitung abgebrochen');
   };
 
   // Toggle segment list for a measurement
@@ -860,4 +933,249 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <SidebarMenuButton
                   isActive={activeMode === 'area'}
                   onClick={() => selectTool('area')}
-                  tooltip={activeMode === 'area' ? "Flächenmessung
+                  tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                >
+                  <Square />
+                  <span>Fläche</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {activeMode === 'area' && currentPoints.length >= 3 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Aktive Messung</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <Button 
+                variant="default" 
+                className="w-full mb-2"
+                onClick={handleFinalizeMeasurement}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Messung abschließen ({currentPoints.length} Punkte)
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={clearCurrentPoints}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Abbrechen
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {(measurements.length > 0 || editingSegmentId) && (
+          <SidebarGroup>
+            <div className="flex justify-between items-center">
+              <SidebarGroupLabel>Messungen</SidebarGroupLabel>
+              <div className="flex space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7"
+                  onClick={toggleVisibility}
+                  title={visible ? "Messungen ausblenden" : "Messungen einblenden"}
+                >
+                  {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7"
+                  onClick={handleClearMeasurements}
+                  title="Alle Messungen löschen"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <SidebarGroupContent>
+              {(editMeasurementId || editingSegmentId) && (
+                <Alert variant="default" className="mb-3">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Bearbeitungsmodus</AlertTitle>
+                  <AlertDescription>
+                    {editMeasurementId && "Klicken Sie einen Punkt an, um ihn zu bearbeiten."}
+                    {editingSegmentId && "Klicken Sie auf eine Position, um das Segment zu verschieben."}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-2"
+                      onClick={handleCancelEditing}
+                    >
+                      Bearbeitung beenden
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <ScrollArea className="h-[200px]">
+                {measurements.map((measurement) => (
+                  <div 
+                    key={measurement.id} 
+                    className={`mb-3 p-2 rounded-md border ${
+                      measurement.editMode ? 'border-primary bg-secondary/20' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="font-medium">
+                        {measurement.type === 'length' && "Länge"}
+                        {measurement.type === 'height' && "Höhe"}
+                        {measurement.type === 'area' && "Fläche"}
+                      </div>
+                      <div className="flex space-x-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          title={measurement.visible === false ? "Einblenden" : "Ausblenden"}
+                        >
+                          {measurement.visible === false ? (
+                            <Eye className="h-3 w-3" />
+                          ) : (
+                            <EyeOff className="h-3 w-3" />
+                          )}
+                        </Button>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => handleStartPointEdit(measurement.id)}
+                          title="Punkte bearbeiten"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => handleDeleteMeasurement(measurement.id)}
+                          title="Löschen"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="text-sm mb-1">
+                      <strong>Wert:</strong> {measurement.label}
+                      {measurement.type === 'length' && measurement.inclination !== undefined && (
+                        <span className="ml-2">
+                          <strong>Neigung:</strong> {measurement.inclination.toFixed(1)}°
+                        </span>
+                      )}
+                    </div>
+                    
+                    {editingId === measurement.id ? (
+                      <div className="flex flex-col space-y-2 mt-2">
+                        <Input
+                          placeholder="Beschreibung hinzufügen"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                        />
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleEditSave(measurement.id)}
+                          >
+                            <Save className="h-3 w-3 mr-1" />
+                            Speichern
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => setEditingId(null)}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Abbrechen
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex mt-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs h-7 px-2"
+                          onClick={() => handleEditStart(measurement.id, measurement.description)}
+                        >
+                          {measurement.description ? 
+                            measurement.description : 
+                            "Beschreibung hinzufügen..."
+                          }
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Segment management for area measurements */}
+                    {measurement.type === 'area' && measurement.segments && measurement.segments.length > 0 && (
+                      <Collapsible 
+                        open={segmentsOpen[measurement.id]} 
+                        onOpenChange={() => toggleSegments(measurement.id)}
+                        className="mt-2"
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="w-full flex justify-between items-center px-2 h-7">
+                            <span>Segmente ({measurement.segments.length})</span>
+                            {segmentsOpen[measurement.id] ? (
+                              <ChevronDown className="h-3 w-3 ml-1" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3 ml-1" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="space-y-2 mt-2 pl-2">
+                            {measurement.segments.map((segment, index) => (
+                              <div key={segment.id} className="flex items-center justify-between text-xs border border-border p-2 rounded-md">
+                                <div>
+                                  <span className="font-medium">Segment {index + 1}:</span> {segment.label}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    setEditingSegmentId(segment.id);
+                                    toast.info(`Segment ${index + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
+                                  }}
+                                  title="Segment verschieben"
+                                >
+                                  <Move className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                ))}
+              </ScrollArea>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+      
+      <SidebarFooter>
+        <div className="p-4 text-xs text-muted-foreground">
+          <p>Messungswerkzeuge v1.0</p>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+};
+
+export default MeasurementTools;
