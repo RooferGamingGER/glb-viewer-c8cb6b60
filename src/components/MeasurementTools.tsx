@@ -45,11 +45,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const { 
     measurements,
     currentPoints,
+    setCurrentPoints,  // Fixed: Make sure to destructure this from the hook
     activeMode,
     setActiveMode,
     clearMeasurements,
     clearCurrentPoints,
-    handlePointerEvent,
     finalizeMeasurement
   } = useMeasurements();
 
@@ -100,6 +100,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           z: intersect.point.z
         };
         
+        // Using the setCurrentPoints from the useMeasurements hook
         setCurrentPoints(prev => [...prev, point]);
         
         // Auto-finalize for length and height after 2 points
@@ -116,7 +117,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => {
       canvasElement.removeEventListener('click', handleClick);
     };
-  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement]);
+  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement, setCurrentPoints]); // Added setCurrentPoints to dependency array
 
   // If not enabled, return null
   if (!enabled) return null;
