@@ -326,6 +326,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         variant="floating" 
         collapsible="offcanvas"
         className="mt-24 transition-transform duration-200 ease-in-out"
+        data-sidebar="true"
       >
         <SidebarRail />
         <SidebarHeader>

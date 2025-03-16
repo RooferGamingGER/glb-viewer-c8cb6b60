@@ -147,18 +147,12 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   // Check if the button should be enabled - if there are either measurements or screenshots
   const hasMeasurements = measurements.length > 0;
   const hasScreenshots = getAllScreenshots().length > 0;
-  const canExport = hasMeasurements || hasScreenshots;
-  
+  const canExport = true; // Always allow export - can have empty reports or just screenshots
+
   // Prepare tooltip message
-  const buttonTooltip = canExport 
-    ? "Als PDF exportieren" 
-    : "Keine Messungen oder Screenshots vorhanden";
+  const buttonTooltip = "Als PDF exportieren";
 
   const handleButtonClick = () => {
-    if (!canExport) {
-      toast.error('Keine Messungen oder Screenshots vorhanden. Bitte erstellen Sie mindestens eine Messung oder einen Screenshot.');
-      return;
-    }
     setOpen(true);
   };
 
@@ -170,7 +164,6 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
         className="glass-button"
         onClick={handleButtonClick}
         title={buttonTooltip}
-        disabled={false} // Button is always active, but shows error if no content
       >
         <FileText size={16} />
         <span className="sr-only">Als PDF exportieren</span>
