@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -219,13 +220,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       obj.userData && obj.userData.measurementId === measurementId
     );
     measurementObjects.forEach(obj => {
-      if ((obj as any).geometry) (obj as any).geometry.dispose();
+      if ('geometry' in obj && (obj as THREE.Mesh).geometry) {
+        ((obj as THREE.Mesh).geometry as THREE.BufferGeometry).dispose();
+      }
       
-      if ((obj as any).material) {
-        if (Array.isArray((obj as any).material)) {
-          (obj as any).material.forEach((mat: THREE.Material) => mat.dispose());
+      if ('material' in obj && (obj as THREE.Mesh).material) {
+        if (Array.isArray((obj as THREE.Mesh).material)) {
+          ((obj as THREE.Mesh).material as THREE.Material[]).forEach(mat => mat.dispose());
         } else {
-          (obj as any).material.dispose();
+          ((obj as THREE.Mesh).material as THREE.Material).dispose();
         }
       }
       
