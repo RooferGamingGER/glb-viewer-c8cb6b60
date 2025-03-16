@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,9 +12,11 @@ import {
   Pencil,
   X,
   Move,
-  Save
+  Save,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
-import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
+import { MeasurementMode, useMeasurements, Segment } from '@/hooks/useMeasurements';
 import { 
   Sidebar, 
   SidebarContent, 
@@ -44,6 +45,7 @@ import {
   calculateCentroid,
   calculateInclination
 } from '@/utils/textSprite';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -60,6 +62,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [visible, setVisible] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
 
   const { 
     measurements,
@@ -84,7 +87,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editingPointIndex,
     startPointEdit,
     cancelEditing,
-    getNearestPointIndex
+    getNearestPointIndex,
+    calculateSegmentLength
   } = useMeasurements();
 
   // Points display reference for updating visual indicators
@@ -93,6 +97,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const measurementsRef = useRef<THREE.Group | null>(null);
   const editPointsRef = useRef<THREE.Group | null>(null);
   const labelsRef = useRef<THREE.Group | null>(null);
+  const segmentLabelsRef = useRef<THREE.Group | null>(null); // New ref for segment labels
 
   useEffect(() => {
     // Ensure sidebar is open when measurements are enabled
@@ -136,6 +141,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       scene.add(labelsRef.current);
     }
 
+    if (!segmentLabelsRef.current) {
+      segmentLabelsRef.current = new THREE.Group();
+      segmentLabelsRef.current.name = "segmentLabels";
+      scene.add(segmentLabelsRef.current);
+    }
+
     // Clean up scene when unmounting or when disabled
     return () => {
       if (pointsRef.current) {
@@ -157,6 +168,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (labelsRef.current) {
         scene.remove(labelsRef.current);
         labelsRef.current = null;
+      }
+      
+      if (segmentLabelsRef.current) {
+        scene.remove(segmentLabelsRef.current);
+        segmentLabelsRef.current = null;
       }
     };
   }, [scene, enabled]);
@@ -313,7 +329,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Update visual representation of completed measurements
   useEffect(() => {
-    if (!measurementsRef.current || !visible || !labelsRef.current) return;
+    if (!measurementsRef.current || !visible || !labelsRef.current || !segmentLabelsRef.current) return;
     
     // Clear existing measurement labels
     while (measurementsRef.current.children.length > 0) {
@@ -326,6 +342,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         labelsRef.current?.remove(child);
       }
     });
+
+    // Clear segment labels
+    while (segmentLabelsRef.current.children.length > 0) {
+      segmentLabelsRef.current.remove(segmentLabelsRef.current.children[0]);
+    }
     
     // Add visual representation for each finalized measurement
     measurements.forEach((measurement) => {
@@ -478,6 +499,28 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
           sphere.position.copy(p1);
           measurementsRef.current?.add(sphere);
+
+          // Add segment labels (for the line measurements)
+          if (measurement.segments) {
+            const segment = measurement.segments[i];
+            const midpoint = calculateMidpoint(p1, p2);
+            
+            // Offset midpoint slightly to avoid overlap with lines
+            midpoint.y += 0.05;
+            
+            // Create label with smaller size
+            const segmentLabel = createMeasurementLabel(segment.label || "", midpoint);
+            
+            // Adjust the scale to make it slightly smaller than area labels
+            segmentLabel.scale.multiplyScalar(0.75);
+            
+            // Store measurement ID and segment ID in user data for reference
+            segmentLabel.userData.measurementId = measurement.id;
+            segmentLabel.userData.segmentId = segment.id;
+            
+            // Add to segment labels group
+            segmentLabelsRef.current?.add(segmentLabel);
+          }
         }
         
         // Add a semi-transparent fill
@@ -501,7 +544,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Update label scales based on camera distance
   useEffect(() => {
-    if (!camera || !labelsRef.current) return;
+    if (!camera || !labelsRef.current || !segmentLabelsRef.current) return;
     
     // Update function for animation loop
     const updateLabels = () => {
@@ -509,6 +552,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         labelsRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
             updateLabelScale(child, camera);
+          }
+        });
+      }
+      
+      if (segmentLabelsRef.current && camera) {
+        segmentLabelsRef.current.children.forEach(child => {
+          if (child instanceof THREE.Sprite) {
+            // Make segment labels slightly smaller
+            updateLabelScale(child, camera, 0.4);
           }
         });
       }
@@ -758,6 +810,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Punktbearbeitung abgebrochen');
   };
 
+  // Toggle segment list for a measurement
+  const toggleSegments = (id: string) => {
+    setSegmentsOpen(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
   // If measurements are not enabled, don't render the sidebar
   if (!enabled) return null;
 
@@ -800,209 +860,4 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <SidebarMenuButton
                   isActive={activeMode === 'area'}
                   onClick={() => selectTool('area')}
-                  tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
-                >
-                  <Square />
-                  <span>Fläche</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        {activeMode === 'area' && currentPoints.length >= 3 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <Button 
-                className="w-full flex items-center justify-center gap-2"
-                onClick={handleFinalizeMeasurement}
-              >
-                <CheckCircle2 size={16} />
-                Fläche schließen
-              </Button>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-        
-        {editMeasurementId && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Punktbearbeitung</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <Alert className="bg-muted/50 border-muted">
-                <Move className="h-4 w-4" />
-                <AlertTitle>Punkt bearbeiten</AlertTitle>
-                <AlertDescription>
-                  Klicken Sie auf einen Punkt (gelb markiert) und dann auf eine neue Position im Modell.
-                </AlertDescription>
-              </Alert>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelEditing}
-                className="mt-2 w-full flex items-center justify-center gap-2"
-              >
-                <X size={16} />
-                Bearbeitung abbrechen
-              </Button>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Anleitung</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <Alert className="bg-muted/50 border-muted">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Messpunkte setzen</AlertTitle>
-              <AlertDescription>
-                {activeMode === 'none' ? (
-                  "Wählen Sie ein Messwerkzeug, um Messpunkte zu setzen."
-                ) : (
-                  <>
-                    Klicken Sie auf das Modell, um Messpunkte zu setzen. 
-                    {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
-                    {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung (Y-Achse)."}
-                    {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
-                  </>
-                )}
-              </AlertDescription>
-            </Alert>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
-          <SidebarGroupContent className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={toggleVisibility}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {visible ? <EyeOff size={16} /> : <Eye size={16} />}
-              {visible ? "Ausblenden" : "Einblenden"}
-            </Button>
-            
-            {measurements.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={toggleAllMeasurementsVisibility}
-                className="flex-1 flex items-center justify-center gap-2"
-              >
-                {allMeasurementsVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                {allMeasurementsVisible ? "Alle aus" : "Alle ein"}
-              </Button>
-            )}
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleClearMeasurements}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              <Trash2 size={16} />
-              Löschen
-            </Button>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        {measurements.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Messungen</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <ScrollArea className={measurements.length > 3 ? "h-[200px]" : "max-h-full"}>
-                <div className="space-y-2 p-2 bg-muted/50 rounded-md">
-                  {measurements.map((m) => (
-                    <div key={m.id} className="flex flex-col gap-1 bg-background/40 p-2 rounded">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            m.type === 'length' ? 'bg-green-500' : 
-                            m.type === 'height' ? 'bg-blue-500' : 'bg-amber-500'
-                          }`} />
-                          <div>
-                            <span className="text-sm font-medium">
-                              {m.type === 'length' ? 'Länge' : 
-                              m.type === 'height' ? 'Höhe' : 'Fläche'}
-                            </span>
-                            <div className="text-xs text-muted-foreground">
-                              {m.label}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => toggleMeasurementVisibility(m.id)}
-                            className="h-6 w-6"
-                          >
-                            {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleStartPointEdit(m.id)}
-                            className={`h-6 w-6 ${m.editMode ? 'bg-primary text-primary-foreground' : ''}`}
-                            title="Punkte bearbeiten"
-                          >
-                            <Move size={14} />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => editingId === m.id ? handleEditSave(m.id) : handleEditStart(m.id, m.description)}
-                            className="h-6 w-6"
-                          >
-                            {editingId === m.id ? <Save size={14} /> : <Pencil size={14} />}
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteMeasurement(m.id)}
-                            className="h-6 w-6 text-destructive hover:text-destructive"
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {editingId === m.id ? (
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          placeholder="Beschreibung hinzufügen"
-                          className="h-7 text-xs mt-1"
-                          autoFocus
-                        />
-                      ) : (
-                        m.description && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {m.description}
-                          </p>
-                        )
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-      </SidebarContent>
-      
-      <SidebarFooter>
-        <div className="px-4 py-2 text-xs text-muted-foreground">
-          Messwerkzeuge v1.0
-        </div>
-      </SidebarFooter>
-    </Sidebar>
-  );
-};
-
-export default MeasurementTools;
+                  tooltip={activeMode === 'area' ? "Fl

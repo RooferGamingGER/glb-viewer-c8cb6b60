@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
@@ -16,6 +15,13 @@ export interface MeasurementPoint {
   worldPosition: THREE.Vector3;
 }
 
+export interface Segment {
+  id: string;
+  points: [Point, Point];
+  length: number;
+  label?: string;
+}
+
 export interface Measurement {
   id: string;
   type: MeasurementMode;
@@ -26,6 +32,7 @@ export interface Measurement {
   editMode?: boolean;
   unit?: string;
   description?: string;
+  segments?: Segment[];
 }
 
 // Format measurement value based on measurement type
@@ -136,6 +143,38 @@ export const useMeasurements = () => {
     return totalArea;
   }, []);
 
+  const calculateSegmentLength = useCallback((point1: Point, point2: Point): number => {
+    return Math.sqrt(
+      Math.pow(point2.x - point1.x, 2) +
+      Math.pow(point2.y - point1.y, 2) +
+      Math.pow(point2.z - point1.z, 2)
+    );
+  }, []);
+
+  const generateSegments = useCallback((points: Point[]): Segment[] => {
+    if (points.length < 3) return [];
+    
+    const segments: Segment[] = [];
+    
+    // Create a segment for each pair of consecutive points
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length]; // Connect back to first point
+      
+      const length = calculateSegmentLength(p1, p2);
+      const label = `${length.toFixed(2)} m`;
+      
+      segments.push({
+        id: nanoid(),
+        points: [p1, p2],
+        length,
+        label
+      });
+    }
+    
+    return segments;
+  }, [calculateSegmentLength]);
+
   const toggleMeasurementVisibility = useCallback((id: string) => {
     setMeasurements(prev => prev.map(m => 
       m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
@@ -195,6 +234,8 @@ export const useMeasurements = () => {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
           newValue = calculateArea(newPoints);
+          // Update segments for area measurements
+          m.segments = generateSegments(newPoints);
         } else {
           newValue = m.value; // Fallback
         }
@@ -207,7 +248,7 @@ export const useMeasurements = () => {
         };
       });
     });
-  }, [calculateDistance, calculateHeight, calculateArea]);
+  }, [calculateDistance, calculateHeight, calculateArea, generateSegments]);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
@@ -325,6 +366,7 @@ export const useMeasurements = () => {
     else if (activeMode === 'area' && points.length >= 3) {
       const value = calculateArea(points);
       const label = formatMeasurement(value, 'area');
+      const segments = generateSegments(points);
       
       setMeasurements(prev => [
         ...prev,
@@ -336,13 +378,14 @@ export const useMeasurements = () => {
           label,
           visible: true,
           unit: 'm²',
-          description: ''
+          description: '',
+          segments
         }
       ]);
       setCurrentPoints([]);
       currentPointsRef.current = [];
     }
-  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
+  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement, generateSegments]);
 
   const addPoint = useCallback((point: Point) => {
     // If we're in edit mode and have a point selected, update that point
@@ -445,6 +488,9 @@ export const useMeasurements = () => {
     startPointEdit,
     updateMeasurementPoint,
     cancelEditing,
-    getNearestPointIndex
+    getNearestPointIndex,
+    // Add segment calculation method for external use
+    calculateSegmentLength
   };
 };
+
