@@ -27,6 +27,7 @@ import {
   SidebarRail
 } from "@/components/ui/sidebar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import * as THREE from 'three';
 
 interface MeasurementToolsProps {
   enabled: boolean;
