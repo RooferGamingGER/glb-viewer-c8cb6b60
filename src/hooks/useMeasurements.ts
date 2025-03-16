@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
@@ -16,6 +15,13 @@ export interface MeasurementPoint {
   worldPosition: THREE.Vector3;
 }
 
+export interface Segment {
+  id: string;
+  points: [Point, Point];
+  length: number;
+  label?: string;
+}
+
 export interface Measurement {
   id: string;
   type: MeasurementMode;
@@ -26,6 +32,8 @@ export interface Measurement {
   editMode?: boolean;
   unit?: string;
   description?: string;
+  segments?: Segment[];
+  inclination?: number; // Add inclination property
 }
 
 // Format measurement value based on measurement type
@@ -44,7 +52,7 @@ const formatMeasurement = (value: number, type: MeasurementMode): string => {
 
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [activeMode, setActiveMode] = useState<MeasurementMode>('length');
+  const [activeMode, setActiveMode] = useState<MeasurementMode>('none'); // Default to 'none' instead of 'length'
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
@@ -136,6 +144,50 @@ export const useMeasurements = () => {
     return totalArea;
   }, []);
 
+  const calculateSegmentLength = useCallback((point1: Point, point2: Point): number => {
+    return Math.sqrt(
+      Math.pow(point2.x - point1.x, 2) +
+      Math.pow(point2.y - point1.y, 2) +
+      Math.pow(point2.z - point1.z, 2)
+    );
+  }, []);
+
+  // Define calculateInclination before it's used
+  const calculateInclination = useCallback((p1: THREE.Vector3, p2: THREE.Vector3): number => {
+    const deltaY = p2.y - p1.y;
+    const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
+    
+    // Calculate inclination in radians
+    const inclinationRad = Math.atan2(deltaY, horizontalDistance);
+    
+    // Convert radians to degrees
+    return inclinationRad * (180 / Math.PI);
+  }, []);
+
+  const generateSegments = useCallback((points: Point[]): Segment[] => {
+    if (points.length < 3) return [];
+    
+    const segments: Segment[] = [];
+    
+    // Create a segment for each pair of consecutive points
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length]; // Connect back to first point
+      
+      const length = calculateSegmentLength(p1, p2);
+      const label = `${length.toFixed(2)} m`;
+      
+      segments.push({
+        id: nanoid(),
+        points: [p1, p2],
+        length,
+        label
+      });
+    }
+    
+    return segments;
+  }, [calculateSegmentLength]);
+
   const toggleMeasurementVisibility = useCallback((id: string) => {
     setMeasurements(prev => prev.map(m => 
       m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
@@ -188,13 +240,28 @@ export const useMeasurements = () => {
         
         // Recalculate the measurement value
         let newValue: number;
+        let newInclination: number | undefined;
         
         if (m.type === 'length') {
           newValue = calculateDistance(newPoints[0], newPoints[1]);
+          
+          // Recalculate inclination for length measurements
+          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
+          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
+          newInclination = calculateInclination(p1, p2);
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
           newValue = calculateArea(newPoints);
+          // Update segments for area measurements
+          const newSegments = generateSegments(newPoints);
+          return {
+            ...m,
+            points: newPoints,
+            value: newValue,
+            label: formatMeasurement(newValue, m.type),
+            segments: newSegments
+          };
         } else {
           newValue = m.value; // Fallback
         }
@@ -203,11 +270,12 @@ export const useMeasurements = () => {
           ...m,
           points: newPoints,
           value: newValue,
-          label: formatMeasurement(newValue, m.type)
+          label: formatMeasurement(newValue, m.type),
+          inclination: newInclination
         };
       });
     });
-  }, [calculateDistance, calculateHeight, calculateArea]);
+  }, [calculateDistance, calculateHeight, calculateArea, generateSegments, calculateInclination]);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
@@ -266,6 +334,11 @@ export const useMeasurements = () => {
     const value = calculateDistance(points[0], points[1]);
     const label = formatMeasurement(value, 'length');
     
+    // Calculate inclination for length measurements
+    const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+    const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+    const inclination = calculateInclination(p1, p2);
+    
     setMeasurements(prev => [
       ...prev,
       {
@@ -276,14 +349,15 @@ export const useMeasurements = () => {
         label,
         visible: true,
         unit: 'm',
-        description: ''
+        description: '',
+        inclination // Store inclination
       }
     ]);
     
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, [calculateDistance]);
+  }, [calculateDistance, calculateInclination]);
 
   // Dedicated function to create a Height measurement
   const createHeightMeasurement = useCallback((points: Point[]) => {
@@ -325,6 +399,7 @@ export const useMeasurements = () => {
     else if (activeMode === 'area' && points.length >= 3) {
       const value = calculateArea(points);
       const label = formatMeasurement(value, 'area');
+      const segments = generateSegments(points);
       
       setMeasurements(prev => [
         ...prev,
@@ -336,13 +411,14 @@ export const useMeasurements = () => {
           label,
           visible: true,
           unit: 'm²',
-          description: ''
+          description: '',
+          segments
         }
       ]);
       setCurrentPoints([]);
       currentPointsRef.current = [];
     }
-  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
+  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement, generateSegments]);
 
   const addPoint = useCallback((point: Point) => {
     // If we're in edit mode and have a point selected, update that point
@@ -421,6 +497,18 @@ export const useMeasurements = () => {
     return nearestIndex;
   }, []);
 
+  const undoLastPoint = useCallback((): boolean => {
+    if (currentPoints.length === 0) {
+      return false;
+    }
+    
+    const newPoints = [...currentPoints];
+    newPoints.pop();
+    setCurrentPoints(newPoints);
+    currentPointsRef.current = newPoints;
+    return true;
+  }, [currentPoints]);
+
   return {
     measurements,
     currentPoints,
@@ -439,12 +527,15 @@ export const useMeasurements = () => {
     updateMeasurement,
     deleteMeasurement,
     deletePoint,
+    undoLastPoint,
     // New editing functionality
     editMeasurementId,
     editingPointIndex,
     startPointEdit,
     updateMeasurementPoint,
     cancelEditing,
-    getNearestPointIndex
+    getNearestPointIndex,
+    // Add segment calculation method for external use
+    calculateSegmentLength
   };
 };

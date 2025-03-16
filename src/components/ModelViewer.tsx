@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Ruler } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
+import ScreenshotDialog from '@/components/ScreenshotDialog';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -108,11 +109,13 @@ function SceneSetup({
 const ModelCanvas = ({
   fileUrl,
   onMeasurementClick,
-  onSceneReady
+  onSceneReady,
+  canvasRef
 }: {
   fileUrl: string;
   onMeasurementClick: (event: React.MouseEvent) => void;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
   const [showStats, setShowStats] = useState(false);
 
@@ -124,7 +127,7 @@ const ModelCanvas = ({
 
   return <Canvas shadows style={{
     background: '#222222'
-  }} onClick={handleCanvasClick} className="w-full h-full">
+  }} onClick={handleCanvasClick} className="w-full h-full" ref={canvasRef}>
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
@@ -158,6 +161,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     // Clean up when component unmounts
@@ -184,14 +188,51 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
   };
 
+  const handleTakeScreenshot = async (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!canvasRef.current) {
+        reject(new Error('Canvas not found'));
+        return;
+      }
+
+      try {
+        // Wait for next frame to ensure renderer is updated
+        requestAnimationFrame(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) {
+            reject(new Error('Canvas not found'));
+            return;
+          }
+
+          // Create a blob from the canvas
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('Failed to create blob from canvas'));
+              return;
+            }
+            
+            // Create a URL from the blob
+            const url = URL.createObjectURL(blob);
+            resolve(url);
+          }, 'image/png');
+        });
+      } catch (error) {
+        console.error('Screenshot error:', error);
+        reject(error);
+      }
+    });
+  };
+
   return <div className="relative w-full h-full">
       {/* Model Canvas is always visible */}
       <div className="absolute inset-0 z-0">
-        <ModelCanvas fileUrl={fileUrl} onMeasurementClick={handleMeasurementClick} onSceneReady={handleSceneReady} />
+        <ModelCanvas fileUrl={fileUrl} onMeasurementClick={handleMeasurementClick} onSceneReady={handleSceneReady} canvasRef={canvasRef} />
       </div>
       
       {/* UI Controls */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <ScreenshotDialog onTakeScreenshot={handleTakeScreenshot} />
+        
         <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
           {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
           <span className="sr-only">{showStats ? 'Statistiken ausblenden' : 'Statistiken einblenden'}</span>
