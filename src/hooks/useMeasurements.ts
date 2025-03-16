@@ -124,16 +124,6 @@ export const useMeasurements = () => {
     }
   }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateArea]);
 
-  const handlePointerEvent = useCallback((
-    event: React.MouseEvent | React.TouchEvent,
-    scene: THREE.Scene,
-    camera: THREE.Camera
-  ) => {
-    // This function is now handled directly in the MeasurementTools component
-    // for better event handling
-    console.log("Pointer event handled in MeasurementTools component");
-  }, []);
-
   return {
     measurements,
     currentPoints,
@@ -142,7 +132,6 @@ export const useMeasurements = () => {
     setActiveMode,
     clearMeasurements,
     clearCurrentPoints,
-    handlePointerEvent,
     finalizeMeasurement
   };
 };

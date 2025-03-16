@@ -207,6 +207,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
 
   return (
     <div className="relative w-full h-full">
+      {/* Model Canvas is always visible, not tied to measurement tools state */}
       <div className="absolute inset-0 z-0">
         <ModelCanvas 
           fileUrl={fileUrl}
@@ -245,12 +246,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
         </div>
       </div>
       
-      {/* Measurement Tools */}
-      <MeasurementTools 
-        enabled={measurementsEnabled}
-        scene={scene}
-        camera={camera}
-      />
+      {/* Measurement Tools - Now overlaid as a sidebar, not affecting model visibility */}
+      {scene && camera && (
+        <MeasurementTools 
+          enabled={measurementsEnabled}
+          scene={scene}
+          camera={camera}
+        />
+      )}
     </div>
   );
 };

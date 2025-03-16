@@ -40,6 +40,7 @@ const Viewer = () => {
       </header>
       
       <main className="flex-1 relative">
+        {/* Wrap in SidebarProvider to provide sidebar context */}
         <SidebarProvider>
           {fileUrl && (
             <ModelViewer fileUrl={fileUrl} fileName={fileName} />

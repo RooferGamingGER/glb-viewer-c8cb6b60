@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -9,7 +9,8 @@ import {
   Eye, 
   EyeOff,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
 import { 
@@ -45,13 +46,105 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const { 
     measurements,
     currentPoints,
-    setCurrentPoints,  // Fixed: Make sure to destructure this from the hook
+    setCurrentPoints,
     activeMode,
     setActiveMode,
     clearMeasurements,
     clearCurrentPoints,
     finalizeMeasurement
   } = useMeasurements();
+
+  // Points display reference for updating visual indicators
+  const pointsRef = useRef<THREE.Group | null>(null);
+  const linesRef = useRef<THREE.Group | null>(null);
+
+  // Add point markers to the scene
+  useEffect(() => {
+    if (!scene || !enabled) return;
+
+    // Create groups to hold points and lines if they don't exist
+    if (!pointsRef.current) {
+      pointsRef.current = new THREE.Group();
+      pointsRef.current.name = "measurementPoints";
+      scene.add(pointsRef.current);
+    }
+
+    if (!linesRef.current) {
+      linesRef.current = new THREE.Group();
+      linesRef.current.name = "measurementLines";
+      scene.add(linesRef.current);
+    }
+
+    // Clean up scene when unmounting or when disabled
+    return () => {
+      if (pointsRef.current) {
+        scene.remove(pointsRef.current);
+        pointsRef.current = null;
+      }
+      if (linesRef.current) {
+        scene.remove(linesRef.current);
+        linesRef.current = null;
+      }
+    };
+  }, [scene, enabled]);
+
+  // Update visual representation of points when currentPoints changes
+  useEffect(() => {
+    if (!pointsRef.current || !linesRef.current || !visible) return;
+
+    // Clear existing points
+    while (pointsRef.current.children.length > 0) {
+      pointsRef.current.remove(pointsRef.current.children[0]);
+    }
+
+    // Clear existing lines
+    while (linesRef.current.children.length > 0) {
+      linesRef.current.remove(linesRef.current.children[0]);
+    }
+
+    // Add current points as spheres
+    currentPoints.forEach((point, index) => {
+      const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+      const sphereMaterial = new THREE.MeshBasicMaterial({ 
+        color: activeMode === 'length' ? 0x00ff00 : 
+               activeMode === 'height' ? 0x0000ff : 0xffaa00 
+      });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(point.x, point.y, point.z);
+      pointsRef.current?.add(sphere);
+
+      // Add connecting lines between points
+      if (index > 0) {
+        const prevPoint = currentPoints[index - 1];
+        const points = [
+          new THREE.Vector3(prevPoint.x, prevPoint.y, prevPoint.z),
+          new THREE.Vector3(point.x, point.y, point.z)
+        ];
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+          color: activeMode === 'length' ? 0x00ff00 : 
+                 activeMode === 'height' ? 0x0000ff : 0xffaa00,
+          linewidth: 2
+        });
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        linesRef.current?.add(line);
+      }
+    });
+
+  }, [currentPoints, visible, activeMode]);
+
+  // Also visualize completed measurements
+  useEffect(() => {
+    if (!pointsRef.current || !visible) return;
+
+    // Add completed measurement points and lines
+    measurements.forEach(measurement => {
+      measurement.points.forEach((point, index) => {
+        // Skip drawing for completed measurements as that would make the scene too cluttered
+        // Only draw if really needed
+      });
+    });
+  }, [measurements, visible]);
 
   // Handle the toggling of the sidebar when the tool state changes
   useEffect(() => {
@@ -93,21 +186,35 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       const intersects = raycaster.intersectObjects(scene.children, true);
       
       if (intersects.length > 0) {
-        const intersect = intersects[0];
-        const point = {
-          x: intersect.point.x,
-          y: intersect.point.y,
-          z: intersect.point.z
-        };
+        // Skip intersections with measurement points and lines
+        const validIntersects = intersects.filter(intersect => {
+          let currentObj = intersect.object;
+          while (currentObj) {
+            if (currentObj.name === "measurementPoints" || currentObj.name === "measurementLines") {
+              return false;
+            }
+            // @ts-ignore - parent property exists on THREE.Object3D
+            currentObj = currentObj.parent;
+          }
+          return true;
+        });
         
-        // Using the setCurrentPoints from the useMeasurements hook
-        setCurrentPoints(prev => [...prev, point]);
-        
-        // Auto-finalize for length and height after 2 points
-        if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
-          setTimeout(() => {
-            finalizeMeasurement();
-          }, 0);
+        if (validIntersects.length > 0) {
+          const intersect = validIntersects[0];
+          const point = {
+            x: intersect.point.x,
+            y: intersect.point.y,
+            z: intersect.point.z
+          };
+          
+          setCurrentPoints(prev => [...prev, point]);
+          
+          // Auto-finalize for length and height after 2 points
+          if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
+            setTimeout(() => {
+              finalizeMeasurement();
+            }, 0);
+          }
         }
       }
     };
@@ -117,11 +224,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => {
       canvasElement.removeEventListener('click', handleClick);
     };
-  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement, setCurrentPoints]); // Added setCurrentPoints to dependency array
+  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement, setCurrentPoints]);
 
-  // If not enabled, return null
+  // If sidebar is not enabled, return null but don't hide the model
   if (!enabled) return null;
 
+  // Use SidebarRail with the "right" side to fix the overlay
   return (
     <Sidebar side="right" variant="floating" className="z-20">
       <SidebarRail />
