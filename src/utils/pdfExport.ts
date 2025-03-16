@@ -1,4 +1,3 @@
-
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
@@ -171,7 +170,7 @@ export const generateMeasurementsPDF = async (
       },
       footer: {
         fontSize: 10,
-        italic: true,
+        italics: true,
         alignment: 'center',
         color: '#64748b'
       }
