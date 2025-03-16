@@ -21,24 +21,14 @@ export interface Measurement {
   points: Point[];
   value: number;
   label?: string;
-  inclination?: number;
   visible?: boolean;
   editMode?: boolean;
   unit?: string;
   description?: string;
 }
 
-// Utility function to determine if inclination is significant
-export const isInclinationSignificant = (inclination: number, threshold: number = 5.0): boolean => {
-  return inclination >= threshold;
-};
-
-// Format measurement with inclination
-const formatMeasurementWithInclination = (
-  value: number, 
-  inclination: number | undefined,
-  type: MeasurementMode
-): string => {
+// Format measurement value based on measurement type
+const formatMeasurement = (value: number, type: MeasurementMode): string => {
   if (type === 'area') {
     // Format area measurements
     if (value < 0.01) {
@@ -47,12 +37,7 @@ const formatMeasurementWithInclination = (
     return `${value.toFixed(2)} m²`;
   }
   
-  // Format height measurements with inclination
-  if (type === 'height' && inclination !== undefined && isInclinationSignificant(inclination)) {
-    return `${value.toFixed(2)} m | ${inclination.toFixed(1)}°`;
-  }
-  
-  // Default formatting for length or height without significant inclination
+  // Format length or height measurements
   return `${value.toFixed(2)} m`;
 };
 
@@ -93,23 +78,6 @@ export const useMeasurements = () => {
   const calculateHeight = useCallback((point1: Point, point2: Point): number => {
     // Height is strictly the absolute difference along the Y axis
     return Math.abs(point2.y - point1.y);
-  }, []);
-  
-  const calculateInclination = useCallback((point1: Point, point2: Point): number => {
-    // Calculate horizontal distance (XZ-plane)
-    const horizontalDistance = new THREE.Vector2(
-      point2.x - point1.x, 
-      point2.z - point1.z
-    ).length();
-    
-    // Calculate height difference
-    const heightDifference = Math.abs(point2.y - point1.y);
-    
-    // Calculate inclination angle in degrees
-    const angleInRadians = Math.atan2(heightDifference, horizontalDistance);
-    const angleInDegrees = THREE.MathUtils.radToDeg(angleInRadians);
-    
-    return parseFloat(angleInDegrees.toFixed(1));
   }, []);
 
   const calculateArea = useCallback((points: Point[]): number => {
@@ -202,38 +170,35 @@ export const useMeasurements = () => {
           
           // Recalculate the measurement value
           let newValue = 0;
-          let newInclination: number | undefined;
           
           if (m.type === 'length' && newPoints.length >= 2) {
             newValue = calculateDistance(newPoints[0], newPoints[1]);
           } else if (m.type === 'height' && newPoints.length >= 2) {
             newValue = calculateHeight(newPoints[0], newPoints[1]);
-            newInclination = calculateInclination(newPoints[0], newPoints[1]);
           } else if (m.type === 'area' && newPoints.length >= 3) {
             newValue = calculateArea(newPoints);
           }
           
-          const newLabel = formatMeasurementWithInclination(newValue, newInclination, m.type);
+          const newLabel = formatMeasurement(newValue, m.type);
           
           return {
             ...m,
             points: newPoints,
             value: newValue,
-            inclination: newInclination,
             label: newLabel
           };
         }
       }
       return m;
     }));
-  }, [calculateDistance, calculateHeight, calculateInclination, calculateArea]);
+  }, [calculateDistance, calculateHeight, calculateArea]);
 
   // Dedicated function to create a Length measurement
   const createLengthMeasurement = useCallback((points: Point[]) => {
     if (points.length !== 2) return;
     
     const value = calculateDistance(points[0], points[1]);
-    const label = formatMeasurementWithInclination(value, undefined, 'length');
+    const label = formatMeasurement(value, 'length');
     
     setMeasurements(prev => [
       ...prev,
@@ -259,8 +224,7 @@ export const useMeasurements = () => {
     if (points.length !== 2) return;
     
     const value = calculateHeight(points[0], points[1]);
-    const inclination = calculateInclination(points[0], points[1]);
-    const label = formatMeasurementWithInclination(value, inclination, 'height');
+    const label = formatMeasurement(value, 'height');
     
     setMeasurements(prev => [
       ...prev,
@@ -269,7 +233,6 @@ export const useMeasurements = () => {
         type: 'height',
         points: [...points],
         value,
-        inclination,
         label,
         visible: true,
         unit: 'm',
@@ -280,7 +243,7 @@ export const useMeasurements = () => {
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, [calculateHeight, calculateInclination]);
+  }, [calculateHeight]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -295,7 +258,7 @@ export const useMeasurements = () => {
     }
     else if (activeMode === 'area' && points.length >= 3) {
       const value = calculateArea(points);
-      const label = formatMeasurementWithInclination(value, undefined, 'area');
+      const label = formatMeasurement(value, 'area');
       
       setMeasurements(prev => [
         ...prev,
@@ -336,6 +299,19 @@ export const useMeasurements = () => {
     }
   }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
 
+  // New function to toggle measurement tool
+  const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
+    if (activeMode === mode) {
+      // If the same tool is clicked again, disable it by setting mode to 'none'
+      setActiveMode('none');
+      clearCurrentPoints();
+    } else {
+      // If a different tool is clicked, activate it
+      setActiveMode(mode);
+      clearCurrentPoints();
+    }
+  }, [activeMode, clearCurrentPoints]);
+
   return {
     measurements,
     currentPoints,
@@ -343,6 +319,7 @@ export const useMeasurements = () => {
     addPoint,
     activeMode,
     setActiveMode,
+    toggleMeasurementTool,
     clearMeasurements,
     clearCurrentPoints,
     finalizeMeasurement,

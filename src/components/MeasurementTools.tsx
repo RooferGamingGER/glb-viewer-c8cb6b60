@@ -13,7 +13,7 @@ import {
   Pencil,
   X
 } from 'lucide-react';
-import { MeasurementMode, useMeasurements, isInclinationSignificant } from '@/hooks/useMeasurements';
+import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
 import { 
   Sidebar, 
   SidebarContent, 
@@ -58,6 +58,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     addPoint,
     activeMode,
     setActiveMode,
+    toggleMeasurementTool, // Use the new toggle function
     clearMeasurements,
     clearCurrentPoints,
     finalizeMeasurement,
@@ -320,7 +321,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       // Only handle clicks if enabled and sidebar is open
       if (!enabled || !open) return;
       
-      // Only process clicks if an active measurement mode is selected
+      // Only process clicks if an active measurement mode is selected (not 'none')
       if (activeMode === 'none') return;
       
       // Calculate mouse position in normalized device coordinates (-1 to +1)
@@ -404,9 +405,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [enabled, scene, camera, activeMode, currentPoints, addPoint, open]);
 
   const selectTool = (mode: MeasurementMode) => {
-    setActiveMode(mode);
-    clearCurrentPoints(); // Clear current points when changing tools
-    toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : mode === 'area' ? 'Flächen' : 'Navigations'}messung ausgewählt`);
+    // Use the new toggle function instead of direct state setting
+    toggleMeasurementTool(mode);
+    
+    // Show appropriate toast message based on whether the tool is being activated or deactivated
+    if (activeMode === mode) {
+      toast.info(`Messwerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
+    } else {
+      toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : mode === 'area' ? 'Flächen' : 'Navigations'}messung ausgewählt`);
+    }
   };
 
   const toggleVisibility = () => {
@@ -465,7 +472,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <SidebarMenuButton
                   isActive={activeMode === 'length'}
                   onClick={() => selectTool('length')}
-                  tooltip="Länge messen"
+                  tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
                 >
                   <Ruler />
                   <span>Länge</span>
@@ -476,7 +483,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <SidebarMenuButton
                   isActive={activeMode === 'height'}
                   onClick={() => selectTool('height')}
-                  tooltip="Höhe messen"
+                  tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
                 >
                   <ArrowUpDown />
                   <span>Höhe</span>
@@ -487,7 +494,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <SidebarMenuButton
                   isActive={activeMode === 'area'}
                   onClick={() => selectTool('area')}
-                  tooltip="Fläche messen"
+                  tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
                 >
                   <Square />
                   <span>Fläche</span>
@@ -518,10 +525,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Messpunkte setzen</AlertTitle>
               <AlertDescription>
-                Klicken Sie auf das Modell, um Messpunkte zu setzen. 
-                {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
-                {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung (Y-Achse)."}
-                {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
+                {activeMode === 'none' ? (
+                  "Wählen Sie ein Messwerkzeug, um Messpunkte zu setzen."
+                ) : (
+                  <>
+                    Klicken Sie auf das Modell, um Messpunkte zu setzen. 
+                    {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
+                    {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung (Y-Achse)."}
+                    {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
+                  </>
+                )}
               </AlertDescription>
             </Alert>
           </SidebarGroupContent>
