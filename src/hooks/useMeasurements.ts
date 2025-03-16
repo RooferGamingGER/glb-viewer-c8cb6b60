@@ -26,7 +26,7 @@ export interface Measurement {
   visible?: boolean;
   editMode?: boolean;
   unit?: string;
-  description?: string; // Add missing description property
+  description?: string;
 }
 
 // Utility function to determine if inclination is significant
@@ -73,6 +73,7 @@ export const useMeasurements = () => {
   }, []);
 
   const calculateDistance = useCallback((point1: Point, point2: Point): number => {
+    // Calculate true 3D distance between points using Euclidean distance formula
     return Math.sqrt(
       Math.pow(point2.x - point1.x, 2) +
       Math.pow(point2.y - point1.y, 2) +
@@ -226,6 +227,7 @@ export const useMeasurements = () => {
     let inclination: number | undefined;
     
     if (activeMode === 'length' && currentPoints.length >= 2) {
+      // Calculate true 3D distance for length measurement
       value = calculateDistance(currentPoints[0], currentPoints[1]);
       label = formatMeasurementWithInclination(value, undefined, 'length');
       
@@ -242,6 +244,7 @@ export const useMeasurements = () => {
           description: ''
         }
       ]);
+      // Clear points after finalizing the measurement
       setCurrentPoints([]);
     } 
     else if (activeMode === 'height' && currentPoints.length >= 2) {
@@ -290,15 +293,15 @@ export const useMeasurements = () => {
     setCurrentPoints(prev => {
       const newPoints = [...prev, point];
       
-      // Don't auto-finalize for area mode or if not enough points
-      if (activeMode === 'area' || newPoints.length < 2) {
+      // Don't auto-finalize for area mode
+      if (activeMode === 'area') {
         return newPoints;
       }
       
-      // For length and height, auto-finalize after 2 points
+      // For length and height measurements, auto-finalize after 2 points
       if ((activeMode === 'length' || activeMode === 'height') && newPoints.length === 2) {
-        // We will handle finalization in a setTimeout to ensure state update
-        // completes first
+        // We need to set the new points first, then finalize in the next tick
+        // to ensure the state is updated correctly
         setTimeout(() => {
           finalizeMeasurement();
         }, 10);
