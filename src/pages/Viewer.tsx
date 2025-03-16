@@ -6,6 +6,7 @@ import { useRequiredURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from 'lucide-react';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const Viewer = () => {
   const navigate = useNavigate();

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -7,8 +7,9 @@ import {
   Square, 
   Trash2, 
   Eye, 
-  EyeOff, 
-  CheckCircle2 
+  EyeOff,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
 import { 
@@ -21,8 +22,11 @@ import {
   SidebarGroupContent,
   SidebarMenu, 
   SidebarMenuItem,
-  SidebarMenuButton 
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarRail
 } from "@/components/ui/sidebar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -36,18 +40,30 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   camera
 }) => {
   const [visible, setVisible] = useState(true);
+  const [expanded, setExpanded] = useState(true);
   const { 
     measurements,
     currentPoints,
     activeMode,
     setActiveMode,
     clearMeasurements,
+    clearCurrentPoints,
     handlePointerEvent,
     finalizeMeasurement
   } = useMeasurements();
 
+  // Handle the toggling of the sidebar when the tool state changes
+  useEffect(() => {
+    if (!enabled && expanded) {
+      setExpanded(false);
+    } else if (enabled && !expanded) {
+      setExpanded(true);
+    }
+  }, [enabled, expanded]);
+
   const selectTool = (mode: MeasurementMode) => {
     setActiveMode(mode);
+    clearCurrentPoints(); // Clear current points when changing tools
   };
 
   const toggleVisibility = () => {
@@ -60,7 +76,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handlePointerEvent(event, scene, camera);
   };
 
-  // Returns JSX to render the measurement visuals
+  // Returns JSX to render the measurement visuals in ThreeJS
   const renderMeasurementVisuals = () => {
     if (!visible || !enabled) return null;
 
@@ -210,8 +226,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   return (
     <Sidebar side="right" variant="floating">
+      <SidebarRail />
       <SidebarHeader>
         <h3 className="text-lg font-semibold px-4 py-2">Messwerkzeuge</h3>
+        <SidebarTrigger className="absolute right-4 top-4" />
       </SidebarHeader>
       
       <SidebarContent>
@@ -259,7 +277,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <SidebarGroup>
             <SidebarGroupContent>
               <Button 
-                className="w-full"
+                className="w-full flex items-center justify-center gap-2"
                 onClick={finalizeMeasurement}
               >
                 <CheckCircle2 size={16} />
@@ -270,13 +288,29 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         )}
         
         <SidebarGroup>
+          <SidebarGroupLabel>Anleitung</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <Alert className="bg-muted/50 border-muted">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Messpunkte setzen</AlertTitle>
+              <AlertDescription>
+                Klicken Sie auf das Modell, um Messpunkte zu setzen. 
+                {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
+                {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung."}
+                {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
+              </AlertDescription>
+            </Alert>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
           <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
           <SidebarGroupContent className="flex gap-2">
             <Button 
               variant="outline" 
               size="sm" 
               onClick={toggleVisibility}
-              className="flex-1"
+              className="flex-1 flex items-center justify-center gap-2"
             >
               {visible ? <EyeOff size={16} /> : <Eye size={16} />}
               {visible ? "Ausblenden" : "Einblenden"}
@@ -286,7 +320,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               variant="outline" 
               size="sm" 
               onClick={clearMeasurements}
-              className="flex-1"
+              className="flex-1 flex items-center justify-center gap-2"
             >
               <Trash2 size={16} />
               Löschen
@@ -305,7 +339,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       m.type === 'length' ? 'bg-green-500' : 
                       m.type === 'height' ? 'bg-blue-500' : 'bg-amber-500'
                     }`} />
-                    <span>{m.type}: {m.value.toFixed(2)} {m.type === 'area' ? 'sq units' : 'units'}</span>
+                    <span>{m.type === 'length' ? 'Länge' : m.type === 'height' ? 'Höhe' : 'Fläche'}: 
+                    {' '}{m.value.toFixed(2)} {m.type === 'area' ? 'Einh²' : 'Einh'}</span>
                   </div>
                 ))}
               </div>
@@ -316,7 +351,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       
       <SidebarFooter>
         <div className="px-4 py-2 text-xs text-muted-foreground">
-          Klicken Sie auf das Modell, um Messpunkte zu setzen
+          Messwerkzeuge v1.0
         </div>
       </SidebarFooter>
     </Sidebar>

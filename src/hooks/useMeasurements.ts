@@ -82,7 +82,7 @@ export const useMeasurements = () => {
     
     if (activeMode === 'length' && currentPoints.length >= 2) {
       value = calculateDistance(currentPoints[0], currentPoints[1]);
-      label = `${value.toFixed(2)} units`;
+      label = `${value.toFixed(2)} Einh`;
       
       setMeasurements(prev => [
         ...prev,
@@ -98,7 +98,7 @@ export const useMeasurements = () => {
     } 
     else if (activeMode === 'height' && currentPoints.length >= 2) {
       value = calculateHeight(currentPoints[0], currentPoints[1]);
-      label = `${value.toFixed(2)} units`;
+      label = `${value.toFixed(2)} Einh`;
       
       setMeasurements(prev => [
         ...prev,
@@ -114,7 +114,7 @@ export const useMeasurements = () => {
     }
     else if (activeMode === 'area' && currentPoints.length >= 3) {
       value = calculateArea(currentPoints);
-      label = `${value.toFixed(2)} sq units`;
+      label = `${value.toFixed(2)} Einh²`;
       
       setMeasurements(prev => [
         ...prev,
@@ -130,45 +130,58 @@ export const useMeasurements = () => {
     }
   }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateArea]);
 
-  const handlePointerEvent = useCallback((event: React.MouseEvent | React.TouchEvent, scene: THREE.Scene, camera: THREE.Camera) => {
-    // Get normalized device coordinates
-    const clientRect = (event.target as HTMLElement).getBoundingClientRect();
-    let clientX: number, clientY: number;
-    
-    if ('touches' in event) {
-      // Touch event
-      clientX = event.touches[0].clientX;
-      clientY = event.touches[0].clientY;
-    } else {
-      // Mouse event
-      clientX = event.clientX;
-      clientY = event.clientY;
+  const handlePointerEvent = useCallback((
+    event: React.MouseEvent | React.TouchEvent, 
+    scene: THREE.Scene, 
+    camera: THREE.Camera
+  ) => {
+    // Prevent the event from propagating to avoid crashing when clicking on lines
+    if (event) {
+      event.stopPropagation();
     }
     
-    mouse.current.x = ((clientX - clientRect.left) / clientRect.width) * 2 - 1;
-    mouse.current.y = -((clientY - clientRect.top) / clientRect.height) * 2 + 1;
-    
-    raycaster.current.setFromCamera(mouse.current, camera);
-    
-    // Find intersections with all objects in the scene
-    const intersects = raycaster.current.intersectObjects(scene.children, true);
-    
-    if (intersects.length > 0) {
-      const intersect = intersects[0];
-      if (intersect.point) {
-        const point = {
-          x: intersect.point.x,
-          y: intersect.point.y,
-          z: intersect.point.z
-        };
-        
-        addPoint(point);
-        
-        // Auto-finalize for length and height after 2 points
-        if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
-          setTimeout(finalizeMeasurement, 0);
+    try {
+      // Get normalized device coordinates
+      const clientRect = (event.target as HTMLElement).getBoundingClientRect();
+      let clientX: number, clientY: number;
+      
+      if ('touches' in event) {
+        // Touch event
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+      } else {
+        // Mouse event
+        clientX = event.clientX;
+        clientY = event.clientY;
+      }
+      
+      mouse.current.x = ((clientX - clientRect.left) / clientRect.width) * 2 - 1;
+      mouse.current.y = -((clientY - clientRect.top) / clientRect.height) * 2 + 1;
+      
+      raycaster.current.setFromCamera(mouse.current, camera);
+      
+      // Find intersections with all objects in the scene
+      const intersects = raycaster.current.intersectObjects(scene.children, true);
+      
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        if (intersect.point) {
+          const point = {
+            x: intersect.point.x,
+            y: intersect.point.y,
+            z: intersect.point.z
+          };
+          
+          addPoint(point);
+          
+          // Auto-finalize for length and height after 2 points
+          if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
+            setTimeout(finalizeMeasurement, 0);
+          }
         }
       }
+    } catch (error) {
+      console.error("Error in handlePointerEvent:", error);
     }
   }, [activeMode, currentPoints.length, addPoint, finalizeMeasurement]);
 

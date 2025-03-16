@@ -20,6 +20,7 @@ import {
   Ruler
 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -42,7 +43,7 @@ function Loader3D() {
 // Import Loader icon from lucide-react
 import { Loader } from 'lucide-react';
 
-function Model({ url, onMeasurementClick }: { url: string, onMeasurementClick: (event: React.MouseEvent) => void }) {
+function Model({ url, onClick }: { url: string, onClick: (event: THREE.Intersection) => void }) {
   const { scene } = useGLTF(url);
   const modelRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
@@ -56,7 +57,6 @@ function Model({ url, onMeasurementClick }: { url: string, onMeasurementClick: (
       modelRef.current.position.set(0, 0, 0);
       
       // Apply a -90 degree rotation around the X-axis to fix the orientation
-      // This will rotate the model so that what was previously "left side down" is now upright
       modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
       
       // Center the model
@@ -71,19 +71,16 @@ function Model({ url, onMeasurementClick }: { url: string, onMeasurementClick: (
       if (camera instanceof THREE.PerspectiveCamera) {
         const fov = camera.fov * (Math.PI / 180);
         // Adjust cameraZ to make the object appear closer/larger
-        // Using a multiplier of 0.5 to bring the camera much closer than before
         let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
         
         // Set a minimum distance to prevent tiny models
         cameraZ = Math.max(cameraZ, 1.0);
         
         // Position camera to get a good view of the now-rotated model
-        // Adjust the vertical position to account for the rotation
         camera.position.set(center.x, center.y + cameraZ * 0.15, center.z + cameraZ);
         camera.lookAt(center);
       } else {
         // Handle OrthographicCamera case
-        // Adjust distance to make the object appear closer/larger
         const distance = maxDim * 1.0;
         camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
         camera.lookAt(center);
@@ -97,18 +94,33 @@ function Model({ url, onMeasurementClick }: { url: string, onMeasurementClick: (
       toast.success('Modell erfolgreich geladen');
     }
   }, [modelScene, camera]);
-  
+
   return (
-    <group ref={modelRef} onClick={onMeasurementClick}>
+    <group ref={modelRef}>
       <primitive object={modelScene} />
     </group>
   );
 }
 
-const ModelCanvas = ({ fileUrl, onMeasurementClick }: { fileUrl: string, onMeasurementClick: (event: React.MouseEvent) => void }) => {
+const ModelCanvas = ({ 
+  fileUrl, 
+  onMeasurementClick 
+}: { 
+  fileUrl: string, 
+  onMeasurementClick: (point: THREE.Vector3) => void 
+}) => {
   const [showStats, setShowStats] = useState(false);
   const sceneRef = useRef<THREE.Scene>(null);
   const cameraRef = useRef<THREE.Camera>(null);
+  
+  const handleCanvasClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    // The actual measurement will be handled by the raycasting in useMeasurements
+    if (onMeasurementClick && event.button === 0) {
+      // We'll handle the actual intersection in the hook
+    }
+  };
   
   const SceneCapture = () => {
     const { scene, camera } = useThree();
@@ -126,7 +138,7 @@ const ModelCanvas = ({ fileUrl, onMeasurementClick }: { fileUrl: string, onMeasu
   };
 
   return (
-    <Canvas shadows style={{ background: '#222222' }}>
+    <Canvas shadows style={{ background: '#222222' }} onClick={handleCanvasClick}>
       <SceneCapture />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
@@ -146,7 +158,7 @@ const ModelCanvas = ({ fileUrl, onMeasurementClick }: { fileUrl: string, onMeasu
         <Environment preset="city" />
         
         {/* The 3D model */}
-        <Model url={fileUrl} onMeasurementClick={onMeasurementClick} />
+        <Model url={fileUrl} onClick={() => {}} />
         
         {/* Controls */}
         <OrbitControls 
@@ -184,57 +196,59 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
     };
   }, [fileUrl]);
 
-  const handleMeasurementClick = (event: React.MouseEvent) => {
-    if (!measurementsEnabled) return;
-    
-    // Measurements will be handled by the MeasurementTools component
-    event.stopPropagation();
+  const handleMeasurementPoint = (point: THREE.Vector3) => {
+    // This will pass the point to the MeasurementTools
+    // The actual logic is handled in the useMeasurements hook
   };
 
   return (
-    <div className="relative w-full h-full">
-      <ModelCanvas 
-        fileUrl={fileUrl}
-        onMeasurementClick={handleMeasurementClick} 
-      />
-      
-      {/* UI Controls */}
-      <div className="absolute top-4 right-4 flex gap-2">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="glass-button" 
-          onClick={() => setShowStats(!showStats)}
-        >
-          <Eye size={16} className={showStats ? 'text-primary' : ''} />
-        </Button>
-        
-        <Button 
-          size="sm" 
-          variant={measurementsEnabled ? "default" : "outline"} 
-          className="glass-button" 
-          onClick={() => setMeasurementsEnabled(!measurementsEnabled)}
-        >
-          <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
-        </Button>
-      </div>
-      
-      {/* Model name display */}
-      <div className="absolute top-4 left-4">
-        <div className="glass-panel px-4 py-2 rounded-md">
-          <p className="text-sm font-medium truncate max-w-[200px]">
-            {fileName}
-          </p>
+    <SidebarProvider>
+      <div className="relative flex w-full h-full">
+        <div className="relative flex-1">
+          <ModelCanvas 
+            fileUrl={fileUrl}
+            onMeasurementClick={handleMeasurementPoint} 
+          />
+          
+          {/* UI Controls */}
+          <div className="absolute top-4 right-4 flex gap-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="glass-button" 
+              onClick={() => setShowStats(!showStats)}
+            >
+              <Eye size={16} className={showStats ? 'text-primary' : ''} />
+            </Button>
+            
+            <Button 
+              size="sm" 
+              variant={measurementsEnabled ? "default" : "outline"} 
+              className="glass-button" 
+              onClick={() => setMeasurementsEnabled(!measurementsEnabled)}
+            >
+              <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
+            </Button>
+          </div>
+          
+          {/* Model name display */}
+          <div className="absolute top-4 left-4">
+            <div className="glass-panel px-4 py-2 rounded-md">
+              <p className="text-sm font-medium truncate max-w-[200px]">
+                {fileName}
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
       
-      {/* Measurement Tools */}
-      <MeasurementTools 
-        enabled={measurementsEnabled}
-        scene={sceneRef.current}
-        camera={cameraRef.current}
-      />
-    </div>
+        {/* Measurement Tools */}
+        <MeasurementTools 
+          enabled={measurementsEnabled}
+          scene={sceneRef.current}
+          camera={cameraRef.current}
+        />
+      </div>
+    </SidebarProvider>
   );
 };
 
