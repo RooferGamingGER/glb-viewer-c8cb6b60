@@ -5,7 +5,6 @@ import { FileText, Loader2 } from 'lucide-react';
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
 import { Measurement } from '@/hooks/useMeasurements';
 import { toast } from 'sonner';
-import { Progress } from "@/components/ui/progress";
 
 interface PDFExportButtonProps {
   measurements: Measurement[];

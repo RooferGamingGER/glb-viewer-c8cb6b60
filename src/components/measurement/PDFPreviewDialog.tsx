@@ -16,7 +16,6 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
 import { toast } from 'sonner';
 import ProjectDataForm, { ProjectDataType } from './ProjectDataForm';
-import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PDFPreviewDialogProps {
@@ -130,8 +129,8 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
                       <TableCell>{measurement.description || '-'}</TableCell>
                       <TableCell>{formatValue(measurement.value, measurement.type)}</TableCell>
                       <TableCell>
-                        {measurement.type === 'length' && measurement.inclination 
-                          ? `${measurement.inclination.toFixed(1)}°` 
+                        {measurement.type === 'length' && measurement.inclination !== undefined
+                          ? `${Math.abs(measurement.inclination).toFixed(1)}°` 
                           : '-'}
                       </TableCell>
                     </TableRow>
