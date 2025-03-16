@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -5,7 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import * as THREE from 'three';
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Ruler } from 'lucide-react';
+import { Eye, EyeOff, Ruler, Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 import PDFExportDialog from '@/components/PDFExportDialog';
@@ -21,7 +22,7 @@ function Loader3D() {
   const { progress } = useProgress();
   return <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
-        <Loader className="animate-spin mb-4 h-8 w-8 text-primary" />
+        <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
         <div className="text-sm font-medium">{progress.toFixed(0)}% geladen</div>
       </div>
     </Html>;
@@ -236,4 +237,3 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 };
 
 export default ModelViewer;
-
