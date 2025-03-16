@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -11,7 +12,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import * as THREE from 'three';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 
 // Import custom hooks
 import { useThreeObjects } from '@/hooks/useThreeObjects';
@@ -107,6 +108,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
+
+  // Remove the auto-opening behavior when measurements are enabled
+  // Instead, we'll let the user control the sidebar visibility manually
 
   useEffect(() => {
     renderCurrentPoints(
@@ -292,6 +296,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleSidebar();
   };
 
+  const closeSidebar = () => {
+    setOpen(false);
+  };
+
   if (!enabled) return null;
 
   return (
@@ -316,6 +324,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <SidebarHeader>
           <div className="flex justify-between items-center px-4 py-2">
             <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
+            <button
+              onClick={closeSidebar}
+              className="h-7 w-7 rounded-md hover:bg-sidebar-accent/50 flex items-center justify-center"
+              aria-label="Messwerkzeuge schließen"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </SidebarHeader>
         
