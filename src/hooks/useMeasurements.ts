@@ -439,7 +439,7 @@ export const useMeasurements = () => {
     updateMeasurement,
     deleteMeasurement,
     deletePoint,
-    // New editing functionality
+    // Editing functionality
     editMeasurementId,
     editingPointIndex,
     startPointEdit,

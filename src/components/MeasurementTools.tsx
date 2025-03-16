@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -36,12 +35,28 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from 'sonner';
 import * as THREE from 'three';
+import { Html } from '@react-three/drei';
 
 interface MeasurementToolsProps {
   enabled: boolean;
   scene: THREE.Scene;
   camera: THREE.Camera;
 }
+
+// Create a custom component for the 3D measurement labels
+const MeasurementLabel = ({ position, value, color = 'white', visible = true }: 
+  { position: THREE.Vector3, value: string, color?: string, visible?: boolean }) => {
+  if (!visible) return null;
+  
+  return (
+    <Html position={position} center>
+      <div className="px-2 py-1 rounded-md bg-black/80 text-white text-xs font-medium 
+        shadow-md whitespace-nowrap transform scale-[0.85] pointer-events-none">
+        {value}
+      </div>
+    </Html>
+  );
+};
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
@@ -83,6 +98,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const pointsRef = useRef<THREE.Group | null>(null);
   const linesRef = useRef<THREE.Group | null>(null);
   const measurementsRef = useRef<THREE.Group | null>(null);
+  const labelsRef = useRef<THREE.Group | null>(null);
   const editPointsRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
@@ -114,6 +130,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       measurementsRef.current.name = "measurementLabels";
       scene.add(measurementsRef.current);
     }
+    
+    if (!labelsRef.current) {
+      labelsRef.current = new THREE.Group();
+      labelsRef.current.name = "measurementTextLabels";
+      scene.add(labelsRef.current);
+    }
 
     if (!editPointsRef.current) {
       editPointsRef.current = new THREE.Group();
@@ -134,6 +156,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (measurementsRef.current) {
         scene.remove(measurementsRef.current);
         measurementsRef.current = null;
+      }
+      if (labelsRef.current) {
+        scene.remove(labelsRef.current);
+        labelsRef.current = null;
       }
       if (editPointsRef.current) {
         scene.remove(editPointsRef.current);
@@ -212,17 +238,22 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Update visual representation of completed measurements
   useEffect(() => {
-    if (!measurementsRef.current || !visible) return;
+    if (!measurementsRef.current || !labelsRef.current) return;
     
     // Clear existing measurement labels
     while (measurementsRef.current.children.length > 0) {
       measurementsRef.current.remove(measurementsRef.current.children[0]);
     }
     
+    // Clear all HTML labels
+    while (labelsRef.current.children.length > 0) {
+      labelsRef.current.remove(labelsRef.current.children[0]);
+    }
+    
     // Add visual representation for each finalized measurement
     measurements.forEach((measurement) => {
       // Skip measurements that are explicitly marked as not visible
-      if (measurement.visible === false) return;
+      if (measurement.visible === false || !visible) return;
       
       // Create different visualizations based on measurement type
       if (measurement.type === 'length') {
@@ -252,22 +283,39 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           measurementsRef.current?.add(sphere);
         });
         
-        // Add text label at midpoint
+        // Add measurement value label at midpoint
         if (measurement.label) {
-          const midpoint = new THREE.Vector3(
+          // Calculate midpoint for label placement
+          const midPoint = new THREE.Vector3(
             (p1.x + p2.x) / 2,
-            (p1.y + p2.y) / 2 + 0.1, // Slightly above the line
+            (p1.y + p2.y) / 2,
             (p1.z + p2.z) / 2
           );
           
-          // Create a custom HTML element for the label in drei
-          // Since we can't use HTML directly in this context, we'll use a simple sphere marker
-          const labelMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-          );
-          labelMarker.position.copy(midpoint);
-          measurementsRef.current?.add(labelMarker);
+          // Create a placeholder for the label
+          const labelPlaceholder = new THREE.Object3D();
+          labelPlaceholder.position.copy(midPoint);
+          labelPlaceholder.userData = {
+            type: 'length-label',
+            value: measurement.label,
+            measurementId: measurement.id
+          };
+          
+          // Add to labels group
+          labelsRef.current?.add(labelPlaceholder);
+          
+          // Create HTML label
+          const labelObj = new MeasurementLabel({
+            position: midPoint,
+            value: measurement.label,
+            color: 'rgb(34, 197, 94)', // Green color
+            visible: true
+          });
+          
+          if (labelObj) {
+            labelObj.userData = { measurementId: measurement.id };
+            labelPlaceholder.add(labelObj);
+          }
         }
       } 
       else if (measurement.type === 'height') {
@@ -285,20 +333,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           z: higherPoint.z
         };
         
-        // Draw the main line between the two points
-        const mainLinePoints = [
-          new THREE.Vector3(p1.x, p1.y, p1.z),
-          new THREE.Vector3(p2.x, p2.y, p2.z)
-        ];
-        const mainLineGeometry = new THREE.BufferGeometry().setFromPoints(mainLinePoints);
-        const mainLineMaterial = new THREE.LineBasicMaterial({ 
-          color: 0x0000ff,
-          linewidth: 2
-        });
-        const mainLine = new THREE.Line(mainLineGeometry, mainLineMaterial);
-        measurementsRef.current?.add(mainLine);
-        
-        // Draw the vertical line
+        // Draw only the vertical line - no direct connection between points
         const verticalLinePoints = [
           new THREE.Vector3(higherPoint.x, higherPoint.y, higherPoint.z),
           new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z)
@@ -311,7 +346,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
         measurementsRef.current?.add(verticalLine);
         
-        // Optional: Draw horizontal reference line
+        // Draw horizontal reference line
         const horizontalLinePoints = [
           new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z),
           new THREE.Vector3(lowerPoint.x, lowerPoint.y, lowerPoint.z)
@@ -331,31 +366,55 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
         const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
         
-        [p1, p2, verticalPoint].forEach(point => {
+        [higherPoint, lowerPoint, verticalPoint].forEach(point => {
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
           sphere.position.set(point.x, point.y, point.z);
           measurementsRef.current?.add(sphere);
         });
         
-        // Add text label at midpoint of vertical line
+        // Add height measurement label in the middle of the vertical line
         if (measurement.label) {
-          const midpoint = new THREE.Vector3(
-            verticalPoint.x + 0.1, // Slightly offset from vertical line
+          const midVertical = new THREE.Vector3(
+            verticalPoint.x,
             (higherPoint.y + verticalPoint.y) / 2,
             verticalPoint.z
           );
           
-          const labelMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0x0000ff })
+          // Create a placeholder for the label
+          const labelPlaceholder = new THREE.Object3D();
+          labelPlaceholder.position.copy(midVertical);
+          labelPlaceholder.userData = {
+            type: 'height-label',
+            value: measurement.label,
+            measurementId: measurement.id
+          };
+          
+          // Add to labels group
+          labelsRef.current?.add(labelPlaceholder);
+          
+          // Add label slightly offset from the vertical line
+          const labelPosition = new THREE.Vector3(
+            midVertical.x + 0.1, // Offset from the line
+            midVertical.y,
+            midVertical.z
           );
-          labelMarker.position.copy(midpoint);
-          measurementsRef.current?.add(labelMarker);
+          
+          // Create HTML label
+          const labelObj = new MeasurementLabel({
+            position: labelPosition,
+            value: measurement.label,
+            color: 'rgb(59, 130, 246)', // Blue color
+            visible: true
+          });
+          
+          if (labelObj) {
+            labelObj.userData = { measurementId: measurement.id };
+            labelPlaceholder.add(labelObj);
+          }
         }
       } 
       else if (measurement.type === 'area') {
         // For area, draw filled polygon
-        // Create triangulated mesh from points
         const points = measurement.points;
         
         // Create outline from points
@@ -382,26 +441,89 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
           sphere.position.set(p1.x, p1.y, p1.z);
           measurementsRef.current?.add(sphere);
+          
+          // Add length label for each segment
+          const midSegment = new THREE.Vector3(
+            (p1.x + p2.x) / 2,
+            (p1.y + p2.y) / 2,
+            (p1.z + p2.z) / 2
+          );
+          
+          // Calculate length of this segment
+          const segmentLength = Math.sqrt(
+            Math.pow(p2.x - p1.x, 2) +
+            Math.pow(p2.y - p1.y, 2) +
+            Math.pow(p2.z - p1.z, 2)
+          );
+          
+          // Format segment length as a string (2 decimal places)
+          const segmentLengthStr = `${segmentLength.toFixed(2)} m`;
+          
+          // Create a placeholder for the label
+          const labelPlaceholder = new THREE.Object3D();
+          labelPlaceholder.position.copy(midSegment);
+          labelPlaceholder.userData = {
+            type: 'segment-label',
+            value: segmentLengthStr,
+            measurementId: measurement.id,
+            segmentIndex: i
+          };
+          
+          // Add to labels group
+          labelsRef.current?.add(labelPlaceholder);
+          
+          // Create HTML label
+          const labelObj = new MeasurementLabel({
+            position: midSegment,
+            value: segmentLengthStr,
+            color: 'rgb(245, 158, 11)', // Amber color
+            visible: true
+          });
+          
+          if (labelObj) {
+            labelObj.userData = { 
+              measurementId: measurement.id,
+              segmentIndex: i
+            };
+            labelPlaceholder.add(labelObj);
+          }
         }
         
-        // Add a semi-transparent fill
-        if (points.length >= 3) {
-          // Find centroid for label placement
-          const centroid = new THREE.Vector3(0, 0, 0);
-          points.forEach(p => {
-            centroid.x += p.x;
-            centroid.y += p.y;
-            centroid.z += p.z;
-          });
-          centroid.divideScalar(points.length);
+        // Find centroid for area label placement
+        const centroid = new THREE.Vector3(0, 0, 0);
+        points.forEach(p => {
+          centroid.x += p.x;
+          centroid.y += p.y;
+          centroid.z += p.z;
+        });
+        centroid.divideScalar(points.length);
+        
+        // Add area value label at centroid
+        if (measurement.label) {
+          // Create a placeholder for the label
+          const labelPlaceholder = new THREE.Object3D();
+          labelPlaceholder.position.copy(centroid);
+          labelPlaceholder.userData = {
+            type: 'area-label',
+            value: measurement.label,
+            measurementId: measurement.id
+          };
           
-          // Add a marker at centroid
-          const labelMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
-          );
-          labelMarker.position.copy(centroid);
-          measurementsRef.current?.add(labelMarker);
+          // Add to labels group
+          labelsRef.current?.add(labelPlaceholder);
+          
+          // Create HTML label
+          const labelObj = new MeasurementLabel({
+            position: new THREE.Vector3(centroid.x, centroid.y + 0.15, centroid.z), // Slightly above the centroid
+            value: `Fläche: ${measurement.label}`,
+            color: 'rgb(245, 158, 11)', // Amber color
+            visible: true
+          });
+          
+          if (labelObj) {
+            labelObj.userData = { measurementId: measurement.id };
+            labelPlaceholder.add(labelObj);
+          }
         }
       }
     });
@@ -506,7 +628,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             currentObj.name === "measurementPoints" || 
             currentObj.name === "measurementLines" ||
             currentObj.name === "measurementLabels" ||
-            currentObj.name === "editPoints"
+            currentObj.name === "editPoints" ||
+            currentObj.name === "measurementTextLabels"
           ) {
             return false;
           }
@@ -753,134 +876,4 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <SidebarGroupContent className="flex gap-2">
             <Button 
               variant="outline" 
-              size="sm" 
-              onClick={toggleVisibility}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {visible ? <EyeOff size={16} /> : <Eye size={16} />}
-              {visible ? "Ausblenden" : "Einblenden"}
-            </Button>
-            
-            {measurements.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={toggleAllMeasurementsVisibility}
-                className="flex-1 flex items-center justify-center gap-2"
-              >
-                {allMeasurementsVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                {allMeasurementsVisible ? "Alle aus" : "Alle ein"}
-              </Button>
-            )}
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleClearMeasurements}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              <Trash2 size={16} />
-              Löschen
-            </Button>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        {measurements.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Messungen</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <ScrollArea className={measurements.length > 3 ? "h-[200px]" : "max-h-full"}>
-                <div className="space-y-2 p-2 bg-muted/50 rounded-md">
-                  {measurements.map((m) => (
-                    <div key={m.id} className="flex flex-col gap-1 bg-background/40 p-2 rounded">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            m.type === 'length' ? 'bg-green-500' : 
-                            m.type === 'height' ? 'bg-blue-500' : 'bg-amber-500'
-                          }`} />
-                          <div>
-                            <span className="text-sm font-medium">
-                              {m.type === 'length' ? 'Länge' : 
-                              m.type === 'height' ? 'Höhe' : 'Fläche'}
-                            </span>
-                            <div className="text-xs text-muted-foreground">
-                              {m.label}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => toggleMeasurementVisibility(m.id)}
-                            className="h-6 w-6"
-                          >
-                            {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleStartPointEdit(m.id)}
-                            className={`h-6 w-6 ${m.editMode ? 'bg-primary text-primary-foreground' : ''}`}
-                            title="Punkte bearbeiten"
-                          >
-                            <Move size={14} />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => editingId === m.id ? handleEditSave(m.id) : handleEditStart(m.id, m.description)}
-                            className="h-6 w-6"
-                          >
-                            {editingId === m.id ? <Save size={14} /> : <Pencil size={14} />}
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteMeasurement(m.id)}
-                            className="h-6 w-6 text-destructive hover:text-destructive"
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {editingId === m.id ? (
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          placeholder="Beschreibung hinzufügen"
-                          className="h-7 text-xs mt-1"
-                          autoFocus
-                        />
-                      ) : (
-                        m.description && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {m.description}
-                          </p>
-                        )
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-      </SidebarContent>
-      
-      <SidebarFooter>
-        <div className="px-4 py-2 text-xs text-muted-foreground">
-          Messwerkzeuge v1.0
-        </div>
-      </SidebarFooter>
-    </Sidebar>
-  );
-};
-
-export default MeasurementTools;
+              size="sm"
