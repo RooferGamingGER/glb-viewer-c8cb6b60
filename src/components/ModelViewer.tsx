@@ -8,7 +8,6 @@ import {
   Environment, 
   Html, 
   useProgress,
-  Grid,
   Stats,
   AccumulativeShadows,
   RandomizedLight
@@ -76,19 +75,22 @@ function Model({ url }: { url: string }) {
       // Check if camera is a PerspectiveCamera before accessing fov
       if (camera instanceof THREE.PerspectiveCamera) {
         const fov = camera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+        // Adjust cameraZ to make the object appear closer/larger
+        // Using a multiplier of 0.75 to bring the camera closer than before
+        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.75;
         
         // Set a minimum distance to prevent tiny models
-        cameraZ = Math.max(cameraZ, 2);
+        cameraZ = Math.max(cameraZ, 1.5);
         
         // Position camera to get a good view of the now-rotated model
         // Adjust the vertical position to account for the rotation
-        camera.position.set(center.x, center.y + cameraZ * 0.3, center.z + cameraZ);
+        camera.position.set(center.x, center.y + cameraZ * 0.2, center.z + cameraZ);
         camera.lookAt(center);
       } else {
         // Handle OrthographicCamera case
-        const distance = maxDim * 2;
-        camera.position.set(center.x, center.y + distance * 0.3, center.z + distance);
+        // Adjust distance to make the object appear closer/larger
+        const distance = maxDim * 1.5;
+        camera.position.set(center.x, center.y + distance * 0.2, center.z + distance);
         camera.lookAt(center);
       }
       
@@ -161,15 +163,16 @@ function Model({ url }: { url: string }) {
                     // Check if camera is a PerspectiveCamera before accessing fov
                     if (camera instanceof THREE.PerspectiveCamera) {
                       const fov = camera.fov * (Math.PI / 180);
-                      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+                      // Use a smaller multiplier to bring the camera closer
+                      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.75;
                       
                       // Position camera with adjusted view for the rotated model
-                      camera.position.set(center.x, center.y + cameraZ * 0.3, center.z + cameraZ);
+                      camera.position.set(center.x, center.y + cameraZ * 0.2, center.z + cameraZ);
                       camera.lookAt(center);
                     } else {
                       // Handle OrthographicCamera case
-                      const distance = maxDim * 2;
-                      camera.position.set(center.x, center.y + distance * 0.3, center.z + distance);
+                      const distance = maxDim * 1.5;
+                      camera.position.set(center.x, center.y + distance * 0.2, center.z + distance);
                       camera.lookAt(center);
                     }
                   }
@@ -187,7 +190,6 @@ function Model({ url }: { url: string }) {
 
 const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
   const isMobile = useIsMobile();
-  const [showGrid, setShowGrid] = useState(true);
   const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
@@ -202,25 +204,22 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
 
   return (
     <div className="relative w-full h-full">
-      <Canvas shadows style={{ background: 'transparent' }}>
+      <Canvas shadows style={{ background: '#222222' }}>
         <Suspense fallback={<Loader3D />}>
           <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
           
           {/* Lighting */}
-          <ambientLight intensity={0.5} />
+          <ambientLight intensity={0.7} />
           <directionalLight 
             position={[10, 10, 5]} 
-            intensity={1} 
+            intensity={1.2} 
             castShadow 
             shadow-mapSize-width={1024} 
             shadow-mapSize-height={1024} 
           />
-          <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+          <directionalLight position={[-10, -10, -5]} intensity={0.8} />
           
-          {/* Grid helper */}
-          {showGrid && <Grid args={[50, 50]} cellSize={1} cellThickness={0.5} cellColor="#a0a0a0" fadeDistance={50} />}
-          
-          {/* Environment map */}
+          {/* Environment map for reflections */}
           <Environment preset="city" />
           
           {/* The 3D model */}
@@ -245,15 +244,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
       
       {/* UI Controls */}
       <div className="absolute top-4 right-4 flex gap-2">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="glass-button" 
-          onClick={() => setShowGrid(!showGrid)}
-        >
-          <GridIcon size={16} className={showGrid ? 'text-primary' : ''} />
-        </Button>
-        
         <Button 
           size="sm" 
           variant="outline" 
