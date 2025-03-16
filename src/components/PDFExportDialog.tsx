@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, X, Camera, Building, Plus } from 'lucide-react';
 import {
@@ -57,7 +57,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
 
   const handleExport = async () => {
     try {
-      // Use measurements from the sidebar instead of the local state
+      // Check if we need a screenshot but don't have one
       if (includeScreenshot && !currentScreenshot) {
         toast.error('Kein Screenshot ausgewählt. Bitte erstellen Sie einen Screenshot oder deaktivieren Sie die Option.');
         return;
@@ -67,7 +67,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       
       let screenshotUrl = '';
       
-      // Only take a screenshot if it's to be included
+      // Only use a screenshot if it's to be included
       if (includeScreenshot && currentScreenshot) {
         screenshotUrl = currentScreenshot.url;
       }

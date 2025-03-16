@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Download, X } from 'lucide-react';
+import { Camera, Download, X, FileText, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,9 +20,13 @@ import {
 
 interface ScreenshotDialogProps {
   onTakeScreenshot: () => Promise<StoredScreenshot>;
+  onAddToPDF?: (screenshot: StoredScreenshot) => void;
 }
 
-const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot }) => {
+const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ 
+  onTakeScreenshot,
+  onAddToPDF 
+}) => {
   const [open, setOpen] = useState(false);
   const [screenshot, setScreenshot] = useState<StoredScreenshot | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,6 +50,14 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
     
     // Use our utility to download the screenshot
     downloadScreenshot(screenshot);
+  };
+
+  const handleAddToPDF = () => {
+    if (!screenshot || !onAddToPDF) return;
+    
+    onAddToPDF(screenshot);
+    toast.success('Screenshot wurde zum PDF-Bericht hinzugefügt');
+    setOpen(false);
   };
 
   const handleClose = () => {
@@ -101,7 +113,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
             {!screenshot ? (
               <Button 
                 onClick={handleScreenshot} 
@@ -112,14 +124,26 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ onTakeScreenshot })
                 {loading ? 'Wird erstellt...' : 'Screenshot erstellen'}
               </Button>
             ) : (
-              <Button 
-                onClick={handleDownload}
-                className="w-full sm:w-auto"
-                variant="default"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Herunterladen
-              </Button>
+              <>
+                <Button 
+                  onClick={handleAddToPDF}
+                  className="w-full sm:w-auto"
+                  variant="default"
+                  disabled={!onAddToPDF}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Zum Bericht hinzufügen
+                </Button>
+                
+                <Button 
+                  onClick={handleDownload}
+                  className="w-full sm:w-auto"
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Herunterladen
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>

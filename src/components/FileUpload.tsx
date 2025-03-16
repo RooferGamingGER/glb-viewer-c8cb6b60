@@ -37,10 +37,10 @@ const FileUpload: React.FC = () => {
       return false;
     }
     
-    // Check file size (limit to 50MB)
-    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+    // Check file size (limit to 100MB) - updated from 50MB
+    const maxSize = 100 * 1024 * 1024; // 100MB in bytes
     if (file.size > maxSize) {
-      const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 50MB.';
+      const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 100MB.';
       setFileError(errorMsg);
       toast.error(errorMsg);
       return false;
@@ -167,7 +167,7 @@ const FileUpload: React.FC = () => {
       </div>
       
       <div className="mt-4 text-center text-xs text-muted-foreground">
-        Unterstützte Dateien: .glb (bis zu 50MB)
+        Unterstützte Dateien: .glb (bis zu 100MB)
       </div>
     </div>
   );
