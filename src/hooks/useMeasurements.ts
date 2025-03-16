@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 
@@ -23,8 +23,6 @@ export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [activeMode, setActiveMode] = useState<MeasurementMode>('length');
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
-  const raycaster = useRef(new THREE.Raycaster());
-  const mouse = useRef(new THREE.Vector2());
 
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);
@@ -69,10 +67,6 @@ export const useMeasurements = () => {
     }
     return Math.abs(area) / 2;
   }, [calculateDistance]);
-
-  const addPoint = useCallback((point: Point) => {
-    setCurrentPoints(prev => [...prev, point]);
-  }, []);
 
   const finalizeMeasurement = useCallback(() => {
     if (currentPoints.length === 0) return;
@@ -131,63 +125,19 @@ export const useMeasurements = () => {
   }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateArea]);
 
   const handlePointerEvent = useCallback((
-    event: React.MouseEvent | React.TouchEvent, 
-    scene: THREE.Scene, 
+    event: React.MouseEvent | React.TouchEvent,
+    scene: THREE.Scene,
     camera: THREE.Camera
   ) => {
-    // Prevent the event from propagating to avoid crashing when clicking on lines
-    if (event) {
-      event.stopPropagation();
-    }
-    
-    try {
-      // Get normalized device coordinates
-      const clientRect = (event.target as HTMLElement).getBoundingClientRect();
-      let clientX: number, clientY: number;
-      
-      if ('touches' in event) {
-        // Touch event
-        clientX = event.touches[0].clientX;
-        clientY = event.touches[0].clientY;
-      } else {
-        // Mouse event
-        clientX = event.clientX;
-        clientY = event.clientY;
-      }
-      
-      mouse.current.x = ((clientX - clientRect.left) / clientRect.width) * 2 - 1;
-      mouse.current.y = -((clientY - clientRect.top) / clientRect.height) * 2 + 1;
-      
-      raycaster.current.setFromCamera(mouse.current, camera);
-      
-      // Find intersections with all objects in the scene
-      const intersects = raycaster.current.intersectObjects(scene.children, true);
-      
-      if (intersects.length > 0) {
-        const intersect = intersects[0];
-        if (intersect.point) {
-          const point = {
-            x: intersect.point.x,
-            y: intersect.point.y,
-            z: intersect.point.z
-          };
-          
-          addPoint(point);
-          
-          // Auto-finalize for length and height after 2 points
-          if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
-            setTimeout(finalizeMeasurement, 0);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error in handlePointerEvent:", error);
-    }
-  }, [activeMode, currentPoints.length, addPoint, finalizeMeasurement]);
+    // This function is now handled directly in the MeasurementTools component
+    // for better event handling
+    console.log("Pointer event handled in MeasurementTools component");
+  }, []);
 
   return {
     measurements,
     currentPoints,
+    setCurrentPoints,
     activeMode,
     setActiveMode,
     clearMeasurements,

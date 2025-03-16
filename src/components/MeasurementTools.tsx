@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -31,8 +31,8 @@ import * as THREE from 'three';
 
 interface MeasurementToolsProps {
   enabled: boolean;
-  scene?: THREE.Scene | null;
-  camera?: THREE.Camera | null;
+  scene: THREE.Scene | null;
+  camera: THREE.Camera | null;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
@@ -71,162 +71,58 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setVisible(!visible);
   };
 
-  // This will be called by the parent component to handle canvas clicks
-  const handleCanvasClick = (event: React.MouseEvent) => {
+  // Setup the event listener for clicks on the canvas
+  useEffect(() => {
     if (!enabled || !scene || !camera) return;
-    handlePointerEvent(event, scene, camera);
-  };
-
-  // Returns JSX to render the measurement visuals in ThreeJS
-  const renderMeasurementVisuals = () => {
-    if (!visible || !enabled) return null;
-
-    return (
-      <>
-        {/* Current measurement in progress */}
-        {currentPoints.length > 0 && (
-          <group>
-            {currentPoints.map((point, index) => (
-              <mesh key={`current-point-${index}`} position={[point.x, point.y, point.z]}>
-                <sphereGeometry args={[0.05, 16, 16]} />
-                <meshBasicMaterial color="#ff0000" />
-              </mesh>
-            ))}
-            
-            {/* Line connecting current points */}
-            {currentPoints.length >= 2 && activeMode !== 'area' && (
-              <line>
-                <bufferGeometry attach="geometry">
-                  <bufferAttribute
-                    attach="attributes-position"
-                    count={currentPoints.length}
-                    array={Float32Array.from(currentPoints.flatMap(p => [p.x, p.y, p.z]))}
-                    itemSize={3}
-                  />
-                </bufferGeometry>
-                <lineBasicMaterial attach="material" color="#ff0000" linewidth={2} />
-              </line>
-            )}
-            
-            {/* Area polygon */}
-            {currentPoints.length >= 3 && activeMode === 'area' && (
-              <line>
-                <bufferGeometry attach="geometry">
-                  <bufferAttribute
-                    attach="attributes-position"
-                    count={currentPoints.length + 1}
-                    array={Float32Array.from([
-                      ...currentPoints.flatMap(p => [p.x, p.y, p.z]),
-                      currentPoints[0].x, currentPoints[0].y, currentPoints[0].z
-                    ])}
-                    itemSize={3}
-                  />
-                </bufferGeometry>
-                <lineBasicMaterial attach="material" color="#ff0000" linewidth={2} />
-              </line>
-            )}
-          </group>
-        )}
+    
+    // Add click event listener to the renderer's DOM element
+    const canvasElement = document.querySelector('canvas');
+    if (!canvasElement) return;
+    
+    const handleClick = (event: MouseEvent) => {
+      if (!enabled || !scene || !camera) return;
+      
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const mouseX = ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1;
+      const mouseY = -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1;
+      
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(mouseX, mouseY);
+      
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        const point = {
+          x: intersect.point.x,
+          y: intersect.point.y,
+          z: intersect.point.z
+        };
         
-        {/* Completed measurements */}
-        {measurements.map((measurement) => (
-          <group key={measurement.id}>
-            {/* Points for all measurement types */}
-            {measurement.points.map((point, index) => (
-              <mesh key={`point-${measurement.id}-${index}`} position={[point.x, point.y, point.z]}>
-                <sphereGeometry args={[0.03, 16, 16]} />
-                <meshBasicMaterial 
-                  color={measurement.type === 'length' ? '#00ff00' : 
-                         measurement.type === 'height' ? '#0000ff' : '#ffaa00'} 
-                />
-              </mesh>
-            ))}
-            
-            {/* Lines for length and height measurements */}
-            {(measurement.type === 'length' || measurement.type === 'height') && (
-              <line>
-                <bufferGeometry attach="geometry">
-                  <bufferAttribute
-                    attach="attributes-position"
-                    count={measurement.points.length}
-                    array={Float32Array.from(measurement.points.flatMap(p => [p.x, p.y, p.z]))}
-                    itemSize={3}
-                  />
-                </bufferGeometry>
-                <lineBasicMaterial 
-                  attach="material" 
-                  color={measurement.type === 'length' ? '#00ff00' : '#0000ff'} 
-                  linewidth={2} 
-                />
-              </line>
-            )}
-            
-            {/* Polygon for area measurements */}
-            {measurement.type === 'area' && (
-              <line>
-                <bufferGeometry attach="geometry">
-                  <bufferAttribute
-                    attach="attributes-position"
-                    count={measurement.points.length + 1}
-                    array={Float32Array.from([
-                      ...measurement.points.flatMap(p => [p.x, p.y, p.z]),
-                      measurement.points[0].x, measurement.points[0].y, measurement.points[0].z
-                    ])}
-                    itemSize={3}
-                  />
-                </bufferGeometry>
-                <lineBasicMaterial attach="material" color="#ffaa00" linewidth={2} />
-              </line>
-            )}
-            
-            {/* Labels */}
-            {measurement.label && (
-              <sprite
-                position={[
-                  measurement.points.reduce((sum, p) => sum + p.x, 0) / measurement.points.length,
-                  measurement.points.reduce((sum, p) => sum + p.y, 0) / measurement.points.length + 0.2,
-                  measurement.points.reduce((sum, p) => sum + p.z, 0) / measurement.points.length
-                ]}
-                scale={[0.5, 0.25, 1]}
-              >
-                <spriteMaterial
-                  attach="material"
-                  transparent
-                  opacity={0.7}
-                >
-                  <canvasTexture
-                    attach="map"
-                    image={(() => {
-                      const canvas = document.createElement('canvas');
-                      canvas.width = 256;
-                      canvas.height = 128;
-                      const context = canvas.getContext('2d');
-                      if (context) {
-                        context.fillStyle = '#ffffff';
-                        context.fillRect(0, 0, canvas.width, canvas.height);
-                        context.font = 'Bold 24px Arial';
-                        context.textAlign = 'center';
-                        context.textBaseline = 'middle';
-                        context.fillStyle = '#000000';
-                        context.fillText(measurement.label, canvas.width / 2, canvas.height / 2);
-                      }
-                      return canvas;
-                    })()}
-                  />
-                </spriteMaterial>
-              </sprite>
-            )}
-          </group>
-        ))}
-      </>
-    );
-  };
+        setCurrentPoints(prev => [...prev, point]);
+        
+        // Auto-finalize for length and height after 2 points
+        if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
+          setTimeout(() => {
+            finalizeMeasurement();
+          }, 0);
+        }
+      }
+    };
+    
+    canvasElement.addEventListener('click', handleClick);
+    
+    return () => {
+      canvasElement.removeEventListener('click', handleClick);
+    };
+  }, [enabled, scene, camera, activeMode, currentPoints.length, finalizeMeasurement]);
 
   // If not enabled, return null
   if (!enabled) return null;
 
   return (
-    <Sidebar side="right" variant="floating">
+    <Sidebar side="right" variant="floating" className="z-20">
       <SidebarRail />
       <SidebarHeader>
         <h3 className="text-lg font-semibold px-4 py-2">Messwerkzeuge</h3>

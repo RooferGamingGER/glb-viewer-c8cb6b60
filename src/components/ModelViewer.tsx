@@ -20,7 +20,7 @@ import {
   Ruler
 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { MeasurementMode } from '@/hooks/useMeasurements';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -102,44 +102,43 @@ function Model({ url, onClick }: { url: string, onClick: (event: THREE.Intersect
   );
 }
 
+function SceneSetup({ onSceneReady }: { onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void }) {
+  const { scene, camera } = useThree();
+  
+  useEffect(() => {
+    if (scene && camera) {
+      onSceneReady(scene, camera);
+    }
+  }, [scene, camera, onSceneReady]);
+  
+  return null;
+}
+
 const ModelCanvas = ({ 
   fileUrl, 
-  onMeasurementClick 
+  onMeasurementClick,
+  onSceneReady
 }: { 
   fileUrl: string, 
-  onMeasurementClick: (point: THREE.Vector3) => void 
+  onMeasurementClick: (event: React.MouseEvent) => void,
+  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void
 }) => {
   const [showStats, setShowStats] = useState(false);
-  const sceneRef = useRef<THREE.Scene>(null);
-  const cameraRef = useRef<THREE.Camera>(null);
   
   const handleCanvasClick = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    // The actual measurement will be handled by the raycasting in useMeasurements
-    if (onMeasurementClick && event.button === 0) {
-      // We'll handle the actual intersection in the hook
+    if (onMeasurementClick) {
+      onMeasurementClick(event);
     }
-  };
-  
-  const SceneCapture = () => {
-    const { scene, camera } = useThree();
-    
-    useEffect(() => {
-      if (sceneRef.current !== scene) {
-        sceneRef.current = scene;
-      }
-      if (cameraRef.current !== camera) {
-        cameraRef.current = camera;
-      }
-    }, [scene, camera]);
-    
-    return null;
   };
 
   return (
-    <Canvas shadows style={{ background: '#222222' }} onClick={handleCanvasClick}>
-      <SceneCapture />
+    <Canvas 
+      shadows 
+      style={{ background: '#222222' }} 
+      onClick={handleCanvasClick}
+      className="w-full h-full"
+    >
+      <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
         
@@ -183,8 +182,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
   const isMobile = useIsMobile();
   const [showStats, setShowStats] = useState(false);
   const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.Camera | null>(null);
+  const [scene, setScene] = useState<THREE.Scene | null>(null);
+  const [camera, setCamera] = useState<THREE.Camera | null>(null);
 
   useEffect(() => {
     // Clean up when component unmounts
@@ -196,59 +195,63 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
     };
   }, [fileUrl]);
 
-  const handleMeasurementPoint = (point: THREE.Vector3) => {
-    // This will pass the point to the MeasurementTools
-    // The actual logic is handled in the useMeasurements hook
+  const handleSceneReady = (newScene: THREE.Scene, newCamera: THREE.Camera) => {
+    setScene(newScene);
+    setCamera(newCamera);
+  };
+
+  const handleMeasurementClick = (event: React.MouseEvent) => {
+    // This will be passed to the MeasurementTools
+    // Just a pass-through for events
   };
 
   return (
-    <SidebarProvider>
-      <div className="relative flex w-full h-full">
-        <div className="relative flex-1">
-          <ModelCanvas 
-            fileUrl={fileUrl}
-            onMeasurementClick={handleMeasurementPoint} 
-          />
-          
-          {/* UI Controls */}
-          <div className="absolute top-4 right-4 flex gap-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="glass-button" 
-              onClick={() => setShowStats(!showStats)}
-            >
-              <Eye size={16} className={showStats ? 'text-primary' : ''} />
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant={measurementsEnabled ? "default" : "outline"} 
-              className="glass-button" 
-              onClick={() => setMeasurementsEnabled(!measurementsEnabled)}
-            >
-              <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
-            </Button>
-          </div>
-          
-          {/* Model name display */}
-          <div className="absolute top-4 left-4">
-            <div className="glass-panel px-4 py-2 rounded-md">
-              <p className="text-sm font-medium truncate max-w-[200px]">
-                {fileName}
-              </p>
-            </div>
-          </div>
-        </div>
-      
-        {/* Measurement Tools */}
-        <MeasurementTools 
-          enabled={measurementsEnabled}
-          scene={sceneRef.current}
-          camera={cameraRef.current}
+    <div className="relative w-full h-full">
+      <div className="absolute inset-0 z-0">
+        <ModelCanvas 
+          fileUrl={fileUrl}
+          onMeasurementClick={handleMeasurementClick} 
+          onSceneReady={handleSceneReady}
         />
       </div>
-    </SidebarProvider>
+      
+      {/* UI Controls */}
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="glass-button" 
+          onClick={() => setShowStats(!showStats)}
+        >
+          <Eye size={16} className={showStats ? 'text-primary' : ''} />
+        </Button>
+        
+        <Button 
+          size="sm" 
+          variant={measurementsEnabled ? "default" : "outline"} 
+          className="glass-button" 
+          onClick={() => setMeasurementsEnabled(!measurementsEnabled)}
+        >
+          <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
+        </Button>
+      </div>
+      
+      {/* Model name display */}
+      <div className="absolute top-4 left-4 z-10">
+        <div className="glass-panel px-4 py-2 rounded-md">
+          <p className="text-sm font-medium truncate max-w-[200px]">
+            {fileName}
+          </p>
+        </div>
+      </div>
+      
+      {/* Measurement Tools */}
+      <MeasurementTools 
+        enabled={measurementsEnabled}
+        scene={scene}
+        camera={camera}
+      />
+    </div>
   );
 };
 

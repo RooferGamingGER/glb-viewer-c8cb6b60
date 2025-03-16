@@ -24,7 +24,7 @@ const Viewer = () => {
   }, [fileUrl, navigate]);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background">
+    <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
       <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center">
         <Button 
           variant="outline" 
@@ -39,10 +39,12 @@ const Viewer = () => {
         <h1 className="text-lg font-medium">3D-Viewer</h1>
       </header>
       
-      <main className="flex-1 relative overflow-hidden">
-        {fileUrl && (
-          <ModelViewer fileUrl={fileUrl} fileName={fileName} />
-        )}
+      <main className="flex-1 relative">
+        <SidebarProvider>
+          {fileUrl && (
+            <ModelViewer fileUrl={fileUrl} fileName={fileName} />
+          )}
+        </SidebarProvider>
       </main>
     </div>
   );
