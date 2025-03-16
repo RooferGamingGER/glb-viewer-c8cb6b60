@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Pencil,
-  Move,
   X
 } from 'lucide-react';
 import { MeasurementMode, useMeasurements, isInclinationSignificant } from '@/hooks/useMeasurements';
@@ -321,6 +320,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       // Only handle clicks if enabled and sidebar is open
       if (!enabled || !open) return;
       
+      // Only process clicks if an active measurement mode is selected
+      if (activeMode === 'none') return;
+      
       // Calculate mouse position in normalized device coordinates (-1 to +1)
       const canvasRect = canvasElement.getBoundingClientRect();
       const mouseX = ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1;
@@ -397,7 +399,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const selectTool = (mode: MeasurementMode) => {
     setActiveMode(mode);
     clearCurrentPoints(); // Clear current points when changing tools
-    toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : 'Flächen'}messung ausgewählt`);
+    toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : mode === 'area' ? 'Flächen' : 'Navigations'}messung ausgewählt`);
   };
 
   const toggleVisibility = () => {
@@ -450,16 +452,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={activeMode === 'none'}
-                  onClick={() => selectTool('none')}
-                  tooltip="Navigation"
-                >
-                  <Move />
-                  <span>Navigation</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {/* Navigation button removed as requested */}
               
               <SidebarMenuItem>
                 <SidebarMenuButton

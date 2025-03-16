@@ -26,6 +26,7 @@ export interface Measurement {
   visible?: boolean;
   editMode?: boolean;
   unit?: string;
+  description?: string; // Add missing description property
 }
 
 // Utility function to determine if inclination is significant
@@ -237,7 +238,8 @@ export const useMeasurements = () => {
           value,
           label,
           visible: true,
-          unit: 'm'
+          unit: 'm',
+          description: ''
         }
       ]);
       setCurrentPoints([]);
@@ -257,7 +259,8 @@ export const useMeasurements = () => {
           inclination,
           label,
           visible: true,
-          unit: 'm'
+          unit: 'm',
+          description: ''
         }
       ]);
       setCurrentPoints([]);
@@ -275,7 +278,8 @@ export const useMeasurements = () => {
           value,
           label,
           visible: true,
-          unit: 'm²'
+          unit: 'm²',
+          description: ''
         }
       ]);
       setCurrentPoints([]);
