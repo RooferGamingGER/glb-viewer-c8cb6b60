@@ -340,7 +340,7 @@ const triggerMobileDownload = (blob: Blob, filename: string): void => {
  */
 const saveWithFileSystemAccessAPI = async (blob: Blob, filename: string): Promise<boolean> => {
   try {
-    // @ts-ignore - File System Access API might not be typed
+    // Use the properly typed window.showSaveFilePicker method
     if (window.showSaveFilePicker) {
       const fileHandle = await window.showSaveFilePicker({
         suggestedName: filename,
