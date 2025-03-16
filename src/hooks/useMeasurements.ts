@@ -228,21 +228,15 @@ export const useMeasurements = () => {
         
         // Recalculate the measurement value
         let newValue: number;
-        let inclination: number | undefined;
         
         if (m.type === 'length') {
           newValue = calculateDistance(newPoints[0], newPoints[1]);
-          // Calculate inclination for length measurements
-          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
-          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
-          inclination = Math.abs(calculateInclination(p1, p2)); // Always positive inclination
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
           newValue = calculateArea(newPoints);
           // Update segments for area measurements
-          const segments = generateSegments(newPoints);
-          m.segments = segments;
+          m.segments = generateSegments(newPoints);
         } else {
           newValue = m.value; // Fallback
         }
@@ -251,7 +245,6 @@ export const useMeasurements = () => {
           ...m,
           points: newPoints,
           value: newValue,
-          inclination, // Updated inclination
           label: formatMeasurement(newValue, m.type)
         };
       });
@@ -308,15 +301,16 @@ export const useMeasurements = () => {
     }));
   }, [calculateDistance, calculateHeight, calculateArea]);
 
+  // Dedicated function to create a Length measurement
   const calculateInclination = useCallback((p1: THREE.Vector3, p2: THREE.Vector3): number => {
     const deltaY = p2.y - p1.y;
     const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
     
     // Calculate inclination in radians
-    const inclinationRad = Math.atan2(Math.abs(deltaY), horizontalDistance);
+    const inclinationRad = Math.atan2(deltaY, horizontalDistance);
     
-    // Convert radians to degrees, always positive
-    return Math.abs(inclinationRad * (180 / Math.PI));
+    // Convert radians to degrees
+    return inclinationRad * (180 / Math.PI);
   }, []);
 
   const createLengthMeasurement = useCallback((points: Point[]) => {
@@ -328,7 +322,7 @@ export const useMeasurements = () => {
     // Calculate inclination for length measurements
     const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
     const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-    const inclination = Math.abs(calculateInclination(p1, p2)); // Always positive
+    const inclination = calculateInclination(p1, p2);
     
     setMeasurements(prev => [
       ...prev,
@@ -341,15 +335,16 @@ export const useMeasurements = () => {
         visible: true,
         unit: 'm',
         description: '',
-        inclination // Store inclination as absolute value
+        inclination // Store inclination
       }
     ]);
     
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, [calculateDistance, calculateInclination]);
+  }, [calculateDistance]);
 
+  // Dedicated function to create a Height measurement
   const createHeightMeasurement = useCallback((points: Point[]) => {
     if (points.length !== 2) return;
     
@@ -439,6 +434,7 @@ export const useMeasurements = () => {
     }
   }, [activeMode, createLengthMeasurement, createHeightMeasurement, editMeasurementId, editingPointIndex, updateMeasurementPoint]);
 
+  // Toggle measurement tool function
   const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
     if (activeMode === mode) {
       // If the same tool is clicked again, disable it by setting mode to 'none'
@@ -517,12 +513,14 @@ export const useMeasurements = () => {
     deleteMeasurement,
     deletePoint,
     undoLastPoint,
+    // New editing functionality
     editMeasurementId,
     editingPointIndex,
     startPointEdit,
     updateMeasurementPoint,
     cancelEditing,
     getNearestPointIndex,
+    // Add segment calculation method for external use
     calculateSegmentLength
   };
 };
