@@ -136,6 +136,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const isMobile = useIsMobile();
   const [showStats, setShowStats] = useState(false);
   const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
+  const [measurementToolsEverEnabled, setMeasurementToolsEverEnabled] = useState(false);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -159,7 +160,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   };
 
   const toggleMeasurements = () => {
-    setMeasurementsEnabled(prev => !prev);
+    const newState = !measurementsEnabled;
+    setMeasurementsEnabled(newState);
+    
+    // If this is the first time enabling measurement tools, 
+    // track it so we can open the sidebar
+    if (newState && !measurementToolsEverEnabled) {
+      setMeasurementToolsEverEnabled(true);
+    }
+    
     toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
   };
 
@@ -232,7 +241,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         {fileName}
       </div>
       
-      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} />}
+      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} autoOpenSidebar={measurementToolsEverEnabled} />}
     </div>;
 };
 

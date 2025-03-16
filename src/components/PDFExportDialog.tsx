@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, X, Camera, Building } from 'lucide-react';
+import { FileText, Download, X, Camera, Building, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -57,9 +57,9 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
 
   const handleExport = async () => {
     try {
-      // Check if there are measurements
-      if (measurements.length === 0) {
-        toast.error('Keine Messungen vorhanden. Bitte erstellen Sie mindestens eine Messung.');
+      // Use measurements from the sidebar instead of the local state
+      if (includeScreenshot && !currentScreenshot) {
+        toast.error('Kein Screenshot ausgewählt. Bitte erstellen Sie einen Screenshot oder deaktivieren Sie die Option.');
         return;
       }
       
@@ -68,23 +68,8 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       let screenshotUrl = '';
       
       // Only take a screenshot if it's to be included
-      if (includeScreenshot) {
-        // If we already have a screenshot in the dialog, use it
-        if (currentScreenshot) {
-          screenshotUrl = currentScreenshot.url;
-        } else {
-          // Check if there's a recent screenshot in the store we can use
-          const latestScreenshot = getLatestScreenshot();
-          if (latestScreenshot) {
-            screenshotUrl = latestScreenshot.url;
-            setCurrentScreenshot(latestScreenshot);
-          } else {
-            // Take a new screenshot if needed
-            const newScreenshot = await onTakeScreenshot();
-            screenshotUrl = newScreenshot.url;
-            setCurrentScreenshot(newScreenshot);
-          }
-        }
+      if (includeScreenshot && currentScreenshot) {
+        screenshotUrl = currentScreenshot.url;
       }
       
       // Generate and download the PDF with enhanced options
@@ -112,6 +97,22 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     } catch (error) {
       console.error('Failed to export PDF:', error);
       toast.error('Fehler beim PDF-Export');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddCurrentScreenshot = async () => {
+    try {
+      setLoading(true);
+      
+      // Take a new screenshot and store it
+      const newScreenshot = await onTakeScreenshot();
+      setCurrentScreenshot(newScreenshot);
+      toast.success('Screenshot für PDF hinzugefügt');
+    } catch (error) {
+      console.error('Failed to add screenshot:', error);
+      toast.error('Fehler beim Hinzufügen des Screenshots');
     } finally {
       setLoading(false);
     }
@@ -244,15 +245,26 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                 <div className="mt-2">
                   <div className="flex justify-between mb-2">
                     <Label>Screenshot-Vorschau</Label>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handlePreviewScreenshot}
-                      disabled={loading}
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Vorschau erstellen
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleAddCurrentScreenshot}
+                        disabled={loading}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Screenshot hinzufügen
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handlePreviewScreenshot}
+                        disabled={loading}
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Vorschau erstellen
+                      </Button>
+                    </div>
                   </div>
                   
                   <div className="border border-border rounded-md overflow-hidden bg-muted/20">
@@ -266,7 +278,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                       <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
                         <Camera className="h-8 w-8 mb-2 opacity-50" />
                         <p className="text-sm">
-                          {loading ? 'Screenshot wird erstellt...' : 'Klicken Sie auf "Vorschau erstellen", um einen Screenshot zu generieren'}
+                          {loading ? 'Screenshot wird erstellt...' : 'Klicken Sie auf "Screenshot hinzufügen", um einen Screenshot zu generieren'}
                         </p>
                       </div>
                     )}
@@ -359,7 +371,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
           <DialogFooter>
             <Button 
               onClick={handleExport}
-              disabled={loading || !title || !fileName}
+              disabled={loading || !title || !fileName || (includeScreenshot && !currentScreenshot)}
               className="w-full sm:w-auto"
             >
               <Download className="h-4 w-4 mr-2" />

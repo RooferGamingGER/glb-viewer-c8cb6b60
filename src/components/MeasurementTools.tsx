@@ -38,12 +38,14 @@ interface MeasurementToolsProps {
   enabled: boolean;
   scene: THREE.Scene;
   camera: THREE.Camera;
+  autoOpenSidebar?: boolean;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
-  camera
+  camera,
+  autoOpenSidebar = false
 }) => {
   const { open, setOpen, toggleSidebar } = useSidebar();
   const [visible, setVisible] = useState(true);
@@ -109,8 +111,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Remove the auto-opening behavior when measurements are enabled
-  // Instead, we'll let the user control the sidebar visibility manually
+  // Effect to open the sidebar when measurement tools are first enabled
+  useEffect(() => {
+    if (enabled && autoOpenSidebar && !open) {
+      setOpen(true);
+    }
+  }, [enabled, autoOpenSidebar, open, setOpen]);
 
   useEffect(() => {
     renderCurrentPoints(
