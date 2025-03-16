@@ -99,6 +99,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const labelsRef = useRef<THREE.Group | null>(null);
   const editPointsRef = useRef<THREE.Group | null>(null);
 
+  const [labels, setLabels] = useState<JSX.Element[]>([]);
+
   useEffect(() => {
     if (enabled && !open) {
       setOpen(true);
@@ -233,6 +235,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       labelsRef.current.remove(labelsRef.current.children[0]);
     }
     
+    const htmlLabels: JSX.Element[] = [];
+    
     measurements.forEach((measurement) => {
       if (measurement.visible === false || !visible) return;
       
@@ -274,30 +278,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             value: measurement.label,
             measurementId: measurement.id
           };
-          
           labelsRef.current?.add(labelPlaceholder);
           
-          const labelElement = <MeasurementLabel
-            position={midPoint}
-            value={measurement.label}
-            color="rgb(34, 197, 94)" // Green color
-            visible={true}
-          />;
-          
-          labelsRef.current.add(
-            new THREE.Object3D().add(
-              new THREE.Mesh(
-                new THREE.PlaneGeometry(0.1, 0.1),
-                new THREE.MeshBasicMaterial({ visible: false })
-              ).add(
-                <Html position={midPoint} center>
-                  <div className="px-2 py-1 rounded-md bg-black/80 text-white text-xs font-medium 
-                    shadow-md whitespace-nowrap transform scale-[0.85] pointer-events-none">
-                    {measurement.label}
-                  </div>
-                </Html>
-              )
-            )
+          htmlLabels.push(
+            <MeasurementLabel
+              key={`length-${measurement.id}`}
+              position={midPoint}
+              value={measurement.label}
+              color="rgb(34, 197, 94)" 
+              visible={true}
+            />
           );
         }
       } 
@@ -325,6 +315,21 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
         measurementsRef.current?.add(verticalLine);
         
+        const horizontalLinePoints = [
+          new THREE.Vector3(verticalPoint.x, verticalPoint.y, verticalPoint.z),
+          new THREE.Vector3(lowerPoint.x, lowerPoint.y, lowerPoint.z)
+        ];
+        const horizontalLineGeometry = new THREE.BufferGeometry().setFromPoints(horizontalLinePoints);
+        const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
+          color: 0x0000ff,
+          linewidth: 2,
+          dashSize: 0.1,
+          gapSize: 0.05,
+        });
+        const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
+        horizontalLine.computeLineDistances();
+        measurementsRef.current?.add(horizontalLine);
+        
         const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
         const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
         
@@ -348,7 +353,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             value: measurement.label,
             measurementId: measurement.id
           };
-          
           labelsRef.current?.add(labelPlaceholder);
           
           const labelPosition = new THREE.Vector3(
@@ -357,22 +361,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             midVertical.z
           );
           
-          const labelMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.1, 0.1),
-            new THREE.MeshBasicMaterial({ visible: false })
+          htmlLabels.push(
+            <MeasurementLabel
+              key={`height-${measurement.id}`}
+              position={labelPosition}
+              value={measurement.label}
+              color="rgb(59, 130, 246)"
+              visible={true}
+            />
           );
-          labelMesh.position.copy(labelPosition);
-          
-          labelMesh.add(
-            <Html position={new THREE.Vector3(0, 0, 0)} center>
-              <div className="px-2 py-1 rounded-md bg-blue-500/80 text-white text-xs font-medium 
-                shadow-md whitespace-nowrap transform scale-[0.85] pointer-events-none">
-                {measurement.label}
-              </div>
-            </Html>
-          );
-          
-          labelsRef.current.add(labelMesh);
         }
       } 
       else if (measurement.type === 'area') {
@@ -422,25 +419,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             measurementId: measurement.id,
             segmentIndex: i
           };
-          
           labelsRef.current?.add(labelPlaceholder);
           
-          const labelMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.1, 0.1),
-            new THREE.MeshBasicMaterial({ visible: false })
+          htmlLabels.push(
+            <MeasurementLabel
+              key={`segment-${measurement.id}-${i}`}
+              position={midSegment}
+              value={segmentLengthStr}
+              color="rgb(245, 158, 11)"
+              visible={true}
+            />
           );
-          labelMesh.position.copy(midSegment);
-          
-          labelMesh.add(
-            <Html position={new THREE.Vector3(0, 0, 0)} center>
-              <div className="px-2 py-1 rounded-md bg-amber-500/80 text-white text-xs font-medium 
-                shadow-md whitespace-nowrap transform scale-[0.85] pointer-events-none">
-                {segmentLengthStr}
-              </div>
-            </Html>
-          );
-          
-          labelsRef.current.add(labelMesh);
         }
         
         const centroid = new THREE.Vector3(0, 0, 0);
@@ -459,29 +448,28 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             value: measurement.label,
             measurementId: measurement.id
           };
-          
           labelsRef.current?.add(labelPlaceholder);
           
-          const labelPosition = new THREE.Vector3(centroid.x, centroid.y + 0.15, centroid.z);
-          const labelMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.1, 0.1),
-            new THREE.MeshBasicMaterial({ visible: false })
-          );
-          labelMesh.position.copy(labelPosition);
-          
-          labelMesh.add(
-            <Html position={new THREE.Vector3(0, 0, 0)} center>
-              <div className="px-2 py-1 rounded-md bg-amber-500/80 text-white text-xs font-medium 
-                shadow-md whitespace-nowrap transform scale-[0.85] pointer-events-none">
-                Fläche: {measurement.label}
-              </div>
-            </Html>
+          const labelPosition = new THREE.Vector3(
+            centroid.x, 
+            centroid.y + 0.15, 
+            centroid.z
           );
           
-          labelsRef.current.add(labelMesh);
+          htmlLabels.push(
+            <MeasurementLabel
+              key={`area-${measurement.id}`}
+              position={labelPosition}
+              value={`Fläche: ${measurement.label}`}
+              color="rgb(245, 158, 11)"
+              visible={true}
+            />
+          );
         }
       }
     });
+    
+    setLabels(htmlLabels);
   }, [measurements, visible]);
 
   useEffect(() => {
@@ -677,251 +665,255 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   if (!enabled) return null;
 
   return (
-    <Sidebar side="right" variant="floating" className="z-20">
-      <SidebarRail />
-      <SidebarHeader>
-        <h3 className="text-lg font-semibold px-4 py-2">Messwerkzeuge</h3>
-        <SidebarTrigger className="absolute right-4 top-4" />
-      </SidebarHeader>
+    <>
+      {visible && labels}
       
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={activeMode === 'length'}
-                  onClick={() => selectTool('length')}
-                  tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
-                >
-                  <Ruler />
-                  <span>Länge</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={activeMode === 'height'}
-                  onClick={() => selectTool('height')}
-                  tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
-                >
-                  <ArrowUpDown />
-                  <span>Höhe</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={activeMode === 'area'}
-                  onClick={() => selectTool('area')}
-                  tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
-                >
-                  <Square />
-                  <span>Fläche</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <Sidebar side="right" variant="floating" className="z-20">
+        <SidebarRail />
+        <SidebarHeader>
+          <h3 className="text-lg font-semibold px-4 py-2">Messwerkzeuge</h3>
+          <SidebarTrigger className="absolute right-4 top-4" />
+        </SidebarHeader>
         
-        {activeMode === 'area' && currentPoints.length >= 3 && (
+        <SidebarContent>
           <SidebarGroup>
+            <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
             <SidebarGroupContent>
-              <Button 
-                className="w-full flex items-center justify-center gap-2"
-                onClick={handleFinalizeMeasurement}
-              >
-                <CheckCircle2 size={16} />
-                Fläche schließen
-              </Button>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'length'}
+                    onClick={() => selectTool('length')}
+                    tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
+                  >
+                    <Ruler />
+                    <span>Länge</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'height'}
+                    onClick={() => selectTool('height')}
+                    tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
+                  >
+                    <ArrowUpDown />
+                    <span>Höhe</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'area'}
+                    onClick={() => selectTool('area')}
+                    tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                  >
+                    <Square />
+                    <span>Fläche</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
-        
-        {editMeasurementId && (
+          
+          {activeMode === 'area' && currentPoints.length >= 3 && (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <Button 
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={handleFinalizeMeasurement}
+                >
+                  <CheckCircle2 size={16} />
+                  Fläche schließen
+                </Button>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+          
+          {editMeasurementId && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Punktbearbeitung</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <Alert className="bg-muted/50 border-muted">
+                  <Move className="h-4 w-4" />
+                  <AlertTitle>Punkt bearbeiten</AlertTitle>
+                  <AlertDescription>
+                    Klicken Sie auf einen Punkt (gelb markiert) und dann auf eine neue Position im Modell.
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEditing}
+                  className="mt-2 w-full flex items-center justify-center gap-2"
+                >
+                  <X size={16} />
+                  Bearbeitung abbrechen
+                </Button>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+          
           <SidebarGroup>
-            <SidebarGroupLabel>Punktbearbeitung</SidebarGroupLabel>
+            <SidebarGroupLabel>Anleitung</SidebarGroupLabel>
             <SidebarGroupContent>
               <Alert className="bg-muted/50 border-muted">
-                <Move className="h-4 w-4" />
-                <AlertTitle>Punkt bearbeiten</AlertTitle>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Messpunkte setzen</AlertTitle>
                 <AlertDescription>
-                  Klicken Sie auf einen Punkt (gelb markiert) und dann auf eine neue Position im Modell.
+                  {activeMode === 'none' ? (
+                    "Wählen Sie ein Messwerkzeug, um Messpunkte zu setzen."
+                  ) : (
+                    <>
+                      Klicken Sie auf das Modell, um Messpunkte zu setzen. 
+                      {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
+                      {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung (Y-Achse)."}
+                      {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelEditing}
-                className="mt-2 w-full flex items-center justify-center gap-2"
-              >
-                <X size={16} />
-                Bearbeitung abbrechen
-              </Button>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Anleitung</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <Alert className="bg-muted/50 border-muted">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Messpunkte setzen</AlertTitle>
-              <AlertDescription>
-                {activeMode === 'none' ? (
-                  "Wählen Sie ein Messwerkzeug, um Messpunkte zu setzen."
+          
+          <SidebarGroup>
+            <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
+            <SidebarGroupContent className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="flex-1 flex items-center justify-center gap-2"
+                onClick={toggleVisibility}
+              >
+                {visible ? (
+                  <>
+                    <EyeOff size={16} />
+                    Ausblenden
+                  </>
                 ) : (
                   <>
-                    Klicken Sie auf das Modell, um Messpunkte zu setzen. 
-                    {activeMode === 'length' && " Zwei Punkte für eine Längenmessung."}
-                    {activeMode === 'height' && " Zwei Punkte für eine Höhenmessung (Y-Achse)."}
-                    {activeMode === 'area' && " Mindestens drei Punkte für eine Flächenmessung."}
+                    <Eye size={16} />
+                    Einblenden
                   </>
                 )}
-              </AlertDescription>
-            </Alert>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
-          <SidebarGroupContent className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex-1 flex items-center justify-center gap-2"
-              onClick={toggleVisibility}
-            >
-              {visible ? (
-                <>
-                  <EyeOff size={16} />
-                  Ausblenden
-                </>
-              ) : (
-                <>
-                  <Eye size={16} />
-                  Einblenden
-                </>
-              )}
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex-1 flex items-center justify-center gap-2 border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
-              onClick={handleClearMeasurements}
-            >
-              <Trash2 size={16} />
-              Löschen
-            </Button>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        {measurements.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>
-              Messungen
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-1 absolute right-0 top-0.5"
-                onClick={toggleAllMeasurementsVisibility}
-              >
-                {allMeasurementsVisible ? <EyeOff size={14} /> : <Eye size={14} />}
               </Button>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <ScrollArea className="h-[200px] pr-4">
-                {measurements.map((measurement) => (
-                  <div 
-                    key={measurement.id} 
-                    className={`mb-2 p-2 rounded-md border ${
-                      measurement.visible ? 'opacity-100' : 'opacity-50'
-                    } ${
-                      editMeasurementId === measurement.id ? 'bg-accent/50 border-accent' : 'bg-card border-border'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center space-x-2">
-                        {measurement.type === 'length' && <Ruler size={14} className="text-green-500" />}
-                        {measurement.type === 'height' && <ArrowUpDown size={14} className="text-blue-500" />}
-                        {measurement.type === 'area' && <Square size={14} className="text-amber-500" />}
-                        <span className="font-medium text-sm">
-                          {measurement.type === 'length' && 'Länge'}
-                          {measurement.type === 'height' && 'Höhe'}
-                          {measurement.type === 'area' && 'Fläche'}
-                        </span>
-                      </span>
-                      
-                      <div className="flex space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => toggleMeasurementVisibility(measurement.id)}
-                        >
-                          {measurement.visible ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-blue-500"
-                          onClick={() => handleStartPointEdit(measurement.id)}
-                        >
-                          <Pencil size={14} />
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-destructive"
-                          onClick={() => handleDeleteMeasurement(measurement.id)}
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-1 text-sm font-mono">
-                      {measurement.label}
-                    </div>
-                    
-                    {editingId === measurement.id ? (
-                      <div className="mt-2 flex gap-2">
-                        <Input
-                          size={1}
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          placeholder="Beschreibung"
-                          className="h-7 text-xs"
-                        />
-                        <Button
-                          size="sm"
-                          className="h-7 w-7 p-0 shrink-0"
-                          onClick={() => handleEditSave(measurement.id)}
-                        >
-                          <Save size={14} />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div 
-                        className="mt-1 text-xs text-muted-foreground cursor-pointer hover:underline"
-                        onClick={() => handleEditStart(measurement.id, measurement.description)}
-                      >
-                        {measurement.description || "Beschreibung hinzufügen..."}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </ScrollArea>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="flex-1 flex items-center justify-center gap-2 border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                onClick={handleClearMeasurements}
+              >
+                <Trash2 size={16} />
+                Löschen
+              </Button>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
-      </SidebarContent>
-    </Sidebar>
+          
+          {measurements.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel>
+                Messungen
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-1 absolute right-0 top-0.5"
+                  onClick={toggleAllMeasurementsVisibility}
+                >
+                  {allMeasurementsVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                </Button>
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <ScrollArea className="h-[200px] pr-4">
+                  {measurements.map((measurement) => (
+                    <div 
+                      key={measurement.id} 
+                      className={`mb-2 p-2 rounded-md border ${
+                        measurement.visible ? 'opacity-100' : 'opacity-50'
+                      } ${
+                        editMeasurementId === measurement.id ? 'bg-accent/50 border-accent' : 'bg-card border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center space-x-2">
+                          {measurement.type === 'length' && <Ruler size={14} className="text-green-500" />}
+                          {measurement.type === 'height' && <ArrowUpDown size={14} className="text-blue-500" />}
+                          {measurement.type === 'area' && <Square size={14} className="text-amber-500" />}
+                          <span className="font-medium text-sm">
+                            {measurement.type === 'length' && 'Länge'}
+                            {measurement.type === 'height' && 'Höhe'}
+                            {measurement.type === 'area' && 'Fläche'}
+                          </span>
+                        </span>
+                        
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-blue-500"
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil size={14} />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive"
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-1 text-sm font-mono">
+                        {measurement.label}
+                      </div>
+                      
+                      {editingId === measurement.id ? (
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            size={1}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            placeholder="Beschreibung"
+                            className="h-7 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            className="h-7 w-7 p-0 shrink-0"
+                            onClick={() => handleEditSave(measurement.id)}
+                          >
+                            <Save size={14} />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="mt-1 text-xs text-muted-foreground cursor-pointer hover:underline"
+                          onClick={() => handleEditStart(measurement.id, measurement.description)}
+                        >
+                          {measurement.description || "Beschreibung hinzufügen..."}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </ScrollArea>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+        </SidebarContent>
+      </Sidebar>
+    </>
   );
 };
 
