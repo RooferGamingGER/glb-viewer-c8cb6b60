@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -49,7 +48,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
 
-  // Initialize measurement hooks
   const { 
     measurements,
     currentPoints,
@@ -71,7 +69,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint
   } = useMeasurements();
 
-  // Initialize Three.js object references
   const {
     pointsRef,
     linesRef,
@@ -81,14 +78,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     segmentLabelsRef
   } = useThreeObjects(scene, enabled);
 
-  // Set up interaction handlers
   const interactionHandlers = {
     addPoint,
     startPointEdit,
     updateMeasurementPoint
   };
 
-  // Initialize user interaction handling
   const { movingPointInfo, setMovingPointInfo } = useMeasurementInteraction(
     enabled,
     scene,
@@ -110,17 +105,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editingPointIndex
   );
 
-  // Set up label scaling
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Auto-open sidebar when measurements are enabled
   useEffect(() => {
     if (enabled && !open) {
       setOpen(true);
     }
   }, [enabled, open, setOpen]);
 
-  // Update visual representation of points when currentPoints changes
   useEffect(() => {
     renderCurrentPoints(
       pointsRef.current, 
@@ -131,7 +123,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [currentPoints, visible, activeMode]);
 
-  // Update visual representation of completed measurements
   useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
@@ -142,7 +133,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, visible]);
 
-  // Update the editable points visualizations
   useEffect(() => {
     renderEditPoints(
       editPointsRef.current, 
@@ -153,10 +143,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, editMeasurementId, editingPointIndex, visible]);
 
-  // Cleanup effect - clear all measurements when measurement tools are disabled
   useEffect(() => {
     if (!enabled) {
-      // Clear all visualizations when disabling measurement tools
       clearAllVisuals(
         pointsRef.current,
         linesRef.current,
@@ -168,12 +156,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled]);
 
-  // Handlers
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
       
-      // Deactivate measurement tool after finalizing an area measurement
       if (activeMode === 'area') {
         toggleMeasurementTool('none');
         toast.success('Flächenmessung abgeschlossen - Messwerkzeug deaktiviert');
@@ -195,7 +181,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleClearMeasurements = () => {
     clearMeasurements();
-    // Explicitly clear all visual elements too
     clearAllVisuals(
       pointsRef.current,
       linesRef.current,
@@ -208,10 +193,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleDeleteMeasurement = (id: string) => {
-    // Before deleting, ensure all associated visual elements are removed
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete) {
-      // Remove specific visual elements for this measurement ID
       clearMeasurementVisuals(
         id,
         measurementsRef.current,
@@ -220,12 +203,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       );
     }
     
-    // Delete the measurement from state
     deleteMeasurement(id);
     toast.info('Messung gelöscht');
   };
 
-  // Helper function to clear visuals for a specific measurement
   const clearMeasurementVisuals = (
     measurementId: string,
     measurementsGroup: THREE.Group | null,
@@ -234,29 +215,28 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   ) => {
     if (!measurementsGroup || !labelsGroup || !segmentLabelsGroup) return;
     
-    // Remove measurement objects (points and lines)
     const measurementObjects = measurementsGroup.children.filter(obj => 
       obj.userData && obj.userData.measurementId === measurementId
     );
     measurementObjects.forEach(obj => {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach(mat => mat.dispose());
+      if ((obj as any).geometry) (obj as any).geometry.dispose();
+      
+      if ((obj as any).material) {
+        if (Array.isArray((obj as any).material)) {
+          (obj as any).material.forEach((mat: THREE.Material) => mat.dispose());
         } else {
-          obj.material.dispose();
+          (obj as any).material.dispose();
         }
       }
+      
       measurementsGroup.remove(obj);
     });
     
-    // Remove labels
     const labels = labelsGroup.children.filter(obj => 
       obj.userData && obj.userData.measurementId === measurementId
     );
     labels.forEach(obj => labelsGroup.remove(obj));
     
-    // Remove segment labels
     const segmentLabels = segmentLabelsGroup.children.filter(obj => 
       obj.userData && obj.userData.measurementId === measurementId
     );
@@ -264,10 +244,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleStartPointEdit = (id: string) => {
-    // Toggle the edit mode for this measurement
     toggleEditMode(id);
     
-    // If it was already in edit mode, it's now turned off
     if (editMeasurementId === id) {
       toast.info('Punktbearbeitung beendet');
     } else {
@@ -282,7 +260,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Bearbeitung abgebrochen');
   };
 
-  // Toggle segment list for a measurement
   const toggleSegments = (id: string) => {
     setSegmentsOpen(prev => ({
       ...prev,
@@ -290,7 +267,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
-  // If measurements are not enabled, don't render anything
   if (!enabled) return null;
 
   return (
@@ -304,7 +280,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       </SidebarHeader>
       
       <SidebarContent>
-        {/* Editing Alert */}
         <EditingAlert 
           editMeasurementId={editMeasurementId}
           editingSegmentId={editingSegmentId}
@@ -312,7 +287,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           handleCancelEditing={handleCancelEditing}
         />
         
-        {/* Measurement Tools */}
         <MeasurementToolbar 
           activeMode={activeMode}
           toggleMeasurementTool={toggleMeasurementTool}
@@ -322,7 +296,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           measurements={measurements}
         />
         
-        {/* Active Measurement */}
         <ActiveMeasurement 
           activeMode={activeMode}
           currentPoints={currentPoints}
@@ -331,7 +304,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           clearCurrentPoints={clearCurrentPoints}
         />
         
-        {/* Measurements List */}
         <MeasurementList 
           measurements={measurements}
           toggleMeasurementVisibility={toggleMeasurementVisibility}

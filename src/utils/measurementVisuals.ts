@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -8,6 +7,24 @@ import {
   calculateCentroid,
   calculateInclination
 } from '@/utils/textSprite';
+
+/**
+ * Safely disposes of Three.js object's geometry and material
+ */
+function safelyDisposeObject(object: THREE.Object3D) {
+  // Only try to dispose geometry and material if they exist
+  if ('geometry' in object && object.geometry) {
+    object.geometry.dispose();
+  }
+  
+  if ('material' in object && object.material) {
+    if (Array.isArray(object.material)) {
+      object.material.forEach(mat => mat.dispose());
+    } else {
+      object.material.dispose();
+    }
+  }
+}
 
 /**
  * Clears all visual elements from groups
@@ -27,26 +44,8 @@ export function clearAllVisuals(
     while (group.children.length > 0) {
       const object = group.children[0];
       
-      // Dispose of geometries and materials if they exist
-      if (object instanceof THREE.Mesh) {
-        if (object.geometry) object.geometry.dispose();
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      } else if (object instanceof THREE.Line) {
-        if (object.geometry) object.geometry.dispose();
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      }
+      // Safely dispose of object resources
+      safelyDisposeObject(object);
       
       // Remove from parent
       group.remove(object);
@@ -77,28 +76,14 @@ export function renderCurrentPoints(
   // Clear existing points
   while (pointsRef.children.length > 0) {
     const object = pointsRef.children[0];
-    if (object.geometry) object.geometry.dispose();
-    if (object.material) {
-      if (Array.isArray(object.material)) {
-        object.material.forEach(mat => mat.dispose());
-      } else {
-        object.material.dispose();
-      }
-    }
+    safelyDisposeObject(object);
     pointsRef.remove(object);
   }
 
   // Clear existing lines
   while (linesRef.children.length > 0) {
     const object = linesRef.children[0];
-    if (object.geometry) object.geometry.dispose();
-    if (object.material) {
-      if (Array.isArray(object.material)) {
-        object.material.forEach(mat => mat.dispose());
-      } else {
-        object.material.dispose();
-      }
-    }
+    safelyDisposeObject(object);
     linesRef.remove(object);
   }
 
@@ -251,14 +236,7 @@ export function renderEditPoints(
   // Clear existing edit points
   while (editPointsRef.children.length > 0) {
     const object = editPointsRef.children[0];
-    if (object.geometry) object.geometry.dispose();
-    if (object.material) {
-      if (Array.isArray(object.material)) {
-        object.material.forEach(mat => mat.dispose());
-      } else {
-        object.material.dispose();
-      }
-    }
+    safelyDisposeObject(object);
     editPointsRef.remove(object);
   }
   
@@ -314,14 +292,7 @@ export function renderMeasurements(
   // Clear existing measurement elements
   while (measurementsRef.children.length > 0) {
     const object = measurementsRef.children[0];
-    if (object.geometry) object.geometry.dispose();
-    if (object.material) {
-      if (Array.isArray(object.material)) {
-        object.material.forEach(mat => mat.dispose());
-      } else {
-        object.material.dispose();
-      }
-    }
+    safelyDisposeObject(object);
     measurementsRef.remove(object);
   }
   
