@@ -1,11 +1,9 @@
-
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
 import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 
 // Register fonts
-// Fix for TypeScript error - directly access vfs property
 pdfMake.vfs = pdfFonts.vfs;
 
 // Define fonts

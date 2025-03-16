@@ -17,9 +17,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPDF } from '@/utils/pdfExport';
+import { StoredScreenshot, getLatestScreenshot } from '@/utils/screenshot';
 
 interface PDFExportDialogProps {
-  onTakeScreenshot: () => Promise<string>;
+  onTakeScreenshot: () => Promise<StoredScreenshot>;
   measurements: Measurement[];
 }
 
@@ -32,14 +33,13 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const [fileName, setFileName] = useState('messungen.pdf');
   const [includeScreenshot, setIncludeScreenshot] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [currentScreenshot, setCurrentScreenshot] = useState<StoredScreenshot | null>(null);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
-    if (!isOpen && screenshotPreview) {
-      // Release the blob URL to free memory when dialog closes
-      URL.revokeObjectURL(screenshotPreview);
-      setScreenshotPreview(null);
+    if (!isOpen) {
+      // Reset screenshot state when dialog closes
+      setCurrentScreenshot(null);
     }
   };
 
@@ -51,15 +51,25 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       
       // Only take a screenshot if it's to be included
       if (includeScreenshot) {
-        // If we don't have a preview yet, take a screenshot
-        if (!screenshotPreview) {
-          screenshotUrl = await onTakeScreenshot();
+        // If we already have a screenshot in the dialog, use it
+        if (currentScreenshot) {
+          screenshotUrl = currentScreenshot.url;
         } else {
-          screenshotUrl = screenshotPreview;
+          // Check if there's a recent screenshot in the store we can use
+          const latestScreenshot = getLatestScreenshot();
+          if (latestScreenshot) {
+            screenshotUrl = latestScreenshot.url;
+            setCurrentScreenshot(latestScreenshot);
+          } else {
+            // Take a new screenshot if needed
+            const newScreenshot = await onTakeScreenshot();
+            screenshotUrl = newScreenshot.url;
+            setCurrentScreenshot(newScreenshot);
+          }
         }
       }
       
-      // Then generate and download the PDF
+      // Generate and download the PDF
       await exportMeasurementsToPDF({
         title,
         screenshotUrl,
@@ -71,11 +81,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       toast.success('PDF erfolgreich exportiert');
       setOpen(false);
       
-      // Release the blob URL to free memory
-      if (screenshotUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(screenshotUrl);
-      }
-      setScreenshotPreview(null);
+      // We don't need to revoke URLs here as it's handled by the screenshot store
     } catch (error) {
       console.error('Failed to export PDF:', error);
       toast.error('Fehler beim PDF-Export');
@@ -87,13 +93,10 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const handlePreviewScreenshot = async () => {
     try {
       setLoading(true);
-      // Clear any existing preview first
-      if (screenshotPreview) {
-        URL.revokeObjectURL(screenshotPreview);
-      }
       
-      const screenshotUrl = await onTakeScreenshot();
-      setScreenshotPreview(screenshotUrl);
+      // Take a new screenshot and store it
+      const newScreenshot = await onTakeScreenshot();
+      setCurrentScreenshot(newScreenshot);
     } catch (error) {
       console.error('Failed to take screenshot preview:', error);
       toast.error('Fehler beim Erstellen der Vorschau');
@@ -159,10 +162,9 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                 checked={includeScreenshot}
                 onCheckedChange={(checked) => {
                   setIncludeScreenshot(checked === true);
-                  // Clear screenshot preview if unchecked
-                  if (checked === false && screenshotPreview) {
-                    URL.revokeObjectURL(screenshotPreview);
-                    setScreenshotPreview(null);
+                  // Reset screenshot if unchecked
+                  if (checked === false) {
+                    setCurrentScreenshot(null);
                   }
                 }}
               />
@@ -187,9 +189,9 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                 </div>
                 
                 <div className="border border-border rounded-md overflow-hidden bg-muted/20">
-                  {screenshotPreview ? (
+                  {currentScreenshot ? (
                     <img 
-                      src={screenshotPreview} 
+                      src={currentScreenshot.url} 
                       alt="Vorschau" 
                       className="max-h-[200px] w-full object-contain"
                     />
