@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -8,8 +8,9 @@ import {
   Trash2, 
   Eye, 
   EyeOff,
+  FileText
 } from 'lucide-react';
-import { MeasurementMode } from '@/hooks/useMeasurements';
+import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -19,6 +20,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
+import PDFPreviewDialog from './PDFPreviewDialog';
 
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
@@ -26,7 +28,7 @@ interface MeasurementToolbarProps {
   visible: boolean;
   setVisible: (visible: boolean) => void;
   handleClearMeasurements: () => void;
-  measurements: any[];
+  measurements: Measurement[];
 }
 
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
@@ -37,6 +39,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   handleClearMeasurements,
   measurements
 }) => {
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
@@ -51,6 +54,14 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   const toggleVisibility = () => {
     setVisible(!visible);
     toast.info(visible ? 'Messungen in der Seitenleiste ausgeblendet' : 'Messungen in der Seitenleiste eingeblendet');
+  };
+
+  const handlePDFExport = () => {
+    if (measurements.length === 0) {
+      toast.error('Keine Messungen zum Exportieren vorhanden');
+      return;
+    }
+    setPdfDialogOpen(true);
   };
   
   return (
@@ -67,6 +78,16 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               title={visible ? "Messungen in der Seitenleiste ausblenden" : "Messungen in der Seitenleiste einblenden"}
             >
               {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7"
+              onClick={handlePDFExport}
+              title="Messungen als PDF exportieren"
+            >
+              <FileText className="h-4 w-4" />
             </Button>
             
             <Button 
@@ -117,6 +138,13 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroupContent>
+      
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog 
+        measurements={measurements}
+        open={pdfDialogOpen}
+        onOpenChange={setPdfDialogOpen}
+      />
     </SidebarGroup>
   );
 };

@@ -9,6 +9,7 @@ import {
 import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
 import EditingAlert from './EditingAlert';
+import PDFExportButton from './PDFExportButton';
 
 interface MeasurementListProps {
   measurements: Measurement[];
@@ -43,7 +44,17 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   
   return (
     <SidebarGroup className="flex-1 flex flex-col min-h-0">
-      <SidebarGroupLabel>Messungen</SidebarGroupLabel>
+      <div className="flex justify-between items-center">
+        <SidebarGroupLabel>Messungen</SidebarGroupLabel>
+        {measurements.length > 0 && (
+          <div className="flex mr-2">
+            <PDFExportButton 
+              measurements={measurements} 
+              disabled={!!editMeasurementId || !!editingSegmentId}
+            />
+          </div>
+        )}
+      </div>
       <SidebarGroupContent className="flex-1 flex flex-col min-h-0">
         <EditingAlert 
           editMeasurementId={editMeasurementId}
