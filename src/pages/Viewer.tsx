@@ -21,18 +21,6 @@ const Viewer = () => {
       toast.error('Ungültige Datei-URL');
       navigate('/');
     }
-    
-    // Clean up function
-    return () => {
-      // Attempt to revoke the blob URL when component unmounts
-      if (fileUrl.startsWith('blob:')) {
-        try {
-          URL.revokeObjectURL(fileUrl);
-        } catch (error) {
-          console.error('Failed to revoke object URL:', error);
-        }
-      }
-    };
   }, [fileUrl, navigate]);
 
   return (
