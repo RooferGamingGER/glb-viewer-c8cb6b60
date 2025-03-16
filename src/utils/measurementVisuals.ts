@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -7,6 +8,59 @@ import {
   calculateCentroid,
   calculateInclination
 } from '@/utils/textSprite';
+
+/**
+ * Clears all visual elements from groups
+ */
+export function clearAllVisuals(
+  pointsRef: THREE.Group | null,
+  linesRef: THREE.Group | null,
+  measurementsRef: THREE.Group | null,
+  editPointsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  segmentLabelsRef: THREE.Group | null
+) {
+  // Helper function to clear a group and dispose of geometries and materials
+  const clearGroup = (group: THREE.Group | null) => {
+    if (!group) return;
+    
+    while (group.children.length > 0) {
+      const object = group.children[0];
+      
+      // Dispose of geometries and materials if they exist
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(material => material.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      } else if (object instanceof THREE.Line) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(material => material.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      }
+      
+      // Remove from parent
+      group.remove(object);
+    }
+  };
+  
+  // Clear all groups
+  clearGroup(pointsRef);
+  clearGroup(linesRef);
+  clearGroup(measurementsRef);
+  clearGroup(editPointsRef);
+  clearGroup(labelsRef);
+  clearGroup(segmentLabelsRef);
+}
 
 /**
  * Renders current measurement points being placed
@@ -22,12 +76,30 @@ export function renderCurrentPoints(
 
   // Clear existing points
   while (pointsRef.children.length > 0) {
-    pointsRef.remove(pointsRef.children[0]);
+    const object = pointsRef.children[0];
+    if (object.geometry) object.geometry.dispose();
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach(mat => mat.dispose());
+      } else {
+        object.material.dispose();
+      }
+    }
+    pointsRef.remove(object);
   }
 
   // Clear existing lines
   while (linesRef.children.length > 0) {
-    linesRef.remove(linesRef.children[0]);
+    const object = linesRef.children[0];
+    if (object.geometry) object.geometry.dispose();
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach(mat => mat.dispose());
+      } else {
+        object.material.dispose();
+      }
+    }
+    linesRef.remove(object);
   }
 
   // Clear preview labels
@@ -178,7 +250,16 @@ export function renderEditPoints(
   
   // Clear existing edit points
   while (editPointsRef.children.length > 0) {
-    editPointsRef.remove(editPointsRef.children[0]);
+    const object = editPointsRef.children[0];
+    if (object.geometry) object.geometry.dispose();
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach(mat => mat.dispose());
+      } else {
+        object.material.dispose();
+      }
+    }
+    editPointsRef.remove(object);
   }
   
   // If we're not in edit mode, we don't need to show edit points
@@ -232,7 +313,16 @@ export function renderMeasurements(
   
   // Clear existing measurement elements
   while (measurementsRef.children.length > 0) {
-    measurementsRef.remove(measurementsRef.children[0]);
+    const object = measurementsRef.children[0];
+    if (object.geometry) object.geometry.dispose();
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach(mat => mat.dispose());
+      } else {
+        object.material.dispose();
+      }
+    }
+    measurementsRef.remove(object);
   }
   
   // Clear existing text labels (except preview labels)

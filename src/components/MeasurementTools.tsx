@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -22,7 +23,8 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { 
   renderCurrentPoints, 
   renderEditPoints, 
-  renderMeasurements 
+  renderMeasurements,
+  clearAllVisuals
 } from '@/utils/measurementVisuals';
 
 // Import smaller components
@@ -151,6 +153,21 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, editMeasurementId, editingPointIndex, visible]);
 
+  // Cleanup effect - clear all measurements when measurement tools are disabled
+  useEffect(() => {
+    if (!enabled) {
+      // Clear all visualizations when disabling measurement tools
+      clearAllVisuals(
+        pointsRef.current,
+        linesRef.current,
+        measurementsRef.current,
+        editPointsRef.current,
+        labelsRef.current,
+        segmentLabelsRef.current
+      );
+    }
+  }, [enabled]);
+
   // Handlers
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
@@ -178,13 +195,72 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleClearMeasurements = () => {
     clearMeasurements();
+    // Explicitly clear all visual elements too
+    clearAllVisuals(
+      pointsRef.current,
+      linesRef.current,
+      measurementsRef.current,
+      editPointsRef.current,
+      labelsRef.current,
+      segmentLabelsRef.current
+    );
     toast.info('Alle Messungen gelöscht');
   };
 
   const handleDeleteMeasurement = (id: string) => {
-    // Before deleting, make sure to remove all associated visual elements
+    // Before deleting, ensure all associated visual elements are removed
+    const measurementToDelete = measurements.find(m => m.id === id);
+    if (measurementToDelete) {
+      // Remove specific visual elements for this measurement ID
+      clearMeasurementVisuals(
+        id,
+        measurementsRef.current,
+        labelsRef.current,
+        segmentLabelsRef.current
+      );
+    }
+    
+    // Delete the measurement from state
     deleteMeasurement(id);
     toast.info('Messung gelöscht');
+  };
+
+  // Helper function to clear visuals for a specific measurement
+  const clearMeasurementVisuals = (
+    measurementId: string,
+    measurementsGroup: THREE.Group | null,
+    labelsGroup: THREE.Group | null,
+    segmentLabelsGroup: THREE.Group | null
+  ) => {
+    if (!measurementsGroup || !labelsGroup || !segmentLabelsGroup) return;
+    
+    // Remove measurement objects (points and lines)
+    const measurementObjects = measurementsGroup.children.filter(obj => 
+      obj.userData && obj.userData.measurementId === measurementId
+    );
+    measurementObjects.forEach(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach(mat => mat.dispose());
+        } else {
+          obj.material.dispose();
+        }
+      }
+      measurementsGroup.remove(obj);
+    });
+    
+    // Remove labels
+    const labels = labelsGroup.children.filter(obj => 
+      obj.userData && obj.userData.measurementId === measurementId
+    );
+    labels.forEach(obj => labelsGroup.remove(obj));
+    
+    // Remove segment labels
+    const segmentLabels = segmentLabelsGroup.children.filter(obj => 
+      obj.userData && obj.userData.measurementId === measurementId
+    );
+    segmentLabels.forEach(obj => segmentLabelsGroup.remove(obj));
   };
 
   const handleStartPointEdit = (id: string) => {
