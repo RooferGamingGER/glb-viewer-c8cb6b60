@@ -1,3 +1,4 @@
+
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
@@ -587,7 +588,7 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
         { 
           text: 'Segmente:', 
           style: 'segmentTitle',
-          colSpan: type === 'length' ? 3 : 2 
+          colSpan: type === 'area' ? 2 : 3 // FIX: This line had the type comparison error
         }
       ];
       // Fill remaining cells with empty objects to match column count
@@ -602,7 +603,7 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
           { text: '', colSpan: 1 },
           { 
             text: `Segment ${segIndex + 1}: ${segment.length.toFixed(2)} m`, 
-            colSpan: type === 'length' ? 3 : 2
+            colSpan: type === 'area' ? 2 : 3 // FIX: This line had the type comparison error
           }
         ];
         // Fill remaining cells with empty objects to match column count
