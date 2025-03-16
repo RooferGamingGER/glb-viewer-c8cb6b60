@@ -3,12 +3,14 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
-import { Upload, File } from 'lucide-react';
+import { Upload, File, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -25,16 +27,22 @@ const FileUpload: React.FC = () => {
   }, []);
 
   const validateFile = (file: File): boolean => {
+    setFileError(null);
+    
     // Check if the file is a GLB file
     if (!file.name.toLowerCase().endsWith('.glb')) {
-      toast.error('Bitte laden Sie eine gültige GLB-Datei hoch.');
+      const errorMsg = 'Bitte laden Sie eine gültige GLB-Datei hoch.';
+      setFileError(errorMsg);
+      toast.error(errorMsg);
       return false;
     }
     
     // Check file size (limit to 50MB)
     const maxSize = 50 * 1024 * 1024; // 50MB in bytes
     if (file.size > maxSize) {
-      toast.error('Die Datei ist zu groß. Maximale Größe ist 50MB.');
+      const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 50MB.';
+      setFileError(errorMsg);
+      toast.error(errorMsg);
       return false;
     }
     
@@ -123,6 +131,13 @@ const FileUpload: React.FC = () => {
               ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` 
               : 'oder klicken Sie, um eine Datei auszuwählen'}
           </p>
+          
+          {fileError && (
+            <Alert variant="warning" className="mt-4 mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{fileError}</AlertDescription>
+            </Alert>
+          )}
           
           {selectedFile && (
             <div className="mt-6 flex justify-center">
