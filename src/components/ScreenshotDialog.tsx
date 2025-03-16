@@ -129,7 +129,6 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
                   onClick={handleAddToPDF}
                   className="w-full sm:w-auto"
                   variant="default"
-                  disabled={!onAddToPDF}
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Zum Bericht hinzufügen

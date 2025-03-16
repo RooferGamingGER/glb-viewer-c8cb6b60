@@ -3,6 +3,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
 import { TDocumentDefinitions, Content, StyleDictionary } from 'pdfmake/interfaces';
+import { StoredScreenshot } from '@/utils/screenshot';
 
 // Register fonts
 pdfMake.vfs = pdfFonts.vfs;
@@ -20,11 +21,13 @@ const defaultFonts = {
 interface PDFExportOptions {
   title: string;
   screenshotUrl?: string;
+  screenshots?: StoredScreenshot[];
   measurements: Measurement[];
   filename?: string;
   includeScreenshot?: boolean;
   companyLogo?: string;
   companyName?: string;
+  footerLogo?: string;
   projectDetails?: {
     projectName?: string;
     projectNumber?: string;
@@ -85,12 +88,28 @@ const docStyles: StyleDictionary = {
   },
   projectDetailValue: {
     fontSize: 10
+  },
+  coverPageTitle: {
+    fontSize: 26,
+    bold: true,
+    alignment: 'center',
+    margin: [0, 0, 0, 40]
+  },
+  coverPageSubtitle: {
+    fontSize: 18,
+    alignment: 'center',
+    margin: [0, 0, 0, 20]
+  },
+  companyInfo: {
+    fontSize: 14,
+    margin: [0, 5, 0, 2]
   }
 };
 
 export const exportMeasurementsToPDF = async ({
   title,
   screenshotUrl,
+  screenshots = [],
   measurements,
   filename = 'messungen.pdf',
   includeScreenshot = true,
@@ -99,38 +118,60 @@ export const exportMeasurementsToPDF = async ({
   projectDetails = {}
 }: PDFExportOptions): Promise<void> => {
   try {
-    let imageBase64 = '';
-    let logoBase64 = '';
-    
-    // Process screenshot if included and URL is provided
-    if (includeScreenshot && screenshotUrl) {
-      try {
-        imageBase64 = await urlToBase64(screenshotUrl);
-      } catch (error) {
-        console.error('Failed to process screenshot:', error);
-        // Continue without the screenshot if it fails
-      }
-    }
+    let companyLogoBase64 = '';
+    let footerLogoBase64 = '';
+    let screenshotsBase64: {url: string, id: string}[] = [];
     
     // Process company logo if provided
     if (companyLogo) {
       try {
-        logoBase64 = await urlToBase64(companyLogo);
+        companyLogoBase64 = await urlToBase64(companyLogo);
       } catch (error) {
         console.error('Failed to process company logo:', error);
-        // Continue without the logo if it fails
       }
     }
     
-    // Generate the document definition
+    // Process footer logo (using provided file)
+    try {
+      // This will use the logo provided in the attachment for the footer
+      const footerLogoURL = '/logo-roofergaming.png';
+      footerLogoBase64 = await urlToBase64(footerLogoURL).catch(() => '');
+    } catch (error) {
+      console.error('Failed to process footer logo:', error);
+    }
+    
+    // Process all screenshots if included
+    if (includeScreenshot) {
+      if (screenshots && screenshots.length > 0) {
+        for (const screenshot of screenshots) {
+          try {
+            const base64 = await urlToBase64(screenshot.url);
+            screenshotsBase64.push({ url: base64, id: screenshot.id });
+          } catch (error) {
+            console.error(`Failed to process screenshot ${screenshot.id}:`, error);
+          }
+        }
+      } else if (screenshotUrl) {
+        // Backward compatibility with old interface
+        try {
+          const base64 = await urlToBase64(screenshotUrl);
+          screenshotsBase64.push({ url: base64, id: 'single' });
+        } catch (error) {
+          console.error('Failed to process screenshot:', error);
+        }
+      }
+    }
+    
+    // Generate the document definition with the new layout
     const docDefinition = createDocumentDefinition(
       title, 
-      imageBase64, 
+      screenshotsBase64, 
       measurements, 
       includeScreenshot,
-      logoBase64,
+      companyLogoBase64,
       companyName,
-      projectDetails
+      projectDetails,
+      footerLogoBase64
     );
     
     // Create and download the PDF
@@ -206,52 +247,162 @@ const formatDate = (date: Date = new Date()): string => {
   });
 };
 
-// Create the full document definition
+// Create the full document definition with the new multi-page layout
 const createDocumentDefinition = (
   title: string,
-  imageBase64: string,
+  screenshots: {url: string, id: string}[],
   measurements: Measurement[],
   includeScreenshot: boolean = true,
   logoBase64: string = '',
   companyName: string = '',
-  projectDetails: PDFExportOptions['projectDetails'] = {}
+  projectDetails: PDFExportOptions['projectDetails'] = {},
+  footerLogoBase64: string = ''
 ): TDocumentDefinitions => {
   const content: Content[] = [];
   
-  // Add company info and logo in header if provided
-  if (logoBase64 || companyName) {
-    const headerContent: any[] = [];
+  // Start with a cover page
+  content.push(
+    // Cover page content
+    createCoverPage(title, logoBase64, companyName, projectDetails),
     
-    if (logoBase64) {
-      headerContent.push({
-        image: logoBase64,
-        width: 100,
-        alignment: 'left'
-      });
+    // Page break
+    { text: '', pageBreak: 'after' }
+  );
+  
+  // Add measurements as the second section (on their own page)
+  if (measurements.length > 0) {
+    content.push(
+      // Measurements section title
+      {
+        text: 'Messungen',
+        style: 'subheader',
+        margin: [0, 10, 0, 10]
+      },
+      
+      // Generate measurements table
+      createMeasurementsTable(measurements)
+    );
+    
+    // Add a page break before screenshots if there are any
+    if (includeScreenshot && screenshots.length > 0) {
+      content.push({ text: '', pageBreak: 'after' });
     }
+  }
+  
+  // Add screenshots as the third section (on their own page)
+  if (includeScreenshot && screenshots.length > 0) {
+    content.push(
+      {
+        text: 'Screenshots',
+        style: 'subheader',
+        margin: [0, 10, 0, 20]
+      }
+    );
     
-    headerContent.push({
-      text: companyName || '',
-      style: 'companyHeader',
-      alignment: 'right',
-      margin: [0, 10, 0, 0]
+    // Create screenshot gallery - 2 screenshots per page
+    const screenshotGallery = createScreenshotGallery(screenshots);
+    content.push(...screenshotGallery);
+  }
+  
+  return {
+    content: content,
+    
+    // Define styles
+    styles: docStyles,
+    
+    // Define custom footer with company info
+    footer: function(currentPage, pageCount) {
+      const footerContent = [];
+      
+      // Add footer text
+      const footerText = 'Kostenloser Service von Drohnenvermessung by RooferGaming - Homepage: drohnenvermessung-roofergaming.de - Email: info@drohnenvermessung-roofergaming.de';
+      
+      // Add company logo if available
+      if (footerLogoBase64) {
+        footerContent.push({
+          columns: [
+            { 
+              image: footerLogoBase64,
+              width: 40,
+              alignment: 'left'
+            },
+            {
+              text: footerText,
+              style: 'footer',
+              alignment: 'center',
+              margin: [0, 6, 0, 0]
+            },
+            {
+              text: `Seite ${currentPage} von ${pageCount}`,
+              style: 'footer',
+              alignment: 'right',
+              margin: [0, 6, 0, 0]
+            }
+          ],
+          margin: [40, 10, 40, 0]
+        });
+      } else {
+        footerContent.push({
+          columns: [
+            { text: footerText, style: 'footer', alignment: 'left' },
+            { text: `Seite ${currentPage} von ${pageCount}`, alignment: 'right', style: 'footer' }
+          ],
+          margin: [40, 10, 40, 0]
+        });
+      }
+      
+      return footerContent;
+    },
+    
+    // Define defaults
+    defaultStyle: {
+      fontSize: 11
+    },
+    
+    // Page margins [left, top, right, bottom]
+    pageMargins: [40, 40, 40, 60]
+  };
+};
+
+// Create a cover page
+const createCoverPage = (
+  title: string,
+  logoBase64: string,
+  companyName: string,
+  projectDetails: PDFExportOptions['projectDetails'] = {}
+): Content[] => {
+  const coverPageContent: Content[] = [];
+  
+  // Add company logo if available
+  if (logoBase64) {
+    coverPageContent.push({
+      image: logoBase64,
+      width: 200,
+      alignment: 'center',
+      margin: [0, 40, 0, 20]
     });
-    
-    content.push({
-      columns: headerContent,
-      margin: [0, 0, 0, 20]
+  }
+  
+  // Add company name if available
+  if (companyName) {
+    coverPageContent.push({
+      text: companyName,
+      style: 'companyHeader',
+      alignment: 'center',
+      fontSize: 18,
+      margin: [0, 10, 0, 40]
     });
   }
   
   // Add title
-  content.push({
+  coverPageContent.push({
     text: title,
-    style: 'header'
+    style: 'coverPageTitle'
   });
   
-  // Add project details if any are provided
+  // Add project details in an elegant table
   if (Object.values(projectDetails).some(val => val)) {
-    const detailsTable: any[] = [];
+    const detailsTable = [];
     
     if (projectDetails.projectName) {
       detailsTable.push([
@@ -289,65 +440,64 @@ const createDocumentDefinition = (
     }
     
     if (detailsTable.length > 0) {
-      content.push({
+      coverPageContent.push({
         table: {
+          headerRows: 0,
           widths: ['30%', '70%'],
           body: detailsTable
         },
         layout: 'noBorders',
-        margin: [0, 0, 0, 20]
+        margin: [0, 40, 0, 0]
       });
     }
   }
   
-  // Add screenshot if included
-  if (includeScreenshot && imageBase64) {
-    content.push({
-      image: imageBase64,
-      width: 500,
+  return coverPageContent;
+};
+
+// Create a gallery of screenshots with 2 per page
+const createScreenshotGallery = (screenshots: {url: string, id: string}[]): Content[] => {
+  const galleryContent: Content[] = [];
+  
+  // Process screenshots in pairs
+  for (let i = 0; i < screenshots.length; i += 2) {
+    const row = [];
+    
+    // Add first screenshot of the pair
+    row.push({
+      image: screenshots[i].url,
+      width: 250,
       alignment: 'center',
-      margin: [0, 0, 0, 20]
+      margin: [0, 0, 0, 10]
     });
+    
+    // Add second screenshot if available
+    if (i + 1 < screenshots.length) {
+      row.push({
+        image: screenshots[i + 1].url,
+        width: 250,
+        alignment: 'center',
+        margin: [0, 0, 0, 10]
+      });
+    } else {
+      // If there's no second screenshot, add an empty cell
+      row.push({ text: '' });
+    }
+    
+    // Add the row to the gallery
+    galleryContent.push({
+      columns: row,
+      columnGap: 10,
+      margin: [0, 10, 0, 0]
+    });
+    
+    // Add page break after each pair, except for the last pair
+    if (i + 2 < screenshots.length) {
+      galleryContent.push({ text: '', pageBreak: 'after' });
+    }
   }
   
-  // Add measurements section
-  content.push(
-    // Measurements section title
-    {
-      text: 'Messungen',
-      style: 'subheader',
-      margin: [0, 10, 0, 10]
-    },
-    
-    // Generate measurements table
-    createMeasurementsTable(measurements)
-  );
-  
-  return {
-    content: content,
-    
-    // Define styles
-    styles: docStyles,
-    
-    // Define footer
-    footer: function(currentPage, pageCount) {
-      return {
-        columns: [
-          { text: formatDate(), alignment: 'left', style: 'footer' },
-          { text: `Seite ${currentPage} von ${pageCount}`, alignment: 'right', style: 'footer' }
-        ],
-        margin: [40, 10, 40, 0]
-      };
-    },
-    
-    // Define defaults
-    defaultStyle: {
-      fontSize: 11
-    },
-    
-    // Page margins [left, top, right, bottom]
-    pageMargins: [40, 40, 40, 60]
-  };
+  return galleryContent;
 };
 
 // Create the measurements table

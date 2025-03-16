@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, X, Camera, Building, Plus } from 'lucide-react';
+import { FileText, Download, X, Camera, Building, Plus, Trash, Image, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPDF } from '@/utils/pdfExport';
-import { StoredScreenshot, getLatestScreenshot, getAllScreenshots } from '@/utils/screenshot';
+import { StoredScreenshot, getLatestScreenshot, getAllScreenshots, removeScreenshot } from '@/utils/screenshot';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PDFExportDialogProps {
   onTakeScreenshot: () => Promise<StoredScreenshot>;
@@ -36,6 +36,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const [includeScreenshot, setIncludeScreenshot] = useState(true);
   const [loading, setLoading] = useState(false);
   const [currentScreenshot, setCurrentScreenshot] = useState<StoredScreenshot | null>(null);
+  const [selectedScreenshots, setSelectedScreenshots] = useState<StoredScreenshot[]>([]);
   
   // Company information
   const [companyName, setCompanyName] = useState('');
@@ -47,35 +48,39 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const [location, setLocation] = useState('');
   const [userName, setUserName] = useState('');
 
+  // Load all existing screenshots when dialog opens
+  useEffect(() => {
+    if (open) {
+      const existingScreenshots = getAllScreenshots();
+      if (existingScreenshots.length > 0 && selectedScreenshots.length === 0) {
+        // Pre-select the latest screenshot if none are selected
+        setSelectedScreenshots([existingScreenshots[0]]);
+      }
+    }
+  }, [open]);
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      // Reset screenshot state when dialog closes
+      // Reset current preview screenshot when dialog closes
       setCurrentScreenshot(null);
     }
   };
 
   const handleExport = async () => {
     try {
-      // Check if we need a screenshot but don't have one
-      if (includeScreenshot && !currentScreenshot) {
-        toast.error('Kein Screenshot ausgewählt. Bitte erstellen Sie einen Screenshot oder deaktivieren Sie die Option.');
+      // Check if we need a screenshot but don't have any selected
+      if (includeScreenshot && selectedScreenshots.length === 0) {
+        toast.error('Keine Screenshots ausgewählt. Bitte erstellen Sie mindestens einen Screenshot oder deaktivieren Sie die Option.');
         return;
       }
       
       setLoading(true);
       
-      let screenshotUrl = '';
-      
-      // Only use a screenshot if it's to be included
-      if (includeScreenshot && currentScreenshot) {
-        screenshotUrl = currentScreenshot.url;
-      }
-      
       // Generate and download the PDF with enhanced options
       await exportMeasurementsToPDF({
         title,
-        screenshotUrl,
+        screenshots: selectedScreenshots,
         measurements,
         filename: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
         includeScreenshot,
@@ -92,8 +97,6 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       
       toast.success('PDF erfolgreich exportiert');
       setOpen(false);
-      
-      // We don't need to revoke URLs here as it's handled by the screenshot store
     } catch (error) {
       console.error('Failed to export PDF:', error);
       toast.error('Fehler beim PDF-Export');
@@ -108,7 +111,13 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       
       // Take a new screenshot and store it
       const newScreenshot = await onTakeScreenshot();
+      
+      // Add to selected screenshots
+      setSelectedScreenshots(prev => [...prev, newScreenshot]);
+      
+      // Set as current preview
       setCurrentScreenshot(newScreenshot);
+      
       toast.success('Screenshot für PDF hinzugefügt');
     } catch (error) {
       console.error('Failed to add screenshot:', error);
@@ -133,6 +142,18 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     }
   };
 
+  const handleSelectScreenshot = (screenshot: StoredScreenshot) => {
+    // Toggle selection
+    if (selectedScreenshots.some(s => s.id === screenshot.id)) {
+      setSelectedScreenshots(selectedScreenshots.filter(s => s.id !== screenshot.id));
+    } else {
+      setSelectedScreenshots([...selectedScreenshots, screenshot]);
+    }
+    
+    // Update preview
+    setCurrentScreenshot(screenshot);
+  };
+
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -144,16 +165,24 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     }
   };
 
-  // Check if the button should be enabled - if there are either measurements or screenshots
-  const hasMeasurements = measurements.length > 0;
-  const hasScreenshots = getAllScreenshots().length > 0;
-  const canExport = true; // Always allow export - can have empty reports or just screenshots
-
   // Prepare tooltip message
   const buttonTooltip = "Als PDF exportieren";
 
   const handleButtonClick = () => {
     setOpen(true);
+  };
+
+  const removeSelectedScreenshot = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSelectedScreenshots(prev => prev.filter(s => s.id !== id));
+    removeScreenshot(id);
+    
+    // If this was the currently previewed screenshot, clear the preview
+    if (currentScreenshot?.id === id) {
+      setCurrentScreenshot(null);
+    }
+    
+    toast.success('Screenshot entfernt');
   };
 
   return (
@@ -170,7 +199,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[650px]">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>PDF-Export</DialogTitle>
             <DialogDescription>
@@ -182,7 +211,7 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
             </DialogClose>
           </DialogHeader>
 
-          {!hasMeasurements && (
+          {!measurements.length && (
             <Alert variant="warning" className="mb-4">
               <AlertDescription>
                 Keine Messungen vorhanden. Das PDF wird ohne Messdaten erstellt.
@@ -191,9 +220,10 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
           )}
 
           <Tabs defaultValue="general">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="general">Allgemein</TabsTrigger>
               <TabsTrigger value="company">Unternehmen & Projekt</TabsTrigger>
+              <TabsTrigger value="screenshots">Screenshots ({selectedScreenshots.length})</TabsTrigger>
             </TabsList>
             
             <TabsContent value="general" className="space-y-4 pt-4">
@@ -223,61 +253,12 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                   checked={includeScreenshot}
                   onCheckedChange={(checked) => {
                     setIncludeScreenshot(checked === true);
-                    // Reset screenshot if unchecked
-                    if (checked === false) {
-                      setCurrentScreenshot(null);
-                    }
                   }}
                 />
                 <Label htmlFor="includeScreenshot" className="cursor-pointer">
-                  Screenshot einbinden
+                  Screenshots einbinden
                 </Label>
               </div>
-
-              {includeScreenshot && (
-                <div className="mt-2">
-                  <div className="flex justify-between mb-2">
-                    <Label>Screenshot-Vorschau</Label>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleAddCurrentScreenshot}
-                        disabled={loading}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Screenshot hinzufügen
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handlePreviewScreenshot}
-                        disabled={loading}
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Vorschau erstellen
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="border border-border rounded-md overflow-hidden bg-muted/20">
-                    {currentScreenshot ? (
-                      <img 
-                        src={currentScreenshot.url} 
-                        alt="Vorschau" 
-                        className="max-h-[200px] w-full object-contain"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
-                        <Camera className="h-8 w-8 mb-2 opacity-50" />
-                        <p className="text-sm">
-                          {loading ? 'Screenshot wird erstellt...' : 'Klicken Sie auf "Screenshot hinzufügen", um einen Screenshot zu generieren'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </TabsContent>
             
             <TabsContent value="company" className="space-y-4 pt-4">
@@ -359,12 +340,111 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                 </div>
               </div>
             </TabsContent>
+            
+            <TabsContent value="screenshots" className="space-y-4 pt-4">
+              <div className="flex justify-between mb-2">
+                <Label>Screenshot-Verwaltung</Label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleAddCurrentScreenshot}
+                    disabled={loading}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Screenshot hinzufügen
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {/* Current preview */}
+                <div className="border border-border rounded-md overflow-hidden bg-muted/20">
+                  {currentScreenshot ? (
+                    <div className="relative">
+                      <img 
+                        src={currentScreenshot.url} 
+                        alt="Vorschau" 
+                        className="max-h-[200px] w-full object-contain"
+                      />
+                      <div className="absolute bottom-2 right-2 flex gap-2">
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => removeSelectedScreenshot(currentScreenshot.id, e)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                      <Camera className="h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-sm">
+                        {loading ? 'Screenshot wird erstellt...' : 'Klicken Sie auf "Screenshot hinzufügen", um einen Screenshot zu generieren'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Screenshot gallery */}
+                <div>
+                  <Label className="mb-2 block">Ausgewählte Screenshots ({selectedScreenshots.length})</Label>
+                  <ScrollArea className="h-[180px] border border-border rounded-md p-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      {getAllScreenshots().map(screenshot => (
+                        <div 
+                          key={screenshot.id}
+                          className={`relative border rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${
+                            selectedScreenshots.some(s => s.id === screenshot.id) 
+                              ? 'border-primary' 
+                              : 'border-border'
+                          }`}
+                          onClick={() => handleSelectScreenshot(screenshot)}
+                        >
+                          <img 
+                            src={screenshot.url} 
+                            alt="Screenshot" 
+                            className="h-24 w-full object-cover"
+                          />
+                          
+                          {selectedScreenshots.some(s => s.id === screenshot.id) && (
+                            <div className="absolute top-1 right-1 bg-primary text-white rounded-full p-1">
+                              <Check className="h-3 w-3" />
+                            </div>
+                          )}
+                          
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-6 w-6 p-0 absolute bottom-1 right-1"
+                            onClick={(e) => removeSelectedScreenshot(screenshot.id, e)}
+                          >
+                            <Trash className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      
+                      {getAllScreenshots().length === 0 && (
+                        <div className="col-span-3 flex flex-col items-center justify-center h-32 text-muted-foreground">
+                          <Image className="h-8 w-8 mb-2 opacity-50" />
+                          <p className="text-sm">
+                            Keine Screenshots vorhanden
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
 
           <DialogFooter>
             <Button 
               onClick={handleExport}
-              disabled={loading || !title || !fileName || (includeScreenshot && !currentScreenshot)}
+              disabled={loading || !title || !fileName || (includeScreenshot && selectedScreenshots.length === 0)}
               className="w-full sm:w-auto"
             >
               <Download className="h-4 w-4 mr-2" />
