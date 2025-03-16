@@ -33,6 +33,7 @@ export interface Measurement {
   unit?: string;
   description?: string;
   segments?: Segment[];
+  inclination?: number; // Add inclination property
 }
 
 // Format measurement value based on measurement type
@@ -301,11 +302,27 @@ export const useMeasurements = () => {
   }, [calculateDistance, calculateHeight, calculateArea]);
 
   // Dedicated function to create a Length measurement
+  const calculateInclination = useCallback((p1: THREE.Vector3, p2: THREE.Vector3): number => {
+    const deltaY = p2.y - p1.y;
+    const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
+    
+    // Calculate inclination in radians
+    const inclinationRad = Math.atan2(deltaY, horizontalDistance);
+    
+    // Convert radians to degrees
+    return inclinationRad * (180 / Math.PI);
+  }, []);
+
   const createLengthMeasurement = useCallback((points: Point[]) => {
     if (points.length !== 2) return;
     
     const value = calculateDistance(points[0], points[1]);
     const label = formatMeasurement(value, 'length');
+    
+    // Calculate inclination for length measurements
+    const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+    const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+    const inclination = calculateInclination(p1, p2);
     
     setMeasurements(prev => [
       ...prev,
@@ -317,7 +334,8 @@ export const useMeasurements = () => {
         label,
         visible: true,
         unit: 'm',
-        description: ''
+        description: '',
+        inclination // Store inclination
       }
     ]);
     
@@ -493,4 +511,3 @@ export const useMeasurements = () => {
     calculateSegmentLength
   };
 };
-
