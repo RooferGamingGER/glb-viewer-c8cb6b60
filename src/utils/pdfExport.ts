@@ -5,7 +5,7 @@ import { Measurement } from '@/hooks/useMeasurements';
 import { TDocumentDefinitions } from 'pdfmake/interfaces';
 
 // Initialize the virtual file system for fonts
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.default;
 
 export const generateMeasurementsPDF = (measurements: Measurement[], filename: string) => {
   const docDefinition: TDocumentDefinitions = {
