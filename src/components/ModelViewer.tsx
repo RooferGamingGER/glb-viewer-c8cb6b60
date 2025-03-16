@@ -60,7 +60,10 @@ function Model({ url }: { url: string }) {
     // Reset model position
     if (modelRef.current) {
       modelRef.current.position.set(0, 0, 0);
-      modelRef.current.rotation.set(0, 0, 0);
+      
+      // Apply a -90 degree rotation around the X-axis to fix the orientation
+      // This will rotate the model so that what was previously "left side down" is now upright
+      modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
       
       // Center the model
       const box = new THREE.Box3().setFromObject(modelRef.current);
@@ -78,13 +81,14 @@ function Model({ url }: { url: string }) {
         // Set a minimum distance to prevent tiny models
         cameraZ = Math.max(cameraZ, 2);
         
-        // Position camera slightly above and to the side for better viewing
-        camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.3, center.z + cameraZ);
+        // Position camera to get a good view of the now-rotated model
+        // Adjust the vertical position to account for the rotation
+        camera.position.set(center.x, center.y + cameraZ * 0.3, center.z + cameraZ);
         camera.lookAt(center);
       } else {
         // Handle OrthographicCamera case
         const distance = maxDim * 2;
-        camera.position.set(center.x + distance, center.y + distance * 0.6, center.z + distance);
+        camera.position.set(center.x, center.y + distance * 0.3, center.z + distance);
         camera.lookAt(center);
       }
       
@@ -98,15 +102,15 @@ function Model({ url }: { url: string }) {
   }, [modelScene, camera]);
   
   // Add rotation animation
-  useFrame((state, delta) => {
-    if (modelRef.current && autoRotate) {
-      modelRef.current.rotation.y += delta * 0.2 * rotationSpeed;
-    }
-  });
-  
-  // State for controls
   const [autoRotate, setAutoRotate] = useState(false);
   const [rotationSpeed, setRotationSpeed] = useState(1);
+  
+  useFrame((state, delta) => {
+    if (modelRef.current && autoRotate) {
+      // Adjust rotation axis to account for the model's new orientation
+      modelRef.current.rotation.z += delta * 0.2 * rotationSpeed;
+    }
+  });
   
   return (
     <>
@@ -159,13 +163,13 @@ function Model({ url }: { url: string }) {
                       const fov = camera.fov * (Math.PI / 180);
                       let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
                       
-                      // Position camera
-                      camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.3, center.z + cameraZ);
+                      // Position camera with adjusted view for the rotated model
+                      camera.position.set(center.x, center.y + cameraZ * 0.3, center.z + cameraZ);
                       camera.lookAt(center);
                     } else {
                       // Handle OrthographicCamera case
                       const distance = maxDim * 2;
-                      camera.position.set(center.x + distance, center.y + distance * 0.6, center.z + distance);
+                      camera.position.set(center.x, center.y + distance * 0.3, center.z + distance);
                       camera.lookAt(center);
                     }
                   }
