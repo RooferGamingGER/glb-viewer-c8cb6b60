@@ -1,13 +1,14 @@
+
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Measurement } from '@/hooks/useMeasurements';
-import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
+import { TDocumentDefinitions, Content, StyleDictionary } from 'pdfmake/interfaces';
 
 // Register fonts
 pdfMake.vfs = pdfFonts.vfs;
 
 // Define fonts
-const fonts = {
+const defaultFonts = {
   Roboto: {
     normal: 'Roboto-Regular.ttf',
     bold: 'Roboto-Medium.ttf',
@@ -18,34 +19,123 @@ const fonts = {
 
 interface PDFExportOptions {
   title: string;
-  screenshotUrl: string;
+  screenshotUrl?: string;
   measurements: Measurement[];
   filename?: string;
   includeScreenshot?: boolean;
+  companyLogo?: string;
+  companyName?: string;
+  projectDetails?: {
+    projectName?: string;
+    projectNumber?: string;
+    location?: string;
+    date?: string;
+    userName?: string;
+  };
 }
+
+// PDF Document Styles
+const docStyles: StyleDictionary = {
+  header: {
+    fontSize: 22,
+    bold: true,
+    alignment: 'center',
+    margin: [0, 10, 0, 20]
+  },
+  subheader: {
+    fontSize: 16,
+    bold: true,
+    margin: [0, 10, 0, 5]
+  },
+  tableHeader: {
+    bold: true,
+    fontSize: 12,
+    color: 'black',
+    fillColor: '#f3f3f3'
+  },
+  companyHeader: {
+    fontSize: 10,
+    color: '#666',
+    alignment: 'right'
+  },
+  footer: {
+    fontSize: 8,
+    color: '#666',
+    alignment: 'center',
+    margin: [0, 10, 0, 0]
+  },
+  measurement: {
+    margin: [0, 5, 0, 5]
+  },
+  measurementTitle: {
+    bold: true,
+    fontSize: 14,
+    margin: [0, 10, 0, 5]
+  },
+  segmentTitle: {
+    bold: true,
+    fontSize: 12,
+    color: '#555',
+    margin: [0, 5, 0, 2]
+  },
+  projectDetailLabel: {
+    bold: true,
+    fontSize: 10,
+    color: '#444'
+  },
+  projectDetailValue: {
+    fontSize: 10
+  }
+};
 
 export const exportMeasurementsToPDF = async ({
   title,
   screenshotUrl,
   measurements,
   filename = 'messungen.pdf',
-  includeScreenshot = true
+  includeScreenshot = true,
+  companyLogo,
+  companyName,
+  projectDetails = {}
 }: PDFExportOptions): Promise<void> => {
   try {
     let imageBase64 = '';
+    let logoBase64 = '';
     
-    // Only process screenshot if it's included and a URL is provided
+    // Process screenshot if included and URL is provided
     if (includeScreenshot && screenshotUrl) {
-      // Convert the screenshot URL to a base64 data URL
-      imageBase64 = await urlToBase64(screenshotUrl);
+      try {
+        imageBase64 = await urlToBase64(screenshotUrl);
+      } catch (error) {
+        console.error('Failed to process screenshot:', error);
+        // Continue without the screenshot if it fails
+      }
+    }
+    
+    // Process company logo if provided
+    if (companyLogo) {
+      try {
+        logoBase64 = await urlToBase64(companyLogo);
+      } catch (error) {
+        console.error('Failed to process company logo:', error);
+        // Continue without the logo if it fails
+      }
     }
     
     // Generate the document definition
-    const docDefinition = createDocumentDefinition(title, imageBase64, measurements, includeScreenshot);
+    const docDefinition = createDocumentDefinition(
+      title, 
+      imageBase64, 
+      measurements, 
+      includeScreenshot,
+      logoBase64,
+      companyName,
+      projectDetails
+    );
     
     // Create and download the PDF
     const pdfDoc = pdfMake.createPdf(docDefinition);
-    pdfDoc.download(filename);
+    pdfDoc.download(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
   } catch (error) {
     console.error('PDF-Export fehlgeschlagen:', error);
     throw error;
@@ -95,26 +185,120 @@ const urlToBase64 = (url: string): Promise<string> => {
 
 // Define TableCell interface to allow colSpan
 interface TableCell {
-  text: string;
+  text?: string;
   style?: string;
   colSpan?: number;
+  rowSpan?: number;
+  image?: string;
+  width?: number;
+  alignment?: string;
+  border?: boolean | [boolean, boolean, boolean, boolean];
 }
+
+// Format the current date to a local string
+const formatDate = (date: Date = new Date()): string => {
+  return date.toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
 // Create the full document definition
 const createDocumentDefinition = (
   title: string,
   imageBase64: string,
   measurements: Measurement[],
-  includeScreenshot: boolean = true
+  includeScreenshot: boolean = true,
+  logoBase64: string = '',
+  companyName: string = '',
+  projectDetails: PDFExportOptions['projectDetails'] = {}
 ): TDocumentDefinitions => {
-  const content: Content[] = [
-    // Header
-    {
-      text: title,
-      style: 'header',
-      margin: [0, 0, 0, 10]
+  const content: Content[] = [];
+  
+  // Add company info and logo in header if provided
+  if (logoBase64 || companyName) {
+    const headerContent: any[] = [];
+    
+    if (logoBase64) {
+      headerContent.push({
+        image: logoBase64,
+        width: 100,
+        alignment: 'left'
+      });
     }
-  ];
+    
+    headerContent.push({
+      text: companyName || '',
+      style: 'companyHeader',
+      alignment: 'right',
+      margin: [0, 10, 0, 0]
+    });
+    
+    content.push({
+      columns: headerContent,
+      margin: [0, 0, 0, 20]
+    });
+  }
+  
+  // Add title
+  content.push({
+    text: title,
+    style: 'header'
+  });
+  
+  // Add project details if any are provided
+  if (Object.values(projectDetails).some(val => val)) {
+    const detailsTable: any[] = [];
+    
+    if (projectDetails.projectName) {
+      detailsTable.push([
+        { text: 'Projektname:', style: 'projectDetailLabel' },
+        { text: projectDetails.projectName, style: 'projectDetailValue' }
+      ]);
+    }
+    
+    if (projectDetails.projectNumber) {
+      detailsTable.push([
+        { text: 'Projektnummer:', style: 'projectDetailLabel' },
+        { text: projectDetails.projectNumber, style: 'projectDetailValue' }
+      ]);
+    }
+    
+    if (projectDetails.location) {
+      detailsTable.push([
+        { text: 'Standort:', style: 'projectDetailLabel' },
+        { text: projectDetails.location, style: 'projectDetailValue' }
+      ]);
+    }
+    
+    if (projectDetails.date) {
+      detailsTable.push([
+        { text: 'Datum:', style: 'projectDetailLabel' },
+        { text: projectDetails.date, style: 'projectDetailValue' }
+      ]);
+    }
+    
+    if (projectDetails.userName) {
+      detailsTable.push([
+        { text: 'Erstellt von:', style: 'projectDetailLabel' },
+        { text: projectDetails.userName, style: 'projectDetailValue' }
+      ]);
+    }
+    
+    if (detailsTable.length > 0) {
+      content.push({
+        table: {
+          widths: ['30%', '70%'],
+          body: detailsTable
+        },
+        layout: 'noBorders',
+        margin: [0, 0, 0, 20]
+      });
+    }
+  }
   
   // Add screenshot if included
   if (includeScreenshot && imageBase64) {
@@ -143,44 +327,26 @@ const createDocumentDefinition = (
     content: content,
     
     // Define styles
-    styles: {
-      header: {
-        fontSize: 22,
-        bold: true,
-        alignment: 'center',
-        margin: [0, 0, 0, 10]
-      },
-      subheader: {
-        fontSize: 16,
-        bold: true,
-        margin: [0, 10, 0, 5]
-      },
-      tableHeader: {
-        bold: true,
-        fontSize: 12,
-        color: 'black',
-        fillColor: '#f3f3f3'
-      },
-      measurement: {
-        margin: [0, 5, 0, 5]
-      },
-      measurementTitle: {
-        bold: true,
-        fontSize: 14,
-        margin: [0, 10, 0, 5]
-      },
-      segmentTitle: {
-        bold: true,
-        fontSize: 12,
-        color: '#555',
-        margin: [0, 5, 0, 2]
-      }
+    styles: docStyles,
+    
+    // Define footer
+    footer: function(currentPage, pageCount) {
+      return {
+        columns: [
+          { text: formatDate(), alignment: 'left', style: 'footer' },
+          { text: `Seite ${currentPage} von ${pageCount}`, alignment: 'right', style: 'footer' }
+        ],
+        margin: [40, 10, 40, 0]
+      };
     },
     
     // Define defaults
     defaultStyle: {
       fontSize: 11
-    }
+    },
+    
+    // Page margins [left, top, right, bottom]
+    pageMargins: [40, 40, 40, 60]
   };
 };
 
@@ -246,7 +412,7 @@ const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length
   headers.push({ text: 'Beschreibung', style: 'tableHeader' });
   
   // Create the table body rows
-  const body: TableCell[][] = [headers];
+  const body: (TableCell | string)[][] = [headers];
   
   measurements.forEach((measurement, index) => {
     const row: TableCell[] = [
