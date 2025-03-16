@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
 import { Point } from '@/hooks/useMeasurements';

@@ -152,6 +152,18 @@ export const useMeasurements = () => {
     );
   }, []);
 
+  // Define calculateInclination before it's used
+  const calculateInclination = useCallback((p1: THREE.Vector3, p2: THREE.Vector3): number => {
+    const deltaY = p2.y - p1.y;
+    const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
+    
+    // Calculate inclination in radians
+    const inclinationRad = Math.atan2(deltaY, horizontalDistance);
+    
+    // Convert radians to degrees
+    return inclinationRad * (180 / Math.PI);
+  }, []);
+
   const generateSegments = useCallback((points: Point[]): Segment[] => {
     if (points.length < 3) return [];
     
@@ -316,17 +328,6 @@ export const useMeasurements = () => {
   }, [calculateDistance, calculateHeight, calculateArea]);
 
   // Dedicated function to create a Length measurement
-  const calculateInclination = useCallback((p1: THREE.Vector3, p2: THREE.Vector3): number => {
-    const deltaY = p2.y - p1.y;
-    const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
-    
-    // Calculate inclination in radians
-    const inclinationRad = Math.atan2(deltaY, horizontalDistance);
-    
-    // Convert radians to degrees
-    return inclinationRad * (180 / Math.PI);
-  }, []);
-
   const createLengthMeasurement = useCallback((points: Point[]) => {
     if (points.length !== 2) return;
     
@@ -356,7 +357,7 @@ export const useMeasurements = () => {
     // Clear points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, [calculateDistance]);
+  }, [calculateDistance, calculateInclination]);
 
   // Dedicated function to create a Height measurement
   const createHeightMeasurement = useCallback((points: Point[]) => {

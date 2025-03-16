@@ -262,6 +262,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           segmentsOpen={segmentsOpen}
           toggleSegments={toggleSegments}
           setEditingSegmentId={setEditingSegmentId}
+          movingPointInfo={movingPointInfo}
         />
       </SidebarContent>
       
