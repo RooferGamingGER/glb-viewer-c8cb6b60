@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -895,3 +896,216 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   className="flex-1"
                   onClick={handleUndoLastPoint}
                   disabled={currentPoints.length === 0}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Punkt entfernen
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={clearCurrentPoints}
+                  disabled={currentPoints.length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Alle Punkte löschen
+                </Button>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        
+        <SidebarGroup>
+          <SidebarGroupLabel>Messungen</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className="flex justify-between mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleVisibility}
+                className="flex-1 mr-2"
+              >
+                {visible ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {visible ? 'Ausblenden' : 'Einblenden'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearMeasurements}
+                className="flex-1"
+                disabled={measurements.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Alle löschen
+              </Button>
+            </div>
+            
+            <ScrollArea className="h-[calc(100vh-24rem)] pr-4">
+              {measurements.length === 0 ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Keine Messungen</AlertTitle>
+                  <AlertDescription>
+                    Verwenden Sie die Werkzeuge, um Messungen zu erstellen.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                measurements.map((measurement) => (
+                  <Collapsible key={measurement.id} className="mb-2">
+                    <div className="border rounded-md overflow-hidden">
+                      <div className="bg-muted/50 p-2 flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 mr-2"
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <EyeOff className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">
+                              {measurement.visible ? 'Ausblenden' : 'Einblenden'}
+                            </span>
+                          </Button>
+                          
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="p-0 h-6"
+                            >
+                              {segmentsOpen[measurement.id] ? (
+                                <ChevronDown className="h-4 w-4 mr-1" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 mr-1" />
+                              )}
+                              <span>
+                                {measurement.type === 'length'
+                                  ? 'Länge'
+                                  : measurement.type === 'height'
+                                  ? 'Höhe'
+                                  : 'Fläche'}
+                                : {formatMeasurementLabel(measurement.value, measurement.type).split(':')[1].trim()}
+                              </span>
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Bearbeiten</span>
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive"
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Löschen</span>
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <CollapsibleContent>
+                        <div className="p-2 space-y-2">
+                          {measurement.type === 'area' && measurement.segments && (
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-medium">Segmente:</h4>
+                              {measurement.segments.map((segment, idx) => (
+                                <div
+                                  key={segment.id}
+                                  className="flex items-center justify-between text-xs p-1 rounded hover:bg-muted/50"
+                                >
+                                  <span>
+                                    Segment {idx + 1}: {segment.label || "Unbenannt"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {editingId === measurement.id ? (
+                            <div className="flex items-center mt-1">
+                              <Input
+                                placeholder="Beschreibung hinzufügen..."
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="text-xs h-7"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 ml-1"
+                                onClick={() => handleEditSave(measurement.id)}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setEditingId(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div
+                              className="text-xs cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => handleEditStart(measurement.id, measurement.description)}
+                            >
+                              {measurement.description
+                                ? measurement.description
+                                : "Klicken um Beschreibung hinzuzufügen..."}
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                ))
+              )}
+            </ScrollArea>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      
+      <SidebarFooter>
+        {editMeasurementId && (
+          <div className="p-2">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Bearbeitungsmodus aktiv</AlertTitle>
+              <AlertDescription className="text-xs">
+                Klicken Sie auf einen Punkt im Modell, um ihn zu bearbeiten.
+              </AlertDescription>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={handleCancelEditing}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Bearbeitung abbrechen
+              </Button>
+            </Alert>
+          </div>
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  );
+};
+
+export default MeasurementTools;
