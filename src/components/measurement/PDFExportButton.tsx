@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileText } from 'lucide-react';
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
@@ -15,25 +15,30 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({
   measurements,
   disabled = false
 }) => {
-  const handleExport = () => {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
     try {
       if (measurements.length === 0) {
         toast.error('Keine Messungen zum Exportieren vorhanden');
         return;
       }
       
-      generateMeasurementsPDF(measurements, 'messungen-export.pdf');
+      setIsExporting(true);
+      await generateMeasurementsPDF(measurements, 'messungen-export.pdf');
       toast.success('PDF erfolgreich erstellt');
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast.error('Fehler beim Erstellen des PDFs');
+    } finally {
+      setIsExporting(false);
     }
   };
 
   return (
     <Button
       onClick={handleExport}
-      disabled={disabled || measurements.length === 0}
+      disabled={disabled || measurements.length === 0 || isExporting}
       variant="outline"
       size="sm"
       className="h-7 w-7"

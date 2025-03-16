@@ -45,18 +45,18 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
       setIsExporting(true);
-      generateMeasurementsPDF(measurements, 'messungen-export.pdf');
+      await generateMeasurementsPDF(measurements, 'messungen-export.pdf');
       toast.success('PDF erfolgreich erstellt');
       setTimeout(() => {
         onOpenChange(false);
-        setIsExporting(false);
       }, 500);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast.error('Fehler beim Erstellen des PDFs');
+    } finally {
       setIsExporting(false);
     }
   };
