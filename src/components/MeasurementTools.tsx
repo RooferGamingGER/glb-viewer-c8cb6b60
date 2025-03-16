@@ -44,7 +44,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   scene,
   camera
 }) => {
-  const { open, setOpen } = useSidebar();
+  const { open, setOpen, toggleSidebar } = useSidebar();
   const [visible, setVisible] = useState(true);
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
@@ -294,8 +294,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
-  const toggleSidebar = () => {
-    setOpen(!open);
+  const handleSidebarToggle = () => {
+    toggleSidebar();
   };
 
   const closeSidebar = () => {
@@ -308,15 +308,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div className="relative z-20">
       {!open && (
         <button 
-          onClick={() => setOpen(true)}
-          className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-secondary border border-border border-r-0 rounded-l-md p-2 z-30"
+          onClick={handleSidebarToggle}
+          className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-secondary border border-border border-r-0 rounded-l-md p-2 z-30 transition-opacity duration-200 ease-in-out"
           aria-label="Öffne Messwerkzeuge"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
       )}
       
-      <Sidebar side="right" variant="floating" className="mt-16">
+      <Sidebar 
+        side="right" 
+        variant="floating" 
+        collapsible="offcanvas"
+        className="mt-16 transition-transform duration-200 ease-in-out"
+      >
         <SidebarRail />
         <SidebarHeader>
           <div className="flex justify-between items-center px-4 py-2">
@@ -383,4 +388,3 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 };
 
 export default MeasurementTools;
-
