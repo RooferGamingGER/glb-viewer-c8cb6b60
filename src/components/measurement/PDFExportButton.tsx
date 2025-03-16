@@ -25,6 +25,8 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({
       }
       
       setIsExporting(true);
+      toast.info('PDF wird erstellt...');
+      
       const success = await generateMeasurementsPDF(measurements, 'messungen-export.pdf');
       
       if (success) {
@@ -35,7 +37,7 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({
       }
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      toast.error('Fehler beim Erstellen des PDFs');
+      toast.error('Fehler beim Erstellen des PDFs. Bitte versuchen Sie es erneut.');
     } finally {
       setIsExporting(false);
     }

@@ -53,6 +53,8 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
   const handleExport = async () => {
     try {
       setIsExporting(true);
+      toast.info('PDF wird erstellt und gespeichert...');
+      
       const success = await generateMeasurementsPDF(measurements, 'messungen-export.pdf', projectData);
       
       if (success) {
@@ -66,7 +68,7 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
       }
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      toast.error('Fehler beim Erstellen des PDFs');
+      toast.error('Fehler beim Erstellen des PDFs. Bitte versuchen Sie es erneut.');
     } finally {
       setIsExporting(false);
     }
