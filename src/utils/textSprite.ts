@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -129,6 +130,7 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
 
 /**
  * Updates the scale of a label sprite based on camera distance
+ * Improves readability at different zoom levels
  */
 export function updateLabelScale(
   sprite: THREE.Sprite, 
@@ -143,14 +145,21 @@ export function updateLabelScale(
   
   const distance = position.distanceTo(camera.position);
   
-  // Scale based on distance (increase scale as distance increases)
-  const scaleFactor = Math.max(0.8, distance * 0.15);
+  // Logarithmic scaling based on distance for better zoom behavior
+  // This provides smoother scaling across different zoom levels
+  const minScale = 0.25;  // Minimum scale when very close
+  const maxScale = 2.5;   // Maximum scale when far away
+  
+  // Calculate scale factor using logarithmic function for better distribution
+  const scaleFactor = Math.log(distance + 1) * 0.25;
+  const clampedScaleFactor = Math.max(minScale, Math.min(maxScale, scaleFactor));
+  
   const aspectRatio = sprite.scale.x / sprite.scale.y;
   
   // Apply scale
   sprite.scale.set(
-    baseScale * aspectRatio * scaleFactor,
-    baseScale * scaleFactor,
+    baseScale * aspectRatio * clampedScaleFactor,
+    baseScale * clampedScaleFactor,
     1
   );
 }
@@ -175,8 +184,10 @@ export function formatMeasurementLabel(
   const baseLabel = `${value.toFixed(2)} m`;
   
   // Add inclination if provided and significant
-  if (inclination !== undefined && inclination > 1.0) {
-    return `${baseLabel} | ${inclination.toFixed(1)}°`;
+  if (inclination !== undefined && Math.abs(inclination) > 1.0) {
+    // Always use positive inclination value
+    const absInclination = Math.abs(inclination);
+    return `${baseLabel} | ${absInclination.toFixed(1)}°`;
   }
   
   return baseLabel;
@@ -235,6 +246,7 @@ export function calculateCentroid(points: THREE.Vector3[]): THREE.Vector3 {
 
 /**
  * Calculate inclination angle between two points in degrees
+ * Always returns a positive value
  */
 export function calculateInclination(point1: THREE.Vector3, point2: THREE.Vector3): number {
   // Calculate the horizontal distance
@@ -249,5 +261,6 @@ export function calculateInclination(point1: THREE.Vector3, point2: THREE.Vector
   // Calculate angle in degrees
   const angle = Math.atan2(verticalDistance, horizontalDistance) * (180 / Math.PI);
   
-  return angle;
+  // Always return a positive angle
+  return Math.abs(angle);
 }
