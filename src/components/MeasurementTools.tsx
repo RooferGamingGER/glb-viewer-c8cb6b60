@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -108,11 +109,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  useEffect(() => {
-    if (enabled && !open) {
-      setOpen(true);
-    }
-  }, [enabled, open, setOpen]);
+  // Remove the auto-opening behavior when measurements are enabled
+  // Instead, we'll let the user control the sidebar visibility manually
 
   useEffect(() => {
     renderCurrentPoints(
@@ -320,7 +318,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         side="right" 
         variant="floating" 
         collapsible="offcanvas"
-        className="mt-16 transition-transform duration-200 ease-in-out"
+        className="mt-24 transition-transform duration-200 ease-in-out"
       >
         <SidebarRail />
         <SidebarHeader>
@@ -336,7 +334,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           </div>
         </SidebarHeader>
         
-        <SidebarContent className="flex flex-col h-[calc(100vh-200px)]">
+        <SidebarContent className="flex flex-col h-[calc(100vh-220px)]">
           <EditingAlert 
             editMeasurementId={editMeasurementId}
             editingSegmentId={editingSegmentId}

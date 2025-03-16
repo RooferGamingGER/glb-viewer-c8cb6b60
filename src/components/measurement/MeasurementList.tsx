@@ -52,7 +52,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
           handleCancelEditing={handleCancelEditing}
         />
         
-        <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 480px)' }}>
+        <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 500px)' }}>
           {measurements.map((measurement) => (
             <MeasurementItem
               key={measurement.id}
