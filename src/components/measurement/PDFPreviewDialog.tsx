@@ -6,13 +6,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Download, X } from 'lucide-react';
+import { Download, X, FileText } from 'lucide-react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { generateMeasurementsPDF } from '@/utils/pdfExport';
 import { toast } from 'sonner';
+import ProjectDataForm, { ProjectDataType } from './ProjectDataForm';
 
 interface PDFPreviewDialogProps {
   measurements: Measurement[];
@@ -44,11 +47,13 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
   onOpenChange,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState("preview");
+  const [projectData, setProjectData] = useState<ProjectDataType | null>(null);
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      await generateMeasurementsPDF(measurements, 'messungen-export.pdf');
+      await generateMeasurementsPDF(measurements, 'messungen-export.pdf', projectData);
       toast.success('PDF erfolgreich erstellt');
       setTimeout(() => {
         onOpenChange(false);
@@ -61,39 +66,78 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
     }
   };
 
+  const handleSubmitProjectData = (data: ProjectDataType) => {
+    setProjectData(data);
+    setActiveTab("preview");
+    toast.success('Projektdaten gespeichert');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>PDF Vorschau</DialogTitle>
+          <DialogTitle>PDF Exportieren</DialogTitle>
+          <DialogDescription>
+            Vorschau der Messungen und Angabe von Projektdaten für den PDF-Export
+          </DialogDescription>
         </DialogHeader>
         
-        <div className="max-h-[calc(100vh-200px)] overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Messungstyp</TableHead>
-                <TableHead>Bezeichnung</TableHead>
-                <TableHead>Wert</TableHead>
-                <TableHead>Neigung</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {measurements.map((measurement) => (
-                <TableRow key={measurement.id}>
-                  <TableCell>{formatType(measurement.type)}</TableCell>
-                  <TableCell>{measurement.description || '-'}</TableCell>
-                  <TableCell>{formatValue(measurement.value, measurement.type)}</TableCell>
-                  <TableCell>
-                    {measurement.type === 'length' && measurement.inclination 
-                      ? `${measurement.inclination.toFixed(1)}°` 
-                      : '-'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="preview">Vorschau</TabsTrigger>
+            <TabsTrigger value="projectData">Projektdaten</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="preview">
+            <div className="max-h-[calc(100vh-300px)] overflow-auto my-4">
+              {projectData && (
+                <div className="mb-4 p-4 border rounded-md bg-muted/30">
+                  <h3 className="font-medium mb-2">Projektinformationen</h3>
+                  <p><strong>Projekt:</strong> {projectData.projectName}</p>
+                  <p><strong>Vorgang:</strong> {projectData.currentProcess}</p>
+                  <p><strong>Erstellt von:</strong> {projectData.creator}</p>
+                  {projectData.contactInfo && (
+                    <p><strong>Kontakt:</strong> {projectData.contactInfo}</p>
+                  )}
+                </div>
+              )}
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Messungstyp</TableHead>
+                    <TableHead>Bezeichnung</TableHead>
+                    <TableHead>Wert</TableHead>
+                    <TableHead>Neigung</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {measurements.map((measurement) => (
+                    <TableRow key={measurement.id}>
+                      <TableCell>{formatType(measurement.type)}</TableCell>
+                      <TableCell>{measurement.description || '-'}</TableCell>
+                      <TableCell>{formatValue(measurement.value, measurement.type)}</TableCell>
+                      <TableCell>
+                        {measurement.type === 'length' && measurement.inclination 
+                          ? `${measurement.inclination.toFixed(1)}°` 
+                          : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="projectData">
+            <div className="py-4">
+              <ProjectDataForm 
+                onSubmit={handleSubmitProjectData} 
+                initialData={projectData || {}}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
         
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -101,7 +145,7 @@ const PDFPreviewDialog: React.FC<PDFPreviewDialogProps> = ({
             Abbrechen
           </Button>
           <Button onClick={handleExport} disabled={isExporting}>
-            <Download className="mr-2 h-4 w-4" />
+            <FileText className="mr-2 h-4 w-4" />
             {isExporting ? 'Wird exportiert...' : 'PDF herunterladen'}
           </Button>
         </DialogFooter>
