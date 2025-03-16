@@ -316,28 +316,24 @@ export const useMeasurements = () => {
   }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
 
   const addPoint = useCallback((point: Point) => {
-    setCurrentPoints(prev => {
-      const newPoints = [...prev, point];
-      currentPointsRef.current = newPoints;
-      
-      return newPoints;
-    });
+    // First update the ref directly to ensure we have accurate count
+    const updatedPoints = [...currentPointsRef.current, point];
+    currentPointsRef.current = updatedPoints;
     
-    // Check for auto-finalization outside setState callback
-    // This ensures we use the latest state after it's been updated
-    setTimeout(() => {
-      const currentMode = activeMode;
-      const points = currentPointsRef.current;
-      
-      // Auto-finalize length and height measurements after exactly 2 points
-      if ((currentMode === 'length' || currentMode === 'height') && points.length === 2) {
-        if (currentMode === 'length') {
-          createLengthMeasurement(points);
-        } else if (currentMode === 'height') {
-          createHeightMeasurement(points);
-        }
+    // Then update the state
+    setCurrentPoints(updatedPoints);
+    
+    // Immediately check if we need to finalize measurement
+    const currentMode = activeMode;
+    
+    // Auto-finalize length and height measurements after exactly 2 points
+    if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
+      if (currentMode === 'length') {
+        createLengthMeasurement(updatedPoints);
+      } else if (currentMode === 'height') {
+        createHeightMeasurement(updatedPoints);
       }
-    }, 10);
+    }
   }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
 
   return {

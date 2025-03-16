@@ -365,24 +365,31 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           z: intersect.point.z
         };
         
-        // Add point using the addPoint method that handles auto-finalization
+        // Current count before adding the new point
+        const currentCount = currentPoints.length;
+        
+        // Add point using the addPoint method
         addPoint(point);
         
         // Show appropriate toast based on the measurement mode and point count
-        if ((activeMode === 'length' || activeMode === 'height') && currentPoints.length === 1) {
-          // This will be the second point, so the measurement will auto-finalize
-          toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
+        if (activeMode === 'length' || activeMode === 'height') {
+          if (currentCount === 0) {
+            // First point for length/height
+            toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
+          } else if (currentCount === 1) {
+            // Second point for length/height (will auto-finalize)
+            toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
+            // The measurement is complete, so we'll show a success toast
+            toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
+          }
         } else if (activeMode === 'area') {
-          if (currentPoints.length === 0) {
+          if (currentCount === 0) {
             // First point for area
             toast.info("Ersten Punkt für Flächenmessung gesetzt");
           } else {
             // Additional area point
-            toast.info(`Punkt ${currentPoints.length + 1} für Flächenmessung gesetzt`);
+            toast.info(`Punkt ${currentCount + 1} für Flächenmessung gesetzt`);
           }
-        } else {
-          // First point for length/height
-          toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
         }
       }
     };
@@ -394,7 +401,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => {
       canvasElement.removeEventListener('click', handleClick);
     };
-  }, [enabled, scene, camera, activeMode, currentPoints.length, addPoint, open]);
+  }, [enabled, scene, camera, activeMode, currentPoints, addPoint, open]);
 
   const selectTool = (mode: MeasurementMode) => {
     setActiveMode(mode);
