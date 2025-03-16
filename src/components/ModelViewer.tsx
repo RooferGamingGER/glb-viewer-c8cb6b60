@@ -76,21 +76,21 @@ function Model({ url }: { url: string }) {
       if (camera instanceof THREE.PerspectiveCamera) {
         const fov = camera.fov * (Math.PI / 180);
         // Adjust cameraZ to make the object appear closer/larger
-        // Using a multiplier of 0.75 to bring the camera closer than before
-        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.75;
+        // Using a multiplier of 0.5 to bring the camera much closer than before
+        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
         
         // Set a minimum distance to prevent tiny models
-        cameraZ = Math.max(cameraZ, 1.5);
+        cameraZ = Math.max(cameraZ, 1.0);
         
         // Position camera to get a good view of the now-rotated model
         // Adjust the vertical position to account for the rotation
-        camera.position.set(center.x, center.y + cameraZ * 0.2, center.z + cameraZ);
+        camera.position.set(center.x, center.y + cameraZ * 0.15, center.z + cameraZ);
         camera.lookAt(center);
       } else {
         // Handle OrthographicCamera case
         // Adjust distance to make the object appear closer/larger
-        const distance = maxDim * 1.5;
-        camera.position.set(center.x, center.y + distance * 0.2, center.z + distance);
+        const distance = maxDim * 1.0;
+        camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
         camera.lookAt(center);
       }
       
@@ -119,71 +119,6 @@ function Model({ url }: { url: string }) {
       <group ref={modelRef}>
         <primitive object={modelScene} />
       </group>
-      
-      {/* Controls UI */}
-      <Html position={[0, 0, 0]} wrapperClass="absolute bottom-0 left-0 right-0 pointer-events-none">
-        <div className="w-full px-4 pb-4 pointer-events-auto">
-          <div className="glass-panel max-w-md mx-auto rounded-lg p-3 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="button-hover"
-                onClick={() => setAutoRotate(!autoRotate)}
-              >
-                {autoRotate ? <EyeOff size={16} /> : <RefreshCw size={16} />}
-              </Button>
-              
-              {autoRotate && (
-                <div className="w-28">
-                  <Slider
-                    value={[rotationSpeed]}
-                    min={0.1}
-                    max={5}
-                    step={0.1}
-                    onValueChange={(value) => setRotationSpeed(value[0])}
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="button-hover"
-                onClick={() => {
-                  if (modelRef.current) {
-                    const box = new THREE.Box3().setFromObject(modelRef.current);
-                    const center = box.getCenter(new THREE.Vector3());
-                    const size = box.getSize(new THREE.Vector3());
-                    
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    
-                    // Check if camera is a PerspectiveCamera before accessing fov
-                    if (camera instanceof THREE.PerspectiveCamera) {
-                      const fov = camera.fov * (Math.PI / 180);
-                      // Use a smaller multiplier to bring the camera closer
-                      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.75;
-                      
-                      // Position camera with adjusted view for the rotated model
-                      camera.position.set(center.x, center.y + cameraZ * 0.2, center.z + cameraZ);
-                      camera.lookAt(center);
-                    } else {
-                      // Handle OrthographicCamera case
-                      const distance = maxDim * 1.5;
-                      camera.position.set(center.x, center.y + distance * 0.2, center.z + distance);
-                      camera.lookAt(center);
-                    }
-                  }
-                }}
-              >
-                <Maximize2 size={16} />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Html>
     </>
   );
 }
@@ -242,7 +177,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
         </Suspense>
       </Canvas>
       
-      {/* UI Controls */}
+      {/* UI Controls - only the stats toggle is kept */}
       <div className="absolute top-4 right-4 flex gap-2">
         <Button 
           size="sm" 
