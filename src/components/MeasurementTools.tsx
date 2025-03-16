@@ -30,6 +30,7 @@ import {
 import MeasurementToolbar from './measurement/MeasurementToolbar';
 import ActiveMeasurement from './measurement/ActiveMeasurement';
 import MeasurementList from './measurement/MeasurementList';
+import EditingAlert from './measurement/EditingAlert';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -221,6 +222,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       </SidebarHeader>
       
       <SidebarContent>
+        {/* Editing Alert */}
+        <EditingAlert 
+          editMeasurementId={editMeasurementId}
+          editingSegmentId={editingSegmentId}
+          movingPointInfo={movingPointInfo}
+          handleCancelEditing={handleCancelEditing}
+        />
+        
         {/* Measurement Tools */}
         <MeasurementToolbar 
           activeMode={activeMode}

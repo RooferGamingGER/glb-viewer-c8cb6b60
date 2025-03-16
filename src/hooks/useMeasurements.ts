@@ -228,15 +228,28 @@ export const useMeasurements = () => {
         
         // Recalculate the measurement value
         let newValue: number;
+        let newInclination: number | undefined;
         
         if (m.type === 'length') {
           newValue = calculateDistance(newPoints[0], newPoints[1]);
+          
+          // Recalculate inclination for length measurements
+          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
+          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
+          newInclination = calculateInclination(p1, p2);
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
           newValue = calculateArea(newPoints);
           // Update segments for area measurements
-          m.segments = generateSegments(newPoints);
+          const newSegments = generateSegments(newPoints);
+          return {
+            ...m,
+            points: newPoints,
+            value: newValue,
+            label: formatMeasurement(newValue, m.type),
+            segments: newSegments
+          };
         } else {
           newValue = m.value; // Fallback
         }
@@ -245,11 +258,12 @@ export const useMeasurements = () => {
           ...m,
           points: newPoints,
           value: newValue,
-          label: formatMeasurement(newValue, m.type)
+          label: formatMeasurement(newValue, m.type),
+          inclination: newInclination
         };
       });
     });
-  }, [calculateDistance, calculateHeight, calculateArea, generateSegments]);
+  }, [calculateDistance, calculateHeight, calculateArea, generateSegments, calculateInclination]);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
