@@ -8,10 +8,7 @@ import * as THREE from 'three';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Ruler, Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
-import ScreenshotDialog from '@/components/ScreenshotDialog';
-import PDFExportDialog from '@/components/PDFExportDialog';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { captureCanvasScreenshot, StoredScreenshot } from '@/utils/screenshot';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -157,6 +154,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   };
 
   const handleMeasurementClick = (event: React.MouseEvent) => {
+    // Empty handler, kept for compatibility
   };
 
   const toggleMeasurements = () => {
@@ -172,55 +170,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
   };
 
-  const handleTakeScreenshot = async (): Promise<StoredScreenshot> => {
-    return new Promise((resolve, reject) => {
-      if (!canvasRef.current) {
-        reject(new Error('Canvas not found'));
-        return;
-      }
-
-      try {
-        requestAnimationFrame(() => {
-          const canvas = canvasRef.current;
-          if (!canvas) {
-            reject(new Error('Canvas not found'));
-            return;
-          }
-
-          captureCanvasScreenshot(canvas, { 
-            quality: 1.0, 
-            type: 'image/png',
-            storeResult: true 
-          })
-            .then((screenshot) => {
-              if (typeof screenshot === 'string') {
-                reject(new Error('Expected StoredScreenshot but got string URL'));
-                return;
-              }
-              resolve(screenshot as StoredScreenshot);
-            })
-            .catch(reject);
-        });
-      } catch (error) {
-        console.error('Screenshot error:', error);
-        reject(error);
-      }
-    });
-  };
-
   return <div className="relative w-full h-full">
       <div className="absolute inset-0 z-0">
         <ModelCanvas fileUrl={fileUrl} onMeasurementClick={handleMeasurementClick} onSceneReady={handleSceneReady} canvasRef={canvasRef} />
       </div>
       
       <div className="absolute top-4 right-4 flex gap-2 z-10">
-        <ScreenshotDialog onTakeScreenshot={handleTakeScreenshot} />
-        
-        <PDFExportDialog 
-          onTakeScreenshot={handleTakeScreenshot}
-          measurements={measurements}
-        />
-        
         <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
           {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
           <span className="sr-only">{showStats ? 'Statistiken ausblenden' : 'Statistiken einblenden'}</span>
