@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 
@@ -11,18 +11,26 @@ export interface Point {
   z: number;
 }
 
+export interface MeasurementPoint {
+  position: THREE.Vector3;
+  worldPosition: THREE.Vector3;
+}
+
 export interface Measurement {
   id: string;
   type: MeasurementMode;
   points: Point[];
   value: number;
-  inclination?: number;
   label?: string;
+  inclination?: number;
+  visible?: boolean;
+  editMode?: boolean;
+  unit?: string;
 }
 
 // Utility function to determine if inclination is significant
-const isInclinationSignificant = (inclination: number): boolean => {
-  return inclination >= 5; // Consider inclinations of 5 degrees or more as significant
+export const isInclinationSignificant = (inclination: number, threshold: number = 5.0): boolean => {
+  return inclination >= threshold;
 };
 
 // Format measurement with inclination
@@ -32,13 +40,19 @@ const formatMeasurementWithInclination = (
   type: MeasurementMode
 ): string => {
   if (type === 'area') {
+    // Format area measurements
+    if (value < 0.01) {
+      return `${(value * 10000).toFixed(2)} cm²`;
+    }
     return `${value.toFixed(2)} m²`;
   }
   
+  // Format height measurements with inclination
   if (type === 'height' && inclination !== undefined && isInclinationSignificant(inclination)) {
     return `${value.toFixed(2)} m | ${inclination.toFixed(1)}°`;
   }
   
+  // Default formatting for length or height without significant inclination
   return `${value.toFixed(2)} m`;
 };
 
@@ -46,6 +60,7 @@ export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [activeMode, setActiveMode] = useState<MeasurementMode>('length');
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
+  const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
 
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);
@@ -137,6 +152,71 @@ export const useMeasurements = () => {
     return totalArea;
   }, []);
 
+  const toggleMeasurementVisibility = useCallback((id: string) => {
+    setMeasurements(prev => prev.map(m => 
+      m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
+    ));
+  }, []);
+
+  const toggleAllMeasurementsVisibility = useCallback(() => {
+    setAllMeasurementsVisible(prev => !prev);
+    setMeasurements(prev => prev.map(m => ({ ...m, visible: !allMeasurementsVisible })));
+  }, [allMeasurementsVisible]);
+
+  const toggleEditMode = useCallback((id: string) => {
+    setMeasurements(prev => prev.map(m => 
+      m.id === id ? { ...m, editMode: !m.editMode } : m
+    ));
+  }, []);
+
+  const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
+    setMeasurements(prev => prev.map(m => 
+      m.id === id ? { ...m, ...data } : m
+    ));
+  }, []);
+
+  const deleteMeasurement = useCallback((id: string) => {
+    setMeasurements(prev => prev.filter(m => m.id !== id));
+  }, []);
+
+  const deletePoint = useCallback((measurementId: string, pointIndex: number) => {
+    setMeasurements(prev => prev.map(m => {
+      if (m.id === measurementId) {
+        // Only remove the point if there would still be enough points left
+        // (2 for length/height, 3 for area)
+        const minPoints = m.type === 'area' ? 3 : 2;
+        if (m.points.length > minPoints) {
+          const newPoints = [...m.points];
+          newPoints.splice(pointIndex, 1);
+          
+          // Recalculate the measurement value
+          let newValue = 0;
+          let newInclination: number | undefined;
+          
+          if (m.type === 'length' && newPoints.length >= 2) {
+            newValue = calculateDistance(newPoints[0], newPoints[1]);
+          } else if (m.type === 'height' && newPoints.length >= 2) {
+            newValue = calculateHeight(newPoints[0], newPoints[1]);
+            newInclination = calculateInclination(newPoints[0], newPoints[1]);
+          } else if (m.type === 'area' && newPoints.length >= 3) {
+            newValue = calculateArea(newPoints);
+          }
+          
+          const newLabel = formatMeasurementWithInclination(newValue, newInclination, m.type);
+          
+          return {
+            ...m,
+            points: newPoints,
+            value: newValue,
+            inclination: newInclination,
+            label: newLabel
+          };
+        }
+      }
+      return m;
+    }));
+  }, [calculateDistance, calculateHeight, calculateInclination, calculateArea]);
+
   const finalizeMeasurement = useCallback(() => {
     if (currentPoints.length === 0) return;
     
@@ -155,7 +235,9 @@ export const useMeasurements = () => {
           type: 'length',
           points: [currentPoints[0], currentPoints[1]],
           value,
-          label
+          label,
+          visible: true,
+          unit: 'm'
         }
       ]);
       setCurrentPoints([]);
@@ -173,7 +255,9 @@ export const useMeasurements = () => {
           points: [currentPoints[0], currentPoints[1]],
           value,
           inclination,
-          label
+          label,
+          visible: true,
+          unit: 'm'
         }
       ]);
       setCurrentPoints([]);
@@ -189,14 +273,15 @@ export const useMeasurements = () => {
           type: 'area',
           points: [...currentPoints],
           value,
-          label
+          label,
+          visible: true,
+          unit: 'm²'
         }
       ]);
       setCurrentPoints([]);
     }
   }, [activeMode, currentPoints, calculateDistance, calculateHeight, calculateInclination, calculateArea]);
 
-  // New method to add points and auto-finalize if needed
   const addPoint = useCallback((point: Point) => {
     setCurrentPoints(prev => {
       const newPoints = [...prev, point];
@@ -228,6 +313,13 @@ export const useMeasurements = () => {
     setActiveMode,
     clearMeasurements,
     clearCurrentPoints,
-    finalizeMeasurement
+    finalizeMeasurement,
+    toggleMeasurementVisibility,
+    toggleAllMeasurementsVisibility,
+    allMeasurementsVisible,
+    toggleEditMode,
+    updateMeasurement,
+    deleteMeasurement,
+    deletePoint
   };
 };

@@ -10,9 +10,11 @@ import {
   EyeOff,
   CheckCircle2,
   AlertCircle,
-  Save
+  Pencil,
+  Move,
+  X
 } from 'lucide-react';
-import { MeasurementMode, useMeasurements } from '@/hooks/useMeasurements';
+import { MeasurementMode, useMeasurements, isInclinationSignificant } from '@/hooks/useMeasurements';
 import { 
   Sidebar, 
   SidebarContent, 
@@ -29,6 +31,8 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from 'sonner';
 import * as THREE from 'three';
 
@@ -45,6 +49,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 }) => {
   const { open, setOpen } = useSidebar();
   const [visible, setVisible] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
   const { 
     measurements,
     currentPoints,
@@ -54,7 +61,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setActiveMode,
     clearMeasurements,
     clearCurrentPoints,
-    finalizeMeasurement
+    finalizeMeasurement,
+    toggleMeasurementVisibility,
+    toggleAllMeasurementsVisibility,
+    allMeasurementsVisible,
+    toggleEditMode,
+    updateMeasurement,
+    deleteMeasurement,
+    deletePoint
   } = useMeasurements();
 
   // Points display reference for updating visual indicators
@@ -188,6 +202,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     
     // Add visual representation for each finalized measurement
     measurements.forEach((measurement) => {
+      // Skip measurements that are explicitly marked as not visible
+      if (measurement.visible === false) return;
+      
       // Create different visualizations based on measurement type
       if (measurement.type === 'length' || measurement.type === 'height') {
         // For length and height, draw line between the two points
@@ -346,7 +363,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           z: intersect.point.z
         };
         
-        // Add point using the new addPoint method that handles auto-finalization
+        // Add point using the addPoint method that handles auto-finalization
         addPoint(point);
         
         // Show appropriate toast based on the measurement mode and point count
@@ -402,6 +419,21 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Alle Messungen gelöscht');
   };
 
+  const handleEditStart = (id: string, description: string = '') => {
+    setEditingId(id);
+    setEditValue(description || '');
+  };
+
+  const handleEditSave = (id: string) => {
+    updateMeasurement(id, { description: editValue });
+    setEditingId(null);
+  };
+
+  const handleDeleteMeasurement = (id: string) => {
+    deleteMeasurement(id);
+    toast.info('Messung gelöscht');
+  };
+
   // If measurements are not enabled, don't render the sidebar
   if (!enabled) return null;
 
@@ -418,6 +450,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeMode === 'none'}
+                  onClick={() => selectTool('none')}
+                  tooltip="Navigation"
+                >
+                  <Move />
+                  <span>Navigation</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={activeMode === 'length'}
@@ -497,6 +540,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               {visible ? "Ausblenden" : "Einblenden"}
             </Button>
             
+            {measurements.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={toggleAllMeasurementsVisibility}
+                className="flex-1 flex items-center justify-center gap-2"
+              >
+                {allMeasurementsVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+                {allMeasurementsVisible ? "Alle aus" : "Alle ein"}
+              </Button>
+            )}
+            
             <Button 
               variant="outline" 
               size="sm" 
@@ -513,25 +568,76 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <SidebarGroup>
             <SidebarGroupLabel>Messungen</SidebarGroupLabel>
             <SidebarGroupContent>
-              <div className="space-y-2 p-2 bg-muted/50 rounded-md">
-                {measurements.map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 text-sm border-b border-muted-foreground/20 pb-2 last:border-0 last:pb-0">
-                    <div className={`w-3 h-3 rounded-full ${
-                      m.type === 'length' ? 'bg-green-500' : 
-                      m.type === 'height' ? 'bg-blue-500' : 'bg-amber-500'
-                    }`} />
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {m.type === 'length' ? 'Länge' : 
-                         m.type === 'height' ? 'Höhe' : 'Fläche'}
+              <ScrollArea className={measurements.length > 3 ? "h-[200px]" : "max-h-full"}>
+                <div className="space-y-2 p-2 bg-muted/50 rounded-md">
+                  {measurements.map((m) => (
+                    <div key={m.id} className="flex flex-col gap-1 bg-background/40 p-2 rounded">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            m.type === 'length' ? 'bg-green-500' : 
+                            m.type === 'height' ? 'bg-blue-500' : 'bg-amber-500'
+                          }`} />
+                          <div>
+                            <span className="text-sm font-medium">
+                              {m.type === 'length' ? 'Länge' : 
+                              m.type === 'height' ? 'Höhe' : 'Fläche'}
+                            </span>
+                            <div className="text-xs text-muted-foreground">
+                              {m.label}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleMeasurementVisibility(m.id)}
+                            className="h-6 w-6"
+                          >
+                            {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editingId === m.id ? handleEditSave(m.id) : handleEditStart(m.id, m.description)}
+                            className="h-6 w-6"
+                          >
+                            {editingId === m.id ? <CheckCircle2 size={14} /> : <Pencil size={14} />}
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteMeasurement(m.id)}
+                            className="h-6 w-6 text-destructive hover:text-destructive"
+                          >
+                            <X size={14} />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-muted-foreground">
-                        {m.label}
-                      </div>
+                      
+                      {editingId === m.id ? (
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          placeholder="Beschreibung hinzufügen"
+                          className="h-7 text-xs mt-1"
+                          autoFocus
+                        />
+                      ) : (
+                        m.description && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {m.description}
+                          </p>
+                        )
+                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </SidebarGroupContent>
           </SidebarGroup>
         )}

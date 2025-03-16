@@ -8,7 +8,6 @@ import * as THREE from 'three';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Ruler } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
-import { MeasurementMode } from '@/hooks/useMeasurements';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -180,6 +179,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     // Just a pass-through for events
   };
 
+  const toggleMeasurements = () => {
+    setMeasurementsEnabled(prev => !prev);
+    toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
+  };
+
   return <div className="relative w-full h-full">
       {/* Model Canvas is always visible */}
       <div className="absolute inset-0 z-0">
@@ -190,10 +194,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
           {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
+          <span className="sr-only">{showStats ? 'Statistiken ausblenden' : 'Statistiken einblenden'}</span>
         </Button>
         
-        <Button size="sm" variant={measurementsEnabled ? "default" : "outline"} className="glass-button" onClick={() => setMeasurementsEnabled(!measurementsEnabled)}>
+        <Button 
+          size="sm" 
+          variant={measurementsEnabled ? "default" : "outline"} 
+          className="glass-button"
+          onClick={toggleMeasurements}
+        >
           <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
+          <span className="sr-only">{measurementsEnabled ? 'Messwerkzeuge deaktivieren' : 'Messwerkzeuge aktivieren'}</span>
         </Button>
       </div>
       
@@ -203,7 +214,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       </div>
       
       {/* Measurement Tools */}
-      {scene && camera && measurementsEnabled && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} />}
+      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} />}
     </div>;
 };
 
