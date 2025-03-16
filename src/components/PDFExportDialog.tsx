@@ -18,7 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPDF } from '@/utils/pdfExport';
-import { StoredScreenshot, getLatestScreenshot } from '@/utils/screenshot';
+import { StoredScreenshot, getLatestScreenshot, getAllScreenshots } from '@/utils/screenshot';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PDFExportDialogProps {
   onTakeScreenshot: () => Promise<StoredScreenshot>;
@@ -56,6 +57,12 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
 
   const handleExport = async () => {
     try {
+      // Check if there are measurements
+      if (measurements.length === 0) {
+        toast.error('Keine Messungen vorhanden. Bitte erstellen Sie mindestens eine Messung.');
+        return;
+      }
+      
       setLoading(true);
       
       let screenshotUrl = '';
@@ -136,8 +143,23 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     }
   };
 
-  // Check if the button should be enabled
+  // Check if the button should be enabled - if there are either measurements or screenshots
   const hasMeasurements = measurements.length > 0;
+  const hasScreenshots = getAllScreenshots().length > 0;
+  const canExport = hasMeasurements || hasScreenshots;
+  
+  // Prepare tooltip message
+  const buttonTooltip = canExport 
+    ? "Als PDF exportieren" 
+    : "Keine Messungen oder Screenshots vorhanden";
+
+  const handleButtonClick = () => {
+    if (!canExport) {
+      toast.error('Keine Messungen oder Screenshots vorhanden. Bitte erstellen Sie mindestens eine Messung oder einen Screenshot.');
+      return;
+    }
+    setOpen(true);
+  };
 
   return (
     <>
@@ -145,9 +167,9 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
         variant="outline" 
         size="sm" 
         className="glass-button"
-        onClick={() => setOpen(true)}
-        title="Als PDF exportieren"
-        disabled={!hasMeasurements}
+        onClick={handleButtonClick}
+        title={buttonTooltip}
+        disabled={false} // Button is always active, but shows error if no content
       >
         <FileText size={16} />
         <span className="sr-only">Als PDF exportieren</span>
@@ -165,6 +187,14 @@ const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
               <span className="sr-only">Schließen</span>
             </DialogClose>
           </DialogHeader>
+
+          {!hasMeasurements && (
+            <Alert variant="warning" className="mb-4">
+              <AlertDescription>
+                Keine Messungen vorhanden. Das PDF wird ohne Messdaten erstellt.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Tabs defaultValue="general">
             <TabsList className="grid w-full grid-cols-2">
