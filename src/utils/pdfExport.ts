@@ -1,14 +1,14 @@
 
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { Measurement } from '@/hooks/useMeasurements';
+import { TDocumentDefinitions } from 'pdfmake/interfaces';
 
 // Initialize the virtual file system for fonts
 pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
-import { Measurement } from '@/hooks/useMeasurements';
-
 export const generateMeasurementsPDF = (measurements: Measurement[], filename: string) => {
-  const docDefinition = {
+  const docDefinition: TDocumentDefinitions = {
     content: [
       { text: 'Messungen Exportiert', style: 'header' },
       { text: `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, style: 'subheader' },
