@@ -319,6 +319,33 @@ export function renderEditPoints(
     };
     
     editPointsRef.add(sphere);
+    
+    // Create a label for each point in area measurements
+    if (measurement.type === 'area') {
+      // Position the label slightly above the point
+      const labelPosition = new THREE.Vector3(point.x, point.y + 0.08, point.z);
+      
+      // Create point label (P1, P2, etc.)
+      const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition);
+      
+      // Make the label smaller than regular measurement labels
+      pointLabel.scale.multiplyScalar(0.7);
+      
+      // Store info in userData
+      pointLabel.userData = {
+        isEditPointLabel: true, // Mark as an edit point label
+        isPointLabel: true,
+        measurementId: measurement.id,
+        pointIndex: index,
+        isPreview: true // Mark as preview so it isn't removed with permanent labels
+      };
+      
+      // Set high render order
+      pointLabel.renderOrder = 1000;
+      
+      // Add to edit points group
+      editPointsRef.add(pointLabel);
+    }
   });
 }
 
@@ -377,7 +404,7 @@ export function renderMeasurements(
       child => child.userData.measurementId === measurement.id
     );
     
-    // For measurements being edited, we'll recreate labels to ensure they're up to date
+    // Always recreate labels for measurements being edited or that have changed
     const isMeasurementBeingEdited = measurement.editMode || 
                                      existingLabels.length === 0 || 
                                      existingSegmentLabels.length === 0 ||
@@ -512,11 +539,8 @@ export function renderMeasurements(
               // Offset midpoint slightly to avoid overlap with lines
               midpoint.y += 0.05;
               
-              // Include segment inclination in label if available and significant
-              let segmentLabelText = segment.label || "";
-              if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
-                segmentLabelText += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
-              }
+              // Entferne Neigungs-Info aus dem Segment-Label für Flächenmessungen
+              const segmentLabelText = segment.label || "";
               
               // Update the label text and position
               updateTextSprite(segmentLabel, segmentLabelText);
@@ -528,37 +552,61 @@ export function renderMeasurements(
     }
   });
   
-  // Make sure all labels and segment labels are visible
-  labelsRef.children.forEach(child => {
-    const measurementId = child.userData.measurementId;
-    const measurement = measurements.find(m => m.id === measurementId);
+  // Check if any measurement is being edited
+  const anyMeasurementBeingEdited = measurements.some(m => m.editMode);
+  
+  // Synchronisierte Sichtbarkeits-Logik für Haupt- und Segment-Labels
+  const updateLabelVisibility = (
+    child: THREE.Object3D, 
+    isPreview: boolean, 
+    measurementId: string | undefined
+  ) => {
+    // Immer ausblenden während der Bearbeitung
+    if (anyMeasurementBeingEdited && !isPreview) {
+      child.visible = false;
+      return;
+    }
     
-    // Only set visibility if the measurement exists
-    if (measurement) {
-      child.visible = measurement.visible !== false;
+    if (measurementId) {
+      const measurement = measurements.find(m => m.id === measurementId);
+      if (measurement) {
+        // Nur anzeigen, wenn die Messung existiert, sichtbar ist und nicht bearbeitet wird
+        child.visible = measurement.visible !== false && !measurement.editMode;
+      } else if (isPreview) {
+        // Vorschau-Labels immer sichtbar
+        child.visible = true;
+      } else {
+        // Standard: sichtbar
+        child.visible = true;
+      }
+    } else if (isPreview) {
+      // Vorschau-Labels immer sichtbar
+      child.visible = true;
     } else {
-      // For preview labels or orphaned labels
+      // Standard: sichtbar
       child.visible = true;
     }
     
-    // Ensure high render order
+    // Hohe Render-Ordnung sicherstellen
     child.renderOrder = 100;
+  };
+  
+  // Haupt-Labels aktualisieren
+  labelsRef.children.forEach(child => {
+    updateLabelVisibility(
+      child, 
+      child.userData.isPreview || false,
+      child.userData.measurementId
+    );
   });
   
+  // Segment-Labels aktualisieren
   segmentLabelsRef.children.forEach(child => {
-    const measurementId = child.userData.measurementId;
-    const measurement = measurements.find(m => m.id === measurementId);
-    
-    // Only set visibility if the measurement exists
-    if (measurement) {
-      child.visible = measurement.visible !== false;
-    } else {
-      // For orphaned labels
-      child.visible = true;
-    }
-    
-    // Ensure high render order
-    child.renderOrder = 100;
+    updateLabelVisibility(
+      child, 
+      false, // Segment-Labels sind nie Vorschau-Labels
+      child.userData.measurementId
+    );
   });
 }
 

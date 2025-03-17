@@ -5,17 +5,20 @@ import { Eye, EyeOff, Pencil, Trash2, Save, X } from 'lucide-react';
 import { Measurement, Segment } from '@/hooks/useMeasurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
+import PointEditList from './PointEditList';
 
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
   onEditSegment: (segmentId: string) => void;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -23,11 +26,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   toggleMeasurementVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
+  handleDeletePoint,
   updateMeasurement,
   editMeasurementId,
   segmentsOpen,
   toggleSegments,
-  onEditSegment
+  onEditSegment,
+  movingPointInfo
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -93,11 +98,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       
       <div className="text-sm mb-1">
         <strong>Wert:</strong> {measurement.label}
-        {(measurement.type === 'length' || measurement.type === 'area') && 
-         measurement.inclination !== undefined && (
+        {/* Nur für Längenmessungen die Neigung anzeigen */}
+        {measurement.type === 'length' && measurement.inclination !== undefined && (
           <span className="ml-2">
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
-            {measurement.type === 'area' && " Ø"}
           </span>
         )}
       </div>
@@ -146,7 +150,14 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </div>
       )}
       
-      {/* Segment management for area measurements */}
+      {measurement.editMode && handleDeletePoint && (
+        <PointEditList 
+          measurement={measurement}
+          handleDeletePoint={handleDeletePoint}
+          movingPointInfo={movingPointInfo}
+        />
+      )}
+      
       {measurement.type === 'area' && measurement.segments && (
         <SegmentList 
           measurementId={measurement.id}

@@ -14,13 +14,12 @@ interface MeasurementListProps {
   toggleMeasurementVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
-  editingSegmentId: string | null;
-  handleCancelEditing: () => void;
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
-  setEditingSegmentId: (id: string | null) => void;
+  onEditSegment: (id: string | null) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
 }
 
@@ -29,16 +28,15 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   toggleMeasurementVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
+  handleDeletePoint,
   updateMeasurement,
   editMeasurementId,
-  editingSegmentId,
-  handleCancelEditing,
   segmentsOpen,
   toggleSegments,
-  setEditingSegmentId,
+  onEditSegment,
   movingPointInfo
 }) => {
-  if (measurements.length === 0 && !editMeasurementId && !editingSegmentId) return null;
+  if (measurements.length === 0 && !editMeasurementId) return null;
   
   return (
     <SidebarGroup className="flex-1 flex flex-col min-h-0">
@@ -58,11 +56,13 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                       toggleMeasurementVisibility={toggleMeasurementVisibility}
                       handleStartPointEdit={handleStartPointEdit}
                       handleDeleteMeasurement={handleDeleteMeasurement}
+                      handleDeletePoint={handleDeletePoint}
                       updateMeasurement={updateMeasurement}
                       editMeasurementId={editMeasurementId}
                       segmentsOpen={segmentsOpen}
                       toggleSegments={toggleSegments}
-                      onEditSegment={setEditingSegmentId}
+                      onEditSegment={onEditSegment}
+                      movingPointInfo={movingPointInfo}
                     />
                   ))}
                 </div>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Move, MousePointer } from 'lucide-react';
+import { AlertCircle, Move, MousePointer, PlusCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface EditingAlertProps {
@@ -9,13 +9,15 @@ interface EditingAlertProps {
   editingSegmentId: string | null;
   movingPointInfo: { measurementId: string; pointIndex: number } | null;
   handleCancelEditing: () => void;
+  editingAreaMeasurement?: boolean;
 }
 
 const EditingAlert: React.FC<EditingAlertProps> = ({
   editMeasurementId,
   editingSegmentId,
   movingPointInfo,
-  handleCancelEditing
+  handleCancelEditing,
+  editingAreaMeasurement = false
 }) => {
   if (!editMeasurementId && !editingSegmentId && !movingPointInfo) return null;
   
@@ -25,9 +27,18 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
       <AlertTitle className="text-primary font-medium">Bearbeitungsmodus</AlertTitle>
       <AlertDescription className="space-y-2">
         {editMeasurementId && !movingPointInfo && (
-          <div className="flex items-center gap-1">
-            <MousePointer className="h-3 w-3" />
-            <span>Klicken Sie auf einen Punkt (gelb markiert), um ihn zu verschieben.</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <MousePointer className="h-3 w-3" />
+              <span>Klicken Sie auf einen Punkt (gelb markiert), um ihn zu verschieben.</span>
+            </div>
+            
+            {editingAreaMeasurement && (
+              <div className="flex items-center gap-1">
+                <PlusCircle className="h-3 w-3" />
+                <span>Klicken Sie auf ein "+" Symbol, um einen neuen Punkt hinzuzufügen.</span>
+              </div>
+            )}
           </div>
         )}
         {editingSegmentId && (
