@@ -22,7 +22,7 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   return (
     <Alert variant="default" className="mb-3 border-primary">
       <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Bearbeitungsmodus</AlertTitle>
+      <AlertTitle className="text-primary font-medium">Bearbeitungsmodus</AlertTitle>
       <AlertDescription className="space-y-2">
         {editMeasurementId && !movingPointInfo && (
           <div className="flex items-center gap-1">

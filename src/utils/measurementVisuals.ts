@@ -5,7 +5,8 @@ import {
   formatMeasurementLabel,
   calculateMidpoint,
   calculateCentroid,
-  calculateInclination
+  calculateInclination,
+  updateTextSprite
 } from '@/utils/textSprite';
 
 /**
@@ -311,32 +312,34 @@ export function renderMeasurements(
     measurementsRef.remove(object);
   }
   
-  // Only clear labels that don't belong to any current measurement
-  const currentMeasurementIds = measurements.map(m => m.id);
+  // Create a map of current measurement IDs for lookup
+  const currentMeasurementIds = new Set(measurements.map(m => m.id));
   
   // Remove labels for measurements that no longer exist
-  labelsRef.children.forEach((child, index) => {
-    if (!child.userData.isPreview && 
-        (!child.userData.measurementId || 
-         !currentMeasurementIds.includes(child.userData.measurementId))) {
-      labelsRef.remove(child);
+  for (let i = labelsRef.children.length - 1; i >= 0; i--) {
+    const label = labelsRef.children[i];
+    if (!label.userData.isPreview && 
+        (!label.userData.measurementId || 
+         !currentMeasurementIds.has(label.userData.measurementId))) {
+      labelsRef.remove(label);
     }
-  });
+  }
   
-  // Only clear segment labels that don't belong to current measurements
-  segmentLabelsRef.children.forEach((child, index) => {
-    if (!child.userData.measurementId || 
-        !currentMeasurementIds.includes(child.userData.measurementId)) {
-      segmentLabelsRef.remove(child);
+  // Remove segment labels that don't belong to current measurements
+  for (let i = segmentLabelsRef.children.length - 1; i >= 0; i--) {
+    const label = segmentLabelsRef.children[i];
+    if (!label.userData.measurementId || 
+        !currentMeasurementIds.has(label.userData.measurementId)) {
+      segmentLabelsRef.remove(label);
     }
-  });
+  }
   
   // Add visual representation for each finalized measurement
   measurements.forEach((measurement) => {
     // Skip measurements that are explicitly marked as not visible
     if (measurement.visible === false) return;
     
-    // Check if labels for this measurement already exist
+    // Find existing labels for this measurement
     const existingLabels = labelsRef.children.filter(
       child => child.userData.measurementId === measurement.id
     );
@@ -345,21 +348,134 @@ export function renderMeasurements(
       child => child.userData.measurementId === measurement.id
     );
     
-    // Only create new labels if they don't exist
-    const shouldCreateLabels = existingLabels.length === 0;
-    const shouldCreateSegmentLabels = measurement.type === 'area' && 
-                                      (existingSegmentLabels.length === 0 || 
-                                       existingSegmentLabels.length !== measurement.segments?.length);
-    
     // Create different visualizations based on measurement type
     if (measurement.type === 'length') {
-      renderLengthMeasurement(measurement, measurementsRef, labelsRef, shouldCreateLabels);
+      renderLengthMeasurement(measurement, measurementsRef, labelsRef, existingLabels.length === 0);
+      
+      // Update existing label text if it exists
+      if (existingLabels.length > 0) {
+        const [p1, p2] = measurement.points;
+        const point1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+        const point2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+        
+        // Calculate inclination
+        const inclination = Math.abs(calculateInclination(point1, point2));
+        
+        // Add text label at midpoint
+        const midpoint = calculateMidpoint(point1, point2);
+        const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
+        
+        // Update the existing label
+        const label = existingLabels[0] as THREE.Sprite;
+        updateTextSprite(label, labelText);
+        
+        // Update position
+        label.position.copy(midpoint);
+      }
     } 
     else if (measurement.type === 'height') {
-      renderHeightMeasurement(measurement, measurementsRef, labelsRef, shouldCreateLabels);
+      renderHeightMeasurement(measurement, measurementsRef, labelsRef, existingLabels.length === 0);
+      
+      // Update existing label text if it exists
+      if (existingLabels.length > 0) {
+        const [p1, p2] = measurement.points;
+        const point1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+        const point2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+        
+        // Determine which point is higher
+        const higherPoint = point1.y > point2.y ? point1 : point2;
+        const lowerPoint = point1.y > point2.y ? point2 : point1;
+        
+        // Create a vertical projection point below/above the higher point
+        const verticalPoint = new THREE.Vector3(
+          higherPoint.x,
+          lowerPoint.y,
+          higherPoint.z
+        );
+        
+        // Add text label at midpoint of vertical line
+        const labelPos = new THREE.Vector3(
+          verticalPoint.x + 0.2, // Slightly offset from vertical line
+          (higherPoint.y + verticalPoint.y) / 2,
+          verticalPoint.z
+        );
+        
+        const labelText = formatMeasurementLabel(measurement.value, 'height');
+        
+        // Update the existing label
+        const label = existingLabels[0] as THREE.Sprite;
+        updateTextSprite(label, labelText);
+        
+        // Update position
+        label.position.copy(labelPos);
+      }
     } 
     else if (measurement.type === 'area') {
-      renderAreaMeasurement(measurement, measurementsRef, labelsRef, segmentLabelsRef, shouldCreateLabels, shouldCreateSegmentLabels);
+      renderAreaMeasurement(
+        measurement, 
+        measurementsRef, 
+        labelsRef, 
+        segmentLabelsRef, 
+        existingLabels.length === 0,
+        existingSegmentLabels.length !== measurement.segments?.length
+      );
+      
+      // Update existing area label text if it exists
+      if (existingLabels.length > 0) {
+        const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+        
+        // Calculate centroid for label placement
+        const centroid = calculateCentroid(points3D);
+        
+        // Create label text with inclination if available
+        let labelText = formatMeasurementLabel(measurement.value, 'area');
+        if (measurement.inclination !== undefined && Math.abs(measurement.inclination) > 1.0) {
+          labelText += ` | Ø ${Math.abs(measurement.inclination).toFixed(1)}°`;
+        }
+        
+        // Update the existing label
+        const label = existingLabels[0] as THREE.Sprite;
+        updateTextSprite(label, labelText);
+        
+        // Update position
+        label.position.copy(centroid);
+      }
+      
+      // Update existing segment labels if they exist
+      if (existingSegmentLabels.length > 0 && measurement.segments) {
+        const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+        
+        for (let i = 0; i < points3D.length; i++) {
+          const p1 = points3D[i];
+          const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
+          
+          // Find the corresponding segment label
+          const segmentId = measurement.segments[i]?.id;
+          const segmentLabel = segmentLabelsRef.children.find(
+            child => child.userData?.segmentId === segmentId
+          ) as THREE.Sprite | undefined;
+          
+          if (segmentLabel && measurement.segments[i]) {
+            const segment = measurement.segments[i];
+            const midpoint = calculateMidpoint(p1, p2);
+            
+            // Offset midpoint slightly to avoid overlap with lines
+            midpoint.y += 0.05;
+            
+            // Include segment inclination in label if available and significant
+            let segmentLabelText = segment.label || "";
+            if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
+              segmentLabelText += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
+            }
+            
+            // Update the label
+            updateTextSprite(segmentLabel, segmentLabelText);
+            
+            // Update position
+            segmentLabel.position.copy(midpoint);
+          }
+        }
+      }
     }
   });
   
@@ -375,6 +491,9 @@ export function renderMeasurements(
       // For preview labels or orphaned labels
       child.visible = true;
     }
+    
+    // Ensure high render order
+    child.renderOrder = 100;
   });
   
   segmentLabelsRef.children.forEach(child => {
@@ -388,6 +507,9 @@ export function renderMeasurements(
       // For orphaned labels
       child.visible = true;
     }
+    
+    // Ensure high render order
+    child.renderOrder = 100;
   });
 }
 
