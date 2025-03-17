@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/hooks/useMeasurements';
 
@@ -115,5 +115,3 @@ export const useMeasurementPreview = (scene: THREE.Scene | null) => {
     updatePreviewVisualization
   };
 };
-
-import { useEffect } from 'react';

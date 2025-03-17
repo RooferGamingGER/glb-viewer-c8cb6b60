@@ -33,6 +33,10 @@ export const useMeasurementEvents = (
 ) => {
   // Track multitouch state for mobile
   const touchCountRef = useRef<number>(0);
+  // Track if we've recently handled a touch to prevent duplicates
+  const lastTouchTimeRef = useRef<number>(0);
+  // Touch event cooldown in milliseconds
+  const TOUCH_COOLDOWN = 300;
 
   const { 
     calculateMousePosition, 
@@ -40,13 +44,10 @@ export const useMeasurementEvents = (
     getPointFromIntersection 
   } = useMeasurementRaycasting();
 
-  // Generic pointer event processing
-  const handlePointerDown = useCallback((event: MouseEvent | TouchEvent) => {
+  // Process user interaction (adds a point or edits existing point)
+  const processInteraction = useCallback((event: MouseEvent | TouchEvent) => {
     // Ensure we're enabled and the sidebar is open
     if (!enabled || !open || !scene || !camera) return;
-    
-    // Skip if using multitouch
-    if (event instanceof TouchEvent && event.touches.length >= 2) return;
     
     const canvasElement = event.target as HTMLCanvasElement;
     if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
@@ -206,16 +207,42 @@ export const useMeasurementEvents = (
     }
   }, [handlers, scene, camera]);
 
-  // Track touch events for multitouch detection
+  // Separate mouse event handler
+  const handleMouseDown = useCallback((event: MouseEvent) => {
+    // Only process left mouse button clicks (button 0) for measurement
+    if (event.button !== 0) return;
+    
+    processInteraction(event);
+  }, [processInteraction]);
+  
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    handlePointerMove(event);
+  }, [handlePointerMove]);
+
+  // Specific touch event handlers with debouncing to prevent double-touches
   const handleTouchStart = useCallback((event: TouchEvent) => {
+    // Skip handling this touch event if less than TOUCH_COOLDOWN ms have passed since the last one
+    const now = Date.now();
+    if (now - lastTouchTimeRef.current < TOUCH_COOLDOWN) {
+      event.preventDefault();
+      return;
+    }
+    
+    // Update the touch count
     touchCountRef.current = event.touches.length;
     
-    // Skip measurement interactions if using multitouch (2 or more fingers)
-    if (touchCountRef.current >= 2) return;
+    // Only handle single-touch events for measurements
+    if (touchCountRef.current === 1) {
+      // Record this touch time
+      lastTouchTimeRef.current = now;
+      
+      // Process as a measurement interaction
+      processInteraction(event);
+    }
     
-    // Single touch - process as normal click for measurements
-    handlePointerDown(event);
-  }, [handlePointerDown]);
+    // Prevent default to avoid emulated mouse events
+    event.preventDefault();
+  }, [processInteraction]);
   
   const handleTouchMove = useCallback((event: TouchEvent) => {
     touchCountRef.current = event.touches.length;
@@ -224,24 +251,14 @@ export const useMeasurementEvents = (
     if (touchCountRef.current >= 2) return;
     
     handlePointerMove(event);
+    event.preventDefault();
   }, [handlePointerMove]);
   
   const handleTouchEnd = useCallback((event: TouchEvent) => {
     // Update touch count
     touchCountRef.current = event.touches.length;
+    event.preventDefault();
   }, []);
-  
-  // Mouse event handlers
-  const handleMouseDown = useCallback((event: MouseEvent) => {
-    // Only process left mouse button clicks (button 0) for measurement
-    if (event.button !== 0) return;
-    
-    handlePointerDown(event);
-  }, [handlePointerDown]);
-  
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    handlePointerMove(event);
-  }, [handlePointerMove]);
 
   // Setup event listeners
   useEffect(() => {
@@ -250,12 +267,14 @@ export const useMeasurementEvents = (
     const canvasElement = document.querySelector('canvas');
     if (!canvasElement) return;
     
-    // Add event listeners
+    // Add mouse event listeners - NOT using 'pointerdown' to avoid conflict with touch
     canvasElement.addEventListener('mousedown', handleMouseDown);
     canvasElement.addEventListener('mousemove', handleMouseMove);
+    
+    // Add touch event listeners
     canvasElement.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvasElement.addEventListener('touchend', handleTouchEnd);
+    canvasElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     
     // Cleanup function
     return () => {
