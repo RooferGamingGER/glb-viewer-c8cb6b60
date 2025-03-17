@@ -34,6 +34,14 @@ export const exportMeasurementsToPdf = async (
       .pdf-last-page {
         page-break-after: avoid;
       }
+      .logo-centered {
+  position: absolute;
+  top: 20%; /* Platzierung etwas weiter oben, da es das Logo ist */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  text-align: center; /* Sicherstellen, dass der Text innerhalb des Containers zentriert ist */
+}
       .logo-container {
         text-align: center;
         margin-bottom: 30px;
