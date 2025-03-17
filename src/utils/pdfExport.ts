@@ -1,634 +1,299 @@
 
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
-import { TDocumentDefinitions, Content, StyleDictionary } from 'pdfmake/interfaces';
-import { StoredScreenshot } from '@/utils/screenshot';
 
-// Register fonts
-pdfMake.vfs = pdfFonts.vfs;
-
-// Define fonts
-const defaultFonts = {
-  Roboto: {
-    normal: 'Roboto-Regular.ttf',
-    bold: 'Roboto-Medium.ttf',
-    italics: 'Roboto-Italic.ttf',
-    bolditalics: 'Roboto-MediumItalic.ttf'
-  }
-};
-
-interface PDFExportOptions {
-  title: string;
-  screenshotUrl?: string;
-  screenshots?: StoredScreenshot[];
-  measurements: Measurement[];
-  filename?: string;
-  includeScreenshot?: boolean;
-  companyLogo?: string;
-  companyName?: string;
-  footerLogo?: string;
-  projectDetails?: {
-    projectName?: string;
-    projectNumber?: string;
-    location?: string;
-    date?: string;
-    userName?: string;
-  };
+export interface PdfExportOptions {
+  title?: string;
+  includeDateTime?: boolean;
+  showLogo?: boolean;
+  pageSize?: 'a4' | 'letter';
+  orientation?: 'portrait' | 'landscape';
 }
 
-// PDF Document Styles
-const docStyles: StyleDictionary = {
-  header: {
-    fontSize: 22,
-    bold: true,
-    alignment: 'center',
-    margin: [0, 10, 0, 20]
-  },
-  subheader: {
-    fontSize: 16,
-    bold: true,
-    margin: [0, 10, 0, 5]
-  },
-  tableHeader: {
-    bold: true,
-    fontSize: 12,
-    color: 'black',
-    fillColor: '#f3f3f3'
-  },
-  companyHeader: {
-    fontSize: 10,
-    color: '#666',
-    alignment: 'right'
-  },
-  footer: {
-    fontSize: 8,
-    color: '#666',
-    alignment: 'center',
-    margin: [0, 10, 0, 0]
-  },
-  measurement: {
-    margin: [0, 5, 0, 5]
-  },
-  measurementTitle: {
-    bold: true,
-    fontSize: 14,
-    margin: [0, 10, 0, 5]
-  },
-  segmentTitle: {
-    bold: true,
-    fontSize: 12,
-    color: '#555',
-    margin: [0, 5, 0, 2]
-  },
-  projectDetailLabel: {
-    bold: true,
-    fontSize: 10,
-    color: '#444'
-  },
-  projectDetailValue: {
-    fontSize: 10
-  },
-  coverPageTitle: {
-    fontSize: 26,
-    bold: true,
-    alignment: 'center',
-    margin: [0, 0, 0, 40]
-  },
-  coverPageSubtitle: {
-    fontSize: 18,
-    alignment: 'center',
-    margin: [0, 0, 0, 20]
-  },
-  companyInfo: {
-    fontSize: 14,
-    margin: [0, 5, 0, 2]
-  }
+const defaultOptions: PdfExportOptions = {
+  title: 'Messungen',
+  includeDateTime: true,
+  showLogo: true,
+  pageSize: 'a4',
+  orientation: 'portrait'
 };
 
-export const exportMeasurementsToPDF = async ({
-  title,
-  screenshotUrl,
-  screenshots = [],
-  measurements,
-  filename = 'messungen.pdf',
-  includeScreenshot = true,
-  companyLogo,
-  companyName,
-  projectDetails = {}
-}: PDFExportOptions): Promise<void> => {
-  try {
-    let companyLogoBase64 = '';
-    let footerLogoBase64 = '';
-    let screenshotsBase64: {url: string, id: string}[] = [];
-    
-    // Process company logo if provided
-    if (companyLogo) {
-      try {
-        companyLogoBase64 = await urlToBase64(companyLogo);
-      } catch (error) {
-        console.error('Failed to process company logo:', error);
-      }
-    }
-    
-    // Process footer logo (using provided file)
-    try {
-      // This will use the logo provided in the attachment for the footer
-      const footerLogoURL = '/logo-roofergaming.png';
-      footerLogoBase64 = await urlToBase64(footerLogoURL).catch(() => '');
-    } catch (error) {
-      console.error('Failed to process footer logo:', error);
-    }
-    
-    // Process all screenshots if included
-    if (includeScreenshot) {
-      if (screenshots && screenshots.length > 0) {
-        for (const screenshot of screenshots) {
-          try {
-            const base64 = await urlToBase64(screenshot.url);
-            screenshotsBase64.push({ url: base64, id: screenshot.id });
-          } catch (error) {
-            console.error(`Failed to process screenshot ${screenshot.id}:`, error);
-          }
-        }
-      } else if (screenshotUrl) {
-        // Backward compatibility with old interface
-        try {
-          const base64 = await urlToBase64(screenshotUrl);
-          screenshotsBase64.push({ url: base64, id: 'single' });
-        } catch (error) {
-          console.error('Failed to process screenshot:', error);
-        }
-      }
-    }
-    
-    // Generate the document definition with the new layout
-    const docDefinition = createDocumentDefinition(
-      title, 
-      screenshotsBase64, 
-      measurements, 
-      includeScreenshot,
-      companyLogoBase64,
-      companyName,
-      projectDetails,
-      footerLogoBase64
-    );
-    
-    // Create and download the PDF
-    const pdfDoc = pdfMake.createPdf(docDefinition);
-    pdfDoc.download(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
-  } catch (error) {
-    console.error('PDF-Export fehlgeschlagen:', error);
-    throw error;
-  }
-};
-
-// Convert URL to base64
-const urlToBase64 = (url: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    // Skip processing if it's already a base64 data URL
-    if (url.startsWith('data:image')) {
-      resolve(url);
-      return;
-    }
-
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-        
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        
-        const dataURL = canvas.toDataURL('image/png');
-        resolve(dataURL);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    
-    img.onerror = () => {
-      reject(new Error('Failed to load image'));
-    };
-    
-    img.src = url;
-  });
-};
-
-// Define TableCell interface to allow colSpan
-interface TableCell {
-  text?: string;
-  style?: string;
-  colSpan?: number;
-  rowSpan?: number;
-  image?: string;
-  width?: number;
-  alignment?: string;
-  border?: boolean | [boolean, boolean, boolean, boolean];
-}
-
-// Format the current date to a local string
-const formatDate = (date: Date = new Date()): string => {
-  return date.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-// Create the full document definition with the new multi-page layout
-const createDocumentDefinition = (
-  title: string,
-  screenshots: {url: string, id: string}[],
+export const exportMeasurementsToPdf = async (
   measurements: Measurement[],
-  includeScreenshot: boolean = true,
-  logoBase64: string = '',
-  companyName: string = '',
-  projectDetails: PDFExportOptions['projectDetails'] = {},
-  footerLogoBase64: string = ''
-): TDocumentDefinitions => {
-  const content: Content[] = [];
-  
-  // Start with a cover page
-  content.push(
-    // Cover page content
-    createCoverPage(title, logoBase64, companyName, projectDetails),
+  options: PdfExportOptions = defaultOptions
+): Promise<boolean> => {
+  try {
+    const mergedOptions = { ...defaultOptions, ...options };
     
-    // Page break
-    { text: '', pageBreak: 'after' }
-  );
-  
-  // Add measurements as the second section (on their own page)
-  if (measurements.length > 0) {
-    content.push(
-      // Measurements section title
-      {
-        text: 'Messungen',
-        style: 'subheader',
-        margin: [0, 10, 0, 10]
-      },
+    // Create a container for the PDF content
+    const container = document.createElement('div');
+    container.className = 'pdf-container';
+    container.style.fontFamily = 'Arial, sans-serif';
+    container.style.padding = '20px';
+    container.style.color = '#333';
+    
+    // Add header with title and date
+    const header = document.createElement('div');
+    header.style.marginBottom = '20px';
+    header.style.borderBottom = '1px solid #ddd';
+    header.style.paddingBottom = '10px';
+    container.appendChild(header);
+    
+    // Add logo if requested
+    if (mergedOptions.showLogo) {
+      const logoContainer = document.createElement('div');
+      logoContainer.style.float = 'left';
+      logoContainer.style.marginRight = '20px';
+      logoContainer.innerHTML = `
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="24" height="24" rx="4" fill="#4F46E5"/>
+          <path d="M7 12H17M12 7V17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `;
+      header.appendChild(logoContainer);
+    }
+    
+    // Add title
+    const title = document.createElement('h1');
+    title.textContent = mergedOptions.title || 'Messungen';
+    title.style.fontSize = '24px';
+    title.style.fontWeight = 'bold';
+    title.style.margin = '0 0 5px 0';
+    header.appendChild(title);
+    
+    // Add date if requested
+    if (mergedOptions.includeDateTime) {
+      const date = document.createElement('div');
+      date.textContent = new Date().toLocaleString('de-DE');
+      date.style.fontSize = '12px';
+      date.style.color = '#666';
+      header.appendChild(date);
+    }
+    
+    // Clear float
+    const clearFloat = document.createElement('div');
+    clearFloat.style.clear = 'both';
+    header.appendChild(clearFloat);
+    
+    // Filter measurements by type
+    const lengthMeasurements = measurements.filter(m => m.type === 'length');
+    const heightMeasurements = measurements.filter(m => m.type === 'height');
+    const areaMeasurements = measurements.filter(m => m.type === 'area');
+    
+    // Add measurement summary
+    const summary = document.createElement('div');
+    summary.style.marginBottom = '20px';
+    summary.innerHTML = `
+      <p><strong>Zusammenfassung:</strong></p>
+      <p>Gesamtanzahl: ${measurements.length} Messungen</p>
+      <p>Längenmessungen: ${lengthMeasurements.length}</p>
+      <p>Höhenmessungen: ${heightMeasurements.length}</p>
+      <p>Flächenmessungen: ${areaMeasurements.length}</p>
+    `;
+    container.appendChild(summary);
+    
+    // Function to create table for measurements
+    const createMeasurementTable = (measurements: Measurement[], title: string, columns: string[]) => {
+      if (measurements.length === 0) return null;
       
-      // Generate measurements table
-      createMeasurementsTable(measurements)
-    );
-    
-    // Add a page break before screenshots if there are any
-    if (includeScreenshot && screenshots.length > 0) {
-      content.push({ text: '', pageBreak: 'after' });
-    }
-  }
-  
-  // Add screenshots as the third section (on their own page)
-  if (includeScreenshot && screenshots.length > 0) {
-    content.push(
-      {
-        text: 'Screenshots',
-        style: 'subheader',
-        margin: [0, 10, 0, 20]
-      }
-    );
-    
-    // Create screenshot gallery - 2 screenshots per page
-    const screenshotGallery = createScreenshotGallery(screenshots);
-    content.push(...screenshotGallery);
-  }
-  
-  return {
-    content: content,
-    
-    // Define styles
-    styles: docStyles,
-    
-    // Define custom footer with company info
-    footer: function(currentPage, pageCount) {
-      const footerContent = [];
+      const section = document.createElement('div');
+      section.style.marginBottom = '20px';
       
-      // Add footer text
-      const footerText = 'Kostenloser Service von Drohnenvermessung by RooferGaming - Homepage: drohnenvermessung-roofergaming.de - Email: info@drohnenvermessung-roofergaming.de';
+      const sectionTitle = document.createElement('h2');
+      sectionTitle.textContent = title;
+      sectionTitle.style.fontSize = '18px';
+      sectionTitle.style.marginBottom = '10px';
+      section.appendChild(sectionTitle);
       
-      // Add company logo if available
-      if (footerLogoBase64) {
-        footerContent.push({
-          columns: [
-            { 
-              image: footerLogoBase64,
-              width: 40,
-              alignment: 'left'
-            },
-            {
-              text: footerText,
-              style: 'footer',
-              alignment: 'center',
-              margin: [0, 6, 0, 0]
-            },
-            {
-              text: `Seite ${currentPage} von ${pageCount}`,
-              style: 'footer',
-              alignment: 'right',
-              margin: [0, 6, 0, 0]
-            }
-          ],
-          margin: [40, 10, 40, 0]
-        });
-      } else {
-        footerContent.push({
-          columns: [
-            { text: footerText, style: 'footer', alignment: 'left' },
-            { text: `Seite ${currentPage} von ${pageCount}`, alignment: 'right', style: 'footer' }
-          ],
-          margin: [40, 10, 40, 0]
-        });
-      }
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.style.marginBottom = '20px';
       
-      return footerContent;
-    },
-    
-    // Define defaults
-    defaultStyle: {
-      fontSize: 11
-    },
-    
-    // Page margins [left, top, right, bottom]
-    pageMargins: [40, 40, 40, 60]
-  };
-};
-
-// Create a cover page
-const createCoverPage = (
-  title: string,
-  logoBase64: string,
-  companyName: string,
-  projectDetails: PDFExportOptions['projectDetails'] = {}
-): Content[] => {
-  const coverPageContent: Content[] = [];
-  
-  // Add company logo if available
-  if (logoBase64) {
-    coverPageContent.push({
-      image: logoBase64,
-      width: 200,
-      alignment: 'center',
-      margin: [0, 40, 0, 20]
-    });
-  }
-  
-  // Add company name if available
-  if (companyName) {
-    coverPageContent.push({
-      text: companyName,
-      style: 'companyHeader',
-      alignment: 'center',
-      fontSize: 18,
-      margin: [0, 10, 0, 40]
-    });
-  }
-  
-  // Add title
-  coverPageContent.push({
-    text: title,
-    style: 'coverPageTitle'
-  });
-  
-  // Add project details in an elegant table
-  if (Object.values(projectDetails).some(val => val)) {
-    const detailsTable = [];
-    
-    if (projectDetails.projectName) {
-      detailsTable.push([
-        { text: 'Projektname:', style: 'projectDetailLabel' },
-        { text: projectDetails.projectName, style: 'projectDetailValue' }
-      ]);
-    }
-    
-    if (projectDetails.projectNumber) {
-      detailsTable.push([
-        { text: 'Projektnummer:', style: 'projectDetailLabel' },
-        { text: projectDetails.projectNumber, style: 'projectDetailValue' }
-      ]);
-    }
-    
-    if (projectDetails.location) {
-      detailsTable.push([
-        { text: 'Standort:', style: 'projectDetailLabel' },
-        { text: projectDetails.location, style: 'projectDetailValue' }
-      ]);
-    }
-    
-    if (projectDetails.date) {
-      detailsTable.push([
-        { text: 'Datum:', style: 'projectDetailLabel' },
-        { text: projectDetails.date, style: 'projectDetailValue' }
-      ]);
-    }
-    
-    if (projectDetails.userName) {
-      detailsTable.push([
-        { text: 'Erstellt von:', style: 'projectDetailLabel' },
-        { text: projectDetails.userName, style: 'projectDetailValue' }
-      ]);
-    }
-    
-    if (detailsTable.length > 0) {
-      coverPageContent.push({
-        table: {
-          headerRows: 0,
-          widths: ['30%', '70%'],
-          body: detailsTable
-        },
-        layout: 'noBorders',
-        margin: [0, 40, 0, 0]
+      // Create table header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      
+      columns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        th.style.backgroundColor = '#f3f4f6';
+        th.style.padding = '8px';
+        th.style.textAlign = 'left';
+        th.style.border = '1px solid #ddd';
+        headerRow.appendChild(th);
       });
-    }
-  }
-  
-  return coverPageContent;
-};
-
-// Create a gallery of screenshots with 2 per page
-const createScreenshotGallery = (screenshots: {url: string, id: string}[]): Content[] => {
-  const galleryContent: Content[] = [];
-  
-  // Process screenshots in pairs
-  for (let i = 0; i < screenshots.length; i += 2) {
-    const row = [];
-    
-    // Add first screenshot of the pair
-    row.push({
-      image: screenshots[i].url,
-      width: 250,
-      alignment: 'center',
-      margin: [0, 0, 0, 10]
-    });
-    
-    // Add second screenshot if available
-    if (i + 1 < screenshots.length) {
-      row.push({
-        image: screenshots[i + 1].url,
-        width: 250,
-        alignment: 'center',
-        margin: [0, 0, 0, 10]
-      });
-    } else {
-      // If there's no second screenshot, add an empty cell
-      row.push({ text: '' });
-    }
-    
-    // Add the row to the gallery
-    galleryContent.push({
-      columns: row,
-      columnGap: 10,
-      margin: [0, 10, 0, 0]
-    });
-    
-    // Add page break after each pair, except for the last pair
-    if (i + 2 < screenshots.length) {
-      galleryContent.push({ text: '', pageBreak: 'after' });
-    }
-  }
-  
-  return galleryContent;
-};
-
-// Create the measurements table
-const createMeasurementsTable = (measurements: Measurement[]): Content => {
-  // If no measurements, return message
-  if (measurements.length === 0) {
-    return {
-      text: 'Keine Messungen vorhanden',
-      style: 'measurement',
-      italics: true
-    };
-  }
-  
-  // Group measurements by type for better organization
-  const lengthMeasurements = measurements.filter(m => m.type === 'length');
-  const heightMeasurements = measurements.filter(m => m.type === 'height');
-  const areaMeasurements = measurements.filter(m => m.type === 'area');
-  
-  const tableContent: Content[] = [];
-  
-  // Add length measurements
-  if (lengthMeasurements.length > 0) {
-    tableContent.push(
-      { text: 'Längenmessungen', style: 'measurementTitle' },
-      createTypedMeasurementsTable(lengthMeasurements, 'length')
-    );
-  }
-  
-  // Add height measurements
-  if (heightMeasurements.length > 0) {
-    tableContent.push(
-      { text: 'Höhenmessungen', style: 'measurementTitle', margin: [0, 15, 0, 5] },
-      createTypedMeasurementsTable(heightMeasurements, 'height')
-    );
-  }
-  
-  // Add area measurements
-  if (areaMeasurements.length > 0) {
-    tableContent.push(
-      { text: 'Flächenmessungen', style: 'measurementTitle', margin: [0, 15, 0, 5] },
-      createTypedMeasurementsTable(areaMeasurements, 'area')
-    );
-  }
-  
-  return tableContent;
-};
-
-// Create table for a specific measurement type
-const createTypedMeasurementsTable = (measurements: Measurement[], type: 'length' | 'height' | 'area') => {
-  // Define table headers based on type
-  const headers: TableCell[] = [
-    { text: 'Nr.', style: 'tableHeader' },
-    { text: 'Wert', style: 'tableHeader' }
-  ];
-  
-  // Add inclination column for length measurements
-  if (type === 'length') {
-    headers.push({ text: 'Neigung', style: 'tableHeader' });
-  }
-  
-  // Add description column
-  headers.push({ text: 'Beschreibung', style: 'tableHeader' });
-  
-  // Create the table body rows
-  const body: (TableCell | string)[][] = [headers];
-  
-  measurements.forEach((measurement, index) => {
-    const row: TableCell[] = [
-      { text: (index + 1).toString() },
-      { text: measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}` }
-    ];
-    
-    // Add inclination for length measurements
-    if (type === 'length') {
-      row.push({ 
-        text: measurement.inclination !== undefined 
-          ? `${Math.abs(measurement.inclination).toFixed(1)}°` 
-          : '–' 
-      });
-    }
-    
-    // Add description
-    row.push({ text: measurement.description || '–' });
-    
-    body.push(row);
-    
-    // Add segment information for area measurements
-    if (type === 'area' && measurement.segments && measurement.segments.length > 0) {
-      // Add a row for segments header
-      const segmentRow: TableCell[] = [
-        { text: '', colSpan: 1 },
-        { 
-          text: 'Segmente:', 
-          style: 'segmentTitle',
-          colSpan: headers.length - 1
+      
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Create table body
+      const tbody = document.createElement('tbody');
+      
+      measurements.forEach((measurement, index) => {
+        const row = document.createElement('tr');
+        
+        // First column is always the number
+        const numCell = document.createElement('td');
+        numCell.textContent = (index + 1).toString();
+        numCell.style.padding = '8px';
+        numCell.style.border = '1px solid #ddd';
+        row.appendChild(numCell);
+        
+        // Value column
+        const valueCell = document.createElement('td');
+        valueCell.textContent = measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
+        valueCell.style.padding = '8px';
+        valueCell.style.border = '1px solid #ddd';
+        row.appendChild(valueCell);
+        
+        // Add inclination for length measurements
+        if (measurement.type === 'length' && columns.includes('Neigung')) {
+          const inclinationCell = document.createElement('td');
+          inclinationCell.textContent = measurement.inclination !== undefined 
+            ? `${Math.abs(measurement.inclination).toFixed(1)}°` 
+            : '–';
+          inclinationCell.style.padding = '8px';
+          inclinationCell.style.border = '1px solid #ddd';
+          row.appendChild(inclinationCell);
         }
-      ];
-      // Fill remaining cells with empty objects to match column count
-      for (let i = 2; i < headers.length; i++) {
-        segmentRow.push({ text: '' });
-      }
-      body.push(segmentRow);
+        
+        // Description column
+        const descCell = document.createElement('td');
+        descCell.textContent = measurement.description || '–';
+        descCell.style.padding = '8px';
+        descCell.style.border = '1px solid #ddd';
+        row.appendChild(descCell);
+        
+        tbody.appendChild(row);
+      });
       
-      // Add rows for each segment
-      measurement.segments.forEach((segment, segIndex) => {
-        const segmentDetailRow: TableCell[] = [
-          { text: '', colSpan: 1 },
-          { 
-            text: `Segment ${segIndex + 1}: ${segment.length.toFixed(2)} m`, 
-            colSpan: headers.length - 1
+      table.appendChild(tbody);
+      section.appendChild(table);
+      
+      // Add segment tables for area measurements
+      if (title === 'Flächenmessungen') {
+        measurements.forEach((measurement, mIndex) => {
+          if (measurement.segments && measurement.segments.length > 0) {
+            const segmentTitle = document.createElement('h3');
+            segmentTitle.textContent = `Segmente für Fläche ${mIndex + 1}`;
+            segmentTitle.style.fontSize = '14px';
+            segmentTitle.style.marginTop = '10px';
+            segmentTitle.style.marginBottom = '5px';
+            segmentTitle.style.marginLeft = '20px';
+            section.appendChild(segmentTitle);
+            
+            const segmentTable = document.createElement('table');
+            segmentTable.style.width = 'calc(100% - 40px)';
+            segmentTable.style.marginLeft = '20px';
+            segmentTable.style.borderCollapse = 'collapse';
+            segmentTable.style.marginBottom = '20px';
+            
+            // Segment table header
+            const segmentThead = document.createElement('thead');
+            const segmentHeaderRow = document.createElement('tr');
+            
+            ['Segment', 'Länge'].forEach(column => {
+              const th = document.createElement('th');
+              th.textContent = column;
+              th.style.backgroundColor = '#f3f4f6';
+              th.style.padding = '8px';
+              th.style.textAlign = 'left';
+              th.style.border = '1px solid #ddd';
+              segmentHeaderRow.appendChild(th);
+            });
+            
+            segmentThead.appendChild(segmentHeaderRow);
+            segmentTable.appendChild(segmentThead);
+            
+            // Segment table body
+            const segmentTbody = document.createElement('tbody');
+            
+            measurement.segments.forEach((segment, sIndex) => {
+              const segmentRow = document.createElement('tr');
+              
+              // Segment number
+              const segmentNumCell = document.createElement('td');
+              segmentNumCell.textContent = (sIndex + 1).toString();
+              segmentNumCell.style.padding = '8px';
+              segmentNumCell.style.border = '1px solid #ddd';
+              segmentRow.appendChild(segmentNumCell);
+              
+              // Segment length
+              const segmentLengthCell = document.createElement('td');
+              segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
+              segmentLengthCell.style.padding = '8px';
+              segmentLengthCell.style.border = '1px solid #ddd';
+              segmentRow.appendChild(segmentLengthCell);
+              
+              segmentTbody.appendChild(segmentRow);
+            });
+            
+            segmentTable.appendChild(segmentTbody);
+            section.appendChild(segmentTable);
           }
-        ];
-        // Fill remaining cells with empty objects to match column count
-        for (let i = 2; i < headers.length; i++) {
-          segmentDetailRow.push({ text: '' });
-        }
-        body.push(segmentDetailRow);
-      });
-    }
-  });
-  
-  return {
-    table: {
-      headerRows: 1,
-      widths: Array(headers.length).fill('*'),
-      body: body
-    },
-    layout: {
-      fillColor: function(rowIndex: number) {
-        return (rowIndex % 2 === 0) ? '#fff' : '#f9f9f9';
+        });
       }
-    }
-  };
+      
+      return section;
+    };
+    
+    // Add length measurements table
+    const lengthTable = createMeasurementTable(
+      lengthMeasurements, 
+      'Längenmessungen', 
+      ['Nr.', 'Wert', 'Neigung', 'Beschreibung']
+    );
+    if (lengthTable) container.appendChild(lengthTable);
+    
+    // Add height measurements table
+    const heightTable = createMeasurementTable(
+      heightMeasurements, 
+      'Höhenmessungen', 
+      ['Nr.', 'Wert', 'Beschreibung']
+    );
+    if (heightTable) container.appendChild(heightTable);
+    
+    // Add area measurements table
+    const areaTable = createMeasurementTable(
+      areaMeasurements, 
+      'Flächenmessungen', 
+      ['Nr.', 'Wert', 'Beschreibung']
+    );
+    if (areaTable) container.appendChild(areaTable);
+    
+    // Add footer
+    const footer = document.createElement('div');
+    footer.style.marginTop = '30px';
+    footer.style.borderTop = '1px solid #ddd';
+    footer.style.paddingTop = '10px';
+    footer.style.fontSize = '10px';
+    footer.style.color = '#666';
+    footer.style.textAlign = 'center';
+    footer.textContent = `Erstellt am ${new Date().toLocaleDateString('de-DE')}`;
+    container.appendChild(footer);
+    
+    // Configure html2pdf options
+    const pdfOptions = {
+      margin: 10,
+      filename: `Messungen_${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { 
+        unit: 'mm', 
+        format: mergedOptions.pageSize, 
+        orientation: mergedOptions.orientation
+      }
+    };
+    
+    // Generate the PDF
+    document.body.appendChild(container);
+    await html2pdf().from(container).set(pdfOptions).save();
+    document.body.removeChild(container);
+    
+    return true;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    return false;
+  }
 };

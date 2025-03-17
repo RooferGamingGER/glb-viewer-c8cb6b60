@@ -14,11 +14,13 @@ import { Measurement } from '@/hooks/useMeasurements';
 interface MeasurementTableProps {
   measurements: Measurement[];
   title?: string;
+  showTableHeaders?: boolean;
 }
 
 const MeasurementTable: React.FC<MeasurementTableProps> = ({
   measurements,
-  title = "Messungen"
+  title = "Messungen",
+  showTableHeaders = true
 }) => {
   if (measurements.length === 0) {
     return (
@@ -38,7 +40,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
       {/* Length measurements */}
       {lengthMeasurements.length > 0 && (
         <div>
-          <h3 className="text-base font-medium mb-2">Längenmessungen</h3>
+          {showTableHeaders && <h3 className="text-base font-medium mb-2">Längenmessungen</h3>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -52,7 +54,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
               {lengthMeasurements.map((measurement, index) => (
                 <TableRow key={measurement.id}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{measurement.label}</TableCell>
+                  <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`}</TableCell>
                   <TableCell>
                     {measurement.inclination !== undefined 
                       ? `${Math.abs(measurement.inclination).toFixed(1)}°` 
@@ -69,7 +71,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
       {/* Height measurements */}
       {heightMeasurements.length > 0 && (
         <div>
-          <h3 className="text-base font-medium mb-2">Höhenmessungen</h3>
+          {showTableHeaders && <h3 className="text-base font-medium mb-2">Höhenmessungen</h3>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -82,7 +84,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
               {heightMeasurements.map((measurement, index) => (
                 <TableRow key={measurement.id}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{measurement.label}</TableCell>
+                  <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
                 </TableRow>
               ))}
@@ -94,7 +96,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
       {/* Area measurements */}
       {areaMeasurements.length > 0 && (
         <div>
-          <h3 className="text-base font-medium mb-2">Flächenmessungen</h3>
+          {showTableHeaders && <h3 className="text-base font-medium mb-2">Flächenmessungen</h3>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -107,7 +109,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
               {areaMeasurements.map((measurement, index) => (
                 <TableRow key={measurement.id} className="border-b-0">
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{measurement.label}</TableCell>
+                  <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
                 </TableRow>
               ))}
