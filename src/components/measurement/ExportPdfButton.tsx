@@ -19,6 +19,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -71,13 +79,18 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     setExportOptions(prev => ({ ...prev, [key]: value }));
   };
 
+  // Calculate summary statistics
+  const lengthCount = measurements.filter(m => m.type === 'length').length;
+  const heightCount = measurements.filter(m => m.type === 'height').length;
+  const areaCount = measurements.filter(m => m.type === 'area').length;
+
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button 
           variant="outline" 
           size="sm" 
-          className="flex items-center gap-1" 
+          className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white" 
           title="Als PDF exportieren"
         >
           <FileDown className="h-4 w-4" />
@@ -91,6 +104,39 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             Exportieren Sie Ihre Messungen als PDF-Dokument
           </DialogDescription>
         </DialogHeader>
+        
+        {measurements.length > 0 && (
+          <div className="bg-muted/50 p-3 rounded-md mb-3">
+            <h3 className="text-sm font-medium mb-2">Messdaten Übersicht:</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/3">Messtyp</TableHead>
+                  <TableHead>Anzahl</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell>Längen</TableCell>
+                  <TableCell>{lengthCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Höhen</TableCell>
+                  <TableCell>{heightCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Flächen</TableCell>
+                  <TableCell>{areaCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Gesamt</TableCell>
+                  <TableCell className="font-medium">{measurements.length}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        
         <div className="flex flex-col gap-4 py-4">
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-medium">PDF-Titel</h3>

@@ -55,7 +55,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   };
   
   return (
-    <SidebarGroup className="mt-4"> {/* Added margin-top to create space */}
+    <SidebarGroup className="mt-4">
       <div className="flex justify-between items-center">
         <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
         {measurements.length > 0 && (
