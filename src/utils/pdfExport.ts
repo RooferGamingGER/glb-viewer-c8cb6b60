@@ -35,13 +35,13 @@ export const exportMeasurementsToPdf = async (
         page-break-after: avoid;
       }
       .logo-centered {
-  position: absolute;
-  top: 20%; /* Platzierung etwas weiter oben, da es das Logo ist */
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  text-align: center; /* Sicherstellen, dass der Text innerhalb des Containers zentriert ist */
-}
+        position: absolute;
+        top: 20%; /* Platzierung etwas weiter oben, da es das Logo ist */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        text-align: center; /* Sicherstellen, dass der Text innerhalb des Containers zentriert ist */
+      }
       .logo-container {
         text-align: center;
         margin-bottom: 30px;
@@ -147,30 +147,16 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.style.flexDirection = 'column';
   coverPage.style.padding = '20px';
 
-  // Logo container
-  const logoContainer = document.createElement('div');
-  logoContainer.className = 'logo-container logo-centered'; // Klasse zum Zentrieren hinzugefügt
-
-  // Create logo placeholder with text (replace with actual logo)
-  const logoImage = document.createElement('div');
-  logoImage.className = 'logo-image';
-  logoImage.style.fontSize = '32px';
-  logoImage.style.fontWeight = 'bold';
-  logoImage.style.color = '#333';
-  logoImage.style.marginBottom = '20px';
-  logoImage.style.textAlign = 'center';
-  logoImage.textContent = 'DrohnenGLB by RooferGaming®';
-  
   // Upper half of cover page - Company logo and info
   const upperHalf = document.createElement('div');
   upperHalf.className = 'cover-upper';
   upperHalf.style.marginBottom = '70px';
   
-  // Logo container
+  // Logo container (using only one instance of logoContainer)
   const logoContainer = document.createElement('div');
   logoContainer.className = 'logo-container';
   
-  // Create logo placeholder with text (replace with actual logo)
+  // Create logo placeholder with text (only one instance of logoImage)
   const logoImage = document.createElement('div');
   logoImage.className = 'logo-image';
   logoImage.style.fontSize = '32px';
@@ -215,25 +201,25 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.appendChild(upperHalf);
   
   // Cover title - centered
-    const coverHeader = document.createElement('div');
-    coverHeader.style.textAlign = 'center';
-    coverHeader.style.marginBottom = '50px';
+  const coverHeader = document.createElement('div');
+  coverHeader.style.textAlign = 'center';
+  coverHeader.style.marginBottom = '50px';
 
-    const coverTitle = document.createElement('h1');
-    coverTitle.textContent = coverData.title || 'Vermessungsbericht';
-    coverTitle.style.fontSize = '28px';
-    coverTitle.style.fontWeight = 'bold';
-    coverTitle.style.marginBottom = '15px';
-    coverTitle.style.color = '#000000';
-    coverHeader.appendChild(coverTitle);
+  const coverTitle = document.createElement('h1');
+  coverTitle.textContent = coverData.title || 'Vermessungsbericht';
+  coverTitle.style.fontSize = '28px';
+  coverTitle.style.fontWeight = 'bold';
+  coverTitle.style.marginBottom = '15px';
+  coverTitle.style.color = '#000000';
+  coverHeader.appendChild(coverTitle);
 
-    const exportDate = document.createElement('div');
-    exportDate.textContent = `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`;
-    exportDate.style.fontSize = '14px';
-    exportDate.style.color = '#555';
-    coverHeader.appendChild(exportDate);
+  const exportDate = document.createElement('div');
+  exportDate.textContent = `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`;
+  exportDate.style.fontSize = '14px';
+  exportDate.style.color = '#555';
+  coverHeader.appendChild(exportDate);
 
-    coverPage.appendChild(coverHeader);
+  coverPage.appendChild(coverHeader);
   
   // Lower half - User information
   const lowerHalf = document.createElement('div');
