@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ interface ExportPdfButtonProps {
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const dialogCloseRef = useRef<HTMLButtonElement>(null);
   
   const form = useForm<CoverPageData>({
     defaultValues: {
@@ -68,6 +69,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       
       if (success) {
         toast.success('PDF wurde erfolgreich erstellt');
+        // Auto-close dialog after successful export
+        setTimeout(() => {
+          dialogCloseRef.current?.click();
+        }, 1000);
       } else {
         toast.error('Fehler beim Erstellen des PDFs');
       }
@@ -237,7 +242,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
         )}
 
         <DialogFooter className="sm:justify-between mt-4">
-          <DialogClose asChild>
+          <DialogClose ref={dialogCloseRef} asChild>
             <Button type="button" variant="secondary">
               Abbrechen
             </Button>

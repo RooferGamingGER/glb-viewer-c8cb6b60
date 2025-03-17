@@ -121,12 +121,12 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
             measurement.segments && measurement.segments.length > 0 && (
               <div key={`${measurement.id}-segments`} className="ml-6 mt-2 mb-6">
                 <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                  Segmente für Fläche {mIndex + 1}
+                  Teilmessungen für Fläche {mIndex + 1}
                 </h4>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Segment</TableHead>
+                      <TableHead>Teilmessung</TableHead>
                       <TableHead>Länge</TableHead>
                     </TableRow>
                   </TableHeader>

@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -42,12 +43,12 @@ export const exportMeasurementsToPdf = async (
       container.appendChild(areaDetailsSection);
     }
     
-    // Add footer
+    // Create footer HTML content
     const footer = createFooter();
     
     // Configure html2pdf options
     const pdfOptions = {
-      margin: [15, 15, 20, 15], // [top, right, bottom, left]
+      margin: [15, 15, 30, 15], // [top, right, bottom, left] - increased bottom margin for footer
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
@@ -58,7 +59,7 @@ export const exportMeasurementsToPdf = async (
       },
       pagebreak: { mode: 'css' },
       footer: {
-        height: '20mm',
+        height: '25mm',
         contents: footer
       }
     };
@@ -215,21 +216,26 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
   summaryTitle.style.color = '#000000';
   summary.appendChild(summaryTitle);
   
+  // Modified: Single row layout for summary stats
   const summaryContent = document.createElement('div');
   summaryContent.style.display = 'flex';
-  summaryContent.style.flexWrap = 'wrap';
-  summaryContent.style.gap = '20px';
+  summaryContent.style.flexDirection = 'row';
+  summaryContent.style.justifyContent = 'space-between';
+  summaryContent.style.gap = '10px';
+  summaryContent.style.width = '100%';
   
   const createSummaryStat = (label: string, value: number, icon: string) => {
     const stat = document.createElement('div');
     stat.style.backgroundColor = '#f8f9fa';
     stat.style.borderRadius = '8px';
-    stat.style.padding = '15px';
-    stat.style.minWidth = '150px';
+    stat.style.padding = '10px';
+    stat.style.width = '24%';
+    stat.style.boxSizing = 'border-box';
     stat.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    stat.style.textAlign = 'center';
     
     const statValue = document.createElement('div');
-    statValue.style.fontSize = '24px';
+    statValue.style.fontSize = '22px';
     statValue.style.fontWeight = 'bold';
     statValue.style.marginBottom = '5px';
     statValue.style.color = '#000000';
@@ -237,9 +243,10 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
     stat.appendChild(statValue);
     
     const statLabel = document.createElement('div');
-    statLabel.style.fontSize = '14px';
+    statLabel.style.fontSize = '12px';
     statLabel.style.color = '#666';
     statLabel.style.display = 'flex';
+    statLabel.style.justifyContent = 'center';
     statLabel.style.alignItems = 'center';
     statLabel.style.gap = '5px';
     statLabel.innerHTML = `${icon} ${label}`;
@@ -248,6 +255,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
     return stat;
   };
   
+  // Modified order of summary stats
   summaryContent.appendChild(createSummaryStat('Gesamt', measurements.length, '📊'));
   summaryContent.appendChild(createSummaryStat('Längen', lengthMeasurements.length, '📏'));
   summaryContent.appendChild(createSummaryStat('Höhen', heightMeasurements.length, '📐'));
@@ -393,7 +401,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
         const segmentHeaderRow = document.createElement('tr');
         segmentHeaderRow.style.backgroundColor = '#f3f4f6';
         
-        ['Segment', 'Länge'].forEach(column => {
+        ['Teilmessung', 'Länge'].forEach(column => {
           const th = document.createElement('th');
           th.textContent = column;
           th.style.padding = '8px';
@@ -415,7 +423,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
           
           // Segment number
           const segmentNumCell = document.createElement('td');
-          segmentNumCell.textContent = `Segment ${sIndex + 1}`;
+          segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
           segmentNumCell.style.padding = '8px';
           segmentNumCell.style.border = '1px solid #ddd';
           segmentNumCell.style.color = '#000000';
@@ -444,14 +452,14 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
 const createFooter = (): string => {
   // Create the footer as HTML string (required for html2pdf footer option)
   return `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; width: 100%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; width: 100%; margin-top: 10px;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="width: 24px; height: 24px;">
           <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjQiIGZpbGw9IiM0RjQ2RTUiLz4KICAgIDxwYXRoIGQ9Ik03IDEySDE3TTEyIDdWMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" alt="DrohnenGLB Logo" style="width: 100%; height: 100%;">
         </div>
         <span style="font-weight: bold;">DrohnenGLB by RooferGaming</span>
       </div>
-      <div>
+      <div style="text-align: right; max-width: 70%;">
         <div style="font-weight: bold; margin-bottom: 3px;">Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt</div>
         <div>Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de</div>
       </div>
