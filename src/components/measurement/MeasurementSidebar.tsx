@@ -87,6 +87,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
     >
       <div className="flex flex-col h-full">
+        {/* Fixed Header Section */}
         <div className="p-3 border-b border-border/50 flex-shrink-0">
           <div className="text-lg font-medium mb-2">Messwerkzeuge</div>
           
@@ -247,9 +248,10 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           )}
         </div>
         
-        <ScrollArea className="flex-1 overflow-auto">
-          <div className="p-3">
-            <div className="mb-3 flex justify-between items-center">
+        {/* Scrollable Content Area - Improved */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="p-3 border-b border-border/50 flex-shrink-0">
+            <div className="flex justify-between items-center">
               <div className="text-base font-medium">
                 {showTable ? "Messungen (Tabelle)" : "Messungen"}
               </div>
@@ -267,32 +269,37 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
                 </Button>
               )}
             </div>
-            
-            {showTable ? (
-              <MeasurementTable measurements={measurements} />
-            ) : (
-              <MeasurementList 
-                measurements={measurements}
-                toggleMeasurementVisibility={toggleMeasurementVisibility}
-                handleStartPointEdit={handleStartPointEdit}
-                handleDeleteMeasurement={handleDeleteMeasurement}
-                handleDeletePoint={handleDeletePoint}
-                updateMeasurement={updateMeasurement}
-                editMeasurementId={editMeasurementId}
-                segmentsOpen={segmentsOpen}
-                toggleSegments={toggleSegments}
-                onEditSegment={setEditingSegmentId}
-                movingPointInfo={movingPointInfo}
-              />
-            )}
-            
-            {measurements.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">
-                Keine Messungen vorhanden
-              </div>
-            )}
           </div>
-        </ScrollArea>
+          
+          {/* Scrollable area for measurements */}
+          <ScrollArea className="flex-1 overflow-auto">
+            <div className="p-3">
+              {showTable ? (
+                <MeasurementTable measurements={measurements} />
+              ) : (
+                <MeasurementList 
+                  measurements={measurements}
+                  toggleMeasurementVisibility={toggleMeasurementVisibility}
+                  handleStartPointEdit={handleStartPointEdit}
+                  handleDeleteMeasurement={handleDeleteMeasurement}
+                  handleDeletePoint={handleDeletePoint}
+                  updateMeasurement={updateMeasurement}
+                  editMeasurementId={editMeasurementId}
+                  segmentsOpen={segmentsOpen}
+                  toggleSegments={toggleSegments}
+                  onEditSegment={setEditingSegmentId}
+                  movingPointInfo={movingPointInfo}
+                />
+              )}
+              
+              {measurements.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  Keine Messungen vorhanden
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
     </div>
   );

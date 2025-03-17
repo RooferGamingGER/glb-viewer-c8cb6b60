@@ -103,8 +103,8 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               </SidebarMenu>
               
               <div className="flex flex-col gap-2 mt-4">
-                {/* PDF Export Button - Always visible now */}
-                <div className="w-full">
+                {/* PDF Export Button - made directly visible and functional */}
+                <div className="w-full" data-export-pdf-button>
                   <ExportPdfButton measurements={measurements} />
                 </div>
                 
