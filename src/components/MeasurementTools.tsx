@@ -139,6 +139,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled]);
 
+  // Update label visibility when measurements change
   useEffect(() => {
     if (labelsRef.current && segmentLabelsRef.current) {
       measurements.forEach(measurement => {
@@ -276,9 +277,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
-  // Make sure the sidebar is positioned correctly and only affects the sidebar area
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <MeasurementSidebar
           enabled={enabled}

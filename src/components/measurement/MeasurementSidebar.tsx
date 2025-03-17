@@ -66,7 +66,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const hasAlerts = editMeasurementId !== null || editingSegmentId !== null || movingPointInfo !== null;
 
   return (
-    <div className="z-20 absolute right-0 top-0 bottom-0 pointer-events-auto">
+    <div className="z-30 absolute right-0 top-0 bottom-0 pointer-events-auto">
       <Sidebar 
         side="right" 
         variant="floating" 

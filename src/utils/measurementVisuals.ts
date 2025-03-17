@@ -535,14 +535,20 @@ function renderAreaMeasurement(
       // Offset midpoint slightly to avoid overlap with lines
       midpoint.y += 0.05;
       
+      // Include segment inclination in label if available and significant
+      let segmentLabel = segment.label || "";
+      if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
+        segmentLabel += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
+      }
+      
       // Create label with smaller size
-      const segmentLabel = createMeasurementLabel(segment.label || "", midpoint);
+      const segmentLabelSprite = createMeasurementLabel(segmentLabel, midpoint);
       
       // Adjust the scale to make it slightly smaller than area labels
-      segmentLabel.scale.multiplyScalar(0.75);
+      segmentLabelSprite.scale.multiplyScalar(0.75);
       
       // Store measurement ID and segment ID in user data for reference
-      segmentLabel.userData = {
+      segmentLabelSprite.userData = {
         measurementId: measurement.id,
         segmentId: segment.id,
         startPointIndex: i,
@@ -550,15 +556,19 @@ function renderAreaMeasurement(
       };
       
       // Add to segment labels group
-      segmentLabelsRef.add(segmentLabel);
+      segmentLabelsRef.add(segmentLabelSprite);
     }
   }
   
   // Calculate centroid for label placement
   const centroid = calculateCentroid(points3D);
   
-  // Create label
-  const labelText = formatMeasurementLabel(measurement.value, 'area');
+  // Create label text with inclination if available
+  let labelText = formatMeasurementLabel(measurement.value, 'area');
+  if (measurement.inclination !== undefined && Math.abs(measurement.inclination) > 1.0) {
+    labelText += ` | Ø ${Math.abs(measurement.inclination).toFixed(1)}°`;
+  }
+  
   const label = createMeasurementLabel(labelText, centroid);
   
   // Store measurement ID in user data for reference

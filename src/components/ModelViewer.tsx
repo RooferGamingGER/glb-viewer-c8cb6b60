@@ -76,6 +76,15 @@ function SceneSetup({
 
   useEffect(() => {
     if (scene && camera) {
+      // Name the groups for easier debugging and filtering
+      scene.traverse(obj => {
+        if (obj instanceof THREE.Group) {
+          if (obj.name === '') {
+            obj.name = "unnamed_group";
+          }
+        }
+      });
+      
       onSceneReady(scene, camera);
     }
   }, [scene, camera, onSceneReady]);
@@ -93,7 +102,13 @@ const ModelCanvas = ({
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
   return <Canvas shadows style={{
-    background: '#222222'
+    background: '#222222',
+    position: 'absolute', 
+    top: 0, 
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1
   }} className="w-full h-full" ref={canvasRef}>
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
@@ -140,8 +155,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full">
-      <div className="absolute inset-0 z-0">
+    <div className="relative w-full h-full overflow-hidden">
+      <div className="absolute inset-0">
         <ModelCanvas 
           fileUrl={fileUrl} 
           onSceneReady={handleSceneReady} 
