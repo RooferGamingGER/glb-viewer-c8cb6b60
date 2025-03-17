@@ -52,6 +52,8 @@ const formatMeasurement = (value: number, type: MeasurementMode): string => {
   return `${value.toFixed(2)} m`;
 };
 
+const MIN_INCLINATION_THRESHOLD = 5.0; // Only consider inclinations above 5 degrees
+
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [activeMode, setActiveMode] = useState<MeasurementMode>('none'); // Default to 'none' instead of 'length'
@@ -171,7 +173,7 @@ export const useMeasurements = () => {
     if (!segments || segments.length === 0) return undefined;
     
     let totalInclination = 0;
-    let segmentsWithInclination = 0;
+    let segmentsWithSignificantInclination = 0;
     
     for (const segment of segments) {
       const p1 = new THREE.Vector3(segment.points[0].x, segment.points[0].y, segment.points[0].z);
@@ -181,13 +183,17 @@ export const useMeasurements = () => {
       if (Math.abs(p1.y - p2.y) < 0.001) continue;
       
       const inclination = calculateInclination(p1, p2);
-      totalInclination += Math.abs(inclination);
-      segmentsWithInclination++;
+      
+      // Only consider inclinations above the minimum threshold
+      if (Math.abs(inclination) >= MIN_INCLINATION_THRESHOLD) {
+        totalInclination += Math.abs(inclination);
+        segmentsWithSignificantInclination++;
+      }
     }
     
-    // Only return if we have segments with meaningful inclination
-    if (segmentsWithInclination > 0) {
-      return totalInclination / segmentsWithInclination;
+    // Only return if we have segments with significant inclination
+    if (segmentsWithSignificantInclination > 0) {
+      return totalInclination / segmentsWithSignificantInclination;
     }
     
     return undefined;
@@ -283,7 +289,11 @@ export const useMeasurements = () => {
           // Recalculate inclination for length measurements
           const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
           const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
-          newInclination = calculateInclination(p1, p2);
+          const calculatedInclination = calculateInclination(p1, p2);
+          
+          // Only set inclination if it's above the threshold
+          newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
+          
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
@@ -292,6 +302,7 @@ export const useMeasurements = () => {
           const newSegments = generateSegments(newPoints);
           
           // Calculate average inclination for area if there's meaningful inclination
+          // This will apply the threshold in calculateAverageInclination
           const avgInclination = calculateAverageInclination(newSegments);
           
           return {
@@ -379,6 +390,9 @@ export const useMeasurements = () => {
     const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
     const inclination = calculateInclination(p1, p2);
     
+    // Only set inclination if it's above the threshold
+    const finalInclination = Math.abs(inclination) >= MIN_INCLINATION_THRESHOLD ? inclination : undefined;
+    
     setMeasurements(prev => [
       ...prev,
       {
@@ -390,7 +404,7 @@ export const useMeasurements = () => {
         visible: true,
         unit: 'm',
         description: '',
-        inclination // Store inclination
+        inclination: finalInclination // Only store significant inclination
       }
     ]);
     

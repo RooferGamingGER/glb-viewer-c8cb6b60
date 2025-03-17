@@ -20,7 +20,7 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   if (!editMeasurementId && !editingSegmentId && !movingPointInfo) return null;
   
   return (
-    <Alert variant="default" className="mb-3">
+    <Alert variant="default" className="mb-3 border-primary">
       <AlertCircle className="h-4 w-4" />
       <AlertTitle>Bearbeitungsmodus</AlertTitle>
       <AlertDescription className="space-y-2">
@@ -37,7 +37,7 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
           </div>
         )}
         {movingPointInfo && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 font-medium text-primary">
             <Move className="h-3 w-3" />
             <span>Punkt wird verschoben. Klicken Sie, um die neue Position zu bestätigen.</span>
           </div>

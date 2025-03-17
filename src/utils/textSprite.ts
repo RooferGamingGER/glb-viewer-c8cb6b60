@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -125,6 +124,9 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   const aspectRatio = width / height;
   sprite.scale.set(aspectRatio * 0.5, 0.5, 1);
   
+  // Ensure labels are rendered on top
+  sprite.renderOrder = 100;
+  
   return sprite;
 }
 
@@ -191,12 +193,9 @@ export function updateLabelScale(
     );
   }
   
-  // Apply distance-based opacity for labels
+  // Ensure sprite is always visible by setting opacity to 1
   if (sprite.material instanceof THREE.SpriteMaterial) {
-    // Far labels are more transparent, close labels more opaque
-    const baseOpacity = sprite.material.opacity;
-    const distanceOpacity = Math.min(1, Math.max(0.4, 1.2 - (distance * 0.05)));
-    sprite.material.opacity = baseOpacity * distanceOpacity;
+    sprite.material.opacity = 1.0;
   }
 }
 
