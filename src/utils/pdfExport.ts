@@ -13,9 +13,6 @@ export interface CoverPageData {
   notes: string;
 }
 
-// Base64-encoded logo image for reliable embedding in PDF
-const LOGO_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD8klEQVR4nO1XW2xMQRT9JBJPa0NEUEoVD4KI/BCPxI94WIhI2N1qqe2KiIiERDy70YhHgl/BRkR8LIl/QYgQm1pNqZZ4x0NVVVcpvVp3WmPunVnzuHdm785Upb3JyWZzZ+75zjn3zMwdSfqPLKMbtP4JGO4TaOsRrB/BJLrr+Aa3mwCXnUD5SWD5MWDhYSDL2uu4qcf+M8D4RmDkfUB6ApjytLezFiZidBOQvQd4t0P00/iBz0i8ZOODyNiJXyQX9gKrzzgL6KLdYGCPTM4Kpzd7gOwWIK0FSG0GXNcSL0BmBr19QNk5Z+GHGoCRbLyWw1+jtRDI2QOsPOEsvpTSs/w6m+MHlXQ6+UmcWfGcxLHHyiVcQFN39IG1jwE5LYGKNwyAq8FZ/MQnwNQnWtGO62TjScCt2L8DSIGY8Jze/DYguw3IogbJBDNZfQxYb+FMVNe0fPO9gDfHGK45YpxA/TXA3a417jv8/TDj3UDdDft5rr0KPOoFEd22AKWfQ4uvugCMtWgmmFHxpwXPqcbf/2yTwgLw6IvWcMvdwqSvMMr6aCpWLvcAm18E5n35VWDKs9CcO14BSw4DYxoASrJoBkj8iGYFxPq9FTmcSDYfuQckH7GfY0MvMOoekMQnwE0tfBWm7lQgXoDvPkCzgPk7lSy58Oim3YD4SGB6GxmfwbQT2PjQXjw3sFyI5+K9a54ZZyDdAgqPmhvP8f0Bs/7vP7XvWO5dRdwAujK7zQ1/zg7QCZQ0iiaCwuGqMxFHbwdIthb/0AektrMB+URWnzduXm5WOum0lsAJpLYIRXzI+AQUxOQWWq6KeHIrMLXHeG7eQaUZK5oH5DQJRbyjfLYnrwVpvAIJD5xEk9GC50BNK7DwRXDM+/f2TZdPQOw9gB4gvYXMbxPiea+Ck5nYzHXyOhCLZqJdDaCTSDwc+PuoPRHnHzYWTycgt43EtwniW4R7jfEK4LGJeC6WtHr77VyvENOcbCKcyUqLJoJikYGsrlKJr+OGEWKKr5rFV2vxpefNoZBOXdvMgIl4e/Ec3ZeB8feMxXNhc46LGHxSWJmJWKMQQmOdKyGI52ZLbhLFc3rzFXHnmBDC4m0s3kA8n8ScvaExRPGLLcJKlJ61qeZkKC9EwRdIvL1wI/FVJ41jnK0VcXwLbWQMhyL03hIvQhDfEHrhRvvZeK1wLvrxXfHv3NL9sVLM0JLzgXe7UOPphY+LWcPZeO5vUx7aij87ZL1lhiv4uV/71a1uUyNmIa0H2HYh9mSGK7Y/ANZeoOc3Q2XSf0QCPwFMnCZVVryuPwAAAABJRU5ErkJggg==";
-
 export const exportMeasurementsToPdf = async (
   measurements: Measurement[],
   coverData: CoverPageData
@@ -38,15 +35,6 @@ export const exportMeasurementsToPdf = async (
       }
       .pdf-page-end {
         page-break-after: avoid !important;
-      }
-      .logo-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 30px;
-      }
-      .logo-image {
-        height: 60px;
-        width: auto;
       }
       .company-info {
         text-align: center;
@@ -86,21 +74,13 @@ export const exportMeasurementsToPdf = async (
         margin-bottom: 30px;
       }
       .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        text-align: center;
         padding-bottom: 15px;
         margin-bottom: 30px;
         border-bottom: 1px solid #eaeaea;
       }
-      .header-logo {
-        height: 40px;
-        width: auto;
-      }
       .header-title {
-        flex-grow: 1;
-        text-align: center;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 600;
         color: #444;
       }
@@ -265,7 +245,7 @@ export const exportMeasurementsToPdf = async (
     };
     
     // Add a delay to ensure DOM rendering is complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Generate the PDF
     await html2pdf().from(container).set(pdfOptions).save();
@@ -295,20 +275,6 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.style.height = '100%';
   coverPage.style.display = 'flex';
   coverPage.style.flexDirection = 'column';
-
-  // Logo container
-  const logoContainer = document.createElement('div');
-  logoContainer.className = 'logo-container';
-  
-  // Create and add the logo icon using Base64 data
-  const logoIcon = document.createElement('img');
-  logoIcon.className = 'logo-image';
-  logoIcon.src = LOGO_BASE64;
-  logoIcon.alt = 'Logo';
-  logoIcon.style.maxWidth = '100%';
-  logoContainer.appendChild(logoIcon);
-  
-  coverPage.appendChild(logoContainer);
   
   // Cover title - centered
   const coverTitle = document.createElement('h1');
@@ -378,23 +344,11 @@ const createHeader = (title: string): HTMLElement => {
   const header = document.createElement('div');
   header.className = 'header';
   
-  // Add logo to header
-  const logoImg = document.createElement('img');
-  logoImg.src = LOGO_BASE64;
-  logoImg.alt = 'Logo';
-  logoImg.className = 'header-logo';
-  header.appendChild(logoImg);
-  
   // Add title to header
   const headerTitle = document.createElement('div');
   headerTitle.className = 'header-title';
   headerTitle.textContent = title || 'Vermessungsbericht';
   header.appendChild(headerTitle);
-  
-  // Add empty div for balance
-  const spacer = document.createElement('div');
-  spacer.style.width = '40px'; // Match logo width
-  header.appendChild(spacer);
   
   return header;
 };
