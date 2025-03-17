@@ -33,13 +33,13 @@ export const exportMeasurementsToPdf = async (
         left: 0;
         right: 0;
         text-align: center;
-        padding: 10px;
+        padding: 5px;
         border-top: 1px solid #ddd;
-        font-size: 11px;
+        font-size: 10px;
         color: #666;
         background-color: white;
         z-index: 1000;
-        height: 5mm;
+        height: 15mm;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -51,8 +51,8 @@ export const exportMeasurementsToPdf = async (
       .pdf-page {
         position: relative;
         page-break-after: always;
-        margin-bottom: 25mm; /* Space for footer */
-        padding-bottom: 10mm;
+        margin-bottom: 20mm; /* Space for footer */
+        padding-bottom: 5mm;
       }
       .pdf-last-page {
         page-break-after: avoid;
@@ -103,26 +103,26 @@ export const exportMeasurementsToPdf = async (
     
     // Configure html2pdf options - removing footer option since we embed footers
     const pdfOptions = {
-      margin: [15, 15, 30, 15], // [top, right, bottom, left] - adjusted bottom margin
+      margin: [15, 15, 20, 15], // [top, right, bottom, left] - reduced bottom margin
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
-        scale: 2, 
+        scale: 2.5, // Increased scale factor for better quality
         useCORS: true,
-        logging: true, // Enable logging for debugging
+        logging: true,
         letterRendering: true,
-        windowWidth: 1200 // Set a fixed width for more consistent rendering
+        windowWidth: 1200 
       },
       jsPDF: { 
         unit: 'mm', 
         format: 'a4', 
         orientation: 'portrait'
       },
-      pagebreak: { mode: ['css', 'legacy'] } // Use both CSS and legacy mode for better page breaks
+      pagebreak: { mode: ['css', 'legacy'] }
     };
     
     // Add a longer delay to ensure DOM rendering is complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Increased delay
     
     // Generate the PDF
     await html2pdf().from(container).set(pdfOptions).save();
