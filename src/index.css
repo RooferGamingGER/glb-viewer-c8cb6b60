@@ -100,7 +100,7 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-background/80 backdrop-blur-sm border border-border/50;
+    @apply bg-background/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm transition-all;
   }
   
   .glass-button {
@@ -129,6 +129,19 @@
     opacity: 0;
     transition: transform var(--sidebar-transition), opacity var(--sidebar-transition);
   }
+  
+  /* File drop area styling */
+  .file-drop-area {
+    @apply transition-all duration-300;
+  }
+  
+  .file-drop-area:hover {
+    @apply border-primary/50 bg-background/90 shadow-md;
+  }
+  
+  .drag-active {
+    @apply border-primary bg-primary/5 scale-[1.01] shadow-md;
+  }
 }
 
 /* Custom animation for the rotate icon */
@@ -156,4 +169,13 @@
   50% {
     opacity: 0.7;
   }
+}
+
+/* Add a subtle hover effect for buttons */
+.button-hover {
+  @apply transition-all duration-300;
+}
+
+.button-hover:hover:not(:disabled) {
+  @apply shadow-md transform -translate-y-0.5;
 }

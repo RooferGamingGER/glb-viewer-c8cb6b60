@@ -101,9 +101,11 @@ const FileUpload: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto animate-fade-in">
+    <div className="w-full animate-fade-in">
       <div
-        className={`file-drop-area glass-panel ${isDragging ? 'drag-active' : ''}`}
+        className={`file-drop-area glass-panel relative border-2 border-dashed border-border/50 p-6 rounded-lg 
+                   ${isDragging ? 'bg-primary/5 border-primary/30' : ''} 
+                   transition-all duration-300 cursor-pointer`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -119,7 +121,7 @@ const FileUpload: React.FC = () => {
         
         <div className="text-center">
           <div className="mb-4 flex justify-center">
-            <Upload className="w-16 h-16 text-muted-foreground animate-float" />
+            <Upload className={`w-14 h-14 text-primary/70 ${isDragging ? 'scale-110' : ''} transition-transform`} />
           </div>
           
           <h3 className="text-lg font-medium mb-2">
@@ -146,7 +148,7 @@ const FileUpload: React.FC = () => {
                   e.stopPropagation();
                   handleUploadClick();
                 }}
-                className="button-hover"
+                className="button-hover px-6 py-2"
                 disabled={uploading}
               >
                 {uploading ? (
