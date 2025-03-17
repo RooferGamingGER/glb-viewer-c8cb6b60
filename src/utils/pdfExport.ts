@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -22,40 +21,42 @@ export const exportMeasurementsToPdf = async (
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.padding = '20px';
     container.style.color = '#000000';
-    container.style.position = 'relative'; // Important for footer positioning
+    container.style.position = 'relative';
     
-    // Create and add styles for footers
+    // Create and add styles for page layouts
     const styleElement = document.createElement('style');
     styleElement.textContent = `
-      .pdf-footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        text-align: center;
-        padding: 5px;
-        border-top: 1px solid #ddd;
-        font-size: 10px;
-        color: #666;
-        background-color: white;
-        z-index: 1000;
-        height: 15mm;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-      .pdf-footer-content {
-        margin: 0 auto;
-        max-width: 100%;
-      }
       .pdf-page {
         position: relative;
         page-break-after: always;
-        margin-bottom: 20mm; /* Space for footer */
-        padding-bottom: 5mm;
+        padding-bottom: 10mm;
       }
       .pdf-last-page {
         page-break-after: avoid;
+      }
+      .logo-container {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .logo-image {
+        max-width: 200px;
+        height: auto;
+      }
+      .company-info {
+        text-align: center;
+        margin-bottom: 40px;
+        color: #666;
+      }
+      .company-slogan {
+        font-style: italic;
+        margin-top: 10px;
+        color: #333;
+      }
+      .cover-upper {
+        margin-bottom: 60px;
+      }
+      .cover-lower {
+        margin-top: 60px;
       }
     `;
     document.head.appendChild(styleElement);
@@ -63,51 +64,33 @@ export const exportMeasurementsToPdf = async (
     // Add container to document before building content
     document.body.appendChild(container);
     
-    // Create cover page with embedded footer
+    // Create cover page without footer
     const coverPage = document.createElement('div');
     coverPage.className = 'pdf-page';
     coverPage.appendChild(createCoverPage(coverData));
-    
-    // Add embedded footer to cover page
-    const coverFooter = createEmbeddedFooter();
-    coverPage.appendChild(coverFooter);
-    
     container.appendChild(coverPage);
     
-    // Create measurement data section with embedded footer
+    // Create measurement data section without footer
     const dataPage = document.createElement('div');
     dataPage.className = 'pdf-page';
-    
-    // Add measurement data
     dataPage.appendChild(createMeasurementDataSection(measurements));
-    
-    // Add embedded footer to data page
-    const dataFooter = createEmbeddedFooter();
-    dataPage.appendChild(dataFooter);
-    
     container.appendChild(dataPage);
     
-    // Add area measurement details with embedded footer if needed
+    // Add area measurement details without footer if needed
     if (measurements.filter(m => m.type === 'area').length > 0) {
       const areaPage = document.createElement('div');
       areaPage.className = 'pdf-page pdf-last-page'; // Last page doesn't need page break
-      
       areaPage.appendChild(createAreaDetailsSection(measurements));
-      
-      // Add embedded footer to area details page
-      const areaFooter = createEmbeddedFooter();
-      areaPage.appendChild(areaFooter);
-      
       container.appendChild(areaPage);
     }
     
-    // Configure html2pdf options - removing footer option since we embed footers
+    // Configure html2pdf options
     const pdfOptions = {
-      margin: [15, 15, 5, 15], // [top, right, bottom, left] - reduced bottom margin
+      margin: [15, 15, 15, 15], // [top, right, bottom, left]
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
-        scale: 2.5, // Increased scale factor for better quality
+        scale: 2.5,
         useCORS: true,
         logging: true,
         letterRendering: true,
@@ -122,7 +105,7 @@ export const exportMeasurementsToPdf = async (
     };
     
     // Add a longer delay to ensure DOM rendering is complete
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Increased delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     // Generate the PDF
     await html2pdf().from(container).set(pdfOptions).save();
@@ -140,7 +123,7 @@ export const exportMeasurementsToPdf = async (
       container.parentNode.removeChild(container);
     }
     const styleElement = document.querySelector('style');
-    if (styleElement && styleElement.textContent.includes('pdf-footer')) {
+    if (styleElement && styleElement.textContent.includes('pdf-page')) {
       document.head.removeChild(styleElement);
     }
     return false;
@@ -152,10 +135,55 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.style.height = '100%';
   coverPage.style.display = 'flex';
   coverPage.style.flexDirection = 'column';
-  coverPage.style.justifyContent = 'space-between';
-  coverPage.style.padding = '40px 20px';
+  coverPage.style.padding = '20px';
   
-  // Header of cover page
+  // Upper half of cover page - Company logo and info
+  const upperHalf = document.createElement('div');
+  upperHalf.className = 'cover-upper';
+  upperHalf.style.marginBottom = '60px';
+  
+  // Logo container
+  const logoContainer = document.createElement('div');
+  logoContainer.className = 'logo-container';
+  
+  // Create logo placeholder with text (replace with actual logo)
+  const logoImage = document.createElement('div');
+  logoImage.className = 'logo-image';
+  logoImage.style.fontSize = '36px';
+  logoImage.style.fontWeight = 'bold';
+  logoImage.style.color = '#333';
+  logoImage.style.marginBottom = '10px';
+  logoImage.textContent = 'RooferGaming®';
+  
+  logoContainer.appendChild(logoImage);
+  upperHalf.appendChild(logoContainer);
+  
+  // Company information section
+  const companyInfo = document.createElement('div');
+  companyInfo.className = 'company-info';
+  
+  const websiteInfo = document.createElement('div');
+  websiteInfo.style.marginBottom = '5px';
+  websiteInfo.style.fontSize = '14px';
+  websiteInfo.textContent = 'GLB Viewer: drohnenglb.de | Drohnenaufmaß: drohnenvermessung-roofergaming.de';
+  companyInfo.appendChild(websiteInfo);
+  
+  const emailInfo = document.createElement('div');
+  emailInfo.style.marginBottom = '15px';
+  emailInfo.style.fontSize = '14px';
+  emailInfo.textContent = 'Email: info@drohnenvermessung-roofergaming.de';
+  companyInfo.appendChild(emailInfo);
+  
+  const companySlogan = document.createElement('div');
+  companySlogan.className = 'company-slogan';
+  companySlogan.style.fontSize = '16px';
+  companySlogan.textContent = 'Fliegen - Digitalisieren - tolle Ergebnisse';
+  companyInfo.appendChild(companySlogan);
+  
+  upperHalf.appendChild(companyInfo);
+  coverPage.appendChild(upperHalf);
+  
+  // Cover title - centered
   const coverHeader = document.createElement('div');
   coverHeader.style.textAlign = 'center';
   coverHeader.style.marginBottom = '40px';
@@ -176,12 +204,10 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   
   coverPage.appendChild(coverHeader);
   
-  // Main content of cover page with improved layout
-  const coverContent = document.createElement('div');
-  coverContent.style.flex = '1';
-  coverContent.style.display = 'flex';
-  coverContent.style.flexDirection = 'column';
-  coverContent.style.justifyContent = 'center';
+  // Lower half - User information
+  const lowerHalf = document.createElement('div');
+  lowerHalf.className = 'cover-lower';
+  lowerHalf.style.flex = '1';
   
   const infoWrapper = document.createElement('div');
   infoWrapper.style.maxWidth = '100%';
@@ -263,8 +289,8 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   }
   
   infoWrapper.appendChild(infoTable);
-  coverContent.appendChild(infoWrapper);
-  coverPage.appendChild(coverContent);
+  lowerHalf.appendChild(infoWrapper);
+  coverPage.appendChild(lowerHalf);
   
   return coverPage;
 };
@@ -523,26 +549,4 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
   }
   
   return areaSection;
-};
-
-const createEmbeddedFooter = (): HTMLElement => {
-  const footer = document.createElement('div');
-  footer.className = 'pdf-footer';
-  
-  const footerContent = document.createElement('div');
-  footerContent.className = 'pdf-footer-content';
-  
-  const companyLine = document.createElement('div');
-  companyLine.style.fontWeight = 'bold';
-  companyLine.style.marginBottom = '5px';
-  companyLine.textContent = 'Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt';
-  
-  const contactLine = document.createElement('div');
-  contactLine.textContent = 'GLB Viewer: drohnenglb.de | Drohnenaufmaß: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de';
-  
-  footerContent.appendChild(companyLine);
-  footerContent.appendChild(contactLine);
-  footer.appendChild(footerContent);
-  
-  return footer;
 };
