@@ -53,20 +53,17 @@ export const exportMeasurementsToPdf = async (
         margin: 0;
         padding: 0;
       }
-      .pdf-page {
+      .pdf-section {
         padding: 15mm 15mm 15mm 15mm;
-        page-break-after: always;
-      }
-      .pdf-last-page {
-        padding: 15mm 15mm 15mm 15mm;
-        page-break-after: avoid;
       }
       .keep-together {
         page-break-inside: avoid;
       }
       .section-content {
-        page-break-before: auto;
-        page-break-after: auto;
+        page-break-inside: avoid;
+      }
+      .force-page-break {
+        page-break-before: always;
       }
       .company-info {
         text-align: center;
@@ -238,42 +235,39 @@ export const exportMeasurementsToPdf = async (
     contentWrapper.className = 'pdf-content';
     container.appendChild(contentWrapper);
     
-    // Create cover page
-    const coverPage = document.createElement('div');
-    coverPage.className = 'pdf-page keep-together';
-    coverPage.appendChild(createCoverPage(coverData));
-    contentWrapper.appendChild(coverPage);
+    // Create the entire document as a single flow to avoid unnecessary page breaks
+    // Cover page
+    const coverContent = document.createElement('div');
+    coverContent.className = 'pdf-section keep-together';
+    coverContent.appendChild(createCoverPage(coverData));
+    contentWrapper.appendChild(coverContent);
     
-    // Create measurement summary section as page 2
-    const summaryPage = document.createElement('div');
-    summaryPage.className = 'pdf-page keep-together';
-    summaryPage.appendChild(createMeasurementSummary(measurements, coverData.title));
-    contentWrapper.appendChild(summaryPage);
+    // Create measurement summary section
+    const summaryContent = document.createElement('div');
+    summaryContent.className = 'pdf-section keep-together';
+    if (measurements.length > 0) {
+      // Only add the force-page-break class if there's actual content
+      summaryContent.classList.add('force-page-break');
+    }
+    summaryContent.appendChild(createMeasurementSummary(measurements, coverData.title));
+    contentWrapper.appendChild(summaryContent);
     
     // Filter measurements by type
     const lengthMeasurements = measurements.filter(m => m.type === 'length');
     const areaMeasurements = measurements.filter(m => m.type === 'area');
     const heightMeasurements = measurements.filter(m => m.type === 'height');
     
-    // Create pages for each measurement type only if they contain measurements
-    let hasTypePages = false;
-    
-    // Length measurements
+    // Only add measurement sections if they contain measurements
     if (lengthMeasurements.length > 0) {
-      hasTypePages = true;
-      const lengthPage = document.createElement('div');
-      lengthPage.className = heightMeasurements.length === 0 && areaMeasurements.length === 0 ? 
-                           'pdf-last-page keep-together' : 'pdf-page keep-together';
-      lengthPage.appendChild(createMeasurementTypeSection('length', lengthMeasurements, coverData.title));
-      contentWrapper.appendChild(lengthPage);
+      const lengthContent = document.createElement('div');
+      lengthContent.className = 'pdf-section keep-together force-page-break';
+      lengthContent.appendChild(createMeasurementTypeSection('length', lengthMeasurements, coverData.title));
+      contentWrapper.appendChild(lengthContent);
     }
     
-    // Area measurements
     if (areaMeasurements.length > 0) {
-      hasTypePages = true;
-      const areaPage = document.createElement('div');
-      areaPage.className = heightMeasurements.length === 0 ? 
-                          'pdf-last-page keep-together' : 'pdf-page keep-together';
+      const areaContent = document.createElement('div');
+      areaContent.className = 'pdf-section keep-together force-page-break';
       
       // Create section title and description
       const areaSection = document.createElement('div');
@@ -289,7 +283,10 @@ export const exportMeasurementsToPdf = async (
       areaSection.appendChild(description);
       
       // Create main area measurements table
-      areaSection.appendChild(createAreaMeasurementsTable(areaMeasurements));
+      const tableContainer = document.createElement('div');
+      tableContainer.className = 'keep-together section-content';
+      tableContainer.appendChild(createAreaMeasurementsTable(areaMeasurements));
+      areaSection.appendChild(tableContainer);
       
       // Create segment tables as separate keep-together blocks
       areaMeasurements.forEach((measurement, mIndex) => {
@@ -301,22 +298,15 @@ export const exportMeasurementsToPdf = async (
         }
       });
       
-      areaPage.appendChild(areaSection);
-      contentWrapper.appendChild(areaPage);
+      areaContent.appendChild(areaSection);
+      contentWrapper.appendChild(areaContent);
     }
     
-    // Height measurements
     if (heightMeasurements.length > 0) {
-      hasTypePages = true;
-      const heightPage = document.createElement('div');
-      heightPage.className = 'pdf-last-page keep-together';
-      heightPage.appendChild(createMeasurementTypeSection('height', heightMeasurements, coverData.title));
-      contentWrapper.appendChild(heightPage);
-    }
-    
-    // If there are no type pages, adjust the last page to avoid empty pages
-    if (!hasTypePages && summaryPage) {
-      summaryPage.className = 'pdf-last-page keep-together';
+      const heightContent = document.createElement('div');
+      heightContent.className = 'pdf-section keep-together force-page-break';
+      heightContent.appendChild(createMeasurementTypeSection('height', heightMeasurements, coverData.title));
+      contentWrapper.appendChild(heightContent);
     }
     
     // Configure html2pdf options with improved page break handling
@@ -337,10 +327,9 @@ export const exportMeasurementsToPdf = async (
         compress: true
       },
       pagebreak: { 
-        mode: ['css', 'avoid-all'],
-        before: '.pdf-page',
-        after: '.pdf-page',
-        avoid: ['.keep-together', 'table', 'tr', 'th', 'td', 'img', '.avoid-break', 'h2', 'h3']
+        mode: ['css'],
+        before: '.force-page-break',
+        avoid: ['.keep-together', '.section-content', 'table', 'tr', 'th', 'td', 'img', 'h2', 'h3']
       }
     };
     
@@ -363,7 +352,7 @@ export const exportMeasurementsToPdf = async (
       container.parentNode.removeChild(container);
     }
     const styleElement = document.querySelector('style');
-    if (styleElement && styleElement.textContent.includes('pdf-page')) {
+    if (styleElement && styleElement.textContent.includes('pdf-section')) {
       document.head.removeChild(styleElement);
     }
     return false;
