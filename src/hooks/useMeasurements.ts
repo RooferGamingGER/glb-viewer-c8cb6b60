@@ -54,6 +54,147 @@ const formatMeasurement = (value: number, type: MeasurementMode): string => {
 
 const MIN_INCLINATION_THRESHOLD = 5.0; // Only consider inclinations above 5 degrees
 
+// Helper function to convert Point to THREE.Vector3
+const pointToVector3 = (point: Point): THREE.Vector3 => {
+  return new THREE.Vector3(point.x, point.y, point.z);
+};
+
+// Helper function to calculate normal of polygon using Newell's method
+// This is more accurate for non-planar polygons than simple cross products
+const calculatePolygonNormal = (points: THREE.Vector3[]): THREE.Vector3 => {
+  const normal = new THREE.Vector3(0, 0, 0);
+  const n = points.length;
+  
+  for (let i = 0; i < n; i++) {
+    const current = points[i];
+    const next = points[(i + 1) % n];
+    
+    // Newell's method for normal calculation
+    normal.x += (current.y - next.y) * (current.z + next.z);
+    normal.y += (current.z - next.z) * (current.x + next.x);
+    normal.z += (current.x - next.x) * (current.y + next.y);
+  }
+  
+  normal.normalize();
+  return normal;
+};
+
+// Calculate best-fit plane for a set of points using Principal Component Analysis (PCA)
+const calculateBestFitPlane = (points: THREE.Vector3[]): {
+  normal: THREE.Vector3,
+  centroid: THREE.Vector3
+} => {
+  // Calculate centroid
+  const centroid = new THREE.Vector3();
+  points.forEach(p => centroid.add(p));
+  centroid.divideScalar(points.length);
+  
+  // Build covariance matrix
+  let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+  
+  for (const p of points) {
+    const dx = p.x - centroid.x;
+    const dy = p.y - centroid.y;
+    const dz = p.z - centroid.z;
+    
+    xx += dx * dx;
+    xy += dx * dy;
+    xz += dx * dz;
+    yy += dy * dy;
+    yz += dy * dz;
+    zz += dz * dz;
+  }
+  
+  // Simple approximation of the eigen-analysis
+  // For a more accurate solution, we would use a proper linear algebra library
+  // This approximation is sufficient for simple polygons
+  const detX = yy * zz - yz * yz;
+  const detY = xx * zz - xz * xz;
+  const detZ = xx * yy - xy * xy;
+  
+  // The normal is the eigenvector corresponding to the smallest eigenvalue
+  const normal = new THREE.Vector3();
+  
+  if (detX <= detY && detX <= detZ) {
+    normal.set(1, (xz * yz - xy * zz) / detX, (xy * yz - xz * yy) / detX);
+  } else if (detY <= detX && detY <= detZ) {
+    normal.set((yz * xz - xy * zz) / detY, 1, (xy * xz - yz * xx) / detY);
+  } else {
+    normal.set((yz * xy - xz * yy) / detZ, (xz * xy - yz * xx) / detZ, 1);
+  }
+  
+  normal.normalize();
+  
+  return { normal, centroid };
+};
+
+// Project points onto a plane defined by normal and point on plane
+const projectPointsOntoPlane = (
+  points: THREE.Vector3[],
+  normal: THREE.Vector3,
+  pointOnPlane: THREE.Vector3
+): THREE.Vector3[] => {
+  return points.map(p => {
+    // Vector from point on plane to the point
+    const toPoint = new THREE.Vector3().subVectors(p, pointOnPlane);
+    
+    // Distance from point to plane
+    const distance = toPoint.dot(normal);
+    
+    // Project point onto plane
+    const projectedPoint = new THREE.Vector3().copy(p).sub(
+      new THREE.Vector3().copy(normal).multiplyScalar(distance)
+    );
+    
+    return projectedPoint;
+  });
+};
+
+// Calculate 2D coordinates in the plane's coordinate system
+const calculatePlaneCoordinates = (
+  points: THREE.Vector3[],
+  normal: THREE.Vector3,
+  centroid: THREE.Vector3
+): { x: number, y: number }[] => {
+  // Create basis vectors for the plane
+  // First basis vector can be any vector perpendicular to the normal
+  let basisX = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(normal.dot(basisX)) > 0.9) {
+    basisX.set(0, 1, 0); // Use y-axis if normal is close to x-axis
+  }
+  
+  // Make basisX perpendicular to normal
+  basisX.sub(normal.clone().multiplyScalar(normal.dot(basisX)));
+  basisX.normalize();
+  
+  // Second basis vector is perpendicular to both normal and basisX
+  const basisY = new THREE.Vector3().crossVectors(normal, basisX);
+  basisY.normalize();
+  
+  // Project points onto the plane and calculate 2D coordinates
+  return points.map(p => {
+    const toPoint = new THREE.Vector3().subVectors(p, centroid);
+    return {
+      x: toPoint.dot(basisX),
+      y: toPoint.dot(basisY)
+    };
+  });
+};
+
+// Calculate area of a simple 2D polygon using the Shoelace formula
+const calculatePolygonArea = (vertices: { x: number, y: number }[]): number => {
+  let area = 0;
+  const n = vertices.length;
+  
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += vertices[i].x * vertices[j].y;
+    area -= vertices[j].x * vertices[i].y;
+  }
+  
+  return Math.abs(area) / 2;
+};
+
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [activeMode, setActiveMode] = useState<MeasurementMode>('none'); // Default to 'none' instead of 'length'
@@ -127,55 +268,21 @@ export const useMeasurements = () => {
     return Math.abs(point2.y - point1.y);
   }, []);
 
+  // Improved area calculation for 3D polygons
   const calculateArea = useCallback((points: Point[]): number => {
     if (points.length < 3) return 0;
     
-    // For polygons, triangulate and sum the areas of the triangles
-    const triangleCount = points.length - 2;
-    let totalArea = 0;
+    // Convert Points to THREE.Vector3 objects
+    const vectors = points.map(pointToVector3);
     
-    // Project points to best-fit plane for more accurate area calculation
-    // First, find the normal of the polygon by cross product of two edges
-    const edge1 = new THREE.Vector3(
-      points[1].x - points[0].x,
-      points[1].y - points[0].y,
-      points[1].z - points[0].z
-    );
+    // Calculate best-fit plane using PCA
+    const { normal, centroid } = calculateBestFitPlane(vectors);
     
-    const edge2 = new THREE.Vector3(
-      points[2].x - points[0].x,
-      points[2].y - points[0].y,
-      points[2].z - points[0].z
-    );
+    // Calculate 2D coordinates in the plane's coordinate system
+    const planeCoordinates = calculatePlaneCoordinates(vectors, normal, centroid);
     
-    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-    
-    // Simple triangulation using the first point as a pivot
-    for (let i = 0; i < triangleCount; i++) {
-      const p0 = points[0];
-      const p1 = points[i + 1];
-      const p2 = points[i + 2];
-      
-      // Create 3D vectors
-      const v0 = new THREE.Vector3(p0.x, p0.y, p0.z);
-      const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
-      const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
-      
-      // Calculate sides of the triangle
-      const a = v0.distanceTo(v1);
-      const b = v1.distanceTo(v2);
-      const c = v2.distanceTo(v0);
-      
-      // Calculate semi-perimeter
-      const s = (a + b + c) / 2;
-      
-      // Calculate triangle area using Heron's formula
-      const triangleArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
-      
-      totalArea += triangleArea;
-    }
-    
-    return totalArea;
+    // Calculate polygon area using the Shoelace formula
+    return calculatePolygonArea(planeCoordinates);
   }, []);
 
   const calculateSegmentLength = useCallback((point1: Point, point2: Point): number => {
@@ -624,4 +731,3 @@ export const useMeasurements = () => {
     calculateSegmentLength
   };
 };
-
