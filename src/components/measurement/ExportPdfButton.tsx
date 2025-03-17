@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
-import { exportMeasurementsToPdf, PdfExportOptions, CoverPageData } from '@/utils/pdfExport';
+import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,6 @@ import {
   DialogTrigger,
   DialogClose
 } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -27,11 +24,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface ExportPdfButtonProps {
@@ -41,10 +37,6 @@ interface ExportPdfButtonProps {
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
-  const [exportOptions, setExportOptions] = useState<PdfExportOptions>({
-    pageSize: 'a4',
-    orientation: 'portrait'
-  });
   
   const form = useForm<CoverPageData>({
     defaultValues: {
@@ -71,7 +63,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     
     try {
       const coverData = form.getValues();
-      const success = await exportMeasurementsToPdf(measurements, exportOptions, coverData);
+      const success = await exportMeasurementsToPdf(measurements, coverData);
       setExportProgress(100);
       
       if (success) {
@@ -88,10 +80,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
         setExportProgress(0);
       }, 1000);
     }
-  };
-
-  const handleOptionChange = (key: keyof PdfExportOptions, value: any) => {
-    setExportOptions(prev => ({ ...prev, [key]: value }));
   };
 
   // Calculate summary statistics
@@ -236,47 +224,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                 />
               </CardContent>
             </Card>
-            
-            <Separator />
-            
-            <h3 className="text-sm font-medium">PDF-Einstellungen</h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Papiergröße</h4>
-                <RadioGroup 
-                  value={exportOptions.pageSize} 
-                  onValueChange={(value) => handleOptionChange('pageSize', value)}
-                  className="flex space-x-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="a4" id="a4" />
-                    <Label htmlFor="a4">A4</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="letter" id="letter" />
-                    <Label htmlFor="letter">Letter</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Ausrichtung</h4>
-                <RadioGroup 
-                  value={exportOptions.orientation} 
-                  onValueChange={(value) => handleOptionChange('orientation', value)}
-                  className="flex space-x-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="portrait" id="portrait" />
-                    <Label htmlFor="portrait">Hochformat</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="landscape" id="landscape" />
-                    <Label htmlFor="landscape">Querformat</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
           </div>
         </Form>
 

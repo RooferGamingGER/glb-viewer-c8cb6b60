@@ -11,24 +11,11 @@ export interface CoverPageData {
   notes: string;
 }
 
-export interface PdfExportOptions {
-  pageSize?: 'a4' | 'letter';
-  orientation?: 'portrait' | 'landscape';
-}
-
-const defaultOptions: PdfExportOptions = {
-  pageSize: 'a4',
-  orientation: 'portrait'
-};
-
 export const exportMeasurementsToPdf = async (
   measurements: Measurement[],
-  options: PdfExportOptions = defaultOptions,
   coverData: CoverPageData
 ): Promise<boolean> => {
   try {
-    const mergedOptions = { ...defaultOptions, ...options };
-    
     // Create a container for the PDF content
     const container = document.createElement('div');
     container.className = 'pdf-container';
@@ -67,8 +54,8 @@ export const exportMeasurementsToPdf = async (
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { 
         unit: 'mm', 
-        format: mergedOptions.pageSize, 
-        orientation: mergedOptions.orientation
+        format: 'a4', 
+        orientation: 'portrait'
       },
       pagebreak: { mode: 'css' },
       footer: {
@@ -110,83 +97,100 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverTitle.style.color = '#000000';
   coverHeader.appendChild(coverTitle);
   
-  const coverDate = document.createElement('div');
-  coverDate.textContent = `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`;
-  coverDate.style.fontSize = '14px';
-  coverHeader.appendChild(coverDate);
+  const exportDate = document.createElement('div');
+  exportDate.textContent = `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`;
+  exportDate.style.fontSize = '14px';
+  exportDate.style.color = '#000000';
+  coverHeader.appendChild(exportDate);
   
   coverPage.appendChild(coverHeader);
   
-  // Main content of cover page
+  // Main content of cover page with two-column layout
   const coverContent = document.createElement('div');
   coverContent.style.flex = '1';
   coverContent.style.display = 'flex';
   coverContent.style.flexDirection = 'column';
   coverContent.style.justifyContent = 'center';
   
-  const infoCard = document.createElement('div');
-  infoCard.style.backgroundColor = '#f8f9fa';
-  infoCard.style.border = '1px solid #eaeaea';
-  infoCard.style.borderRadius = '8px';
-  infoCard.style.padding = '30px';
-  infoCard.style.maxWidth = '500px';
-  infoCard.style.margin = '0 auto';
-  infoCard.style.boxShadow = '0 2px 10px rgba(0,0,0,0.05)';
+  const infoWrapper = document.createElement('div');
+  infoWrapper.style.maxWidth = '600px';
+  infoWrapper.style.margin = '0 auto';
+  infoWrapper.style.padding = '30px';
   
-  // Project details
+  // Two-column layout using a table for perfect alignment
+  const infoTable = document.createElement('table');
+  infoTable.style.width = '100%';
+  infoTable.style.borderCollapse = 'collapse';
+  
+  // Create table rows for each piece of information
   const createInfoRow = (label: string, value: string) => {
     if (!value) return null;
     
-    const row = document.createElement('div');
-    row.style.marginBottom = '20px';
+    const row = document.createElement('tr');
+    row.style.marginBottom = '30px';
+    row.style.verticalAlign = 'top';
     
-    const labelElement = document.createElement('div');
-    labelElement.textContent = label;
-    labelElement.style.fontSize = '12px';
-    labelElement.style.color = '#666';
-    labelElement.style.marginBottom = '4px';
-    row.appendChild(labelElement);
+    const labelCell = document.createElement('td');
+    labelCell.style.width = '40%';
+    labelCell.style.paddingBottom = '25px';
+    labelCell.style.paddingRight = '15px';
+    labelCell.style.fontWeight = 'normal';
+    labelCell.style.color = '#666';
+    labelCell.style.fontSize = '16px';
+    labelCell.textContent = label;
+    row.appendChild(labelCell);
     
-    const valueElement = document.createElement('div');
-    valueElement.textContent = value;
-    valueElement.style.fontSize = '16px';
-    valueElement.style.fontWeight = 'bold';
-    row.appendChild(valueElement);
+    const valueCell = document.createElement('td');
+    valueCell.style.width = '60%';
+    valueCell.style.paddingBottom = '25px';
+    valueCell.style.fontWeight = 'bold';
+    valueCell.style.fontSize = '20px';
+    valueCell.style.color = '#000000';
+    valueCell.textContent = value;
+    row.appendChild(valueCell);
     
     return row;
   };
   
+  // Add rows for each field
   const companyRow = createInfoRow('Name des Betriebes', coverData.companyName);
-  if (companyRow) infoCard.appendChild(companyRow);
+  if (companyRow) infoTable.appendChild(companyRow);
   
   const addressRow = createInfoRow('Anschrift des Objekts', coverData.projectAddress);
-  if (addressRow) infoCard.appendChild(addressRow);
+  if (addressRow) infoTable.appendChild(addressRow);
   
   const contactRow = createInfoRow('Ansprechpartner', coverData.contactPerson);
-  if (contactRow) infoCard.appendChild(contactRow);
+  if (contactRow) infoTable.appendChild(contactRow);
   
   const droneDateRow = createInfoRow('Datum der Drohnenaufnahmen', coverData.droneDate ? new Date(coverData.droneDate).toLocaleDateString('de-DE') : '');
-  if (droneDateRow) infoCard.appendChild(droneDateRow);
+  if (droneDateRow) infoTable.appendChild(droneDateRow);
   
   if (coverData.notes) {
-    const notesLabel = document.createElement('div');
-    notesLabel.textContent = 'Bemerkungen';
-    notesLabel.style.fontSize = '12px';
-    notesLabel.style.color = '#666';
-    notesLabel.style.marginBottom = '4px';
-    infoCard.appendChild(notesLabel);
+    const notesRow = document.createElement('tr');
+    notesRow.style.verticalAlign = 'top';
     
-    const notesText = document.createElement('div');
-    notesText.textContent = coverData.notes;
-    notesText.style.padding = '10px';
-    notesText.style.backgroundColor = '#ffffff';
-    notesText.style.border = '1px solid #eee';
-    notesText.style.borderRadius = '4px';
-    notesText.style.fontSize = '14px';
-    infoCard.appendChild(notesText);
+    const notesLabelCell = document.createElement('td');
+    notesLabelCell.style.width = '40%';
+    notesLabelCell.style.paddingRight = '15px';
+    notesLabelCell.style.fontWeight = 'normal';
+    notesLabelCell.style.color = '#666';
+    notesLabelCell.style.fontSize = '16px';
+    notesLabelCell.textContent = 'Bemerkungen';
+    notesRow.appendChild(notesLabelCell);
+    
+    const notesValueCell = document.createElement('td');
+    notesValueCell.style.width = '60%';
+    notesValueCell.style.fontWeight = 'normal';
+    notesValueCell.style.fontSize = '16px';
+    notesValueCell.style.color = '#000000';
+    notesValueCell.textContent = coverData.notes;
+    notesRow.appendChild(notesValueCell);
+    
+    infoTable.appendChild(notesRow);
   }
   
-  coverContent.appendChild(infoCard);
+  infoWrapper.appendChild(infoTable);
+  coverContent.appendChild(infoWrapper);
   coverPage.appendChild(coverContent);
   
   return coverPage;
@@ -229,6 +233,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
     statValue.style.fontSize = '24px';
     statValue.style.fontWeight = 'bold';
     statValue.style.marginBottom = '5px';
+    statValue.style.color = '#000000';
     statValue.textContent = value.toString();
     stat.appendChild(statValue);
     
@@ -278,6 +283,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
       th.style.padding = '10px';
       th.style.textAlign = 'left';
       th.style.border = '1px solid #ddd';
+      th.style.color = '#000000';
       headerRow.appendChild(th);
     });
     
@@ -296,6 +302,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
       numCell.textContent = (index + 1).toString();
       numCell.style.padding = '10px';
       numCell.style.border = '1px solid #ddd';
+      numCell.style.color = '#000000';
       row.appendChild(numCell);
       
       // Description column
@@ -303,6 +310,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
       descCell.textContent = measurement.description || '–';
       descCell.style.padding = '10px';
       descCell.style.border = '1px solid #ddd';
+      descCell.style.color = '#000000';
       row.appendChild(descCell);
       
       // Type column
@@ -312,6 +320,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
                            measurement.type === 'area' ? 'Fläche' : '–';
       typeCell.style.padding = '10px';
       typeCell.style.border = '1px solid #ddd';
+      typeCell.style.color = '#000000';
       row.appendChild(typeCell);
       
       // Value column
@@ -323,6 +332,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
       valueCell.style.padding = '10px';
       valueCell.style.border = '1px solid #ddd';
       valueCell.style.fontWeight = 'bold';
+      valueCell.style.color = '#000000';
       row.appendChild(valueCell);
       
       // Inclination column
@@ -334,6 +344,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
       }
       inclinationCell.style.padding = '10px';
       inclinationCell.style.border = '1px solid #ddd';
+      inclinationCell.style.color = '#000000';
       row.appendChild(inclinationCell);
       
       tbody.appendChild(row);
@@ -389,6 +400,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
           th.style.padding = '8px';
           th.style.textAlign = 'left';
           th.style.border = '1px solid #ddd';
+          th.style.color = '#000000';
           segmentHeaderRow.appendChild(th);
         });
         
@@ -407,6 +419,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
           segmentNumCell.textContent = `Segment ${sIndex + 1}`;
           segmentNumCell.style.padding = '8px';
           segmentNumCell.style.border = '1px solid #ddd';
+          segmentNumCell.style.color = '#000000';
           segmentRow.appendChild(segmentNumCell);
           
           // Segment length
@@ -414,6 +427,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
           segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
           segmentLengthCell.style.padding = '8px';
           segmentLengthCell.style.border = '1px solid #ddd';
+          segmentLengthCell.style.color = '#000000';
           segmentRow.appendChild(segmentLengthCell);
           
           segmentTbody.appendChild(segmentRow);
