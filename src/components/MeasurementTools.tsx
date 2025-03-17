@@ -74,7 +74,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint
   };
 
-  const { movingPointInfo, setMovingPointInfo, clearPreviewGroup } = useMeasurementInteraction(
+  const { 
+    movingPointInfo, 
+    setMovingPointInfo, 
+    clearPreviewGroup,
+    clearAddPointIndicators 
+  } = useMeasurementInteraction(
     enabled,
     scene,
     camera,
@@ -97,16 +102,46 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
+  // Hide all labels when in editing mode
+  useEffect(() => {
+    if (labelsRef.current && segmentLabelsRef.current) {
+      // If editing or moving a point, hide all labels
+      if (editMeasurementId !== null || movingPointInfo !== null) {
+        // Hide all main measurement labels
+        labelsRef.current.children.forEach(child => {
+          child.visible = false;
+        });
+        
+        // Hide all segment labels
+        segmentLabelsRef.current.children.forEach(child => {
+          child.visible = false;
+        });
+      } else {
+        // When not editing, restore labels based on measurement visibility
+        measurements.forEach(measurement => {
+          const mainLabels = labelsRef.current?.children.filter(
+            obj => obj.userData && obj.userData.measurementId === measurement.id
+          );
+          
+          mainLabels?.forEach(label => {
+            label.visible = measurement.visible !== false;
+          });
+          
+          const segmentLabels = segmentLabelsRef.current?.children.filter(
+            obj => obj.userData && obj.userData.measurementId === measurement.id
+          );
+          
+          segmentLabels?.forEach(label => {
+            label.visible = measurement.visible !== false;
+          });
+        });
+      }
+    }
+  }, [editMeasurementId, movingPointInfo, measurements]);
+
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
-    if (movingPointInfo && movingPointInfo.measurementId && labelsRef.current && segmentLabelsRef.current) {
-      // When editing starts, remove the labels for the measurement being edited
-      clearMeasurementLabels(
-        movingPointInfo.measurementId,
-        labelsRef.current,
-        segmentLabelsRef.current
-      );
-    } else if (!movingPointInfo && editMeasurementId === null) {
+    if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
       // When editing is complete, re-render all measurements to ensure labels are updated
       renderMeasurements(
         measurementsRef.current, 
@@ -116,7 +151,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         true
       );
     }
-  }, [movingPointInfo, editMeasurementId, measurements, measurementsRef, labelsRef, segmentLabelsRef]);
+  }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
 
   // Re-render measurements when they change
   useEffect(() => {
@@ -167,6 +202,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (clearPreviewGroup) {
         clearPreviewGroup();
       }
+      
+      if (clearAddPointIndicators) {
+        clearAddPointIndicators();
+      }
     } else {
       renderMeasurements(
         measurementsRef.current, 
@@ -184,7 +223,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         true
       );
     }
-  }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup]);
+  }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators]);
 
   // Update label visibility when measurements change
   useEffect(() => {
@@ -195,7 +234,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         );
         
         labels?.forEach(label => {
-          label.visible = measurement.visible !== false;
+          label.visible = measurement.visible !== false && !editMeasurementId && !movingPointInfo;
         });
         
         if (measurement.type === 'area') {
@@ -204,12 +243,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           );
           
           segmentLabels?.forEach(label => {
-            label.visible = measurement.visible !== false;
+            label.visible = measurement.visible !== false && !editMeasurementId && !movingPointInfo;
           });
         }
       });
     }
-  }, [measurements]);
+  }, [measurements, editMeasurementId, movingPointInfo]);
 
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
@@ -248,6 +287,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     // Also clear any preview visuals
     if (clearPreviewGroup) {
       clearPreviewGroup();
+    }
+    
+    if (clearAddPointIndicators) {
+      clearAddPointIndicators();
     }
     
     toast.info('Alle Messungen gelöscht');
@@ -311,7 +354,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       }
       
       toggleEditMode(id);
-      toast.info('Klicken Sie auf einen Punkt, um ihn zu verschieben');
+      
+      // Different messages based on measurement type
+      const measurement = measurements.find(m => m.id === id);
+      if (measurement && measurement.type === 'area') {
+        toast.info('Klicken Sie auf einen Punkt zum Verschieben oder auf ein "+" Symbol zum Hinzufügen eines Punktes');
+      } else {
+        toast.info('Klicken Sie auf einen Punkt, um ihn zu verschieben');
+      }
     }
   };
 
@@ -323,6 +373,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     // Clear any preview visuals
     if (clearPreviewGroup) {
       clearPreviewGroup();
+    }
+    
+    if (clearAddPointIndicators) {
+      clearAddPointIndicators();
     }
     
     // Re-render measurements to ensure labels are properly displayed

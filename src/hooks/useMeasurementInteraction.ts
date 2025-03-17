@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
@@ -40,6 +39,9 @@ export const useMeasurementInteraction = (
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   const previewRef = useRef<THREE.Group | null>(null);
   
+  // Reference to the add-point indicators
+  const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
+  
   // Track multitouch state for mobile
   const touchCountRef = useRef<number>(0);
 
@@ -53,11 +55,23 @@ export const useMeasurementInteraction = (
       scene.add(previewRef.current);
     }
     
+    if (!addPointIndicatorsRef.current) {
+      addPointIndicatorsRef.current = new THREE.Group();
+      addPointIndicatorsRef.current.name = "addPointIndicators";
+      scene.add(addPointIndicatorsRef.current);
+    }
+    
     return () => {
       if (previewRef.current && scene) {
         clearPreviewGroup();
         scene.remove(previewRef.current);
         previewRef.current = null;
+      }
+      
+      if (addPointIndicatorsRef.current && scene) {
+        clearAddPointIndicators();
+        scene.remove(addPointIndicatorsRef.current);
+        addPointIndicatorsRef.current = null;
       }
     };
   }, [scene]);
@@ -89,6 +103,36 @@ export const useMeasurementInteraction = (
       }
       
       previewRef.current.remove(child);
+    }
+  }, []);
+  
+  // Function to clear add point indicators
+  const clearAddPointIndicators = useCallback(() => {
+    if (!addPointIndicatorsRef.current) return;
+    
+    while (addPointIndicatorsRef.current.children.length > 0) {
+      const child = addPointIndicatorsRef.current.children[0];
+      
+      // Dispose of geometries and materials
+      if ('geometry' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.geometry) {
+          meshChild.geometry.dispose();
+        }
+      }
+      
+      if ('material' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.material) {
+          if (Array.isArray(meshChild.material)) {
+            meshChild.material.forEach(mat => mat.dispose());
+          } else {
+            meshChild.material.dispose();
+          }
+        }
+      }
+      
+      addPointIndicatorsRef.current.remove(child);
     }
   }, []);
 
@@ -136,6 +180,85 @@ export const useMeasurementInteraction = (
       previewRef.current.add(line);
     }
   }, [previewPoint, movingPointInfo, measurements, clearPreviewGroup]);
+  
+  // Create add point indicators for area measurements in edit mode
+  useEffect(() => {
+    if (!addPointIndicatorsRef.current || !editMeasurementId) {
+      clearAddPointIndicators();
+      return;
+    }
+    
+    clearAddPointIndicators();
+    
+    // Only show add point indicators for area measurements being edited
+    const measurement = measurements.find(m => m.id === editMeasurementId && m.type === 'area');
+    if (!measurement) return;
+    
+    const points = measurement.points;
+    if (points.length < 3) return;
+    
+    // Create plus sign indicators at the midpoint of each line segment
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      
+      // Create midpoint
+      const midpoint = {
+        x: (p1.x + p2.x) / 2,
+        y: (p1.y + p2.y) / 2,
+        z: (p1.z + p2.z) / 2
+      };
+      
+      // Create plus sign using lines
+      const plusSize = 0.05;
+      
+      // Horizontal line of plus
+      const horizontalPoints = [
+        new THREE.Vector3(midpoint.x - plusSize, midpoint.y, midpoint.z),
+        new THREE.Vector3(midpoint.x + plusSize, midpoint.y, midpoint.z)
+      ];
+      
+      const horizontalGeometry = new THREE.BufferGeometry().setFromPoints(horizontalPoints);
+      const plusMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 });
+      const horizontalLine = new THREE.Line(horizontalGeometry, plusMaterial);
+      
+      // Vertical line of plus
+      const verticalPoints = [
+        new THREE.Vector3(midpoint.x, midpoint.y - plusSize, midpoint.z),
+        new THREE.Vector3(midpoint.x, midpoint.y + plusSize, midpoint.z)
+      ];
+      
+      const verticalGeometry = new THREE.BufferGeometry().setFromPoints(verticalPoints);
+      const verticalLine = new THREE.Line(verticalGeometry, plusMaterial);
+      
+      // Create a detection sphere (invisible but slightly larger for easier clicking)
+      const sphereGeometry = new THREE.SphereGeometry(plusSize * 1.5, 8, 8);
+      const sphereMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00,
+        opacity: 0.0,
+        transparent: true
+      });
+      
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(midpoint.x, midpoint.y, midpoint.z);
+      
+      // Add user data for identification on click
+      sphere.userData = {
+        isAddPointIndicator: true,
+        measurementId: measurement.id,
+        segmentIndex: i,
+        midpoint: midpoint
+      };
+      
+      // Create a group for this indicator
+      const indicatorGroup = new THREE.Group();
+      indicatorGroup.add(horizontalLine);
+      indicatorGroup.add(verticalLine);
+      indicatorGroup.add(sphere);
+      
+      addPointIndicatorsRef.current.add(indicatorGroup);
+    }
+  }, [editMeasurementId, measurements, clearAddPointIndicators]);
 
   // Track the raycaster and mouse position for hover effects
   const updatePreviewPoint = useCallback((event: MouseEvent | TouchEvent) => {
@@ -181,7 +304,7 @@ export const useMeasurementInteraction = (
         z: intersect.point.z
       });
     }
-  }, [movingPointInfo, scene, camera]);
+  }, [movingPointInfo, scene, camera, filterMeasurementObjects]);
 
   // Helper function to find the closest point on a line segment
   const findClosestPointOnLine = useCallback((
@@ -233,7 +356,8 @@ export const useMeasurementInteraction = (
           currentObj.name === "editPoints" ||
           currentObj.name === "textLabels" ||
           currentObj.name === "segmentLabels" ||
-          currentObj.name === "previewPoints"
+          currentObj.name === "previewPoints" ||
+          currentObj.name === "addPointIndicators"
         ) {
           return false;
         }
@@ -243,67 +367,6 @@ export const useMeasurementInteraction = (
       return true;
     });
   }, []);
-
-  // Find intersection point with area measurement lines (for adding points to existing areas)
-  const findIntersectionWithAreaLines = useCallback((
-    raycaster: THREE.Raycaster, 
-    scene: THREE.Scene,
-    measurements: any[]
-  ): { point: Point, measurementId: string, segmentIndex: number } | null => {
-    // Only check area measurements that are visible
-    const areaMeasurements = measurements.filter(m => 
-      m.type === 'area' && m.visible !== false
-    );
-
-    if (areaMeasurements.length === 0) return null;
-
-    // Get all valid intersections with the scene
-    const intersects = raycaster.intersectObjects(scene.children, true);
-    const validIntersects = filterMeasurementObjects(intersects);
-    
-    if (validIntersects.length === 0) return null;
-    
-    // Get the closest intersection point
-    const intersectionPoint = new THREE.Vector3(
-      validIntersects[0].point.x,
-      validIntersects[0].point.y,
-      validIntersects[0].point.z
-    );
-    
-    // Check each area measurement for a close line segment
-    for (const measurement of areaMeasurements) {
-      const points = measurement.points;
-      if (points.length < 3) continue;
-      
-      // Check each line segment
-      for (let i = 0; i < points.length; i++) {
-        const pointA = new THREE.Vector3(points[i].x, points[i].y, points[i].z);
-        const pointB = new THREE.Vector3(
-          points[(i + 1) % points.length].x,
-          points[(i + 1) % points.length].y, 
-          points[(i + 1) % points.length].z
-        );
-        
-        // Check if the intersection point is close to this line segment
-        if (isPointNearLine(intersectionPoint, pointA, pointB, 0.1)) {
-          // Get the exact point on the line
-          const pointOnLine = findClosestPointOnLine(intersectionPoint, pointA, pointB);
-          
-          return {
-            point: {
-              x: pointOnLine.x,
-              y: pointOnLine.y,
-              z: pointOnLine.z
-            },
-            measurementId: measurement.id,
-            segmentIndex: i
-          };
-        }
-      }
-    }
-    
-    return null;
-  }, [filterMeasurementObjects, isPointNearLine, findClosestPointOnLine]);
 
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
@@ -410,6 +473,40 @@ export const useMeasurementInteraction = (
         return;
       }
       
+      // Check if we clicked on an add point indicator (plus sign)
+      if (addPointIndicatorsRef.current && editMeasurementId) {
+        const addPointIntersects = raycaster.intersectObjects(addPointIndicatorsRef.current.children, true);
+        
+        for (const intersect of addPointIntersects) {
+          if (intersect.object.userData && intersect.object.userData.isAddPointIndicator) {
+            const userData = intersect.object.userData;
+            
+            // Only allow adding points to area measurements
+            const measurement = measurements.find(m => m.id === userData.measurementId && m.type === 'area');
+            if (measurement) {
+              // Create custom event to add a point at the segment's midpoint
+              const addPointEvent = new CustomEvent('areaPointAdded', {
+                detail: {
+                  measurementId: userData.measurementId,
+                  updatedMeasurement: {
+                    ...measurement,
+                    points: [
+                      ...measurement.points.slice(0, userData.segmentIndex + 1),
+                      userData.midpoint,
+                      ...measurement.points.slice(userData.segmentIndex + 1)
+                    ]
+                  }
+                }
+              });
+              document.dispatchEvent(addPointEvent);
+              
+              toast.success(`Punkt zu Flächenmessung hinzugefügt`);
+              return;
+            }
+          }
+        }
+      }
+      
       // Check for edit point interactions - only when in edit mode
       if (editMeasurementId && refs.editPointsRef.current) {
         const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, true);
@@ -468,42 +565,6 @@ export const useMeasurementInteraction = (
               return;
             }
           }
-        }
-      }
-      
-      // Special case for adding points to existing area measurements
-      if (activeMode === 'none') {
-        // Check if we're clicking near an existing area measurement line
-        const lineIntersection = findIntersectionWithAreaLines(raycaster, scene, measurements);
-        
-        if (lineIntersection) {
-          const { point, measurementId, segmentIndex } = lineIntersection;
-          
-          // Get the measurement
-          const measurement = measurements.find(m => m.id === measurementId);
-          if (!measurement) return;
-          
-          // Create a new array of points with the new point inserted at the correct position
-          const newPoints = [...measurement.points];
-          newPoints.splice(segmentIndex + 1, 0, point);
-          
-          // Update the measurement with the new point
-          const updatedMeasurement = {
-            ...measurement,
-            points: newPoints
-          };
-          
-          // We'll use a custom event to notify about this change to avoid modifying too many hooks
-          const pointAddedEvent = new CustomEvent('areaPointAdded', {
-            detail: {
-              measurementId,
-              updatedMeasurement
-            }
-          });
-          document.dispatchEvent(pointAddedEvent);
-          
-          toast.success(`Punkt hinzugefügt zu Flächenmessung`);
-          return;
         }
       }
       
@@ -571,13 +632,14 @@ export const useMeasurementInteraction = (
     editMeasurementId, editingPointIndex, movingPointInfo, previewPoint,
     handlers.addPoint, handlers.startPointEdit, handlers.updateMeasurementPoint,
     updatePreviewPoint, filterMeasurementObjects, clearPreviewGroup,
-    refs.editPointsRef, refs.segmentLabelsRef, findIntersectionWithAreaLines
+    refs.editPointsRef, refs.segmentLabelsRef
   ]);
 
   return {
     movingPointInfo,
     setMovingPointInfo,
     previewPoint,
-    clearPreviewGroup
+    clearPreviewGroup,
+    clearAddPointIndicators
   };
 };
