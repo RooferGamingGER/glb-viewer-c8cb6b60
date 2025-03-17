@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -33,7 +34,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   onEditSegment,
   movingPointInfo
 }) => {
-  if (measurements.length === 0 && !editMeasurementId && !editingSegmentId) return null;
+  if (measurements.length === 0 && !editMeasurementId) return null;
   
   return (
     <SidebarGroup className="flex-1 flex flex-col min-h-0">
@@ -57,7 +58,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                       editMeasurementId={editMeasurementId}
                       segmentsOpen={segmentsOpen}
                       toggleSegments={toggleSegments}
-                      onEditSegment={setEditingSegmentId}
+                      onEditSegment={onEditSegment}
                     />
                   ))}
                 </div>
