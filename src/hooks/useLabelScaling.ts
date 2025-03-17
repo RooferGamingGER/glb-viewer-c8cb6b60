@@ -21,6 +21,9 @@ export const useLabelScaling = (
           if (child instanceof THREE.Sprite) {
             // Regular labels use standard scaling
             updateLabelScale(child, camera, 0.5);
+            
+            // Ensure sprite is visible
+            child.visible = true;
           }
         });
       }
@@ -30,6 +33,9 @@ export const useLabelScaling = (
           if (child instanceof THREE.Sprite) {
             // Segment labels are made smaller for less visual clutter
             updateLabelScale(child, camera, 0.35);
+            
+            // Ensure sprite is visible
+            child.visible = true;
           }
         });
       }

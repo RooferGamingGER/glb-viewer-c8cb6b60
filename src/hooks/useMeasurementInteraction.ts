@@ -230,15 +230,26 @@ export const useMeasurementInteraction = (
       
       // Check for edit point interactions - only when in edit mode
       if (editMeasurementId && refs.editPointsRef.current) {
-        const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, false);
+        const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, true);
         
         if (editPointIntersects.length > 0) {
           const intersect = editPointIntersects[0];
           const userData = intersect.object.userData;
           
           if (userData.isEditPoint) {
-            handlers.startPointEdit(userData.measurementId, userData.pointIndex);
-            toast.info(`Messpunkt ${userData.pointIndex + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
+            setMovingPointInfo({
+              measurementId: userData.measurementId,
+              pointIndex: userData.pointIndex
+            });
+            
+            // Initialize preview point at the current position
+            const measurement = measurements.find(m => m.id === userData.measurementId);
+            if (measurement) {
+              const point = measurement.points[userData.pointIndex];
+              setPreviewPoint(point);
+            }
+            
+            toast.info(`Punkt ${userData.pointIndex + 1} wird verschoben. Klicken Sie an die neue Position.`);
             return;
           }
         }

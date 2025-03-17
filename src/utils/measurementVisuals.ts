@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -103,9 +102,9 @@ export function renderCurrentPoints(
     linesRef.remove(object);
   }
 
-  // Clear preview labels
+  // Clear preview labels - only remove preview labels, not permanent ones
   labelsRef.children.forEach(child => {
-    if (child.userData.isPreview) {
+    if (child.userData && child.userData.isPreview) {
       labelsRef.remove(child);
     }
   });
@@ -312,32 +311,82 @@ export function renderMeasurements(
     measurementsRef.remove(object);
   }
   
-  // Clear existing text labels (except preview labels)
-  labelsRef.children.forEach(child => {
-    if (!child.userData.isPreview) {
+  // Only clear labels that don't belong to any current measurement
+  const currentMeasurementIds = measurements.map(m => m.id);
+  
+  // Remove labels for measurements that no longer exist
+  labelsRef.children.forEach((child, index) => {
+    if (!child.userData.isPreview && 
+        (!child.userData.measurementId || 
+         !currentMeasurementIds.includes(child.userData.measurementId))) {
       labelsRef.remove(child);
     }
   });
-
-  // Clear segment labels
-  while (segmentLabelsRef.children.length > 0) {
-    segmentLabelsRef.remove(segmentLabelsRef.children[0]);
-  }
+  
+  // Only clear segment labels that don't belong to current measurements
+  segmentLabelsRef.children.forEach((child, index) => {
+    if (!child.userData.measurementId || 
+        !currentMeasurementIds.includes(child.userData.measurementId)) {
+      segmentLabelsRef.remove(child);
+    }
+  });
   
   // Add visual representation for each finalized measurement
   measurements.forEach((measurement) => {
     // Skip measurements that are explicitly marked as not visible
     if (measurement.visible === false) return;
     
+    // Check if labels for this measurement already exist
+    const existingLabels = labelsRef.children.filter(
+      child => child.userData.measurementId === measurement.id
+    );
+    
+    const existingSegmentLabels = segmentLabelsRef.children.filter(
+      child => child.userData.measurementId === measurement.id
+    );
+    
+    // Only create new labels if they don't exist
+    const shouldCreateLabels = existingLabels.length === 0;
+    const shouldCreateSegmentLabels = measurement.type === 'area' && 
+                                      (existingSegmentLabels.length === 0 || 
+                                       existingSegmentLabels.length !== measurement.segments?.length);
+    
     // Create different visualizations based on measurement type
     if (measurement.type === 'length') {
-      renderLengthMeasurement(measurement, measurementsRef, labelsRef);
+      renderLengthMeasurement(measurement, measurementsRef, labelsRef, shouldCreateLabels);
     } 
     else if (measurement.type === 'height') {
-      renderHeightMeasurement(measurement, measurementsRef, labelsRef);
+      renderHeightMeasurement(measurement, measurementsRef, labelsRef, shouldCreateLabels);
     } 
     else if (measurement.type === 'area') {
-      renderAreaMeasurement(measurement, measurementsRef, labelsRef, segmentLabelsRef);
+      renderAreaMeasurement(measurement, measurementsRef, labelsRef, segmentLabelsRef, shouldCreateLabels, shouldCreateSegmentLabels);
+    }
+  });
+  
+  // Make sure all labels and segment labels are visible
+  labelsRef.children.forEach(child => {
+    const measurementId = child.userData.measurementId;
+    const measurement = measurements.find(m => m.id === measurementId);
+    
+    // Only set visibility if the measurement exists
+    if (measurement) {
+      child.visible = measurement.visible !== false;
+    } else {
+      // For preview labels or orphaned labels
+      child.visible = true;
+    }
+  });
+  
+  segmentLabelsRef.children.forEach(child => {
+    const measurementId = child.userData.measurementId;
+    const measurement = measurements.find(m => m.id === measurementId);
+    
+    // Only set visibility if the measurement exists
+    if (measurement) {
+      child.visible = measurement.visible !== false;
+    } else {
+      // For orphaned labels
+      child.visible = true;
     }
   });
 }
@@ -348,7 +397,8 @@ export function renderMeasurements(
 function renderLengthMeasurement(
   measurement: Measurement,
   measurementsRef: THREE.Group,
-  labelsRef: THREE.Group
+  labelsRef: THREE.Group,
+  shouldCreateLabel: boolean
 ) {
   const [p1, p2] = measurement.points;
   
@@ -384,19 +434,22 @@ function renderLengthMeasurement(
     measurementsRef.add(sphere);
   });
   
-  // Calculate inclination
-  const inclination = Math.abs(calculateInclination(point1, point2));
-  
-  // Add text label at midpoint
-  const midpoint = calculateMidpoint(point1, point2);
-  const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
-  const label = createMeasurementLabel(labelText, midpoint);
-  
-  // Store measurement ID in user data for reference
-  label.userData.measurementId = measurement.id;
-  
-  // Add to labels group
-  labelsRef.add(label);
+  // Only create a new label if needed
+  if (shouldCreateLabel) {
+    // Calculate inclination
+    const inclination = Math.abs(calculateInclination(point1, point2));
+    
+    // Add text label at midpoint
+    const midpoint = calculateMidpoint(point1, point2);
+    const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
+    const label = createMeasurementLabel(labelText, midpoint);
+    
+    // Store measurement ID in user data for reference
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
 }
 
 /**
@@ -405,7 +458,8 @@ function renderLengthMeasurement(
 function renderHeightMeasurement(
   measurement: Measurement,
   measurementsRef: THREE.Group,
-  labelsRef: THREE.Group
+  labelsRef: THREE.Group,
+  shouldCreateLabel: boolean
 ) {
   const [p1, p2] = measurement.points;
   
@@ -468,21 +522,24 @@ function renderHeightMeasurement(
     measurementsRef.add(sphere);
   });
   
-  // Add text label at midpoint of vertical line
-  const labelPos = new THREE.Vector3(
-    verticalPoint.x + 0.2, // Slightly offset from vertical line
-    (higherPoint.y + verticalPoint.y) / 2,
-    verticalPoint.z
-  );
-  
-  const labelText = formatMeasurementLabel(measurement.value, 'height');
-  const label = createMeasurementLabel(labelText, labelPos);
-  
-  // Store measurement ID in user data for reference
-  label.userData.measurementId = measurement.id;
-  
-  // Add to labels group
-  labelsRef.add(label);
+  // Only create a new label if needed
+  if (shouldCreateLabel) {
+    // Add text label at midpoint of vertical line
+    const labelPos = new THREE.Vector3(
+      verticalPoint.x + 0.2, // Slightly offset from vertical line
+      (higherPoint.y + verticalPoint.y) / 2,
+      verticalPoint.z
+    );
+    
+    const labelText = formatMeasurementLabel(measurement.value, 'height');
+    const label = createMeasurementLabel(labelText, labelPos);
+    
+    // Store measurement ID in user data for reference
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
 }
 
 /**
@@ -492,7 +549,9 @@ function renderAreaMeasurement(
   measurement: Measurement,
   measurementsRef: THREE.Group,
   labelsRef: THREE.Group,
-  segmentLabelsRef: THREE.Group
+  segmentLabelsRef: THREE.Group,
+  shouldCreateLabel: boolean,
+  shouldCreateSegmentLabels: boolean
 ) {
   const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
   
@@ -528,7 +587,7 @@ function renderAreaMeasurement(
     measurementsRef.add(sphere);
 
     // Add segment labels (for the line measurements)
-    if (measurement.segments) {
+    if (shouldCreateSegmentLabels && measurement.segments) {
       const segment = measurement.segments[i];
       const midpoint = calculateMidpoint(p1, p2);
       
@@ -560,20 +619,23 @@ function renderAreaMeasurement(
     }
   }
   
-  // Calculate centroid for label placement
-  const centroid = calculateCentroid(points3D);
-  
-  // Create label text with inclination if available
-  let labelText = formatMeasurementLabel(measurement.value, 'area');
-  if (measurement.inclination !== undefined && Math.abs(measurement.inclination) > 1.0) {
-    labelText += ` | Ø ${Math.abs(measurement.inclination).toFixed(1)}°`;
+  // Only create a new main label if needed
+  if (shouldCreateLabel) {
+    // Calculate centroid for label placement
+    const centroid = calculateCentroid(points3D);
+    
+    // Create label text with inclination if available
+    let labelText = formatMeasurementLabel(measurement.value, 'area');
+    if (measurement.inclination !== undefined && Math.abs(measurement.inclination) > 1.0) {
+      labelText += ` | Ø ${Math.abs(measurement.inclination).toFixed(1)}°`;
+    }
+    
+    const label = createMeasurementLabel(labelText, centroid);
+    
+    // Store measurement ID in user data for reference
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
   }
-  
-  const label = createMeasurementLabel(labelText, centroid);
-  
-  // Store measurement ID in user data for reference
-  label.userData.measurementId = measurement.id;
-  
-  // Add to labels group
-  labelsRef.add(label);
 }

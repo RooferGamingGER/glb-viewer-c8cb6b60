@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -136,10 +135,25 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         labelsRef.current,
         segmentLabelsRef.current
       );
+    } else {
+      renderMeasurements(
+        measurementsRef.current, 
+        labelsRef.current, 
+        segmentLabelsRef.current, 
+        measurements, 
+        true
+      );
+      
+      renderEditPoints(
+        editPointsRef.current, 
+        measurements, 
+        editMeasurementId, 
+        editingPointIndex, 
+        true
+      );
     }
-  }, [enabled]);
+  }, [enabled, measurements, editMeasurementId, editingPointIndex]);
 
-  // Update label visibility when measurements change
   useEffect(() => {
     if (labelsRef.current && segmentLabelsRef.current) {
       measurements.forEach(measurement => {
@@ -259,7 +273,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     if (editMeasurementId === id) {
       toast.info('Punktbearbeitung beendet');
     } else {
-      toast.info('Klicken Sie auf einen Punkt, um ihn zu bearbeiten');
+      toast.info('Klicken Sie auf einen Punkt, um ihn zu verschieben');
     }
   };
 

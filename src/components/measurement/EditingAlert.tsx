@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Move } from 'lucide-react';
+import { AlertCircle, Move, MousePointer } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface EditingAlertProps {
@@ -23,9 +23,19 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
     <Alert variant="default" className="mb-3">
       <AlertCircle className="h-4 w-4" />
       <AlertTitle>Bearbeitungsmodus</AlertTitle>
-      <AlertDescription>
-        {editMeasurementId && !movingPointInfo && "Klicken Sie einen Punkt an, um ihn zu bearbeiten."}
-        {editingSegmentId && "Klicken Sie auf eine Position, um das Segment zu verschieben."}
+      <AlertDescription className="space-y-2">
+        {editMeasurementId && !movingPointInfo && (
+          <div className="flex items-center gap-1">
+            <MousePointer className="h-3 w-3" />
+            <span>Klicken Sie auf einen Punkt (gelb markiert), um ihn zu verschieben.</span>
+          </div>
+        )}
+        {editingSegmentId && (
+          <div className="flex items-center gap-1">
+            <MousePointer className="h-3 w-3" />
+            <span>Klicken Sie auf eine Position, um das Segment zu verschieben.</span>
+          </div>
+        )}
         {movingPointInfo && (
           <div className="flex items-center gap-1">
             <Move className="h-3 w-3" />
