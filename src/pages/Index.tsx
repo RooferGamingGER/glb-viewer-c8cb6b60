@@ -9,7 +9,7 @@ const Index = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-            3D-Viewer
+            DrohnenGLB by RooferGaming®
           </div>
           
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight mt-4 mb-4">
@@ -17,8 +17,13 @@ const Index = () => {
           </h1>
           
           <p className="text-md md:text-lg text-muted-foreground max-w-2xl mx-auto">
-            Laden Sie Ihre GLB-Dateien hoch und visualisieren Sie sie in einer interaktiven 3D-Umgebung. 
-            Perfekt für Designer, Architekten und 3D-Künstler.
+            Laden Sie Ihre GLB-Dateien vom Server und fügen diese hier ein, zum und visualisieren in einer interaktiven 3D-Umgebung, 
+            wo Sie Messungen und Messbericht erstellen können.
+          </p>
+          
+          <p className="text-sm text-muted-foreground mt-2 max-w-2xl mx-auto">
+            Hinweis: Es handelt sich aktuell um eine Testversion, so dass Bugs oder Fehler an 
+            info@drohnenvermessung-roofergaming.de gesendet werden sollen.
           </p>
         </div>
 
@@ -97,7 +102,7 @@ const Index = () => {
       </div>
       
       <footer className="w-full text-center text-sm text-muted-foreground mt-12">
-        <p>© {new Date().getFullYear()} 3D-Viewer | Alle Rechte vorbehalten</p>
+        <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming® | Alle Rechte vorbehalten</p>
         <p className="text-xs mt-1">Unterstützt GLB-Dateien bis zu 100MB</p>
       </footer>
     </div>
