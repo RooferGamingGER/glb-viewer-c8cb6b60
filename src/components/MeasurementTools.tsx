@@ -244,35 +244,56 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       const measurement = measurements.find(m => m.id === id);
       if (!measurement) return;
       
-      // Update label visibility to match the measurement visibility for all labels
-      const updateLabelVisibility = (label: THREE.Object3D) => {
-        if (label.userData && label.userData.measurementId === id) {
-          // Only update if not in edit mode
-          if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
-            label.visible = measurement.visible !== false;
-          } else {
-            // During editing, all non-preview labels should remain hidden
-            if (!label.userData.isPreview) {
-              label.visible = false;
-            }
-          }
-        }
-      };
+      // Update all visual elements for this measurement
+      const isVisible = measurement.visible !== false;
       
-      // Apply to both label groups
-      if (labelsRef.current) {
-        labelsRef.current.children.forEach(updateLabelVisibility);
-      }
-      
-      if (segmentLabelsRef.current) {
-        segmentLabelsRef.current.children.forEach(updateLabelVisibility);
-      }
-      
-      // Also update measurement geometries visibility
+      // Update measurement geometries visibility
       if (measurementsRef.current) {
         measurementsRef.current.children.forEach(obj => {
           if (obj.userData && obj.userData.measurementId === id) {
-            obj.visible = measurement.visible !== false;
+            obj.visible = isVisible;
+          }
+        });
+      }
+      
+      // Update main label visibility
+      if (labelsRef.current) {
+        labelsRef.current.children.forEach(label => {
+          if (label.userData && label.userData.measurementId === id) {
+            // Only update if not in edit mode
+            if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
+              label.visible = isVisible;
+            }
+          }
+        });
+      }
+      
+      // Update segment label visibility
+      if (segmentLabelsRef.current) {
+        segmentLabelsRef.current.children.forEach(label => {
+          if (label.userData && label.userData.measurementId === id) {
+            // Only update if not in edit mode
+            if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
+              label.visible = isVisible;
+            }
+          }
+        });
+      }
+      
+      // Update points visibility
+      if (pointsRef.current) {
+        pointsRef.current.children.forEach(point => {
+          if (point.userData && point.userData.measurementId === id) {
+            point.visible = isVisible;
+          }
+        });
+      }
+      
+      // Update lines visibility
+      if (linesRef.current) {
+        linesRef.current.children.forEach(line => {
+          if (line.userData && line.userData.measurementId === id) {
+            line.visible = isVisible;
           }
         });
       }
