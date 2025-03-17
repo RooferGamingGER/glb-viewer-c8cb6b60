@@ -300,7 +300,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }, 0);
   };
 
-  // ... keep existing code (handleDeleteMeasurement)
   const handleDeleteMeasurement = (id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete) {
@@ -316,7 +315,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Messung gelöscht');
   };
 
-  // ... keep existing code (handleDeletePoint)
+  // Enhanced handleDeletePoint to immediately update visuals
   const handleDeletePoint = (measurementId: string, pointIndex: number) => {
     // Find the measurement
     const measurement = measurements.find(m => m.id === measurementId);
@@ -332,7 +331,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     // Call the delete point function
     deletePoint(measurementId, pointIndex);
     
-    // Clear visuals to avoid stale references
+    // Clear only visuals for the specific measurement to avoid stale references
     clearMeasurementVisuals(
       measurementId,
       measurementsRef.current,
@@ -340,29 +339,35 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       segmentLabelsRef.current
     );
     
-    // Re-render measurements to update the visuals
-    setTimeout(() => {
-      renderMeasurements(
-        measurementsRef.current, 
-        labelsRef.current, 
-        segmentLabelsRef.current, 
-        measurements, 
-        true
-      );
-      
-      renderEditPoints(
-        editPointsRef.current, 
-        measurements, 
-        editMeasurementId, 
-        editingPointIndex, 
-        true
-      );
-    }, 0);
+    // Immediately re-render the modified measurement
+    const updatedMeasurement = measurements.find(m => m.id === measurementId);
+    if (updatedMeasurement) {
+      // Force an immediate render of the updated measurement
+      setTimeout(() => {
+        renderMeasurements(
+          measurementsRef.current, 
+          labelsRef.current, 
+          segmentLabelsRef.current, 
+          measurements, 
+          true
+        );
+        
+        // If in edit mode, also update edit points
+        if (editMeasurementId) {
+          renderEditPoints(
+            editPointsRef.current, 
+            measurements, 
+            editMeasurementId, 
+            null, // Reset point selection after deletion
+            true
+          );
+        }
+      }, 0);
+    }
     
     toast.info(`Punkt ${pointIndex + 1} wurde entfernt`);
   };
   
-  // ... keep existing code (clearMeasurementVisuals)
   const clearMeasurementVisuals = (
     measurementId: string,
     measurementsGroup: THREE.Group | null,
@@ -433,7 +438,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  // ... keep existing code (handleCancelEditing)
   const handleCancelEditing = () => {
     cancelEditing();
     setEditingSegmentId(null);
@@ -462,7 +466,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Bearbeitung abgebrochen');
   };
 
-  // ... keep existing code (handleFinalizeMeasurement and handleUndoLastPoint)
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
