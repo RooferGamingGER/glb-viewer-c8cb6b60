@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -555,11 +556,10 @@ export function renderMeasurements(
     }
   });
   
-  // Control visibility of all labels based on edit mode
-  // This ensures that all labels are properly hidden during editing
+  // Check if any measurement is being edited
   const anyMeasurementBeingEdited = measurements.some(m => m.editMode);
   
-  // Hide ALL non-preview labels if any measurement is being edited
+  // Hide ALL labels during editing (both regular and segment labels)
   labelsRef.children.forEach(child => {
     // Always hide non-preview labels during editing
     if (anyMeasurementBeingEdited && !child.userData.isPreview) {
