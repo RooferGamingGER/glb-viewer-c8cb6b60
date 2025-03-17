@@ -43,12 +43,12 @@ export const exportMeasurementsToPdf = async (
       container.appendChild(areaDetailsSection);
     }
     
-    // Create footer HTML content
-    const footer = createFooter();
+    // Add footer to each page
+    const footerContent = createFooter();
     
-    // Configure html2pdf options
+    // Configure html2pdf options with increased bottom margin for footer
     const pdfOptions = {
-      margin: [15, 15, 30, 15], // [top, right, bottom, left] - increased bottom margin for footer
+      margin: [15, 15, 35, 15], // [top, right, bottom, left] - increased bottom margin for footer
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
@@ -59,8 +59,8 @@ export const exportMeasurementsToPdf = async (
       },
       pagebreak: { mode: 'css' },
       footer: {
-        height: '25mm',
-        contents: footer
+        height: '30mm',
+        contents: footerContent
       }
     };
     
@@ -221,6 +221,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
   summaryContent.style.display = 'flex';
   summaryContent.style.flexDirection = 'row';
   summaryContent.style.justifyContent = 'space-between';
+  summaryContent.style.flexWrap = 'nowrap';
   summaryContent.style.gap = '10px';
   summaryContent.style.width = '100%';
   
@@ -230,9 +231,11 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
     stat.style.borderRadius = '8px';
     stat.style.padding = '10px';
     stat.style.width = '24%';
+    stat.style.minWidth = '80px';
     stat.style.boxSizing = 'border-box';
     stat.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
     stat.style.textAlign = 'center';
+    stat.style.flexShrink = '1';
     
     const statValue = document.createElement('div');
     statValue.style.fontSize = '22px';
@@ -255,7 +258,7 @@ const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement 
     return stat;
   };
   
-  // Modified order of summary stats
+  // Modified order of summary stats and ensure they fit in a single row
   summaryContent.appendChild(createSummaryStat('Gesamt', measurements.length, '📊'));
   summaryContent.appendChild(createSummaryStat('Längen', lengthMeasurements.length, '📏'));
   summaryContent.appendChild(createSummaryStat('Höhen', heightMeasurements.length, '📐'));
@@ -421,7 +424,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
           const segmentRow = document.createElement('tr');
           segmentRow.style.backgroundColor = sIndex % 2 === 0 ? '#ffffff' : '#f9fafb';
           
-          // Segment number
+          // Segment number - rename to "Teilmessung"
           const segmentNumCell = document.createElement('td');
           segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
           segmentNumCell.style.padding = '8px';
@@ -450,9 +453,9 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
 };
 
 const createFooter = (): string => {
-  // Create the footer as HTML string (required for html2pdf footer option)
+  // Create the footer as HTML string with improved styling
   return `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; width: 100%; margin-top: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; width: 100%; margin-top: 5px; position: relative;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="width: 24px; height: 24px;">
           <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjQiIGZpbGw9IiM0RjQ2RTUiLz4KICAgIDxwYXRoIGQ9Ik03IDEySDE3TTEyIDdWMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" alt="DrohnenGLB Logo" style="width: 100%; height: 100%;">
