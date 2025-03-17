@@ -7,9 +7,12 @@ import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
+import OrientationWarning from '@/components/OrientationWarning';
 
 const Viewer = () => {
   const navigate = useNavigate();
+  const { isPortrait } = useScreenOrientation();
   
   // Get the file URL and name from the URL parameters
   const fileUrl = useRequiredURLParam('fileUrl', '/', 'Keine Datei ausgewählt');
@@ -39,6 +42,8 @@ const Viewer = () => {
 
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
+      {isPortrait && <OrientationWarning />}
+      
       <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center">
         <Button 
           variant="outline" 
