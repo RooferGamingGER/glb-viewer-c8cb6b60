@@ -15,7 +15,7 @@ export interface CoverPageData {
 const createTextLogo = () => {
   const logoContainer = document.createElement('div');
   logoContainer.style.textAlign = 'center';
-  logoContainer.style.marginBottom = '30px';
+  logoContainer.style.marginBottom = '20px';
   
   const logoText = document.createElement('div');
   logoText.style.fontSize = '28px';
@@ -45,22 +45,32 @@ export const exportMeasurementsToPdf = async (
     container.className = 'pdf-container';
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.color = '#333333';
-    container.style.position = 'relative';
     
     // Create and add styles for page layouts
     const styleElement = document.createElement('style');
     styleElement.textContent = `
+      .pdf-content {
+        margin: 0;
+        padding: 0;
+      }
       .pdf-page {
-        position: relative;
         padding: 15mm 15mm 15mm 15mm;
         page-break-after: always;
       }
-      .pdf-page-end {
-        page-break-after: avoid !important;
+      .pdf-last-page {
+        padding: 15mm 15mm 15mm 15mm;
+        page-break-after: avoid;
+      }
+      .keep-together {
+        page-break-inside: avoid;
+      }
+      .section-content {
+        page-break-before: auto;
+        page-break-after: auto;
       }
       .company-info {
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 30px;
         color: #555;
         line-height: 1.8;
       }
@@ -68,18 +78,18 @@ export const exportMeasurementsToPdf = async (
         font-size: 32px;
         font-weight: 600;
         text-align: center;
-        margin: 40px 0;
+        margin: 30px 0;
         color: #333;
       }
       .project-info-table {
         width: 100%;
         border-collapse: collapse;
-        margin: 30px 0;
+        margin: 20px 0;
       }
       .project-info-table th {
         text-align: left;
         width: 40%;
-        padding: 12px;
+        padding: 10px;
         font-weight: normal;
         color: #555;
         vertical-align: top;
@@ -87,18 +97,18 @@ export const exportMeasurementsToPdf = async (
       }
       .project-info-table td {
         width: 60%;
-        padding: 12px;
+        padding: 10px;
         font-weight: 500;
         vertical-align: top;
         border-bottom: 1px solid #f0f0f0;
       }
       .measurement-section {
-        margin-bottom: 30px;
+        margin-bottom: 20px;
       }
       .header {
         text-align: center;
-        padding-bottom: 15px;
-        margin-bottom: 30px;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
         border-bottom: 1px solid #eaeaea;
       }
       .header-title {
@@ -108,39 +118,39 @@ export const exportMeasurementsToPdf = async (
       }
       .measurement-section h2 {
         font-size: 24px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         color: #333;
         font-weight: 600;
-        padding-bottom: 10px;
+        padding-bottom: 8px;
         border-bottom: 1px solid #e0e0e0;
       }
       .measurement-section h3 {
         font-size: 18px;
-        margin: 20px 0 15px 0;
+        margin: 15px 0 10px 0;
         color: #444;
         font-weight: 500;
       }
       .measurement-section p {
         color: #555;
         line-height: 1.6;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
       }
       .measurement-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 25px;
+        margin-bottom: 15px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       }
       .measurement-table th {
         background-color: #f8f9fa;
-        padding: 12px;
+        padding: 10px;
         text-align: left;
         font-weight: 600;
         border: 1px solid #eee;
         color: #333;
       }
       .measurement-table td {
-        padding: 12px;
+        padding: 10px;
         border: 1px solid #eee;
         vertical-align: middle;
       }
@@ -151,24 +161,24 @@ export const exportMeasurementsToPdf = async (
         width: 95%;
         margin-left: 5%;
         border-collapse: collapse;
-        margin-bottom: 25px;
+        margin-bottom: 15px;
       }
       .segment-table th {
         background-color: #f8f9fa;
-        padding: 10px;
+        padding: 8px;
         text-align: left;
         font-weight: 500;
         border: 1px solid #eee;
         color: #444;
       }
       .segment-table td {
-        padding: 10px;
+        padding: 8px;
         border: 1px solid #eee;
       }
       .summary-card {
         background-color: #ffffff;
         border-radius: 8px;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
       }
@@ -177,12 +187,12 @@ export const exportMeasurementsToPdf = async (
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 15px;
-        margin-top: 20px;
+        margin-top: 15px;
       }
       .summary-stat {
         background-color: #f9fafc;
         border-radius: 8px;
-        padding: 15px;
+        padding: 12px;
         flex: 1;
         min-width: 120px;
         text-align: center;
@@ -190,9 +200,9 @@ export const exportMeasurementsToPdf = async (
         border: 1px solid #f0f0f0;
       }
       .summary-stat-value {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
-        margin-bottom: 8px;
+        margin-bottom: 5px;
         color: #333;
       }
       .summary-stat-label {
@@ -202,15 +212,15 @@ export const exportMeasurementsToPdf = async (
       }
       .promo-section {
         text-align: center;
-        margin-top: 40px;
-        padding: 20px;
+        margin-top: 30px;
+        padding: 15px;
         background-color: #f9fafc;
         border-radius: 8px;
         border: 1px solid #f0f0f0;
       }
       .promo-item {
-        margin: 10px 0;
-        font-size: 16px;
+        margin: 8px 0;
+        font-size: 15px;
         line-height: 1.5;
       }
       .promo-highlight {
@@ -223,51 +233,97 @@ export const exportMeasurementsToPdf = async (
     // Add container to document before building content
     document.body.appendChild(container);
     
+    // Create a wrapper div for all content to ensure proper page flow
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'pdf-content';
+    container.appendChild(contentWrapper);
+    
     // Create cover page
     const coverPage = document.createElement('div');
-    coverPage.className = 'pdf-page';
+    coverPage.className = 'pdf-page keep-together';
     coverPage.appendChild(createCoverPage(coverData));
-    container.appendChild(coverPage);
+    contentWrapper.appendChild(coverPage);
     
     // Create measurement summary section as page 2
     const summaryPage = document.createElement('div');
-    summaryPage.className = 'pdf-page';
+    summaryPage.className = 'pdf-page keep-together';
     summaryPage.appendChild(createMeasurementSummary(measurements, coverData.title));
-    container.appendChild(summaryPage);
+    contentWrapper.appendChild(summaryPage);
     
-    // Create separate pages for each measurement type
-    // Length measurements
+    // Filter measurements by type
     const lengthMeasurements = measurements.filter(m => m.type === 'length');
+    const areaMeasurements = measurements.filter(m => m.type === 'area');
+    const heightMeasurements = measurements.filter(m => m.type === 'height');
+    
+    // Create pages for each measurement type only if they contain measurements
+    let hasTypePages = false;
+    
+    // Length measurements
     if (lengthMeasurements.length > 0) {
+      hasTypePages = true;
       const lengthPage = document.createElement('div');
-      lengthPage.className = 'pdf-page';
+      lengthPage.className = heightMeasurements.length === 0 && areaMeasurements.length === 0 ? 
+                           'pdf-last-page keep-together' : 'pdf-page keep-together';
       lengthPage.appendChild(createMeasurementTypeSection('length', lengthMeasurements, coverData.title));
-      container.appendChild(lengthPage);
+      contentWrapper.appendChild(lengthPage);
     }
     
     // Area measurements
-    const areaMeasurements = measurements.filter(m => m.type === 'area');
     if (areaMeasurements.length > 0) {
+      hasTypePages = true;
       const areaPage = document.createElement('div');
-      areaPage.className = 'pdf-page';
-      areaPage.appendChild(createMeasurementTypeSection('area', areaMeasurements, coverData.title));
-      container.appendChild(areaPage);
+      areaPage.className = heightMeasurements.length === 0 ? 
+                          'pdf-last-page keep-together' : 'pdf-page keep-together';
+      
+      // Create section title and description
+      const areaSection = document.createElement('div');
+      areaSection.className = 'measurement-section';
+      areaSection.appendChild(createHeader(coverData.title));
+      
+      const sectionTitle = document.createElement('h2');
+      sectionTitle.textContent = 'Flächenmessungen';
+      areaSection.appendChild(sectionTitle);
+      
+      const description = document.createElement('p');
+      description.textContent = `Dieser Abschnitt enthält ${areaMeasurements.length} Flächenmessungen. Alle Messungen sind in Quadratmeter (m²) angegeben.`;
+      areaSection.appendChild(description);
+      
+      // Create main area measurements table
+      areaSection.appendChild(createAreaMeasurementsTable(areaMeasurements));
+      
+      // Create segment tables as separate keep-together blocks
+      areaMeasurements.forEach((measurement, mIndex) => {
+        if (measurement.segments && measurement.segments.length > 0) {
+          const segmentContainer = document.createElement('div');
+          segmentContainer.className = 'keep-together section-content';
+          segmentContainer.appendChild(createAreaSegmentsTable(measurement, mIndex));
+          areaSection.appendChild(segmentContainer);
+        }
+      });
+      
+      areaPage.appendChild(areaSection);
+      contentWrapper.appendChild(areaPage);
     }
     
     // Height measurements
-    const heightMeasurements = measurements.filter(m => m.type === 'height');
     if (heightMeasurements.length > 0) {
+      hasTypePages = true;
       const heightPage = document.createElement('div');
-      heightPage.className = 'pdf-page-end';
+      heightPage.className = 'pdf-last-page keep-together';
       heightPage.appendChild(createMeasurementTypeSection('height', heightMeasurements, coverData.title));
-      container.appendChild(heightPage);
+      contentWrapper.appendChild(heightPage);
     }
     
-    // Configure html2pdf options
+    // If there are no type pages, adjust the last page to avoid empty pages
+    if (!hasTypePages && summaryPage) {
+      summaryPage.className = 'pdf-last-page keep-together';
+    }
+    
+    // Configure html2pdf options with improved page break handling
     const pdfOptions = {
       margin: [10, 10, 10, 10], // [top, right, bottom, left] in mm
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 1.0 },
+      image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2, 
         useCORS: true,
@@ -283,7 +339,8 @@ export const exportMeasurementsToPdf = async (
       pagebreak: { 
         mode: ['css', 'avoid-all'],
         before: '.pdf-page',
-        avoid: ['tr', 'th', 'td', '.avoid-break']
+        after: '.pdf-page',
+        avoid: ['.keep-together', 'table', 'tr', 'th', 'td', 'img', '.avoid-break', 'h2', 'h3']
       }
     };
     
@@ -362,11 +419,11 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   // Notes section (if provided)
   if (coverData.notes && coverData.notes.trim()) {
     const notesSection = document.createElement('div');
-    notesSection.style.marginTop = '30px';
+    notesSection.style.marginTop = '20px';
     
     const notesTitle = document.createElement('h3');
     notesTitle.style.fontSize = '18px';
-    notesTitle.style.marginBottom = '12px';
+    notesTitle.style.marginBottom = '10px';
     notesTitle.style.color = '#444';
     notesTitle.textContent = 'Bemerkungen';
     notesSection.appendChild(notesTitle);
@@ -443,7 +500,7 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   // Create summary card
   const summaryCard = document.createElement('div');
   summaryCard.className = 'summary-card';
-  summaryCard.style.padding = '20px';
+  summaryCard.style.padding = '15px';
   
   // Filter measurements by type
   const lengthMeasurements = measurements.filter(m => m.type === 'length');
@@ -452,7 +509,7 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   
   // Create summary text
   const summaryText = document.createElement('p');
-  summaryText.style.margin = '0 0 20px 0';
+  summaryText.style.margin = '0 0 15px 0';
   summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen.`;
   summaryCard.appendChild(summaryText);
   
@@ -487,10 +544,13 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   summaryCard.appendChild(summaryStats);
   summarySection.appendChild(summaryCard);
   
-  // Create detailed summary table
+  // Create detailed summary table inside a keep-together div
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'keep-together section-content';
+  
   const detailsTitle = document.createElement('h3');
   detailsTitle.textContent = 'Detaillierte Übersicht';
-  summarySection.appendChild(detailsTitle);
+  tableContainer.appendChild(detailsTitle);
   
   // Create the summary table
   const summaryTable = document.createElement('table');
@@ -554,7 +614,8 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   });
   
   summaryTable.appendChild(tableBody);
-  summarySection.appendChild(summaryTable);
+  tableContainer.appendChild(summaryTable);
+  summarySection.appendChild(tableContainer);
   
   return summarySection;
 };
@@ -650,13 +711,12 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[],
   table.appendChild(tableBody);
   section.appendChild(table);
   
-  // For area measurements, add segments tables that keep headings with content
+  // For area measurements, add segments tables with keep-together class
   if (type === 'area') {
     measurements.forEach((measurement, mIndex) => {
       if (measurement.segments && measurement.segments.length > 0) {
-        // Create a containing div to ensure the heading stays with its table
         const segmentContainer = document.createElement('div');
-        segmentContainer.className = 'avoid-break';
+        segmentContainer.className = 'keep-together section-content';
         
         const segmentsTitle = document.createElement('h3');
         segmentsTitle.textContent = `Teilmessungen für Fläche ${mIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
@@ -705,4 +765,102 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[],
   }
   
   return section;
+};
+
+// Helper function to create area measurement table without segments
+const createAreaMeasurementsTable = (measurements: Measurement[]): HTMLElement => {
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Nr.', 'Beschreibung', 'Fläche (m²)'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  measurements.forEach((measurement, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr column
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description column
+    const descCell = document.createElement('td');
+    descCell.textContent = measurement.description || '–';
+    row.appendChild(descCell);
+    
+    // Value column
+    const valueCell = document.createElement('td');
+    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
+    valueCell.style.fontWeight = 'bold';
+    row.appendChild(valueCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  return table;
+};
+
+// Helper function to create segment tables for area measurements
+const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLElement => {
+  const container = document.createElement('div');
+  
+  const segmentsTitle = document.createElement('h3');
+  segmentsTitle.textContent = `Teilmessungen für Fläche ${index + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+  container.appendChild(segmentsTitle);
+  
+  const segmentsTable = document.createElement('table');
+  segmentsTable.className = 'segment-table';
+  
+  // Segments table header
+  const segmentsTableHead = document.createElement('thead');
+  const segmentsHeaderRow = document.createElement('tr');
+  
+  ['Teilmessung', 'Länge (m)'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    segmentsHeaderRow.appendChild(th);
+  });
+  
+  segmentsTableHead.appendChild(segmentsHeaderRow);
+  segmentsTable.appendChild(segmentsTableHead);
+  
+  // Segments table body
+  const segmentsTableBody = document.createElement('tbody');
+  
+  if (measurement.segments) {
+    measurement.segments.forEach((segment, sIndex) => {
+      const segmentRow = document.createElement('tr');
+      
+      // Segment number column
+      const segmentNumCell = document.createElement('td');
+      segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
+      segmentRow.appendChild(segmentNumCell);
+      
+      // Segment length column
+      const segmentLengthCell = document.createElement('td');
+      segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
+      segmentRow.appendChild(segmentLengthCell);
+      
+      segmentsTableBody.appendChild(segmentRow);
+    });
+  }
+  
+  segmentsTable.appendChild(segmentsTableBody);
+  container.appendChild(segmentsTable);
+  
+  return container;
 };
