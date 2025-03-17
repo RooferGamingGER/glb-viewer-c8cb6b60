@@ -88,47 +88,30 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
         z: (p1.z + p2.z) / 2
       };
       
-      // Create blue circle with white plus as indicator
-      const circleSize = 0.08;
-      const circleGeometry = new THREE.CircleGeometry(circleSize, 32);
-      const circleMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0x1E88E5, // Blue color
-        side: THREE.DoubleSide
-      });
-      const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+      // Create plus sign using lines
+      const plusSize = 0.05;
       
-      // Position the circle at the midpoint and face the camera
-      circle.position.set(midpoint.x, midpoint.y, midpoint.z);
-      // Rotate to face upward (parallel to XZ plane)
-      circle.rotation.x = -Math.PI / 2;
+      // Horizontal line of plus
+      const horizontalPoints = [
+        new THREE.Vector3(midpoint.x - plusSize, midpoint.y, midpoint.z),
+        new THREE.Vector3(midpoint.x + plusSize, midpoint.y, midpoint.z)
+      ];
       
-      // Create white plus sign on top of the circle
-      const plusSize = circleSize * 0.6;
-      const plusThickness = 0.02;
+      const horizontalGeometry = new THREE.BufferGeometry().setFromPoints(horizontalPoints);
+      const plusMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 });
+      const horizontalLine = new THREE.Line(horizontalGeometry, plusMaterial);
       
-      // Horizontal part of the plus sign
-      const horizontalGeometry = new THREE.BoxGeometry(plusSize, plusThickness, plusThickness);
-      const plusMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
-      const horizontalPart = new THREE.Mesh(horizontalGeometry, plusMaterial);
-      horizontalPart.position.set(0, 0.005, 0); // Slightly above the circle
+      // Vertical line of plus
+      const verticalPoints = [
+        new THREE.Vector3(midpoint.x, midpoint.y - plusSize, midpoint.z),
+        new THREE.Vector3(midpoint.x, midpoint.y + plusSize, midpoint.z)
+      ];
       
-      // Vertical part of the plus sign
-      const verticalGeometry = new THREE.BoxGeometry(plusThickness, plusThickness, plusSize);
-      const verticalPart = new THREE.Mesh(verticalGeometry, plusMaterial);
-      verticalPart.position.set(0, 0.005, 0); // Slightly above the circle
-      
-      // Create a group for this indicator and add all parts
-      const indicatorGroup = new THREE.Group();
-      indicatorGroup.position.set(midpoint.x, midpoint.y, midpoint.z);
-      // Make it face upward
-      indicatorGroup.rotation.x = -Math.PI / 2;
-      
-      indicatorGroup.add(circle);
-      indicatorGroup.add(horizontalPart);
-      indicatorGroup.add(verticalPart);
+      const verticalGeometry = new THREE.BufferGeometry().setFromPoints(verticalPoints);
+      const verticalLine = new THREE.Line(verticalGeometry, plusMaterial);
       
       // Create a detection sphere (invisible but slightly larger for easier clicking)
-      const sphereGeometry = new THREE.SphereGeometry(plusSize * 1.2, 8, 8);
+      const sphereGeometry = new THREE.SphereGeometry(plusSize * 1.5, 8, 8);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: 0x00ff00,
         opacity: 0.0,
@@ -136,7 +119,7 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       });
       
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      sphere.position.set(0, 0, 0);
+      sphere.position.set(midpoint.x, midpoint.y, midpoint.z);
       
       // Add user data for identification on click
       sphere.userData = {
@@ -146,6 +129,10 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
         midpoint: midpoint
       };
       
+      // Create a group for this indicator
+      const indicatorGroup = new THREE.Group();
+      indicatorGroup.add(horizontalLine);
+      indicatorGroup.add(verticalLine);
       indicatorGroup.add(sphere);
       
       addPointIndicatorsRef.current.add(indicatorGroup);
