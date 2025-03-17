@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -23,6 +22,9 @@ export const exportMeasurementsToPdf = async (
     container.style.padding = '20px';
     container.style.color = '#000000';
     
+    // Add container to document before building content
+    document.body.appendChild(container);
+    
     // Create cover page
     const coverPage = createCoverPage(coverData);
     container.appendChild(coverPage);
@@ -43,12 +45,12 @@ export const exportMeasurementsToPdf = async (
       container.appendChild(areaDetailsSection);
     }
     
-    // Add footer to each page
+    // Create footer as a string (simplified, no logo)
     const footerContent = createFooter();
     
     // Configure html2pdf options with increased bottom margin for footer
     const pdfOptions = {
-      margin: [15, 15, 35, 15], // [top, right, bottom, left] - increased bottom margin for footer
+      margin: [15, 15, 45, 15], // [top, right, bottom, left] - increased bottom margin for footer
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
@@ -59,19 +61,28 @@ export const exportMeasurementsToPdf = async (
       },
       pagebreak: { mode: 'css' },
       footer: {
-        height: '30mm',
+        height: '40mm', // Increased height for the footer
         contents: footerContent
       }
     };
     
+    // Add a small delay to ensure DOM rendering is complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Generate the PDF
-    document.body.appendChild(container);
     await html2pdf().from(container).set(pdfOptions).save();
+    
+    // Clean up - remove container from DOM
     document.body.removeChild(container);
     
     return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
+    // Clean up in case of error
+    const container = document.querySelector('.pdf-container');
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
     return false;
   }
 };
@@ -453,19 +464,11 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
 };
 
 const createFooter = (): string => {
-  // Create the footer as HTML string with improved styling
+  // Simplified footer without logo - just text content
   return `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; width: 100%; margin-top: 5px; position: relative;">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <div style="width: 24px; height: 24px;">
-          <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjQiIGZpbGw9IiM0RjQ2RTUiLz4KICAgIDxwYXRoIGQ9Ik03IDEySDE3TTEyIDdWMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" alt="DrohnenGLB Logo" style="width: 100%; height: 100%;">
-        </div>
-        <span style="font-weight: bold;">DrohnenGLB by RooferGaming</span>
-      </div>
-      <div style="text-align: right; max-width: 70%;">
-        <div style="font-weight: bold; margin-bottom: 3px;">Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt</div>
-        <div>Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de</div>
-      </div>
+    <div style="text-align: center; padding: 10px 15px; border-top: 1px solid #ddd; font-size: 11px; color: #666; width: 100%; margin-top: 10px;">
+      <div style="font-weight: bold; margin-bottom: 5px;">Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt</div>
+      <div>Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de</div>
     </div>
   `;
 };
