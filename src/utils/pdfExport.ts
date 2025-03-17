@@ -45,11 +45,25 @@ export const exportMeasurementsToPdf = async (
       .logo-container {
         text-align: center;
         margin-bottom: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
       .logo-image {
-        width: auto;
+        display: flex;
+        align-items: center;
         white-space: nowrap;
-        display: inline-block;
+      }
+      .logo-icon {
+        height: 32px;
+        width: auto;
+        margin-right: 10px;
+      }
+      .logo-text {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+        white-space: nowrap;
       }
       .company-info {
         text-align: center;
@@ -153,21 +167,29 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   upperHalf.className = 'cover-upper';
   upperHalf.style.marginBottom = '70px';
   
-  // Logo container (using only one instance of logoContainer)
+  // Logo container with flex layout
   const logoContainer = document.createElement('div');
   logoContainer.className = 'logo-container';
   
-  // Create logo placeholder with text (only one instance of logoImage)
+  // Create a wrapper for logo and text with flex layout
   const logoImage = document.createElement('div');
   logoImage.className = 'logo-image';
-  logoImage.style.fontSize = '32px';
-  logoImage.style.fontWeight = 'bold';
-  logoImage.style.color = '#333';
-  logoImage.style.marginBottom = '20px';
-  logoImage.style.textAlign = 'center';
-  logoImage.style.whiteSpace = 'nowrap'; // Prevent text from wrapping
-  logoImage.style.width = 'auto'; // Allow the text to take its natural width
-  logoImage.textContent = 'DrohnenGLB by RooferGaming®';
+  
+  // Create and add the logo icon
+  const logoIcon = document.createElement('img');
+  logoIcon.className = 'logo-icon';
+  logoIcon.src = '/lovable-uploads/f73d071b-dd8e-4271-b927-3dffb61d6e1e.png';
+  logoIcon.alt = 'DrohnenGLB Logo';
+  logoIcon.style.height = '32px'; // Match text height
+  logoIcon.style.width = 'auto';
+  logoIcon.style.marginRight = '10px';
+  logoImage.appendChild(logoIcon);
+  
+  // Create and add the logo text
+  const logoText = document.createElement('span');
+  logoText.className = 'logo-text';
+  logoText.textContent = 'DrohnenGLB by RooferGaming®';
+  logoImage.appendChild(logoText);
   
   logoContainer.appendChild(logoImage);
   upperHalf.appendChild(logoContainer);
@@ -545,7 +567,7 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
           const segmentRow = document.createElement('tr');
           segmentRow.style.backgroundColor = sIndex % 2 === 0 ? '#ffffff' : '#f9fafb';
           
-          // Segment number - rename to "Teilmessung"
+          // Teilmessung column
           const segmentNumCell = document.createElement('td');
           segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
           segmentNumCell.style.padding = '8px';
