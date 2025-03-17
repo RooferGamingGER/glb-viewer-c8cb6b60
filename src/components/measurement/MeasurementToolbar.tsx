@@ -44,7 +44,16 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
     if (activeMode === mode) {
       toast.info(`Messwerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
-      toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : mode === 'area' ? 'Flächen' : 'Navigations'}messung ausgewählt`);
+      // Show appropriate tool selection messages
+      if (mode === 'length') {
+        toast.info('Längenmessung ausgewählt - Platzieren Sie 2 Punkte');
+      } else if (mode === 'height') {
+        toast.info('Höhenmessung ausgewählt - Platzieren Sie 2 Punkte');
+      } else if (mode === 'area') {
+        toast.info('Flächenmessung ausgewählt - Platzieren Sie mindestens 3 Punkte');
+      } else {
+        toast.info('Navigationsmodus aktiviert');
+      }
     }
   };
   

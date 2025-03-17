@@ -34,6 +34,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
     <SidebarGroup>
       <SidebarGroupLabel>Aktive Messung</SidebarGroupLabel>
       <SidebarGroupContent>
+        {/* Show the finalize button only for area measurements with 3+ points */}
         {activeMode === 'area' && currentPoints.length >= 3 && (
           <Button 
             variant="default" 

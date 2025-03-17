@@ -86,24 +86,17 @@ function SceneSetup({
 
 const ModelCanvas = ({
   fileUrl,
-  onMeasurementClick,
   onSceneReady,
   canvasRef
 }: {
   fileUrl: string;
-  onMeasurementClick: (event: React.MouseEvent) => void;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
-  const handleCanvasClick = (event: React.MouseEvent) => {
-    if (onMeasurementClick) {
-      onMeasurementClick(event);
-    }
-  };
-
+  // Remove the click handler that might be blocking events
   return <Canvas shadows style={{
     background: '#222222'
-  }} onClick={handleCanvasClick} className="w-full h-full" ref={canvasRef}>
+  }} className="w-full h-full" ref={canvasRef}>
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
@@ -148,16 +141,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     setCamera(newCamera);
   };
 
-  const handleMeasurementClick = (event: React.MouseEvent) => {
-    // Empty handler, kept for compatibility
-  };
-
   return (
     <div className="relative w-full h-full">
       <div className="absolute inset-0 z-0">
         <ModelCanvas 
           fileUrl={fileUrl} 
-          onMeasurementClick={handleMeasurementClick} 
           onSceneReady={handleSceneReady} 
           canvasRef={canvasRef} 
         />

@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
@@ -178,14 +179,17 @@ export const useMeasurementInteraction = (
     
     // Mouse and touch event handlers
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      // Ensure we're enabled and the sidebar is open
       if (!enabled || !open) return;
       
       let clientX, clientY;
       
       if (event instanceof MouseEvent) {
+        // For mouse events
         clientX = event.clientX;
         clientY = event.clientY;
       } else if (event instanceof TouchEvent) {
+        // For touch events
         if (event.touches.length === 0) return;
         clientX = event.touches[0].clientX;
         clientY = event.touches[0].clientY;
@@ -291,7 +295,7 @@ export const useMeasurementInteraction = (
       const intersects = raycaster.intersectObjects(scene.children, true);
       const validIntersects = filterMeasurementObjects(intersects);
       
-      if (validIntersects.length > 0) {
+      if (validIntersects.length > 0 && activeMode !== 'none') {
         const intersect = validIntersects[0];
         const point = {
           x: intersect.point.x,
@@ -307,24 +311,23 @@ export const useMeasurementInteraction = (
         }
         
         // Handle adding new measurement points
-        if (activeMode !== 'none') {
-          const currentCount = currentPoints.length;
-          
-          handlers.addPoint(point);
-          
-          if (activeMode === 'length' || activeMode === 'height') {
-            if (currentCount === 0) {
-              toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
-            } else if (currentCount === 1) {
-              toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
-              toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
-            }
-          } else if (activeMode === 'area') {
-            if (currentCount === 0) {
-              toast.info("Ersten Punkt für Flächenmessung gesetzt");
-            } else {
-              toast.info(`Punkt ${currentCount + 1} für Flächenmessung gesetzt`);
-            }
+        const currentCount = currentPoints.length;
+        
+        handlers.addPoint(point);
+        
+        if (activeMode === 'length') {
+          if (currentCount === 0) {
+            toast.info("Ersten Punkt für Längenmessung gesetzt");
+          }
+        } else if (activeMode === 'height') {
+          if (currentCount === 0) {
+            toast.info("Ersten Punkt für Höhenmessung gesetzt");
+          }
+        } else if (activeMode === 'area') {
+          if (currentCount === 0) {
+            toast.info("Ersten Punkt für Flächenmessung gesetzt");
+          } else {
+            toast.info(`Punkt ${currentCount + 1} für Flächenmessung gesetzt`);
           }
         }
       }
