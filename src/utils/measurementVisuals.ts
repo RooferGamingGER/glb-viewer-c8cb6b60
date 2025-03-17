@@ -319,6 +319,32 @@ export function renderEditPoints(
     };
     
     editPointsRef.add(sphere);
+    
+    // Create a label for each point in area measurements
+    if (measurement.type === 'area') {
+      // Position the label slightly above the point
+      const labelPosition = new THREE.Vector3(point.x, point.y + 0.08, point.z);
+      
+      // Create point label (P1, P2, etc.)
+      const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition);
+      
+      // Make the label smaller than regular measurement labels
+      pointLabel.scale.multiplyScalar(0.7);
+      
+      // Store info in userData
+      pointLabel.userData = {
+        isPointLabel: true,
+        measurementId: measurement.id,
+        pointIndex: index,
+        isPreview: true // Mark as preview so it isn't removed with permanent labels
+      };
+      
+      // Set high render order
+      pointLabel.renderOrder = 1000;
+      
+      // Add to edit points group
+      editPointsRef.add(pointLabel);
+    }
   });
 }
 
@@ -529,6 +555,31 @@ export function renderMeasurements(
   });
   
   // Make sure all labels and segment labels are visible
+  measurements.forEach(measurement => {
+    if (measurement.visible === false) return;
+    
+    // Update visibility of labels based on measurement visibility
+    if (labelsRef) {
+      const labels = labelsRef.children.filter(label => 
+        label.userData && label.userData.measurementId === measurement.id && !label.userData.isPreview
+      );
+      
+      labels.forEach(label => {
+        label.visible = measurement.visible !== false && !measurement.editMode;
+      });
+    }
+    
+    if (segmentLabelsRef) {
+      const segmentLabels = segmentLabelsRef.children.filter(label => 
+        label.userData && label.userData.measurementId === measurement.id
+      );
+      
+      segmentLabels.forEach(label => {
+        label.visible = measurement.visible !== false && !measurement.editMode;
+      });
+    }
+  });
+  
   labelsRef.children.forEach(child => {
     const measurementId = child.userData.measurementId;
     const measurement = measurements.find(m => m.id === measurementId);

@@ -369,106 +369,51 @@ export const useMeasurements = () => {
   }, [editMeasurementId]);
 
   const deletePoint = useCallback((measurementId: string, pointIndex: number) => {
-    setMeasurements(prev => prev.map(m => {
-      if (m.id === measurementId) {
-        // Only remove the point if there would still be enough points left
-        // (2 for length/height, 3 for area)
-        const minPoints = m.type === 'area' ? 3 : 2;
-        if (m.points.length > minPoints) {
-          const newPoints = [...m.points];
-          newPoints.splice(pointIndex, 1);
-          
-          // Recalculate the measurement value
-          let newValue = 0;
-          
-          if (m.type === 'length' && newPoints.length >= 2) {
-            newValue = calculateDistance(newPoints[0], newPoints[1]);
-          } else if (m.type === 'height' && newPoints.length >= 2) {
-            newValue = calculateHeight(newPoints[0], newPoints[1]);
-          } else if (m.type === 'area' && newPoints.length >= 3) {
-            newValue = calculateArea(newPoints);
-          }
-          
-          const newLabel = formatMeasurement(newValue, m.type);
-          
-          return {
-            ...m,
-            points: newPoints,
-            value: newValue,
-            label: newLabel
-          };
-        }
+    setMeasurements(prev => {
+      const measurements = [...prev];
+      const measurementIndex = measurements.findIndex(m => m.id === measurementId);
+      
+      if (measurementIndex === -1) return prev;
+      
+      const measurement = measurements[measurementIndex];
+      
+      // For area measurements, ensure we maintain at least 3 points
+      if (measurement.type === 'area' && measurement.points.length <= 3) {
+        toast.error('Eine Flächenmessung benötigt mindestens 3 Punkte.');
+        return prev;
       }
-      return m;
-    }));
-  }, [calculateDistance, calculateHeight, calculateArea]);
-
-  // Dedicated function to create a Length measurement
-  const createLengthMeasurement = useCallback((points: Point[]) => {
-    if (points.length !== 2) return;
-    
-    const value = calculateDistance(points[0], points[1]);
-    const label = formatMeasurement(value, 'length');
-    
-    // Calculate inclination for length measurements
-    const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-    const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-    const inclination = calculateInclination(p1, p2);
-    
-    // Only set inclination if it's above the threshold
-    const finalInclination = Math.abs(inclination) >= MIN_INCLINATION_THRESHOLD ? inclination : undefined;
-    
-    setMeasurements(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        type: 'length',
-        points: [...points],
-        value,
-        label,
-        visible: true,
-        unit: 'm',
-        description: '',
-        inclination: finalInclination // Only store significant inclination
+      
+      // Create a new array of points without the deleted point
+      const newPoints = [...measurement.points];
+      newPoints.splice(pointIndex, 1);
+      
+      // Create updated measurement with new points
+      const updatedMeasurement = { ...measurement, points: newPoints };
+      
+      // Recalculate the measurement based on type
+      if (measurement.type === 'area') {
+        // Recalculate area
+        const newValue = calculateArea(newPoints);
+        
+        // Regenerate segments
+        const newSegments = generateSegments(newPoints);
+        
+        // Calculate average inclination if needed
+        const newInclination = calculateAverageInclination(newSegments);
+        
+        updatedMeasurement.value = newValue;
+        updatedMeasurement.label = formatMeasurement(newValue, 'area');
+        updatedMeasurement.segments = newSegments;
+        updatedMeasurement.inclination = newInclination;
       }
-    ]);
-    
-    // Clear points after creating the measurement
-    setCurrentPoints([]);
-    currentPointsRef.current = [];
-    
-    // Auto-deactivate the tool after measurement is done
-    setActiveMode('none');
-  }, [calculateDistance, calculateInclination]);
-
-  // Dedicated function to create a Height measurement
-  const createHeightMeasurement = useCallback((points: Point[]) => {
-    if (points.length !== 2) return;
-    
-    const value = calculateHeight(points[0], points[1]);
-    const label = formatMeasurement(value, 'height');
-    
-    setMeasurements(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        type: 'height',
-        points: [...points],
-        value,
-        label,
-        visible: true,
-        unit: 'm',
-        description: ''
-      }
-    ]);
-    
-    // Clear points after creating the measurement
-    setCurrentPoints([]);
-    currentPointsRef.current = [];
-    
-    // Auto-deactivate the tool after measurement is done
-    setActiveMode('none');
-  }, [calculateHeight]);
+      // We don't need to handle length and height here as they must have exactly 2 points
+      
+      // Update the measurements array
+      measurements[measurementIndex] = updatedMeasurement;
+      
+      return measurements;
+    });
+  }, [calculateArea, generateSegments, calculateAverageInclination]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -624,4 +569,3 @@ export const useMeasurements = () => {
     calculateSegmentLength
   };
 };
-

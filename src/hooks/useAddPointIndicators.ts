@@ -89,15 +89,19 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       };
       
       // Create plus sign using lines
-      const plusSize = 0.07; // Increased size for better visibility
-      const plusThickness = 0.015; // Add thickness to the plus sign
+      const plusSize = 0.1; // Increased size for better visibility
+      const plusThickness = 0.02; // Add thickness to the plus sign
       
       // Create 3D plus sign using box geometries
       const horizontalGeometry = new THREE.BoxGeometry(plusSize * 2, plusThickness, plusThickness);
       const verticalGeometry = new THREE.BoxGeometry(plusThickness, plusSize * 2, plusThickness);
       
-      // Brighter green color for better visibility
-      const plusMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff44 });
+      // Much brighter green color for better visibility with glow effect
+      const plusMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff44,
+        emissive: 0x00ff44,
+        emissiveIntensity: 1.0
+      });
       
       const horizontalLine = new THREE.Mesh(horizontalGeometry, plusMaterial);
       horizontalLine.position.set(midpoint.x, midpoint.y, midpoint.z);
@@ -105,8 +109,8 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       const verticalLine = new THREE.Mesh(verticalGeometry, plusMaterial);
       verticalLine.position.set(midpoint.x, midpoint.y, midpoint.z);
       
-      // Create a detection sphere (invisible but slightly larger for easier clicking)
-      const sphereGeometry = new THREE.SphereGeometry(plusSize * 1.8, 16, 16);
+      // Create a detection sphere (invisible but even larger for easier clicking)
+      const sphereGeometry = new THREE.SphereGeometry(plusSize * 2, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: 0x00ff00,
         opacity: 0.0,

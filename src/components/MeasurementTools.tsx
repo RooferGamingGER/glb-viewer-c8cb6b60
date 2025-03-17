@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -18,7 +19,7 @@ import {
   clearMeasurementLabels
 } from '@/utils/measurementVisuals';
 
-// Import the new sidebar component
+// Import the sidebar component
 import MeasurementSidebar from './measurement/MeasurementSidebar';
 
 interface MeasurementToolsProps {
@@ -50,6 +51,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,
+    deletePoint,
     undoLastPoint,
     editMeasurementId,
     editingPointIndex,
@@ -276,6 +278,51 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Messung gelöscht');
   };
 
+  const handleDeletePoint = (measurementId: string, pointIndex: number) => {
+    // Find the measurement
+    const measurement = measurements.find(m => m.id === measurementId);
+    
+    if (!measurement) return;
+    
+    // Area measurements need at least 3 points
+    if (measurement.type === 'area' && measurement.points.length <= 3) {
+      toast.error('Flächenmessungen benötigen mindestens 3 Punkte');
+      return;
+    }
+    
+    // Call the delete point function
+    deletePoint(measurementId, pointIndex);
+    
+    // Clear visuals to avoid stale references
+    clearMeasurementVisuals(
+      measurementId,
+      measurementsRef.current,
+      labelsRef.current,
+      segmentLabelsRef.current
+    );
+    
+    // Re-render measurements to update the visuals
+    setTimeout(() => {
+      renderMeasurements(
+        measurementsRef.current, 
+        labelsRef.current, 
+        segmentLabelsRef.current, 
+        measurements, 
+        true
+      );
+      
+      renderEditPoints(
+        editPointsRef.current, 
+        measurements, 
+        editMeasurementId, 
+        editingPointIndex, 
+        true
+      );
+    }, 0);
+    
+    toast.info(`Punkt ${pointIndex + 1} wurde entfernt`);
+  };
+  
   const clearMeasurementVisuals = (
     measurementId: string,
     measurementsGroup: THREE.Group | null,
@@ -436,6 +483,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           toggleMeasurementVisibility={handleToggleMeasurementVisibility}
           handleStartPointEdit={handleStartPointEdit}
           handleDeleteMeasurement={handleDeleteMeasurement}
+          handleDeletePoint={handleDeletePoint}
           updateMeasurement={updateMeasurement}
           editMeasurementId={editMeasurementId}
           editingSegmentId={editingSegmentId}

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,6 +31,7 @@ interface MeasurementSidebarProps {
   toggleMeasurementVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
   editingSegmentId: string | null;
@@ -53,6 +55,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   toggleMeasurementVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
+  handleDeletePoint,
   updateMeasurement,
   editMeasurementId,
   editingSegmentId,
@@ -254,6 +257,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               toggleMeasurementVisibility={toggleMeasurementVisibility}
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
+              handleDeletePoint={handleDeletePoint}
               updateMeasurement={updateMeasurement}
               editMeasurementId={editMeasurementId}
               segmentsOpen={segmentsOpen}

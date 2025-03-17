@@ -14,6 +14,7 @@ interface MeasurementListProps {
   toggleMeasurementVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
   segmentsOpen: Record<string, boolean>;
@@ -27,6 +28,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   toggleMeasurementVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
+  handleDeletePoint,
   updateMeasurement,
   editMeasurementId,
   segmentsOpen,
@@ -54,11 +56,13 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                       toggleMeasurementVisibility={toggleMeasurementVisibility}
                       handleStartPointEdit={handleStartPointEdit}
                       handleDeleteMeasurement={handleDeleteMeasurement}
+                      handleDeletePoint={handleDeletePoint}
                       updateMeasurement={updateMeasurement}
                       editMeasurementId={editMeasurementId}
                       segmentsOpen={segmentsOpen}
                       toggleSegments={toggleSegments}
                       onEditSegment={onEditSegment}
+                      movingPointInfo={movingPointInfo}
                     />
                   ))}
                 </div>
