@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -36,7 +37,7 @@ export const exportMeasurementsToPdf = async (
       }
       .logo-container {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 30px;
       }
       .logo-image {
         max-width: 200px;
@@ -45,18 +46,20 @@ export const exportMeasurementsToPdf = async (
       .company-info {
         text-align: center;
         margin-bottom: 40px;
-        color: #666;
+        color: #333;
+        line-height: 1.6;
       }
       .company-slogan {
         font-style: italic;
-        margin-top: 10px;
-        color: #333;
+        margin-top: 15px;
+        color: #555;
+        font-size: 16px;
       }
       .cover-upper {
-        margin-bottom: 60px;
+        margin-bottom: 70px;
       }
       .cover-lower {
-        margin-top: 60px;
+        margin-top: 70px;
       }
     `;
     document.head.appendChild(styleElement);
@@ -140,7 +143,7 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   // Upper half of cover page - Company logo and info
   const upperHalf = document.createElement('div');
   upperHalf.className = 'cover-upper';
-  upperHalf.style.marginBottom = '60px';
+  upperHalf.style.marginBottom = '70px';
   
   // Logo container
   const logoContainer = document.createElement('div');
@@ -152,21 +155,27 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   logoImage.style.fontSize = '36px';
   logoImage.style.fontWeight = 'bold';
   logoImage.style.color = '#333';
-  logoImage.style.marginBottom = '10px';
-  logoImage.textContent = 'RooferGaming®';
+  logoImage.style.marginBottom = '20px';
+  logoImage.textContent = 'DrohnenGLB by RooferGaming®';
   
   logoContainer.appendChild(logoImage);
   upperHalf.appendChild(logoContainer);
   
-  // Company information section
+  // Company information section with vertical alignment
   const companyInfo = document.createElement('div');
   companyInfo.className = 'company-info';
   
-  const websiteInfo = document.createElement('div');
-  websiteInfo.style.marginBottom = '5px';
-  websiteInfo.style.fontSize = '14px';
-  websiteInfo.textContent = 'GLB Viewer: drohnenglb.de | Drohnenaufmaß: drohnenvermessung-roofergaming.de';
-  companyInfo.appendChild(websiteInfo);
+  const websiteInfo1 = document.createElement('div');
+  websiteInfo1.style.marginBottom = '8px';
+  websiteInfo1.style.fontSize = '14px';
+  websiteInfo1.textContent = 'GLB Viewer: drohnenglb.de';
+  companyInfo.appendChild(websiteInfo1);
+  
+  const websiteInfo2 = document.createElement('div');
+  websiteInfo2.style.marginBottom = '8px';
+  websiteInfo2.style.fontSize = '14px';
+  websiteInfo2.textContent = 'Drohnenaufmaß: drohnenvermessung-roofergaming.de';
+  companyInfo.appendChild(websiteInfo2);
   
   const emailInfo = document.createElement('div');
   emailInfo.style.marginBottom = '15px';
@@ -186,20 +195,20 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   // Cover title - centered
   const coverHeader = document.createElement('div');
   coverHeader.style.textAlign = 'center';
-  coverHeader.style.marginBottom = '40px';
+  coverHeader.style.marginBottom = '50px';
   
   const coverTitle = document.createElement('h1');
   coverTitle.textContent = coverData.title || 'Vermessungsbericht';
   coverTitle.style.fontSize = '28px';
   coverTitle.style.fontWeight = 'bold';
-  coverTitle.style.marginBottom = '10px';
+  coverTitle.style.marginBottom = '15px';
   coverTitle.style.color = '#000000';
   coverHeader.appendChild(coverTitle);
   
   const exportDate = document.createElement('div');
   exportDate.textContent = `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`;
   exportDate.style.fontSize = '14px';
-  exportDate.style.color = '#000000';
+  exportDate.style.color = '#555';
   coverHeader.appendChild(exportDate);
   
   coverPage.appendChild(coverHeader);
@@ -214,6 +223,8 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   infoWrapper.style.width = '100%';
   infoWrapper.style.margin = '0 auto';
   infoWrapper.style.padding = '10px 0';
+  infoWrapper.style.borderTop = '1px solid #eee';
+  infoWrapper.style.paddingTop = '30px';
   
   // Create table for layout with full width
   const infoTable = document.createElement('table');
