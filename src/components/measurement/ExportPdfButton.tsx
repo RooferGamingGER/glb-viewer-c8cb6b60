@@ -88,7 +88,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     }
   };
 
-  // Calculate summary statistics
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
@@ -99,12 +98,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
         <Button 
           variant="outline" 
           size="sm" 
-          className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white w-full" 
+          className="w-full"
           title="Als PDF exportieren"
           disabled={measurements.length === 0}
         >
-          <FileDown className="h-4 w-4" />
-          <span>PDF Export</span>
+          <FileDown className="h-4 w-4 mr-1" />
+          PDF
         </Button>
       </DialogTrigger>
       

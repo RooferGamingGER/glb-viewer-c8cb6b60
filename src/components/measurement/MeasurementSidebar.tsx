@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,7 +10,6 @@ import {
   Undo2, 
   Table, 
   Trash2, 
-  FileDown, 
   Copy,
   Download
 } from 'lucide-react';
@@ -21,6 +19,7 @@ import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import EditingAlert from './EditingAlert';
 import { exportMeasurementsToCSV } from '@/utils/exportUtils';
+import ExportPdfButton from './ExportPdfButton';
 
 interface MeasurementSidebarProps {
   enabled: boolean;
@@ -130,25 +129,27 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           </div>
           
           {measurements.length > 0 && (
-            <div className="flex space-x-2 mt-2">
+            <div className="grid grid-cols-3 gap-2 mt-2">
               <Button
                 variant="outline" 
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={() => setShowTable(!showTable)}
               >
                 <Table className="h-4 w-4 mr-1" />
-                {showTable ? "Liste anzeigen" : "Tabelle anzeigen"}
+                {showTable ? "Liste" : "Tabelle"}
               </Button>
+              
+              <ExportPdfButton measurements={measurements} />
               
               <Button
                 variant="outline" 
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={handleDownload}
               >
                 <Download className="h-4 w-4 mr-1" />
-                CSV Export
+                CSV
               </Button>
             </div>
           )}
