@@ -1,5 +1,6 @@
 
 import { useEffect } from 'react';
+import * as THREE from 'three';
 import { Point } from '@/hooks/useMeasurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
@@ -99,7 +100,7 @@ export const useMeasurementInteraction = (
       clearAddPointIndicators();
       setMovingPointInfo(null);
     }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators]);
+  }, [enabled, clearPreviewGroup, clearAddPointIndicators, setMovingPointInfo]);
 
   return {
     movingPointInfo,
