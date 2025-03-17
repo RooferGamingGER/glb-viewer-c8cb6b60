@@ -102,36 +102,52 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Hide all labels when in editing mode and update labels based on measurement visibility
+  // Improved effect to manage label visibility on edit mode and measurement visibility toggling
   useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
     
-    // Handle label visibility based on editing state and measurement visibility
-    const isEditing = editMeasurementId !== null || movingPointInfo !== null;
+    // Determine if we're in any edit mode (measurement edit, segment edit, or point moving)
+    const isEditing = editMeasurementId !== null || movingPointInfo !== null || editingSegmentId !== null;
     
     // Process all labels in both groups
-    [...labelsRef.current.children, ...segmentLabelsRef.current.children].forEach(label => {
+    const processLabel = (label: THREE.Object3D, isSegmentLabel = false) => {
       if (!label.userData) return;
       
+      // Preview labels are always visible
       if (label.userData.isPreview) {
-        // Preview labels are always visible
         label.visible = true;
-      } else if (isEditing) {
-        // Hide all regular labels during editing
-        label.visible = false;
-      } else {
-        // When not editing, set visibility based on the measurement's visibility state
-        const measurementId = label.userData.measurementId;
-        if (measurementId) {
-          const measurement = measurements.find(m => m.id === measurementId);
-          label.visible = measurement?.visible !== false;
-        } else {
-          // If no measurement ID, default to visible
-          label.visible = true;
-        }
+        return;
       }
+      
+      // During editing, hide all non-preview labels
+      if (isEditing) {
+        label.visible = false;
+        return;
+      }
+      
+      // When not editing, set visibility based on the measurement's visibility state
+      const measurementId = label.userData.measurementId;
+      if (measurementId) {
+        const measurement = measurements.find(m => m.id === measurementId);
+        // Only show label if measurement exists and is visible
+        label.visible = measurement?.visible !== false;
+      } else {
+        // If no measurement ID, default to visible
+        label.visible = true;
+      }
+    };
+    
+    // Process main labels
+    labelsRef.current.children.forEach(label => {
+      processLabel(label);
     });
-  }, [editMeasurementId, movingPointInfo, measurements]);
+    
+    // Process segment labels
+    segmentLabelsRef.current.children.forEach(label => {
+      processLabel(label, true);
+    });
+    
+  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements]);
 
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
@@ -144,21 +160,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         measurements, 
         true
       );
-    } else if (editMeasurementId !== null || movingPointInfo !== null) {
-      // When editing starts, ensure all labels are hidden
-      if (labelsRef.current) {
-        labelsRef.current.children.forEach(child => {
-          if (!child.userData.isPreview) {
-            child.visible = false;
-          }
-        });
-      }
-      
-      if (segmentLabelsRef.current) {
-        segmentLabelsRef.current.children.forEach(child => {
-          child.visible = false;
-        });
-      }
     }
   }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
 
@@ -234,7 +235,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators]);
 
-  // Handle toggling measurement visibility to ensure labels are updated
+  // Enhanced functionality to properly handle label visibility during measurement visibility toggle
   const handleToggleMeasurementVisibility = (id: string) => {
     toggleMeasurementVisibility(id);
     
@@ -243,25 +244,42 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       const measurement = measurements.find(m => m.id === id);
       if (!measurement) return;
       
-      // Update label visibility to match the measurement visibility
-      if (labelsRef.current) {
-        labelsRef.current.children.forEach(label => {
-          if (label.userData && label.userData.measurementId === id) {
-            label.visible = measurement.visible !== false && !editMeasurementId && !movingPointInfo;
+      // Update label visibility to match the measurement visibility for all labels
+      const updateLabelVisibility = (label: THREE.Object3D) => {
+        if (label.userData && label.userData.measurementId === id) {
+          // Only update if not in edit mode
+          if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
+            label.visible = measurement.visible !== false;
+          } else {
+            // During editing, all non-preview labels should remain hidden
+            if (!label.userData.isPreview) {
+              label.visible = false;
+            }
           }
-        });
+        }
+      };
+      
+      // Apply to both label groups
+      if (labelsRef.current) {
+        labelsRef.current.children.forEach(updateLabelVisibility);
       }
       
       if (segmentLabelsRef.current) {
-        segmentLabelsRef.current.children.forEach(label => {
-          if (label.userData && label.userData.measurementId === id) {
-            label.visible = measurement.visible !== false && !editMeasurementId && !movingPointInfo;
+        segmentLabelsRef.current.children.forEach(updateLabelVisibility);
+      }
+      
+      // Also update measurement geometries visibility
+      if (measurementsRef.current) {
+        measurementsRef.current.children.forEach(obj => {
+          if (obj.userData && obj.userData.measurementId === id) {
+            obj.visible = measurement.visible !== false;
           }
         });
       }
     }, 0);
   };
 
+  // ... keep existing code (handleDeleteMeasurement)
   const handleDeleteMeasurement = (id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete) {
@@ -277,6 +295,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Messung gelöscht');
   };
 
+  // ... keep existing code (handleDeletePoint)
   const handleDeletePoint = (measurementId: string, pointIndex: number) => {
     // Find the measurement
     const measurement = measurements.find(m => m.id === measurementId);
@@ -322,6 +341,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info(`Punkt ${pointIndex + 1} wurde entfernt`);
   };
   
+  // ... keep existing code (clearMeasurementVisuals)
   const clearMeasurementVisuals = (
     measurementId: string,
     measurementsGroup: THREE.Group | null,
@@ -353,6 +373,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     clearMeasurementLabels(measurementId, labelsGroup, segmentLabelsGroup);
   };
 
+  // Improved handling of point edit start/end
   const handleStartPointEdit = (id: string) => {
     // If we're already editing this measurement, toggle off
     if (editMeasurementId === id) {
@@ -391,6 +412,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
+  // ... keep existing code (handleCancelEditing)
   const handleCancelEditing = () => {
     cancelEditing();
     setEditingSegmentId(null);
@@ -419,6 +441,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Bearbeitung abgebrochen');
   };
 
+  // ... keep existing code (handleFinalizeMeasurement and handleUndoLastPoint)
   const handleFinalizeMeasurement = () => {
     if (currentPoints.length >= 3) {
       finalizeMeasurement();
@@ -442,8 +465,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
+  // Enhanced clear measurements to ensure all labels are removed
   const handleClearMeasurements = () => {
     clearMeasurements();
+    
+    // Thoroughly clear all visuals
     clearAllVisuals(
       pointsRef.current,
       linesRef.current,

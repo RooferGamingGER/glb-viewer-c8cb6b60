@@ -22,8 +22,8 @@ export const useLabelScaling = (
             // Regular labels use standard scaling
             updateLabelScale(child, camera, 0.5);
             
-            // Force sprite to be always visible
-            child.visible = true;
+            // Do NOT force visibility here - respect the visibility set elsewhere
+            // This was causing labels to remain visible when they should be hidden
             
             // Ensure labels render on top
             child.renderOrder = 100;
@@ -43,8 +43,8 @@ export const useLabelScaling = (
             // Segment labels are made smaller for less visual clutter
             updateLabelScale(child, camera, 0.35);
             
-            // Force sprite to be always visible
-            child.visible = true;
+            // Do NOT force visibility here - respect the visibility set elsewhere
+            // This was causing labels to remain visible when they should be hidden
             
             // Ensure labels render on top
             child.renderOrder = 100;

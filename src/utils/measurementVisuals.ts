@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -572,6 +571,7 @@ export function renderMeasurements(
     const measurement = measurements.find(m => m.id === measurementId);
     
     if (measurement) {
+      // Only show if the measurement exists, is visible, and not in edit mode
       child.visible = measurement.visible !== false && !measurement.editMode;
     } else if (child.userData.isPreview) {
       // Preview labels always visible
@@ -598,6 +598,7 @@ export function renderMeasurements(
     const measurement = measurements.find(m => m.id === measurementId);
     
     if (measurement) {
+      // Only show if the measurement exists, is visible, and not in edit mode
       child.visible = measurement.visible !== false && !measurement.editMode;
     } else {
       // Default to visible

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -83,6 +82,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   };
 
   return (
+    
     <div 
       className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto ${!enabled ? 'translate-x-full' : ''}`}
     >
@@ -152,7 +152,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             </div>
           )}
           
-          {activeMode !== 'none' && (
+          {
             <div className="mt-3 p-2 border border-primary/30 rounded-md bg-primary/5">
               <div className="text-sm font-medium mb-2">
                 {activeMode === 'length' && "Längenmessung aktiv"}
@@ -216,9 +216,10 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
                 </div>
               )}
             </div>
-          )}
+          }
           
-          {(editMeasurementId || editingSegmentId || movingPointInfo) && (
+          {
+            (editMeasurementId || editingSegmentId || movingPointInfo) && (
             <EditingAlert 
               editMeasurementId={editMeasurementId}
               editingSegmentId={editingSegmentId}
