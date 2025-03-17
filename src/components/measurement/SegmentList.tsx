@@ -31,7 +31,7 @@ const SegmentList: React.FC<SegmentListProps> = ({
     >
       <CollapsibleTrigger asChild>
         <Button variant="ghost" size="sm" className="w-full flex justify-between items-center px-2 h-7">
-          <span>Segmente ({segments.length})</span>
+          <span>Teilmessungen ({segments.length})</span>
           {isOpen ? (
             <ChevronDown className="h-3 w-3 ml-1" />
           ) : (
@@ -44,7 +44,7 @@ const SegmentList: React.FC<SegmentListProps> = ({
           {segments.map((segment, index) => (
             <div key={segment.id} className="flex items-center justify-between text-xs border border-border p-2 rounded-md">
               <div>
-                <span className="font-medium">Segment {index + 1}:</span> {segment.label}
+                <span className="font-medium">Teilmessung {index + 1}:</span> {segment.label}
               </div>
               <Button
                 variant="ghost"
@@ -52,9 +52,9 @@ const SegmentList: React.FC<SegmentListProps> = ({
                 className="h-6 w-6"
                 onClick={() => {
                   onEditSegment(segment.id);
-                  toast.info(`Segment ${index + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
+                  toast.info(`Teilmessung ${index + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
                 }}
-                title="Segment verschieben"
+                title="Teilmessung verschieben"
               >
                 <Move className="h-3 w-3" />
               </Button>
