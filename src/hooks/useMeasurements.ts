@@ -21,6 +21,7 @@ export interface Segment {
   points: [Point, Point];
   length: number;
   label?: string;
+  inclination?: number; // Add inclination to segments
 }
 
 export interface Measurement {
@@ -50,6 +51,8 @@ const formatMeasurement = (value: number, type: MeasurementMode): string => {
   // Format length or height measurements
   return `${value.toFixed(2)} m`;
 };
+
+const MIN_INCLINATION_THRESHOLD = 5.0; // Only consider inclinations above 5 degrees
 
 export const useMeasurements = () => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
@@ -165,6 +168,37 @@ export const useMeasurements = () => {
     return inclinationRad * (180 / Math.PI);
   }, []);
 
+  // Calculate average inclination from all segments for area measurements
+  const calculateAverageInclination = useCallback((segments: Segment[]): number | undefined => {
+    if (!segments || segments.length === 0) return undefined;
+    
+    let totalInclination = 0;
+    let segmentsWithSignificantInclination = 0;
+    
+    for (const segment of segments) {
+      const p1 = new THREE.Vector3(segment.points[0].x, segment.points[0].y, segment.points[0].z);
+      const p2 = new THREE.Vector3(segment.points[1].x, segment.points[1].y, segment.points[1].z);
+      
+      // Skip horizontal segments (no inclination)
+      if (Math.abs(p1.y - p2.y) < 0.001) continue;
+      
+      const inclination = calculateInclination(p1, p2);
+      
+      // Only consider inclinations above the minimum threshold
+      if (Math.abs(inclination) >= MIN_INCLINATION_THRESHOLD) {
+        totalInclination += Math.abs(inclination);
+        segmentsWithSignificantInclination++;
+      }
+    }
+    
+    // Only return if we have segments with significant inclination
+    if (segmentsWithSignificantInclination > 0) {
+      return totalInclination / segmentsWithSignificantInclination;
+    }
+    
+    return undefined;
+  }, [calculateInclination]);
+
   const generateSegments = useCallback((points: Point[]): Segment[] => {
     if (points.length < 3) return [];
     
@@ -178,16 +212,22 @@ export const useMeasurements = () => {
       const length = calculateSegmentLength(p1, p2);
       const label = `${length.toFixed(2)} m`;
       
+      // Calculate inclination for each segment
+      const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+      const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+      const inclination = calculateInclination(v1, v2);
+      
       segments.push({
         id: nanoid(),
         points: [p1, p2],
         length,
-        label
+        label,
+        inclination
       });
     }
     
     return segments;
-  }, [calculateSegmentLength]);
+  }, [calculateSegmentLength, calculateInclination]);
 
   const toggleMeasurementVisibility = useCallback((id: string) => {
     setMeasurements(prev => prev.map(m => 
@@ -249,19 +289,29 @@ export const useMeasurements = () => {
           // Recalculate inclination for length measurements
           const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
           const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
-          newInclination = calculateInclination(p1, p2);
+          const calculatedInclination = calculateInclination(p1, p2);
+          
+          // Only set inclination if it's above the threshold
+          newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
+          
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
           newValue = calculateArea(newPoints);
           // Update segments for area measurements
           const newSegments = generateSegments(newPoints);
+          
+          // Calculate average inclination for area if there's meaningful inclination
+          // This will apply the threshold in calculateAverageInclination
+          const avgInclination = calculateAverageInclination(newSegments);
+          
           return {
             ...m,
             points: newPoints,
             value: newValue,
             label: formatMeasurement(newValue, m.type),
-            segments: newSegments
+            segments: newSegments,
+            inclination: avgInclination
           };
         } else {
           newValue = m.value; // Fallback
@@ -276,7 +326,7 @@ export const useMeasurements = () => {
         };
       });
     });
-  }, [calculateDistance, calculateHeight, calculateArea, generateSegments, calculateInclination]);
+  }, [calculateDistance, calculateHeight, calculateArea, generateSegments, calculateInclination, calculateAverageInclination]);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
@@ -340,6 +390,9 @@ export const useMeasurements = () => {
     const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
     const inclination = calculateInclination(p1, p2);
     
+    // Only set inclination if it's above the threshold
+    const finalInclination = Math.abs(inclination) >= MIN_INCLINATION_THRESHOLD ? inclination : undefined;
+    
     setMeasurements(prev => [
       ...prev,
       {
@@ -351,7 +404,7 @@ export const useMeasurements = () => {
         visible: true,
         unit: 'm',
         description: '',
-        inclination // Store inclination
+        inclination: finalInclination // Only store significant inclination
       }
     ]);
     
@@ -408,6 +461,9 @@ export const useMeasurements = () => {
       const label = formatMeasurement(value, 'area');
       const segments = generateSegments(points);
       
+      // Calculate average inclination for area if there's meaningful inclination
+      const avgInclination = calculateAverageInclination(segments);
+      
       setMeasurements(prev => [
         ...prev,
         {
@@ -419,13 +475,14 @@ export const useMeasurements = () => {
           visible: true,
           unit: 'm²',
           description: '',
-          segments
+          segments,
+          inclination: avgInclination
         }
       ]);
       setCurrentPoints([]);
       currentPointsRef.current = [];
     }
-  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement, generateSegments]);
+  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement, generateSegments, calculateAverageInclination]);
 
   const addPoint = useCallback((point: Point) => {
     // If we're in edit mode and have a point selected, update that point
@@ -537,14 +594,12 @@ export const useMeasurements = () => {
     deleteMeasurement,
     deletePoint,
     undoLastPoint,
-    // New editing functionality
     editMeasurementId,
     editingPointIndex,
     startPointEdit,
     updateMeasurementPoint,
     cancelEditing,
     getNearestPointIndex,
-    // Add segment calculation method for external use
     calculateSegmentLength
   };
 };

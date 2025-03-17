@@ -5,8 +5,7 @@ import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgre
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import * as THREE from 'three';
-import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Ruler, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 
@@ -26,11 +25,10 @@ function Loader3D() {
 }
 
 function Model({
-  url,
-  onClick
+  url
 }: {
   url: string;
-  onClick: (event: THREE.Intersection) => void;
+  onClick?: (event: THREE.Intersection) => void;
 }) {
   const { scene } = useGLTF(url);
   const modelRef = useRef<THREE.Group>(null);
@@ -78,6 +76,15 @@ function SceneSetup({
 
   useEffect(() => {
     if (scene && camera) {
+      // Name the groups for easier debugging and filtering
+      scene.traverse(obj => {
+        if (obj instanceof THREE.Group) {
+          if (obj.name === '') {
+            obj.name = "unnamed_group";
+          }
+        }
+      });
+      
       onSceneReady(scene, camera);
     }
   }, [scene, camera, onSceneReady]);
@@ -87,26 +94,22 @@ function SceneSetup({
 
 const ModelCanvas = ({
   fileUrl,
-  onMeasurementClick,
   onSceneReady,
   canvasRef
 }: {
   fileUrl: string;
-  onMeasurementClick: (event: React.MouseEvent) => void;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
-  const [showStats, setShowStats] = useState(false);
-
-  const handleCanvasClick = (event: React.MouseEvent) => {
-    if (onMeasurementClick) {
-      onMeasurementClick(event);
-    }
-  };
-
   return <Canvas shadows style={{
-    background: '#222222'
-  }} onClick={handleCanvasClick} className="w-full h-full" ref={canvasRef}>
+    background: '#222222',
+    position: 'absolute', 
+    top: 0, 
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1
+  }} className="w-full h-full" ref={canvasRef}>
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
@@ -117,11 +120,9 @@ const ModelCanvas = ({
         
         <Environment preset="city" />
         
-        <Model url={fileUrl} onClick={() => {}} />
+        <Model url={fileUrl} />
         
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} rotateSpeed={1} zoomSpeed={1} panSpeed={1} minDistance={0.5} maxDistance={100} />
-        
-        {showStats && <Stats />}
       </Suspense>
     </Canvas>;
 };
@@ -130,13 +131,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
   fileName
 }) => {
-  const isMobile = useIsMobile();
-  const [showStats, setShowStats] = useState(false);
-  const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
-  const [measurementToolsEverEnabled, setMeasurementToolsEverEnabled] = useState(false);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Always enable measurements
+  const [measurementsEnabled] = useState(true);
+  const [measurementToolsEverEnabled] = useState(true);
   
   const { measurements } = useMeasurements();
 
@@ -153,51 +154,26 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     setCamera(newCamera);
   };
 
-  const handleMeasurementClick = (event: React.MouseEvent) => {
-    // Empty handler, kept for compatibility
-  };
-
-  const toggleMeasurements = () => {
-    const newState = !measurementsEnabled;
-    setMeasurementsEnabled(newState);
-    
-    // If this is the first time enabling measurement tools, 
-    // track it so we can open the sidebar
-    if (newState && !measurementToolsEverEnabled) {
-      setMeasurementToolsEverEnabled(true);
-    }
-    
-    toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
-  };
-
-  return <div className="relative w-full h-full">
-      <div className="absolute inset-0 z-0">
-        <ModelCanvas fileUrl={fileUrl} onMeasurementClick={handleMeasurementClick} onSceneReady={handleSceneReady} canvasRef={canvasRef} />
+  return (
+    <div className="relative w-full h-full overflow-hidden">
+      <div className="absolute inset-0">
+        <ModelCanvas 
+          fileUrl={fileUrl} 
+          onSceneReady={handleSceneReady} 
+          canvasRef={canvasRef} 
+        />
       </div>
       
-      <div className="absolute top-4 right-4 flex gap-2 z-10">
-        <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
-          {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
-          <span className="sr-only">{showStats ? 'Statistiken ausblenden' : 'Statistiken einblenden'}</span>
-        </Button>
-        
-        <Button 
-          size="sm" 
-          variant={measurementsEnabled ? "default" : "outline"} 
-          className="glass-button"
-          onClick={toggleMeasurements}
-        >
-          <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
-          <span className="sr-only">{measurementsEnabled ? 'Messwerkzeuge deaktivieren' : 'Messwerkzeuge aktivieren'}</span>
-        </Button>
-      </div>
-      
-      <div className="absolute top-4 left-4 z-10 bg-background/75 px-3 py-1.5 rounded-md text-sm font-medium">
-        {fileName}
-      </div>
-      
-      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} autoOpenSidebar={measurementToolsEverEnabled} />}
-    </div>;
+      {scene && camera && (
+        <MeasurementTools 
+          enabled={measurementsEnabled} 
+          scene={scene} 
+          camera={camera} 
+          autoOpenSidebar={measurementToolsEverEnabled} 
+        />
+      )}
+    </div>
+  );
 };
 
 export default ModelViewer;

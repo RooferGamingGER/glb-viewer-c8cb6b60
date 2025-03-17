@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -125,7 +124,102 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   const aspectRatio = width / height;
   sprite.scale.set(aspectRatio * 0.5, 0.5, 1);
   
+  // Ensure labels are rendered on top
+  sprite.renderOrder = 100;
+  
   return sprite;
+}
+
+/**
+ * Updates an existing text sprite with new text
+ */
+export function updateTextSprite(sprite: THREE.Sprite, newText: string): void {
+  if (!sprite || !(sprite.material instanceof THREE.SpriteMaterial) || !sprite.material.map) {
+    console.error('Invalid sprite or material for update');
+    return;
+  }
+  
+  // Get the original texture
+  const texture = sprite.material.map;
+  
+  // Get the canvas from the texture (if it doesn't exist, we'll create a new one)
+  let canvas = texture.image as HTMLCanvasElement;
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+  }
+  
+  const context = canvas.getContext('2d');
+  if (!context) {
+    console.error('Could not get canvas context');
+    return;
+  }
+  
+  // Clear the canvas
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Get original user data to determine if this is a preview
+  const isPreview = sprite.userData?.isPreview || false;
+  
+  // Background with gradient
+  const bgGradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  bgGradient.addColorStop(0, 'rgba(41, 50, 65, 0.95)');
+  bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.95)');
+  
+  // Create a rounded rectangle for the background
+  const cornerRadius = 12;
+  
+  // Draw the background with rounded corners
+  context.beginPath();
+  context.moveTo(cornerRadius, 0);
+  context.lineTo(canvas.width - cornerRadius, 0);
+  context.quadraticCurveTo(canvas.width, 0, canvas.width, cornerRadius);
+  context.lineTo(canvas.width, canvas.height - cornerRadius);
+  context.quadraticCurveTo(canvas.width, canvas.height, canvas.width - cornerRadius, canvas.height);
+  context.lineTo(cornerRadius, canvas.height);
+  context.quadraticCurveTo(0, canvas.height, 0, canvas.height - cornerRadius);
+  context.lineTo(0, cornerRadius);
+  context.quadraticCurveTo(0, 0, cornerRadius, 0);
+  context.closePath();
+  
+  // Fill with gradient
+  context.fillStyle = bgGradient;
+  context.fill();
+  
+  // Add a subtle border
+  context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  context.lineWidth = 2;
+  context.stroke();
+  
+  // Add inner glow effect
+  const glowWidth = 6;
+  context.shadowBlur = glowWidth;
+  context.shadowColor = isPreview ? 'rgba(180, 100, 255, 0.6)' : 'rgba(45, 125, 255, 0.5)';
+  
+  // Set text style
+  context.font = `bold 48px Inter, Arial, sans-serif`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  
+  // Create text gradient
+  const textGradient = context.createLinearGradient(0, canvas.height/4, 0, canvas.height*3/4);
+  textGradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+  textGradient.addColorStop(1, 'rgba(220, 220, 220, 1.0)');
+  
+  // Draw text with gradient
+  context.fillStyle = textGradient;
+  context.fillText(newText, canvas.width / 2, canvas.height / 2);
+  
+  // Update the texture
+  texture.needsUpdate = true;
+  
+  // Set sprite opacity to ensure visibility
+  sprite.material.opacity = 1.0;
+  sprite.material.transparent = true;
+  sprite.material.depthTest = false;
+  sprite.material.depthWrite = false;
+  sprite.renderOrder = 100;
 }
 
 /**
@@ -191,12 +285,9 @@ export function updateLabelScale(
     );
   }
   
-  // Apply distance-based opacity for labels
+  // Ensure sprite is always visible by setting opacity to 1
   if (sprite.material instanceof THREE.SpriteMaterial) {
-    // Far labels are more transparent, close labels more opaque
-    const baseOpacity = sprite.material.opacity;
-    const distanceOpacity = Math.min(1, Math.max(0.4, 1.2 - (distance * 0.05)));
-    sprite.material.opacity = baseOpacity * distanceOpacity;
+    sprite.material.opacity = 1.0;
   }
 }
 

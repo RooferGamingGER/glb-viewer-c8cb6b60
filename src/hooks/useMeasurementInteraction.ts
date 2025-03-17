@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
@@ -51,20 +52,52 @@ export const useMeasurementInteraction = (
     
     return () => {
       if (previewRef.current && scene) {
+        clearPreviewGroup();
         scene.remove(previewRef.current);
         previewRef.current = null;
       }
     };
   }, [scene]);
 
+  // Function to clear the preview group
+  const clearPreviewGroup = useCallback(() => {
+    if (!previewRef.current) return;
+    
+    while (previewRef.current.children.length > 0) {
+      const child = previewRef.current.children[0];
+      
+      // Dispose of geometries and materials - Fixed TypeScript errors
+      if ('geometry' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.geometry) {
+          meshChild.geometry.dispose();
+        }
+      }
+      
+      if ('material' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.material) {
+          if (Array.isArray(meshChild.material)) {
+            meshChild.material.forEach(mat => mat.dispose());
+          } else {
+            meshChild.material.dispose();
+          }
+        }
+      }
+      
+      previewRef.current.remove(child);
+    }
+  }, []);
+
   // Update preview point visualization
   useEffect(() => {
-    if (!previewRef.current || !previewPoint || !movingPointInfo) return;
+    if (!previewRef.current || !previewPoint || !movingPointInfo) {
+      clearPreviewGroup();
+      return;
+    }
     
     // Clear existing previews
-    while (previewRef.current.children.length > 0) {
-      previewRef.current.remove(previewRef.current.children[0]);
-    }
+    clearPreviewGroup();
     
     // Create preview sphere
     const sphereGeometry = new THREE.SphereGeometry(0.06, 16, 16);
@@ -99,7 +132,7 @@ export const useMeasurementInteraction = (
       line.computeLineDistances();
       previewRef.current.add(line);
     }
-  }, [previewPoint, movingPointInfo, measurements]);
+  }, [previewPoint, movingPointInfo, measurements, clearPreviewGroup]);
 
   // Track the raycaster and mouse position for hover effects
   const updatePreviewPoint = useCallback((event: MouseEvent | TouchEvent) => {
@@ -178,14 +211,17 @@ export const useMeasurementInteraction = (
     
     // Mouse and touch event handlers
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      // Ensure we're enabled and the sidebar is open
       if (!enabled || !open) return;
       
       let clientX, clientY;
       
       if (event instanceof MouseEvent) {
+        // For mouse events
         clientX = event.clientX;
         clientY = event.clientY;
       } else if (event instanceof TouchEvent) {
+        // For touch events
         if (event.touches.length === 0) return;
         clientX = event.touches[0].clientX;
         clientY = event.touches[0].clientY;
@@ -221,103 +257,106 @@ export const useMeasurementInteraction = (
         setMovingPointInfo(null);
         setPreviewPoint(null);
         
+        // Clear preview visuals
+        clearPreviewGroup();
+        
         toast.success(`Punkt ${movingPointInfo.pointIndex + 1} wurde verschoben`);
         return;
       }
       
-      // Check for edit point interactions
+      // Check for edit point interactions - only when in edit mode
       if (editMeasurementId && refs.editPointsRef.current) {
-        const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, false);
+        const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, true);
         
         if (editPointIntersects.length > 0) {
           const intersect = editPointIntersects[0];
           const userData = intersect.object.userData;
           
           if (userData.isEditPoint) {
-            handlers.startPointEdit(userData.measurementId, userData.pointIndex);
-            toast.info(`Messpunkt ${userData.pointIndex + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
-            return;
-          }
-        }
-      }
-      
-      // Check for clicks on measurement points in any type of measurement
-      const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
-      for (const intersect of allSceneIntersects) {
-        if (
-          intersect.object.userData && 
-          (intersect.object.userData.isAreaPoint || 
-           intersect.object.userData.isMeasurementPoint)
-        ) {
-          const userData = intersect.object.userData;
-          
-          // Start movement mode
-          setMovingPointInfo({
-            measurementId: userData.measurementId,
-            pointIndex: userData.pointIndex
-          });
-          
-          // Initialize preview point at the current position
-          const measurement = measurements.find(m => m.id === userData.measurementId);
-          if (measurement) {
-            const point = measurement.points[userData.pointIndex];
-            setPreviewPoint(point);
-          }
-          
-          toast.info(`Punkt ${userData.pointIndex + 1} wird verschoben. Klicken Sie an die neue Position.`);
-          return;
-        }
-      }
-      
-      // Check for segment label interactions
-      if (refs.segmentLabelsRef.current) {
-        const labelIntersects = raycaster.intersectObjects(refs.segmentLabelsRef.current.children, false);
-        
-        if (labelIntersects.length > 0) {
-          const intersect = labelIntersects[0];
-          const userData = intersect.object.userData;
-          
-          if (userData.measurementId && userData.startPointIndex !== undefined) {
+            setMovingPointInfo({
+              measurementId: userData.measurementId,
+              pointIndex: userData.pointIndex
+            });
+            
+            // Initialize preview point at the current position
             const measurement = measurements.find(m => m.id === userData.measurementId);
             if (measurement) {
-              toast.info(`Klicken Sie auf Punkt ${userData.startPointIndex + 1} oder ${userData.endPointIndex + 1}, um das Segment zu verschieben.`);
+              const point = measurement.points[userData.pointIndex];
+              setPreviewPoint(point);
             }
+            
+            toast.info(`Punkt ${userData.pointIndex + 1} wird verschoben. Klicken Sie an die neue Position.`);
             return;
           }
         }
       }
       
-      // General intersections for adding points
-      const intersects = raycaster.intersectObjects(scene.children, true);
-      const validIntersects = filterMeasurementObjects(intersects);
-      
-      if (validIntersects.length > 0) {
-        const intersect = validIntersects[0];
-        const point = {
-          x: intersect.point.x,
-          y: intersect.point.y,
-          z: intersect.point.z
-        };
-        
-        // Handle editing case
-        if (editMeasurementId !== null && editingPointIndex !== null) {
-          handlers.addPoint(point);
-          toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
-          return;
+      // Check for clicks on measurement points but only if we're in edit mode
+      // Otherwise, let the regular point placement logic handle it
+      if (editMeasurementId) {
+        const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
+        for (const intersect of allSceneIntersects) {
+          if (
+            intersect.object.userData && 
+            (intersect.object.userData.isAreaPoint || 
+             intersect.object.userData.isMeasurementPoint)
+          ) {
+            const userData = intersect.object.userData;
+            
+            // Only allow moving points of the measurement being edited
+            if (userData.measurementId === editMeasurementId) {
+              // Start movement mode
+              setMovingPointInfo({
+                measurementId: userData.measurementId,
+                pointIndex: userData.pointIndex
+              });
+              
+              // Initialize preview point at the current position
+              const measurement = measurements.find(m => m.id === userData.measurementId);
+              if (measurement) {
+                const point = measurement.points[userData.pointIndex];
+                setPreviewPoint(point);
+              }
+              
+              toast.info(`Punkt ${userData.pointIndex + 1} wird verschoben. Klicken Sie an die neue Position.`);
+              return;
+            }
+          }
         }
+      }
+      
+      // General intersections for adding points - should work regardless of whether edit mode is active
+      if (activeMode !== 'none') {
+        const intersects = raycaster.intersectObjects(scene.children, true);
+        const validIntersects = filterMeasurementObjects(intersects);
         
-        // Handle adding new measurement points
-        if (activeMode !== 'none') {
+        if (validIntersects.length > 0) {
+          const intersect = validIntersects[0];
+          const point = {
+            x: intersect.point.x,
+            y: intersect.point.y,
+            z: intersect.point.z
+          };
+          
+          // Handle editing case
+          if (editMeasurementId !== null && editingPointIndex !== null) {
+            handlers.addPoint(point);
+            toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
+            return;
+          }
+          
+          // Handle adding new measurement points (should work even if other measurements exist)
           const currentCount = currentPoints.length;
           
           handlers.addPoint(point);
           
-          if (activeMode === 'length' || activeMode === 'height') {
+          if (activeMode === 'length') {
             if (currentCount === 0) {
-              toast.info(`Ersten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
-            } else if (currentCount === 1) {
-              toast.info(`Zweiten Punkt für ${activeMode === 'length' ? 'Längen' : 'Höhen'}messung gesetzt`);
-              toast.success(`${activeMode === 'length' ? 'Längen' : 'Höhen'}messung abgeschlossen`);
+              toast.info("Ersten Punkt für Längenmessung gesetzt");
+            }
+          } else if (activeMode === 'height') {
+            if (currentCount === 0) {
+              toast.info("Ersten Punkt für Höhenmessung gesetzt");
             }
           } else if (activeMode === 'area') {
             if (currentCount === 0) {
@@ -354,13 +393,14 @@ export const useMeasurementInteraction = (
     enabled, scene, camera, open, measurements, currentPoints, activeMode,
     editMeasurementId, editingPointIndex, movingPointInfo, previewPoint,
     handlers.addPoint, handlers.startPointEdit, handlers.updateMeasurementPoint,
-    updatePreviewPoint, filterMeasurementObjects,
+    updatePreviewPoint, filterMeasurementObjects, clearPreviewGroup,
     refs.editPointsRef, refs.segmentLabelsRef
   ]);
 
   return {
     movingPointInfo,
     setMovingPointInfo,
-    previewPoint
+    previewPoint,
+    clearPreviewGroup
   };
 };
