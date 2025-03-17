@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
-import { exportMeasurementsToPdf, PdfExportOptions } from '@/utils/pdfExport';
+import { exportMeasurementsToPdf, PdfExportOptions, CoverPageData } from '@/utils/pdfExport';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -36,11 +42,19 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportOptions, setExportOptions] = useState<PdfExportOptions>({
-    title: 'Messungen',
-    includeDateTime: true,
-    showLogo: true,
     pageSize: 'a4',
     orientation: 'portrait'
+  });
+  
+  const form = useForm<CoverPageData>({
+    defaultValues: {
+      title: 'Vermessungsbericht',
+      companyName: '',
+      projectAddress: '',
+      contactPerson: '',
+      droneDate: new Date().toISOString().split('T')[0],
+      notes: ''
+    }
   });
 
   const handleExport = async () => {
@@ -56,7 +70,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     setTimeout(() => setExportProgress(50), 600);
     
     try {
-      const success = await exportMeasurementsToPdf(measurements, exportOptions);
+      const coverData = form.getValues();
+      const success = await exportMeasurementsToPdf(measurements, exportOptions, coverData);
       setExportProgress(100);
       
       if (success) {
@@ -97,7 +112,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           <span>PDF Export</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Als PDF exportieren</DialogTitle>
           <DialogDescription>
@@ -137,72 +152,133 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           </div>
         )}
         
-        <div className="flex flex-col gap-4 py-4">
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">PDF-Titel</h3>
-            <input
-              type="text"
-              value={exportOptions.title}
-              onChange={(e) => handleOptionChange('title', e.target.value)}
-              className="w-full border border-input bg-background px-3 py-2 text-sm rounded-md"
-              placeholder="Titel des PDFs"
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="includeDateTime" 
-              checked={exportOptions.includeDateTime}
-              onCheckedChange={(checked) => handleOptionChange('includeDateTime', checked)}
-            />
-            <Label htmlFor="includeDateTime">Datum und Uhrzeit anzeigen</Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="showLogo" 
-              checked={exportOptions.showLogo}
-              onCheckedChange={(checked) => handleOptionChange('showLogo', checked)}
-            />
-            <Label htmlFor="showLogo">Logo anzeigen</Label>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Papiergröße</h3>
-            <RadioGroup 
-              value={exportOptions.pageSize} 
-              onValueChange={(value) => handleOptionChange('pageSize', value)}
-              className="flex space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="a4" id="a4" />
-                <Label htmlFor="a4">A4</Label>
+        <Form {...form}>
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">Deckblatt Informationen</h3>
+            <Card>
+              <CardContent className="pt-4 grid gap-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Überschrift</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Vermessungsbericht" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name des Betriebes</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Firma GmbH" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="projectAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Anschrift des Objekts</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Musterstraße 123, 12345 Musterstadt" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="contactPerson"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ansprechpartner</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Max Mustermann" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="droneDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Datum der Drohnenaufnahmen</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bemerkungen</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Zusätzliche Informationen oder Notizen" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+            
+            <Separator />
+            
+            <h3 className="text-sm font-medium">PDF-Einstellungen</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Papiergröße</h4>
+                <RadioGroup 
+                  value={exportOptions.pageSize} 
+                  onValueChange={(value) => handleOptionChange('pageSize', value)}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="a4" id="a4" />
+                    <Label htmlFor="a4">A4</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="letter" id="letter" />
+                    <Label htmlFor="letter">Letter</Label>
+                  </div>
+                </RadioGroup>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="letter" id="letter" />
-                <Label htmlFor="letter">Letter</Label>
-              </div>
-            </RadioGroup>
-          </div>
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Ausrichtung</h3>
-            <RadioGroup 
-              value={exportOptions.orientation} 
-              onValueChange={(value) => handleOptionChange('orientation', value)}
-              className="flex space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="portrait" id="portrait" />
-                <Label htmlFor="portrait">Hochformat</Label>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Ausrichtung</h4>
+                <RadioGroup 
+                  value={exportOptions.orientation} 
+                  onValueChange={(value) => handleOptionChange('orientation', value)}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="portrait" id="portrait" />
+                    <Label htmlFor="portrait">Hochformat</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="landscape" id="landscape" />
+                    <Label htmlFor="landscape">Querformat</Label>
+                  </div>
+                </RadioGroup>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="landscape" id="landscape" />
-                <Label htmlFor="landscape">Querformat</Label>
-              </div>
-            </RadioGroup>
+            </div>
           </div>
-        </div>
+        </Form>
 
         {isExporting && (
           <div className="mb-2">
@@ -213,7 +289,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           </div>
         )}
 
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter className="sm:justify-between mt-4">
           <DialogClose asChild>
             <Button type="button" variant="secondary">
               Abbrechen
