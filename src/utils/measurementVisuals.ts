@@ -333,6 +333,7 @@ export function renderEditPoints(
       
       // Store info in userData
       pointLabel.userData = {
+        isEditPointLabel: true, // Mark as an edit point label
         isPointLabel: true,
         measurementId: measurement.id,
         pointIndex: index,
@@ -558,17 +559,18 @@ export function renderMeasurements(
   // This ensures that all labels are properly hidden during editing
   const anyMeasurementBeingEdited = measurements.some(m => m.editMode);
   
+  // Hide ALL non-preview labels if any measurement is being edited
   labelsRef.children.forEach(child => {
-    const measurementId = child.userData.measurementId;
-    const measurement = measurements.find(m => m.id === measurementId);
-    
-    // If any measurement is being edited, hide all non-preview labels
+    // Always hide non-preview labels during editing
     if (anyMeasurementBeingEdited && !child.userData.isPreview) {
       child.visible = false;
       return;
     }
     
     // Otherwise follow normal visibility rules
+    const measurementId = child.userData.measurementId;
+    const measurement = measurements.find(m => m.id === measurementId);
+    
     if (measurement) {
       child.visible = measurement.visible !== false && !measurement.editMode;
     } else if (child.userData.isPreview) {
@@ -583,17 +585,18 @@ export function renderMeasurements(
     child.renderOrder = 100;
   });
   
+  // Hide ALL segment labels during editing
   segmentLabelsRef.children.forEach(child => {
-    const measurementId = child.userData.measurementId;
-    const measurement = measurements.find(m => m.id === measurementId);
-    
-    // If any measurement is being edited, hide all segment labels
+    // Always hide segment labels during editing
     if (anyMeasurementBeingEdited) {
       child.visible = false;
       return;
     }
     
     // Otherwise follow normal visibility rules
+    const measurementId = child.userData.measurementId;
+    const measurement = measurements.find(m => m.id === measurementId);
+    
     if (measurement) {
       child.visible = measurement.visible !== false && !measurement.editMode;
     } else {

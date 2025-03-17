@@ -15,11 +15,14 @@ const PointEditList: React.FC<PointEditListProps> = ({
   handleDeletePoint,
   movingPointInfo
 }) => {
-  // Only show for area measurements in edit mode with at least 4 points
-  // (need at least 3 points for a valid polygon, so prevent deleting if only 3 remain)
+  // Only show for area measurements in edit mode
   if (measurement.type !== 'area' || !measurement.editMode) {
     return null;
   }
+
+  // We need at least 3 points for a valid polygon
+  const minRequiredPoints = 3;
+  const canDeletePoints = measurement.points.length > minRequiredPoints;
 
   return (
     <div className="mt-2 border border-border/50 rounded-md p-2 bg-secondary/10">
@@ -46,7 +49,7 @@ const PointEditList: React.FC<PointEditListProps> = ({
               className="h-6 w-6"
               onClick={() => handleDeletePoint(measurement.id, index)}
               title={`Punkt ${index + 1} löschen`}
-              disabled={measurement.points.length <= 3}
+              disabled={!canDeletePoints}
             >
               <CircleMinus className="h-3.5 w-3.5 text-destructive" />
             </Button>

@@ -109,7 +109,8 @@ export const useMeasurementEvents = (
         const intersect = editPointIntersects[0];
         const userData = intersect.object.userData;
         
-        if (userData.isEditPoint) {
+        // Check if this is an edit point or an edit point label
+        if (userData.isEditPoint || userData.isEditPointLabel) {
           const measurement = measurements.find(m => m.id === userData.measurementId);
           if (measurement) {
             const point = measurement.points[userData.pointIndex];
