@@ -14,7 +14,7 @@ export interface CoverPageData {
 }
 
 // Base64-encoded logo image for reliable embedding in PDF
-const LOGO_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD8klEQVR4nO1XW2xMQRT9JBJPa0NEUEoVD4KI/BCPxI94WIhI2N1qqe2KiIiERDy70YhHgl/BRkR8LIk/QYgQm1pNqZZ4x0NVVVcpvVp3WmPunVnzuHdm785Upb3JyWZzZ+75zjn3zMwdSfqPLKMbtP4JGO4TaOsRrB/BJLrr+Aa3mwCXnUD5SWD5MWDhYSDL2uu4qcf+M8D4RmDkfUB6ApjytLezFiZidBOQvQd4t0P00/iBz0i8ZOODyNiJXyQX9gKrzzgL6KLdYGCPTM4Kpzd7gOwWIK0FSG0GXNcSL0BmBr19QNk5Z+GHGoCRbLyWw1+jtRDI2QOsPOEsvpTSs/w6m+MHlXQ6+UmcWfGcxLHHyiVcQFN39IG1jwE5LYGKNwyAq8FZ/MQnwNQnWtGO62TjScCt2L8DSIGY8Jze/DYguw3IogbJBDNZfQxYb+FMVNe0fPO9gDfHGK45YpxA/TXA3a417jv8/TDj3UDdDft5rr0KPOoFEd22AKWfQ4uvugCMtWgmmFHxpwXPqcbf/2yTwgLw6IvWcMvdwqSvMMr6aCpWLvcAm18E5n35VWDKs9CcO14BSw4DYxoASrJoBkj8iGYFxPq9FTmcSDYfuQckH7GfY0MvMOoekMQnwE0tfBWm7lQgXoDvPkCzgPk7lSy58Oim3YD4SGB6GxmfwbQT2PjQXjw3sFyI5+K9a54ZZyDdAgqPmhvP8f0Bs/7vP7XvWO5dRdwAujK7zQ1/zg7QCZQ0iiaCwuGqMxFHbwdIthb/0AektrMB+URWnzduXm5WOum0lsAJpLYIRXzI+AQUxOQWWq6KeHIrMLXHeG7eQaUZK5oH5DQJRbyjfLYnrwVpvAIJD5xEk9GC50BNK7DwRXDM+/f2TZdPQOw9gB4gvYXMbxPiea+Ck5nYzHXyOhCLZqJdDaCTSDwc+PuoPRHnHzYWTycgt43EtwniW4R7jfEK4LGJeC6WtHr77VyvENOcbCKcyUqLJoJikYGsrlKJr+OGEWKKr5rFV2vxpefNoZBOXdvMgIl4e/Ec3ZeB8feMxXNhc46LGHxSWJmJWKMQQmOdKyGI52ZLbhLFc3rzFXHnmBDC4m0s3kA8n8ScvaExRPGLLcJKlJ61qeZkKC9EwRdIvL1wI/FVJ41jnK0VcXwLbWQMhyL03hIvQhDfEHrhRvvZeK1wLvrxXfHv3NL9sVLM0JLzgXe7UOPphY+LWcPZeO5vUx7aij87ZL1lhiv4uV/71a1uUyNmIa0H2HYh9mSGK7Y/ANZeoOc3Q2XSf0QCPwFMnCZVVryuPwAAAABJRU5ErkJggg==";
+const LOGO_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD8klEQVR4nO1XW2xMQRT9JBJPa0NEUEoVD4KI/BCPxI94WIhI2N1qqe2KiIiERDy70YhHgl/BRkR8LIl/QYgQm1pNqZZ4x0NVVVcpvVp3WmPunVnzuHdm785Upb3JyWZzZ+75zjn3zMwdSfqPLKMbtP4JGO4TaOsRrB/BJLrr+Aa3mwCXnUD5SWD5MWDhYSDL2uu4qcf+M8D4RmDkfUB6ApjytLezFiZidBOQvQd4t0P00/iBz0i8ZOODyNiJXyQX9gKrzzgL6KLdYGCPTM4Kpzd7gOwWIK0FSG0GXNcSL0BmBr19QNk5Z+GHGoCRbLyWw1+jtRDI2QOsPOEsvpTSs/w6m+MHlXQ6+UmcWfGcxLHHyiVcQFN39IG1jwE5LYGKNwyAq8FZ/MQnwNQnWtGO62TjScCt2L8DSIGY8Jze/DYguw3IogbJBDNZfQxYb+FMVNe0fPO9gDfHGK45YpxA/TXA3a417jv8/TDj3UDdDft5rr0KPOoFEd22AKWfQ4uvugCMtWgmmFHxpwXPqcbf/2yTwgLw6IvWcMvdwqSvMMr6aCpWLvcAm18E5n35VWDKs9CcO14BSw4DYxoASrJoBkj8iGYFxPq9FTmcSDYfuQckH7GfY0MvMOoekMQnwE0tfBWm7lQgXoDvPkCzgPk7lSy58Oim3YD4SGB6GxmfwbQT2PjQXjw3sFyI5+K9a54ZZyDdAgqPmhvP8f0Bs/7vP7XvWO5dRdwAujK7zQ1/zg7QCZQ0iiaCwuGqMxFHbwdIthb/0AektrMB+URWnzduXm5WOum0lsAJpLYIRXzI+AQUxOQWWq6KeHIrMLXHeG7eQaUZK5oH5DQJRbyjfLYnrwVpvAIJD5xEk9GC50BNK7DwRXDM+/f2TZdPQOw9gB4gvYXMbxPiea+Ck5nYzHXyOhCLZqJdDaCTSDwc+PuoPRHnHzYWTycgt43EtwniW4R7jfEK4LGJeC6WtHr77VyvENOcbCKcyUqLJoJikYGsrlKJr+OGEWKKr5rFV2vxpefNoZBOXdvMgIl4e/Ec3ZeB8feMxXNhc46LGHxSWJmJWKMQQmOdKyGI52ZLbhLFc3rzFXHnmBDC4m0s3kA8n8ScvaExRPGLLcJKlJ61qeZkKC9EwRdIvL1wI/FVJ41jnK0VcXwLbWQMhyL03hIvQhDfEHrhRvvZeK1wLvrxXfHv3NL9sVLM0JLzgXe7UOPphY+LWcPZeO5vUx7aij87ZL1lhiv4uV/71a1uUyNmIa0H2HYh9mSGK7Y/ANZeoOc3Q2XSf0QCPwFMnCZVVryuPwAAAABJRU5ErkJggg==";
 
 export const exportMeasurementsToPdf = async (
   measurements: Measurement[],
@@ -33,10 +33,7 @@ export const exportMeasurementsToPdf = async (
     styleElement.textContent = `
       .pdf-page {
         position: relative;
-        padding: 25mm 20mm;
-        margin-bottom: 20mm;
-      }
-      .pdf-page-break {
+        padding: 15mm 15mm 15mm 15mm;
         page-break-after: always;
       }
       .pdf-page-end {
@@ -48,7 +45,7 @@ export const exportMeasurementsToPdf = async (
         margin-bottom: 30px;
       }
       .logo-image {
-        height: 42px;
+        height: 60px;
         width: auto;
       }
       .company-info {
@@ -87,6 +84,25 @@ export const exportMeasurementsToPdf = async (
       }
       .measurement-section {
         margin-bottom: 30px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #eaeaea;
+      }
+      .header-logo {
+        height: 40px;
+        width: auto;
+      }
+      .header-title {
+        flex-grow: 1;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 600;
+        color: #444;
       }
       .measurement-section h2 {
         font-size: 24px;
@@ -149,7 +165,6 @@ export const exportMeasurementsToPdf = async (
       }
       .summary-card {
         background-color: #ffffff;
-        padding: 25px;
         border-radius: 8px;
         margin-bottom: 30px;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
@@ -165,7 +180,7 @@ export const exportMeasurementsToPdf = async (
       .summary-stat {
         background-color: #f9fafc;
         border-radius: 8px;
-        padding: 20px;
+        padding: 15px;
         flex: 1;
         min-width: 120px;
         text-align: center;
@@ -173,7 +188,7 @@ export const exportMeasurementsToPdf = async (
         border: 1px solid #f0f0f0;
       }
       .summary-stat-value {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: bold;
         margin-bottom: 8px;
         color: #333;
@@ -189,19 +204,16 @@ export const exportMeasurementsToPdf = async (
     // Add container to document before building content
     document.body.appendChild(container);
     
-    // Determine which page will be the last to avoid page breaks
-    const hasAreaMeasurements = measurements.filter(m => m.type === 'area').length > 0;
-    
-    // Create cover page WITH page break after
+    // Create cover page
     const coverPage = document.createElement('div');
-    coverPage.className = 'pdf-page pdf-page-break';
+    coverPage.className = 'pdf-page';
     coverPage.appendChild(createCoverPage(coverData));
     container.appendChild(coverPage);
     
-    // Create measurement summary section WITH page break
+    // Create measurement summary section 
     const summaryPage = document.createElement('div');
-    summaryPage.className = 'pdf-page pdf-page-break';
-    summaryPage.appendChild(createMeasurementSummary(measurements));
+    summaryPage.className = 'pdf-page';
+    summaryPage.appendChild(createMeasurementSummary(measurements, coverData.title));
     container.appendChild(summaryPage);
     
     // Create measurement data section - separate by measurement type
@@ -209,8 +221,8 @@ export const exportMeasurementsToPdf = async (
     const lengthMeasurements = measurements.filter(m => m.type === 'length');
     if (lengthMeasurements.length > 0) {
       const lengthPage = document.createElement('div');
-      lengthPage.className = 'pdf-page pdf-page-break';
-      lengthPage.appendChild(createMeasurementTypeSection('length', lengthMeasurements));
+      lengthPage.className = lengthMeasurements.length > 10 ? 'pdf-page' : 'pdf-page-end';
+      lengthPage.appendChild(createMeasurementTypeSection('length', lengthMeasurements, coverData.title));
       container.appendChild(lengthPage);
     }
     
@@ -218,8 +230,8 @@ export const exportMeasurementsToPdf = async (
     const heightMeasurements = measurements.filter(m => m.type === 'height');
     if (heightMeasurements.length > 0) {
       const heightPage = document.createElement('div');
-      heightPage.className = 'pdf-page pdf-page-break';
-      heightPage.appendChild(createMeasurementTypeSection('height', heightMeasurements));
+      heightPage.className = heightMeasurements.length > 10 ? 'pdf-page' : 'pdf-page-end';
+      heightPage.appendChild(createMeasurementTypeSection('height', heightMeasurements, coverData.title));
       container.appendChild(heightPage);
     }
     
@@ -227,33 +239,33 @@ export const exportMeasurementsToPdf = async (
     const areaMeasurements = measurements.filter(m => m.type === 'area');
     if (areaMeasurements.length > 0) {
       const areaPage = document.createElement('div');
-      areaPage.className = 'pdf-page pdf-page-end';
-      areaPage.appendChild(createMeasurementTypeSection('area', areaMeasurements));
+      areaPage.className = 'pdf-page-end';
+      areaPage.appendChild(createMeasurementTypeSection('area', areaMeasurements, coverData.title));
       container.appendChild(areaPage);
     }
     
     // Configure html2pdf options
     const pdfOptions = {
-      margin: [10, 10, 10, 10], // [top, right, bottom, left]
+      margin: [5, 5, 5, 5], // [top, right, bottom, left] in mm
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 1.0 },
       html2canvas: { 
-        scale: 2.5,
+        scale: 2, 
         useCORS: true,
         logging: false,
-        letterRendering: true,
-        windowWidth: 1200 
+        letterRendering: true
       },
       jsPDF: { 
         unit: 'mm', 
         format: 'a4', 
-        orientation: 'portrait'
+        orientation: 'portrait',
+        compress: true
       },
-      pagebreak: { mode: ['css'] }
+      pagebreak: { mode: ['css', 'avoid-all'] }
     };
     
-    // Add a longer delay to ensure DOM rendering is complete
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Add a delay to ensure DOM rendering is complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Generate the PDF
     await html2pdf().from(container).set(pdfOptions).save();
@@ -292,7 +304,8 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   const logoIcon = document.createElement('img');
   logoIcon.className = 'logo-image';
   logoIcon.src = LOGO_BASE64;
-  logoIcon.alt = 'DrohnenGLB Logo';
+  logoIcon.alt = 'Logo';
+  logoIcon.style.maxWidth = '100%';
   logoContainer.appendChild(logoIcon);
   
   coverPage.appendChild(logoContainer);
@@ -361,9 +374,37 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   return coverPage;
 };
 
-const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
+const createHeader = (title: string): HTMLElement => {
+  const header = document.createElement('div');
+  header.className = 'header';
+  
+  // Add logo to header
+  const logoImg = document.createElement('img');
+  logoImg.src = LOGO_BASE64;
+  logoImg.alt = 'Logo';
+  logoImg.className = 'header-logo';
+  header.appendChild(logoImg);
+  
+  // Add title to header
+  const headerTitle = document.createElement('div');
+  headerTitle.className = 'header-title';
+  headerTitle.textContent = title || 'Vermessungsbericht';
+  header.appendChild(headerTitle);
+  
+  // Add empty div for balance
+  const spacer = document.createElement('div');
+  spacer.style.width = '40px'; // Match logo width
+  header.appendChild(spacer);
+  
+  return header;
+};
+
+const createMeasurementSummary = (measurements: Measurement[], title: string): HTMLElement => {
   const summarySection = document.createElement('div');
   summarySection.className = 'measurement-section';
+  
+  // Add header
+  summarySection.appendChild(createHeader(title));
   
   // Create section title
   const sectionTitle = document.createElement('h2');
@@ -373,6 +414,7 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
   // Create summary card
   const summaryCard = document.createElement('div');
   summaryCard.className = 'summary-card';
+  summaryCard.style.padding = '20px';
   
   // Filter measurements by type
   const lengthMeasurements = measurements.filter(m => m.type === 'length');
@@ -382,7 +424,7 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
   // Create summary text
   const summaryText = document.createElement('p');
   summaryText.style.margin = '0 0 20px 0';
-  summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen, die mit DrohnenGLB erstellt wurden.`;
+  summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen.`;
   summaryCard.appendChild(summaryText);
   
   // Create summary stats
@@ -488,16 +530,19 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
   return summarySection;
 };
 
-const createMeasurementTypeSection = (type: string, measurements: Measurement[]): HTMLElement => {
+const createMeasurementTypeSection = (type: string, measurements: Measurement[], title: string): HTMLElement => {
   const section = document.createElement('div');
   section.className = 'measurement-section';
   
+  // Add header
+  section.appendChild(createHeader(title));
+  
   // Create title based on measurement type
-  const title = document.createElement('h2');
-  title.textContent = type === 'length' ? 'Längenmessungen' : 
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = type === 'length' ? 'Längenmessungen' : 
                       type === 'height' ? 'Höhenmessungen' : 
                       'Flächenmessungen';
-  section.appendChild(title);
+  section.appendChild(sectionTitle);
   
   // Create description based on type
   const description = document.createElement('p');
@@ -576,8 +621,9 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[])
   table.appendChild(tableBody);
   section.appendChild(table);
   
-  // For area measurements, add segments tables
-  if (type === 'area') {
+  // For area measurements, add segments tables if they have less than 10 measurements
+  // to avoid creating too many pages
+  if (type === 'area' && measurements.length < 10) {
     measurements.forEach((measurement, mIndex) => {
       if (measurement.segments && measurement.segments.length > 0) {
         const segmentsTitle = document.createElement('h3');
