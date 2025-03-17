@@ -98,11 +98,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       
       <div className="text-sm mb-1">
         <strong>Wert:</strong> {measurement.label}
-        {(measurement.type === 'length' || measurement.type === 'area') && 
-         measurement.inclination !== undefined && (
+        {/* Nur für Längenmessungen die Neigung anzeigen */}
+        {measurement.type === 'length' && measurement.inclination !== undefined && (
           <span className="ml-2">
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
-            {measurement.type === 'area' && " Ø"}
           </span>
         )}
       </div>

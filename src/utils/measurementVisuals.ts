@@ -539,11 +539,8 @@ export function renderMeasurements(
               // Offset midpoint slightly to avoid overlap with lines
               midpoint.y += 0.05;
               
-              // Include segment inclination in label if available and significant
-              let segmentLabelText = segment.label || "";
-              if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
-                segmentLabelText += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
-              }
+              // Entferne Neigungs-Info aus dem Segment-Label für Flächenmessungen
+              const segmentLabelText = segment.label || "";
               
               // Update the label text and position
               updateTextSprite(segmentLabel, segmentLabelText);
@@ -558,55 +555,58 @@ export function renderMeasurements(
   // Check if any measurement is being edited
   const anyMeasurementBeingEdited = measurements.some(m => m.editMode);
   
-  // Hide ALL labels during editing (both regular and segment labels)
-  labelsRef.children.forEach(child => {
-    // Always hide non-preview labels during editing
-    if (anyMeasurementBeingEdited && !child.userData.isPreview) {
+  // Synchronisierte Sichtbarkeits-Logik für Haupt- und Segment-Labels
+  const updateLabelVisibility = (
+    child: THREE.Object3D, 
+    isPreview: boolean, 
+    measurementId: string | undefined
+  ) => {
+    // Immer ausblenden während der Bearbeitung
+    if (anyMeasurementBeingEdited && !isPreview) {
       child.visible = false;
       return;
     }
     
-    // Otherwise follow normal visibility rules
-    const measurementId = child.userData.measurementId;
-    const measurement = measurements.find(m => m.id === measurementId);
-    
-    if (measurement) {
-      // Only show if the measurement exists, is visible, and not in edit mode
-      child.visible = measurement.visible !== false && !measurement.editMode;
-    } else if (child.userData.isPreview) {
-      // Preview labels always visible
+    if (measurementId) {
+      const measurement = measurements.find(m => m.id === measurementId);
+      if (measurement) {
+        // Nur anzeigen, wenn die Messung existiert, sichtbar ist und nicht bearbeitet wird
+        child.visible = measurement.visible !== false && !measurement.editMode;
+      } else if (isPreview) {
+        // Vorschau-Labels immer sichtbar
+        child.visible = true;
+      } else {
+        // Standard: sichtbar
+        child.visible = true;
+      }
+    } else if (isPreview) {
+      // Vorschau-Labels immer sichtbar
       child.visible = true;
     } else {
-      // Default to visible
+      // Standard: sichtbar
       child.visible = true;
     }
     
-    // Ensure high render order
+    // Hohe Render-Ordnung sicherstellen
     child.renderOrder = 100;
+  };
+  
+  // Haupt-Labels aktualisieren
+  labelsRef.children.forEach(child => {
+    updateLabelVisibility(
+      child, 
+      child.userData.isPreview || false,
+      child.userData.measurementId
+    );
   });
   
-  // Hide ALL segment labels during editing
+  // Segment-Labels aktualisieren
   segmentLabelsRef.children.forEach(child => {
-    // Always hide segment labels during editing
-    if (anyMeasurementBeingEdited) {
-      child.visible = false;
-      return;
-    }
-    
-    // Otherwise follow normal visibility rules
-    const measurementId = child.userData.measurementId;
-    const measurement = measurements.find(m => m.id === measurementId);
-    
-    if (measurement) {
-      // Only show if the measurement exists, is visible, and not in edit mode
-      child.visible = measurement.visible !== false && !measurement.editMode;
-    } else {
-      // Default to visible
-      child.visible = true;
-    }
-    
-    // Ensure high render order
-    child.renderOrder = 100;
+    updateLabelVisibility(
+      child, 
+      false, // Segment-Labels sind nie Vorschau-Labels
+      child.userData.measurementId
+    );
   });
 }
 

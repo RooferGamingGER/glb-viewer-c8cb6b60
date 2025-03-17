@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
@@ -474,13 +473,11 @@ export const useMeasurements = () => {
         // Regenerate segments
         const newSegments = generateSegments(newPoints);
         
-        // Calculate average inclination if needed
-        const newInclination = calculateAverageInclination(newSegments);
-        
+        // Setze keine Neigung für Flächenmessungen
         updatedMeasurement.value = newValue;
         updatedMeasurement.label = formatMeasurement(newValue, 'area');
         updatedMeasurement.segments = newSegments;
-        updatedMeasurement.inclination = newInclination;
+        updatedMeasurement.inclination = undefined; // Entferne die Neigung explizit
       }
       // We don't need to handle length and height here as they must have exactly 2 points
       
@@ -489,7 +486,7 @@ export const useMeasurements = () => {
       
       return measurements;
     });
-  }, [calculateArea, generateSegments, calculateAverageInclination]);
+  }, [calculateArea, generateSegments]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -519,6 +516,7 @@ export const useMeasurements = () => {
           unit: 'm²',
           description: '',
           segments
+          // Keine Neigung für Flächenmessungen
         }
       ]);
       setCurrentPoints([]);

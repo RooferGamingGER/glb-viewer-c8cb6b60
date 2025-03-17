@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -102,7 +103,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  // Improved effect to manage label visibility on edit mode and measurement visibility toggling
+  // Verbesserte Behandlung der Label-Sichtbarkeit
   useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
     
@@ -235,69 +236,70 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators]);
 
-  // Enhanced functionality to properly handle label visibility during measurement visibility toggle
+  // Verbesserte Funktion für Sichtbarkeits-Toggle 
   const handleToggleMeasurementVisibility = (id: string) => {
+    // Zuerst den Zustand aktualisieren
     toggleMeasurementVisibility(id);
     
-    // Find the measurement to get its new visibility state
-    setTimeout(() => {
-      const measurement = measurements.find(m => m.id === id);
-      if (!measurement) return;
-      
-      // Update all visual elements for this measurement
-      const isVisible = measurement.visible !== false;
-      
-      // Update measurement geometries visibility
-      if (measurementsRef.current) {
-        measurementsRef.current.children.forEach(obj => {
-          if (obj.userData && obj.userData.measurementId === id) {
-            obj.visible = isVisible;
+    // Finde die Messung, um ihren neuen Sichtbarkeits-Zustand zu erhalten
+    const measurement = measurements.find(m => m.id === id);
+    if (!measurement) return;
+    
+    // Bestimme den neuen Sichtbarkeits-Zustand
+    const isVisible = measurement.visible !== false;
+    
+    // Aktualisiere die Sichtbarkeit aller visuellen Elemente dieser Messung
+    
+    // Aktualisiere die Geometrie-Sichtbarkeit
+    if (measurementsRef.current) {
+      measurementsRef.current.children.forEach(obj => {
+        if (obj.userData && obj.userData.measurementId === id) {
+          obj.visible = isVisible;
+        }
+      });
+    }
+    
+    // Aktualisiere die Haupt-Label-Sichtbarkeit
+    if (labelsRef.current) {
+      labelsRef.current.children.forEach(label => {
+        if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
+          // Nur aktualisieren, wenn nicht im Bearbeitungsmodus
+          if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
+            label.visible = isVisible;
           }
-        });
-      }
-      
-      // Update main label visibility
-      if (labelsRef.current) {
-        labelsRef.current.children.forEach(label => {
-          if (label.userData && label.userData.measurementId === id) {
-            // Only update if not in edit mode
-            if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
-              label.visible = isVisible;
-            }
+        }
+      });
+    }
+    
+    // Aktualisiere die Segment-Label-Sichtbarkeit
+    if (segmentLabelsRef.current) {
+      segmentLabelsRef.current.children.forEach(label => {
+        if (label.userData && label.userData.measurementId === id) {
+          // Nur aktualisieren, wenn nicht im Bearbeitungsmodus
+          if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
+            label.visible = isVisible;
           }
-        });
-      }
-      
-      // Update segment label visibility
-      if (segmentLabelsRef.current) {
-        segmentLabelsRef.current.children.forEach(label => {
-          if (label.userData && label.userData.measurementId === id) {
-            // Only update if not in edit mode
-            if (!editMeasurementId && !movingPointInfo && !editingSegmentId) {
-              label.visible = isVisible;
-            }
-          }
-        });
-      }
-      
-      // Update points visibility
-      if (pointsRef.current) {
-        pointsRef.current.children.forEach(point => {
-          if (point.userData && point.userData.measurementId === id) {
-            point.visible = isVisible;
-          }
-        });
-      }
-      
-      // Update lines visibility
-      if (linesRef.current) {
-        linesRef.current.children.forEach(line => {
-          if (line.userData && line.userData.measurementId === id) {
-            line.visible = isVisible;
-          }
-        });
-      }
-    }, 0);
+        }
+      });
+    }
+    
+    // Aktualisiere die Punkte-Sichtbarkeit
+    if (pointsRef.current) {
+      pointsRef.current.children.forEach(point => {
+        if (point.userData && point.userData.measurementId === id) {
+          point.visible = isVisible;
+        }
+      });
+    }
+    
+    // Aktualisiere die Linien-Sichtbarkeit
+    if (linesRef.current) {
+      linesRef.current.children.forEach(line => {
+        if (line.userData && line.userData.measurementId === id) {
+          line.visible = isVisible;
+        }
+      });
+    }
   };
 
   const handleDeleteMeasurement = (id: string) => {
@@ -315,23 +317,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toast.info('Messung gelöscht');
   };
 
-  // Enhanced handleDeletePoint to immediately update visuals
+  // Verbesserte handleDeletePoint-Funktion für korrekte visuelle Aktualisierung
   const handleDeletePoint = (measurementId: string, pointIndex: number) => {
-    // Find the measurement
+    // Finde die Messung
     const measurement = measurements.find(m => m.id === measurementId);
     
     if (!measurement) return;
     
-    // Area measurements need at least 3 points
+    // Flächenmessungen benötigen mindestens 3 Punkte
     if (measurement.type === 'area' && measurement.points.length <= 3) {
       toast.error('Flächenmessungen benötigen mindestens 3 Punkte');
       return;
     }
     
-    // Call the delete point function
+    // Rufe die Punkt-Löschfunktion auf
     deletePoint(measurementId, pointIndex);
     
-    // Clear only visuals for the specific measurement to avoid stale references
+    // Lösche visuelle Elemente nur für die spezifische Messung
     clearMeasurementVisuals(
       measurementId,
       measurementsRef.current,
@@ -339,30 +341,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       segmentLabelsRef.current
     );
     
-    // Immediately re-render the modified measurement
-    const updatedMeasurement = measurements.find(m => m.id === measurementId);
-    if (updatedMeasurement) {
-      // Force an immediate render of the updated measurement
-      setTimeout(() => {
-        renderMeasurements(
-          measurementsRef.current, 
-          labelsRef.current, 
-          segmentLabelsRef.current, 
-          measurements, 
-          true
-        );
-        
-        // If in edit mode, also update edit points
-        if (editMeasurementId) {
-          renderEditPoints(
-            editPointsRef.current, 
-            measurements, 
-            editMeasurementId, 
-            null, // Reset point selection after deletion
-            true
-          );
-        }
-      }, 0);
+    // Jetzt sofort die aktualisierte Messung neu rendern
+    renderMeasurements(
+      measurementsRef.current, 
+      labelsRef.current, 
+      segmentLabelsRef.current, 
+      measurements, 
+      true
+    );
+    
+    // Wenn im Bearbeitungsmodus, auch die Bearbeitungspunkte aktualisieren
+    if (editMeasurementId === measurementId) {
+      renderEditPoints(
+        editPointsRef.current, 
+        measurements, 
+        editMeasurementId, 
+        null, // Punktauswahl zurücksetzen nach Löschung
+        true
+      );
     }
     
     toast.info(`Punkt ${pointIndex + 1} wurde entfernt`);
@@ -399,21 +395,21 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     clearMeasurementLabels(measurementId, labelsGroup, segmentLabelsGroup);
   };
 
-  // Improved handling of point edit start/end
+  // Verbesserte Behandlung von Punktbearbeitung Start/Ende
   const handleStartPointEdit = (id: string) => {
-    // If we're already editing this measurement, toggle off
+    // Wenn wir bereits diese Messung bearbeiten, umschalten
     if (editMeasurementId === id) {
       cancelEditing();
       toast.info('Punktbearbeitung beendet');
     } else {
-      // If we're starting to edit a new measurement, clear any existing editing state
+      // Wenn wir beginnen, eine neue Messung zu bearbeiten, bereinige vorherigen Bearbeitungszustand
       if (editMeasurementId) {
         cancelEditing();
       }
       
       toggleEditMode(id);
       
-      // Different messages based on measurement type
+      // Unterschiedliche Meldungen basierend auf dem Messungstyp
       const measurement = measurements.find(m => m.id === id);
       if (measurement && measurement.type === 'area') {
         toast.info('Klicken Sie auf einen Punkt zum Verschieben oder auf ein "+" Symbol zum Hinzufügen eines Punktes');
@@ -421,7 +417,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         toast.info('Klicken Sie auf einen Punkt, um ihn zu verschieben');
       }
       
-      // Hide ALL measurement labels during editing - both main and segment labels
+      // Verstecke ALLE Messungslabels während der Bearbeitung - sowohl Haupt- als auch Segment-Labels
       if (labelsRef.current) {
         labelsRef.current.children.forEach(label => {
           if (!label.userData.isPreview) {
@@ -443,7 +439,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setEditingSegmentId(null);
     setMovingPointInfo(null);
     
-    // Clear any preview visuals
+    // Lösche Vorschau-Darstellungen
     if (clearPreviewGroup) {
       clearPreviewGroup();
     }
@@ -452,16 +448,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       clearAddPointIndicators();
     }
     
-    // Re-render measurements to ensure labels are properly displayed
-    setTimeout(() => {
-      renderMeasurements(
-        measurementsRef.current, 
-        labelsRef.current, 
-        segmentLabelsRef.current, 
-        measurements, 
-        true
-      );
-    }, 10);
+    // Messungen neu rendern, um sicherzustellen, dass Labels korrekt angezeigt werden
+    renderMeasurements(
+      measurementsRef.current, 
+      labelsRef.current, 
+      segmentLabelsRef.current, 
+      measurements, 
+      true
+    );
     
     toast.info('Bearbeitung abgebrochen');
   };
@@ -489,11 +483,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  // Enhanced clear measurements to ensure all labels are removed
+  // Verbesserte clearMeasurements-Funktion zur sichergestellten Entfernung aller Labels
   const handleClearMeasurements = () => {
     clearMeasurements();
     
-    // Thoroughly clear all visuals
+    // Gründliches Löschen aller visuellen Elemente
     clearAllVisuals(
       pointsRef.current,
       linesRef.current,
@@ -503,7 +497,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       segmentLabelsRef.current
     );
     
-    // Also clear any preview visuals
+    // Lösche auch Vorschau-Darstellungen
     if (clearPreviewGroup) {
       clearPreviewGroup();
     }
