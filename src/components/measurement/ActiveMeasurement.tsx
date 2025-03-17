@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   X
 } from 'lucide-react';
-import { Point } from '@/hooks/useMeasurements';
+import { Point, MeasurementMode } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 
 interface ActiveMeasurementProps {
-  activeMode: string;
+  activeMode: MeasurementMode;
   currentPoints: Point[];
   handleFinalizeMeasurement: () => void;
   handleUndoLastPoint: () => void;
@@ -28,12 +28,26 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  if (activeMode === 'none' || currentPoints.length === 0) return null;
+  // Don't render anything if no measurement tool is active or if there are no points
+  if (activeMode === 'none') return null;
   
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Aktive Messung</SidebarGroupLabel>
       <SidebarGroupContent>
+        <div className="mb-2">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">
+              {activeMode === 'length' && "Längenmessung"}
+              {activeMode === 'height' && "Höhenmessung"}
+              {activeMode === 'area' && "Flächenmessung"}
+            </div>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+              {currentPoints.length} Punkte
+            </span>
+          </div>
+        </div>
+
         {/* Show the finalize button only for area measurements with 3+ points */}
         {activeMode === 'area' && currentPoints.length >= 3 && (
           <Button 
@@ -42,7 +56,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
             onClick={handleFinalizeMeasurement}
           >
             <CheckCircle2 className="h-4 w-4 mr-2" />
-            Messung abschließen ({currentPoints.length} Punkte)
+            Messung abschließen
           </Button>
         )}
         
@@ -67,18 +81,20 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
           </Button>
         </div>
         
-        <div className="mt-3">
-          <p className="text-xs text-muted-foreground mb-1">Messpunkte ({currentPoints.length}):</p>
-          <div className="space-y-1 max-h-32 overflow-y-auto pl-2 pr-1">
-            {currentPoints.map((point, idx) => (
-              <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
-                <span>
-                  Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
-                </span>
-              </div>
-            ))}
+        {currentPoints.length > 0 && (
+          <div className="mt-3">
+            <p className="text-xs text-muted-foreground mb-1">Messpunkte:</p>
+            <div className="space-y-1 max-h-32 overflow-y-auto pl-2 pr-1">
+              {currentPoints.map((point, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
+                  <span>
+                    Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </SidebarGroupContent>
     </SidebarGroup>
   );

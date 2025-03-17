@@ -36,42 +36,29 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   onEditSegment,
   movingPointInfo
 }) => {
-  if (measurements.length === 0 && !editMeasurementId) return null;
+  if (!measurements || measurements.length === 0 && !editMeasurementId) return null;
   
   return (
-    <SidebarGroup className="flex-1 flex flex-col min-h-0">
-      <Accordion type="single" collapsible defaultValue="measurements">
-        <AccordionItem value="measurements" className="border-0">
-          <AccordionTrigger className="py-2 px-1 font-medium">
-            Messungen ({measurements.length})
-          </AccordionTrigger>
-          <AccordionContent>
-            <SidebarGroupContent className="flex-1 flex flex-col min-h-0">
-              <ScrollArea className="flex-1 max-h-[calc(100vh-400px)]">
-                <div className="pr-2">
-                  {measurements.map((measurement) => (
-                    <MeasurementItem
-                      key={measurement.id}
-                      measurement={measurement}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
-            </SidebarGroupContent>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </SidebarGroup>
+    <div className="flex-1 flex flex-col min-h-0 w-full">
+      <div className="pr-2">
+        {measurements.map((measurement) => (
+          <MeasurementItem
+            key={measurement.id}
+            measurement={measurement}
+            toggleMeasurementVisibility={toggleMeasurementVisibility}
+            handleStartPointEdit={handleStartPointEdit}
+            handleDeleteMeasurement={handleDeleteMeasurement}
+            handleDeletePoint={handleDeletePoint}
+            updateMeasurement={updateMeasurement}
+            editMeasurementId={editMeasurementId}
+            segmentsOpen={segmentsOpen}
+            toggleSegments={toggleSegments}
+            onEditSegment={onEditSegment}
+            movingPointInfo={movingPointInfo}
+          />
+        ))}
+      </div>
+    </div>
   );
 };
 

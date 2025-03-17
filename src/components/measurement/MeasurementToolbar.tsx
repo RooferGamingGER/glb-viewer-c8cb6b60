@@ -6,7 +6,7 @@ import {
   Square, 
   Trash2
 } from 'lucide-react';
-import { MeasurementMode } from '@/hooks/useMeasurements';
+import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -26,7 +26,7 @@ interface MeasurementToolbarProps {
   visible: boolean;
   setVisible: (visible: boolean) => void;
   handleClearMeasurements: () => void;
-  measurements: any[];
+  measurements: Measurement[];
 }
 
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
@@ -101,8 +101,11 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 </SidebarMenuItem>
               </SidebarMenu>
               
-              {measurements.length > 0 && (
-                <div className="flex mt-4 justify-between">
+              <div className="flex flex-col gap-2 mt-4">
+                {/* Correctly pass measurements to ExportPdfButton */}
+                <ExportPdfButton measurements={measurements} />
+                
+                {measurements.length > 0 && (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -113,15 +116,8 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                     <Trash2 className="h-4 w-4 mr-2" />
                     Alle löschen
                   </Button>
-                </div>
-              )}
-              
-              {/* PDF Export Button */}
-              {measurements.length > 0 && (
-                <div className="mt-4">
-                  <ExportPdfButton measurements={measurements} />
-                </div>
-              )}
+                )}
+              </div>
             </SidebarGroupContent>
           </AccordionContent>
         </AccordionItem>

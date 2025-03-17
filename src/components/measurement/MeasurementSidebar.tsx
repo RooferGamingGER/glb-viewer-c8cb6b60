@@ -10,7 +10,6 @@ import {
   Undo2, 
   Table, 
   Trash2, 
-  FileDown, 
   Copy,
   Download
 } from 'lucide-react';
@@ -20,6 +19,7 @@ import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import EditingAlert from './EditingAlert';
 import { exportMeasurementsToCSV } from '@/utils/exportUtils';
+import ExportPdfButton from './ExportPdfButton';
 
 interface MeasurementSidebarProps {
   enabled: boolean;
@@ -82,12 +82,12 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   };
 
   return (
-    
     <div 
-      className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto ${!enabled ? 'translate-x-full' : ''}`}
+      className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
     >
-      <div className="flex flex-col h-full">
-        <div className="p-3 border-b border-border/50">
+      {/* Fixed Header - Tools Section */}
+      <div className="flex-shrink-0 border-b border-border/50">
+        <div className="p-3">
           <div className="text-lg font-medium mb-2">Messwerkzeuge</div>
           
           <div className="flex space-x-2">
@@ -129,31 +129,35 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           </div>
           
           {measurements.length > 0 && (
-            <div className="flex space-x-2 mt-2">
+            <div className="grid grid-cols-3 gap-2 mt-2">
               <Button
                 variant="outline" 
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={() => setShowTable(!showTable)}
               >
                 <Table className="h-4 w-4 mr-1" />
-                {showTable ? "Liste anzeigen" : "Tabelle anzeigen"}
+                {showTable ? "Liste" : "Tabelle"}
               </Button>
+              
+              <ExportPdfButton measurements={measurements} />
               
               <Button
                 variant="outline" 
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={handleDownload}
               >
                 <Download className="h-4 w-4 mr-1" />
-                CSV Export
+                CSV
               </Button>
             </div>
           )}
-          
-          {
-            <div className="mt-3 p-2 border border-primary/30 rounded-md bg-primary/5">
+        </div>
+        
+        {activeMode !== 'none' && (
+          <div className="p-3 pb-0">
+            <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
               <div className="text-sm font-medium mb-2">
                 {activeMode === 'length' && "Längenmessung aktiv"}
                 {activeMode === 'height' && "Höhenmessung aktiv"}
@@ -216,10 +220,12 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
                 </div>
               )}
             </div>
-          }
-          
-          {
-            (editMeasurementId || editingSegmentId || movingPointInfo) && (
+          </div>
+        )}
+        
+        {
+          (editMeasurementId || editingSegmentId || movingPointInfo) && (
+          <div className="p-3 pb-0">
             <EditingAlert 
               editMeasurementId={editMeasurementId}
               editingSegmentId={editingSegmentId}
@@ -227,52 +233,59 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               handleCancelEditing={handleCancelEditing}
               editingAreaMeasurement={editingAreaMeasurement}
             />
+          </div>
+        )}
+      </div>
+      
+      {/* Messungsliste - Scrollbar Section */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Fixed title bar for measurements */}
+        <div className="flex-shrink-0 p-3 border-t border-b border-border/50 flex justify-between items-center">
+          <div className="text-base font-medium">
+            {showTable ? "Messungen (Tabelle)" : "Messungen"}
+          </div>
+          
+          {measurements.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2"
+              onClick={handleClearMeasurements}
+              disabled={!!editMeasurementId}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Alle löschen
+            </Button>
           )}
         </div>
         
-        <ScrollArea className="flex-1 p-3">
-          <div className="mb-3 flex justify-between items-center">
-            <div className="text-base font-medium">
-              {showTable ? "Messungen (Tabelle)" : "Messungen"}
-            </div>
+        {/* Scrollable content area */}
+        <ScrollArea className="flex-1 overflow-auto">
+          <div className="p-3">
+            {showTable ? (
+              <MeasurementTable measurements={measurements} />
+            ) : (
+              <MeasurementList 
+                measurements={measurements}
+                toggleMeasurementVisibility={toggleMeasurementVisibility}
+                handleStartPointEdit={handleStartPointEdit}
+                handleDeleteMeasurement={handleDeleteMeasurement}
+                handleDeletePoint={handleDeletePoint}
+                updateMeasurement={updateMeasurement}
+                editMeasurementId={editMeasurementId}
+                segmentsOpen={segmentsOpen}
+                toggleSegments={toggleSegments}
+                onEditSegment={setEditingSegmentId}
+                movingPointInfo={movingPointInfo}
+              />
+            )}
             
-            {measurements.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2"
-                onClick={handleClearMeasurements}
-                disabled={!!editMeasurementId}
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Alle löschen
-              </Button>
+            {measurements.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                Keine Messungen vorhanden
+              </div>
             )}
           </div>
-          
-          {showTable ? (
-            <MeasurementTable measurements={measurements} />
-          ) : (
-            <MeasurementList 
-              measurements={measurements}
-              toggleMeasurementVisibility={toggleMeasurementVisibility}
-              handleStartPointEdit={handleStartPointEdit}
-              handleDeleteMeasurement={handleDeleteMeasurement}
-              handleDeletePoint={handleDeletePoint}
-              updateMeasurement={updateMeasurement}
-              editMeasurementId={editMeasurementId}
-              segmentsOpen={segmentsOpen}
-              toggleSegments={toggleSegments}
-              onEditSegment={setEditingSegmentId}
-              movingPointInfo={movingPointInfo}
-            />
-          )}
-          
-          {measurements.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              Keine Messungen vorhanden
-            </div>
-          )}
         </ScrollArea>
       </div>
     </div>
