@@ -41,7 +41,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const form = useForm<CoverPageData>({
     defaultValues: {
       title: 'Vermessungsbericht',
-      companyName: '',
+      companyName: 'DrohnenGLB by RooferGaming',
       projectNumber: '',
       projectAddress: '',
       clientName: '',
@@ -124,6 +124,21 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           
           <TabsContent value="overview">
             <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 mb-4">
+                <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                  <CardContent className="pt-4">
+                    <h3 className="text-base font-medium mb-2">PDF-Struktur</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      <li>Deckblatt mit Ihren Projektinformationen</li>
+                      <li>Messungsübersicht mit Statistiken</li>
+                      <li>Längenmessungen auf eigener Seite</li>
+                      <li>Flächenmessungen auf eigener Seite</li>
+                      <li>Höhenmessungen auf eigener Seite</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            
               <div className="grid grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="pt-4 flex flex-col items-center justify-center h-full">
@@ -158,12 +173,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                 <CardContent className="pt-4">
                   <h3 className="text-sm font-medium mb-2">Berichtsinhalt</h3>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li className="text-sm">Deckblatt mit Projektinformationen</li>
+                    <li className="text-sm">Deckblatt mit Projektinformationen und DrohnenGLB Branding</li>
                     <li className="text-sm">Detaillierte Messungstabellen</li>
                     <li className="text-sm">Statistiken zu Ihren Messungen</li>
                     <li className="text-sm">Aufschlüsselung nach Messtypen</li>
                     {areaCount > 0 && (
-                      <li className="text-sm">Detailansicht der Flächenmessungen</li>
+                      <li className="text-sm">Detailansicht der Flächenmessungen mit Teilmessungen</li>
                     )}
                   </ul>
                 </CardContent>
@@ -238,7 +253,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                           <FormItem>
                             <FormLabel>Ausführender Betrieb</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Ihre Firma GmbH" />
+                              <Input {...field} placeholder="DrohnenGLB by RooferGaming" />
                             </FormControl>
                           </FormItem>
                         )}

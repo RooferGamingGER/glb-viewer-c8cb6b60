@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -12,6 +11,29 @@ export interface CoverPageData {
   creationDate: string;
   notes: string;
 }
+
+const createTextLogo = () => {
+  const logoContainer = document.createElement('div');
+  logoContainer.style.textAlign = 'center';
+  logoContainer.style.marginBottom = '30px';
+  
+  const logoText = document.createElement('div');
+  logoText.style.fontSize = '28px';
+  logoText.style.fontWeight = 'bold';
+  logoText.style.color = '#333';
+  logoText.style.marginBottom = '5px';
+  logoText.textContent = 'DrohnenGLB';
+  
+  const byText = document.createElement('div');
+  byText.style.fontSize = '16px';
+  byText.style.color = '#555';
+  byText.textContent = 'by RooferGaming';
+  
+  logoContainer.appendChild(logoText);
+  logoContainer.appendChild(byText);
+  
+  return logoContainer;
+};
 
 export const exportMeasurementsToPdf = async (
   measurements: Measurement[],
@@ -178,6 +200,23 @@ export const exportMeasurementsToPdf = async (
         color: #555;
         font-weight: 500;
       }
+      .promo-section {
+        text-align: center;
+        margin-top: 40px;
+        padding: 20px;
+        background-color: #f9fafc;
+        border-radius: 8px;
+        border: 1px solid #f0f0f0;
+      }
+      .promo-item {
+        margin: 10px 0;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .promo-highlight {
+        font-weight: 600;
+        color: #0066cc;
+      }
     `;
     document.head.appendChild(styleElement);
     
@@ -190,43 +229,43 @@ export const exportMeasurementsToPdf = async (
     coverPage.appendChild(createCoverPage(coverData));
     container.appendChild(coverPage);
     
-    // Create measurement summary section 
+    // Create measurement summary section as page 2
     const summaryPage = document.createElement('div');
     summaryPage.className = 'pdf-page';
     summaryPage.appendChild(createMeasurementSummary(measurements, coverData.title));
     container.appendChild(summaryPage);
     
-    // Create measurement data section - separate by measurement type
+    // Create separate pages for each measurement type
     // Length measurements
     const lengthMeasurements = measurements.filter(m => m.type === 'length');
     if (lengthMeasurements.length > 0) {
       const lengthPage = document.createElement('div');
-      lengthPage.className = lengthMeasurements.length > 10 ? 'pdf-page' : 'pdf-page-end';
+      lengthPage.className = 'pdf-page';
       lengthPage.appendChild(createMeasurementTypeSection('length', lengthMeasurements, coverData.title));
       container.appendChild(lengthPage);
+    }
+    
+    // Area measurements
+    const areaMeasurements = measurements.filter(m => m.type === 'area');
+    if (areaMeasurements.length > 0) {
+      const areaPage = document.createElement('div');
+      areaPage.className = 'pdf-page';
+      areaPage.appendChild(createMeasurementTypeSection('area', areaMeasurements, coverData.title));
+      container.appendChild(areaPage);
     }
     
     // Height measurements
     const heightMeasurements = measurements.filter(m => m.type === 'height');
     if (heightMeasurements.length > 0) {
       const heightPage = document.createElement('div');
-      heightPage.className = heightMeasurements.length > 10 ? 'pdf-page' : 'pdf-page-end';
+      heightPage.className = 'pdf-page-end';
       heightPage.appendChild(createMeasurementTypeSection('height', heightMeasurements, coverData.title));
       container.appendChild(heightPage);
     }
     
-    // Area measurements - ALWAYS as the last section
-    const areaMeasurements = measurements.filter(m => m.type === 'area');
-    if (areaMeasurements.length > 0) {
-      const areaPage = document.createElement('div');
-      areaPage.className = 'pdf-page-end';
-      areaPage.appendChild(createMeasurementTypeSection('area', areaMeasurements, coverData.title));
-      container.appendChild(areaPage);
-    }
-    
     // Configure html2pdf options
     const pdfOptions = {
-      margin: [5, 5, 5, 5], // [top, right, bottom, left] in mm
+      margin: [10, 10, 10, 10], // [top, right, bottom, left] in mm
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 1.0 },
       html2canvas: { 
@@ -241,7 +280,11 @@ export const exportMeasurementsToPdf = async (
         orientation: 'portrait',
         compress: true
       },
-      pagebreak: { mode: ['css', 'avoid-all'] }
+      pagebreak: { 
+        mode: ['css', 'avoid-all'],
+        before: '.pdf-page',
+        avoid: ['tr', 'th', 'td', '.avoid-break']
+      }
     };
     
     // Add a delay to ensure DOM rendering is complete
@@ -275,6 +318,9 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.style.height = '100%';
   coverPage.style.display = 'flex';
   coverPage.style.flexDirection = 'column';
+  
+  // Add text-based logo
+  coverPage.appendChild(createTextLogo());
   
   // Cover title - centered
   const coverTitle = document.createElement('h1');
@@ -337,12 +383,41 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
     coverPage.appendChild(notesSection);
   }
   
+  // Add promotional information
+  const promoSection = document.createElement('div');
+  promoSection.className = 'promo-section';
+  
+  const addPromoItem = (text: string, isHighlight: boolean = false) => {
+    const item = document.createElement('div');
+    item.className = 'promo-item';
+    if (isHighlight) {
+      item.classList.add('promo-highlight');
+    }
+    item.textContent = text;
+    promoSection.appendChild(item);
+  };
+  
+  addPromoItem('DrohnenGLB by RooferGaming', true);
+  addPromoItem('Kostenloser GLB Viewer: drohnenglb.de');
+  addPromoItem('Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de');
+  
+  coverPage.appendChild(promoSection);
+  
   return coverPage;
 };
 
 const createHeader = (title: string): HTMLElement => {
   const header = document.createElement('div');
   header.className = 'header';
+  
+  // Add logo text to header
+  const logoText = document.createElement('div');
+  logoText.style.fontSize = '14px';
+  logoText.style.fontWeight = 'bold';
+  logoText.style.color = '#666';
+  logoText.style.marginBottom = '5px';
+  logoText.textContent = 'DrohnenGLB by RooferGaming';
+  header.appendChild(logoText);
   
   // Add title to header
   const headerTitle = document.createElement('div');
@@ -575,14 +650,17 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[],
   table.appendChild(tableBody);
   section.appendChild(table);
   
-  // For area measurements, add segments tables if they have less than 10 measurements
-  // to avoid creating too many pages
-  if (type === 'area' && measurements.length < 10) {
+  // For area measurements, add segments tables that keep headings with content
+  if (type === 'area') {
     measurements.forEach((measurement, mIndex) => {
       if (measurement.segments && measurement.segments.length > 0) {
+        // Create a containing div to ensure the heading stays with its table
+        const segmentContainer = document.createElement('div');
+        segmentContainer.className = 'avoid-break';
+        
         const segmentsTitle = document.createElement('h3');
         segmentsTitle.textContent = `Teilmessungen für Fläche ${mIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
-        section.appendChild(segmentsTitle);
+        segmentContainer.appendChild(segmentsTitle);
         
         const segmentsTable = document.createElement('table');
         segmentsTable.className = 'segment-table';
@@ -620,7 +698,8 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[],
         });
         
         segmentsTable.appendChild(segmentsTableBody);
-        section.appendChild(segmentsTable);
+        segmentContainer.appendChild(segmentsTable);
+        section.appendChild(segmentContainer);
       }
     });
   }
