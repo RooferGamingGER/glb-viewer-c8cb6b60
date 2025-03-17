@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
@@ -51,20 +52,46 @@ export const useMeasurementInteraction = (
     
     return () => {
       if (previewRef.current && scene) {
+        clearPreviewGroup();
         scene.remove(previewRef.current);
         previewRef.current = null;
       }
     };
   }, [scene]);
 
+  // Function to clear the preview group
+  const clearPreviewGroup = useCallback(() => {
+    if (!previewRef.current) return;
+    
+    while (previewRef.current.children.length > 0) {
+      const child = previewRef.current.children[0];
+      
+      // Dispose of geometries and materials
+      if ('geometry' in child && child.geometry) {
+        child.geometry.dispose();
+      }
+      
+      if ('material' in child && child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach(mat => mat.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+      
+      previewRef.current.remove(child);
+    }
+  }, []);
+
   // Update preview point visualization
   useEffect(() => {
-    if (!previewRef.current || !previewPoint || !movingPointInfo) return;
+    if (!previewRef.current || !previewPoint || !movingPointInfo) {
+      clearPreviewGroup();
+      return;
+    }
     
     // Clear existing previews
-    while (previewRef.current.children.length > 0) {
-      previewRef.current.remove(previewRef.current.children[0]);
-    }
+    clearPreviewGroup();
     
     // Create preview sphere
     const sphereGeometry = new THREE.SphereGeometry(0.06, 16, 16);
@@ -99,7 +126,7 @@ export const useMeasurementInteraction = (
       line.computeLineDistances();
       previewRef.current.add(line);
     }
-  }, [previewPoint, movingPointInfo, measurements]);
+  }, [previewPoint, movingPointInfo, measurements, clearPreviewGroup]);
 
   // Track the raycaster and mouse position for hover effects
   const updatePreviewPoint = useCallback((event: MouseEvent | TouchEvent) => {
@@ -223,6 +250,9 @@ export const useMeasurementInteraction = (
         // Reset movement state
         setMovingPointInfo(null);
         setPreviewPoint(null);
+        
+        // Clear preview visuals
+        clearPreviewGroup();
         
         toast.success(`Punkt ${movingPointInfo.pointIndex + 1} wurde verschoben`);
         return;
@@ -357,13 +387,14 @@ export const useMeasurementInteraction = (
     enabled, scene, camera, open, measurements, currentPoints, activeMode,
     editMeasurementId, editingPointIndex, movingPointInfo, previewPoint,
     handlers.addPoint, handlers.startPointEdit, handlers.updateMeasurementPoint,
-    updatePreviewPoint, filterMeasurementObjects,
+    updatePreviewPoint, filterMeasurementObjects, clearPreviewGroup,
     refs.editPointsRef, refs.segmentLabelsRef
   ]);
 
   return {
     movingPointInfo,
     setMovingPointInfo,
-    previewPoint
+    previewPoint,
+    clearPreviewGroup
   };
 };

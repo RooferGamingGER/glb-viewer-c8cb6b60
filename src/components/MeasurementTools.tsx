@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -72,7 +73,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint
   };
 
-  const { movingPointInfo, setMovingPointInfo } = useMeasurementInteraction(
+  const { movingPointInfo, setMovingPointInfo, clearPreviewGroup } = useMeasurementInteraction(
     enabled,
     scene,
     camera,
@@ -95,16 +96,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
-  useEffect(() => {
-    renderCurrentPoints(
-      pointsRef.current, 
-      linesRef.current, 
-      labelsRef.current, 
-      currentPoints, 
-      activeMode
-    );
-  }, [currentPoints, activeMode]);
-
+  // Re-render measurements when they change
   useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
@@ -115,6 +107,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements]);
 
+  // Re-render current points when they change
+  useEffect(() => {
+    renderCurrentPoints(
+      pointsRef.current, 
+      linesRef.current, 
+      labelsRef.current, 
+      currentPoints, 
+      activeMode
+    );
+  }, [currentPoints, activeMode]);
+
+  // Re-render edit points when edit state changes
   useEffect(() => {
     renderEditPoints(
       editPointsRef.current, 
@@ -125,6 +129,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, editMeasurementId, editingPointIndex]);
 
+  // Clean up when enabled state changes
   useEffect(() => {
     if (!enabled) {
       clearAllVisuals(
@@ -135,6 +140,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         labelsRef.current,
         segmentLabelsRef.current
       );
+      
+      // Also clear any preview visuals
+      if (clearPreviewGroup) {
+        clearPreviewGroup();
+      }
     } else {
       renderMeasurements(
         measurementsRef.current, 
@@ -152,8 +162,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         true
       );
     }
-  }, [enabled, measurements, editMeasurementId, editingPointIndex]);
+  }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup]);
 
+  // Update label visibility when measurements change
   useEffect(() => {
     if (labelsRef.current && segmentLabelsRef.current) {
       measurements.forEach(measurement => {
@@ -211,6 +222,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       labelsRef.current,
       segmentLabelsRef.current
     );
+    
+    // Also clear any preview visuals
+    if (clearPreviewGroup) {
+      clearPreviewGroup();
+    }
+    
     toast.info('Alle Messungen gelöscht');
   };
 
@@ -281,6 +298,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     cancelEditing();
     setEditingSegmentId(null);
     setMovingPointInfo(null);
+    
+    // Clear any preview visuals
+    if (clearPreviewGroup) {
+      clearPreviewGroup();
+    }
+    
     toast.info('Bearbeitung abgebrochen');
   };
 

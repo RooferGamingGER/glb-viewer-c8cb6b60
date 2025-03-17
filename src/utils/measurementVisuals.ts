@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -411,13 +412,21 @@ export function renderMeasurements(
       }
     } 
     else if (measurement.type === 'area') {
+      // Check if we need to recreate segment labels or if they're mismatched
+      const shouldRecreateSegmentLabels = 
+        existingSegmentLabels.length !== (measurement.segments?.length || 0) ||
+        // Also recreate if the segment IDs don't match up with existing labels
+        (measurement.segments && measurement.segments.some(segment => 
+          !existingSegmentLabels.some(label => label.userData.segmentId === segment.id)
+        ));
+      
       renderAreaMeasurement(
         measurement, 
         measurementsRef, 
         labelsRef, 
         segmentLabelsRef, 
         existingLabels.length === 0,
-        existingSegmentLabels.length !== measurement.segments?.length
+        shouldRecreateSegmentLabels
       );
       
       // Update existing area label text if it exists
@@ -441,38 +450,43 @@ export function renderMeasurements(
         label.position.copy(centroid);
       }
       
-      // Update existing segment labels if they exist
-      if (existingSegmentLabels.length > 0 && measurement.segments) {
+      // Update existing segment labels if they exist and the number matches
+      if (!shouldRecreateSegmentLabels && existingSegmentLabels.length > 0 && measurement.segments) {
+        // Get all points as THREE.Vector3
         const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
         
-        for (let i = 0; i < points3D.length; i++) {
-          const p1 = points3D[i];
-          const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
-          
-          // Find the corresponding segment label
-          const segmentId = measurement.segments[i]?.id;
-          const segmentLabel = segmentLabelsRef.children.find(
-            child => child.userData?.segmentId === segmentId
+        // For each segment, find its label and update it
+        for (const segment of measurement.segments) {
+          const segmentLabel = existingSegmentLabels.find(
+            label => label.userData.segmentId === segment.id
           ) as THREE.Sprite | undefined;
           
-          if (segmentLabel && measurement.segments[i]) {
-            const segment = measurement.segments[i];
-            const midpoint = calculateMidpoint(p1, p2);
+          if (segmentLabel && segment) {
+            // Find the segment's points
+            const startPointIndex = segmentLabel.userData.startPointIndex || 0;
+            const endPointIndex = segmentLabel.userData.endPointIndex || 0;
             
-            // Offset midpoint slightly to avoid overlap with lines
-            midpoint.y += 0.05;
-            
-            // Include segment inclination in label if available and significant
-            let segmentLabelText = segment.label || "";
-            if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
-              segmentLabelText += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
+            // Make sure the indices are valid
+            if (startPointIndex < points3D.length && endPointIndex < points3D.length) {
+              const p1 = points3D[startPointIndex];
+              const p2 = points3D[endPointIndex];
+              
+              // Update label position
+              const midpoint = calculateMidpoint(p1, p2);
+              
+              // Offset midpoint slightly to avoid overlap with lines
+              midpoint.y += 0.05;
+              
+              // Include segment inclination in label if available and significant
+              let segmentLabelText = segment.label || "";
+              if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
+                segmentLabelText += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
+              }
+              
+              // Update the label text and position
+              updateTextSprite(segmentLabel, segmentLabelText);
+              segmentLabel.position.copy(midpoint);
             }
-            
-            // Update the label
-            updateTextSprite(segmentLabel, segmentLabelText);
-            
-            // Update position
-            segmentLabel.position.copy(midpoint);
           }
         }
       }
