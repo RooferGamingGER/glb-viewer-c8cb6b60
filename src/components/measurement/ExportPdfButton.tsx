@@ -37,6 +37,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   
   const form = useForm<CoverPageData>({
     defaultValues: {
@@ -98,10 +99,13 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     <Dialog>
       <DialogTrigger asChild>
         <Button 
+          ref={triggerRef}
+          data-pdf-export-trigger
           variant="outline" 
           size="sm" 
-          className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white" 
+          className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white w-full" 
           title="Als PDF exportieren"
+          disabled={measurements.length === 0}
         >
           <FileDown className="h-4 w-4" />
           <span>PDF Export</span>
