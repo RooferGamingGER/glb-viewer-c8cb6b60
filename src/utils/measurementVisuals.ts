@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -41,6 +40,35 @@ function safelyDisposeObject(object: THREE.Object3D) {
       }
     }
   }
+}
+
+/**
+ * Clears labels for a specific measurement
+ */
+export function clearMeasurementLabels(
+  measurementId: string,
+  labelsGroup: THREE.Group,
+  segmentLabelsGroup: THREE.Group
+) {
+  // Remove main labels for the measurement
+  const labels = labelsGroup.children.filter(
+    obj => obj.userData && obj.userData.measurementId === measurementId && !obj.userData.isPreview
+  );
+  
+  // Dispose and remove each label
+  labels.forEach(label => {
+    labelsGroup.remove(label);
+  });
+  
+  // Remove segment labels for the measurement
+  const segmentLabels = segmentLabelsGroup.children.filter(
+    obj => obj.userData && obj.userData.measurementId === measurementId
+  );
+  
+  // Dispose and remove each segment label
+  segmentLabels.forEach(label => {
+    segmentLabelsGroup.remove(label);
+  });
 }
 
 /**
@@ -349,12 +377,25 @@ export function renderMeasurements(
       child => child.userData.measurementId === measurement.id
     );
     
+    // For measurements being edited, we'll recreate labels to ensure they're up to date
+    const isMeasurementBeingEdited = measurement.editMode || 
+                                     existingLabels.length === 0 || 
+                                     existingSegmentLabels.length === 0 ||
+                                     (measurement.type === 'area' && 
+                                      measurement.segments && 
+                                      existingSegmentLabels.length !== measurement.segments.length);
+    
+    // If this measurement is being edited or doesn't have labels, remove any existing labels
+    if (isMeasurementBeingEdited) {
+      // Remove existing labels for this measurement to avoid duplicates
+      clearMeasurementLabels(measurement.id, labelsRef, segmentLabelsRef);
+    }
+    
     // Create different visualizations based on measurement type
     if (measurement.type === 'length') {
-      renderLengthMeasurement(measurement, measurementsRef, labelsRef, existingLabels.length === 0);
+      renderLengthMeasurement(measurement, measurementsRef, labelsRef, isMeasurementBeingEdited);
       
-      // Update existing label text if it exists
-      if (existingLabels.length > 0) {
+      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
         const [p1, p2] = measurement.points;
         const point1 = new THREE.Vector3(p1.x, p1.y, p1.z);
         const point2 = new THREE.Vector3(p2.x, p2.y, p2.z);
@@ -375,10 +416,9 @@ export function renderMeasurements(
       }
     } 
     else if (measurement.type === 'height') {
-      renderHeightMeasurement(measurement, measurementsRef, labelsRef, existingLabels.length === 0);
+      renderHeightMeasurement(measurement, measurementsRef, labelsRef, isMeasurementBeingEdited);
       
-      // Update existing label text if it exists
-      if (existingLabels.length > 0) {
+      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
         const [p1, p2] = measurement.points;
         const point1 = new THREE.Vector3(p1.x, p1.y, p1.z);
         const point2 = new THREE.Vector3(p2.x, p2.y, p2.z);
@@ -412,8 +452,8 @@ export function renderMeasurements(
       }
     } 
     else if (measurement.type === 'area') {
-      // Check if we need to recreate segment labels or if they're mismatched
-      const shouldRecreateSegmentLabels = 
+      // Always recreate segment labels if the measurement is being edited
+      const shouldRecreateSegmentLabels = isMeasurementBeingEdited ||
         existingSegmentLabels.length !== (measurement.segments?.length || 0) ||
         // Also recreate if the segment IDs don't match up with existing labels
         (measurement.segments && measurement.segments.some(segment => 
@@ -425,12 +465,11 @@ export function renderMeasurements(
         measurementsRef, 
         labelsRef, 
         segmentLabelsRef, 
-        existingLabels.length === 0,
+        isMeasurementBeingEdited,
         shouldRecreateSegmentLabels
       );
       
-      // Update existing area label text if it exists
-      if (existingLabels.length > 0) {
+      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
         const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
         
         // Calculate centroid for label placement
@@ -450,7 +489,6 @@ export function renderMeasurements(
         label.position.copy(centroid);
       }
       
-      // Update existing segment labels if they exist and the number matches
       if (!shouldRecreateSegmentLabels && existingSegmentLabels.length > 0 && measurement.segments) {
         // Get all points as THREE.Vector3
         const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));

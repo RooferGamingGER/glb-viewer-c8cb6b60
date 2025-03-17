@@ -15,7 +15,8 @@ import {
   renderCurrentPoints, 
   renderEditPoints, 
   renderMeasurements,
-  clearAllVisuals
+  clearAllVisuals,
+  clearMeasurementLabels
 } from '@/utils/measurementVisuals';
 
 // Import the new sidebar component
@@ -95,6 +96,27 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
+
+  // Clean up labels when editing starts and re-render when editing is complete
+  useEffect(() => {
+    if (movingPointInfo && movingPointInfo.measurementId && labelsRef.current && segmentLabelsRef.current) {
+      // When editing starts, remove the labels for the measurement being edited
+      clearMeasurementLabels(
+        movingPointInfo.measurementId,
+        labelsRef.current,
+        segmentLabelsRef.current
+      );
+    } else if (!movingPointInfo && editMeasurementId === null) {
+      // When editing is complete, re-render all measurements to ensure labels are updated
+      renderMeasurements(
+        measurementsRef.current, 
+        labelsRef.current, 
+        segmentLabelsRef.current, 
+        measurements, 
+        true
+      );
+    }
+  }, [movingPointInfo, editMeasurementId, measurements, measurementsRef, labelsRef, segmentLabelsRef]);
 
   // Re-render measurements when they change
   useEffect(() => {
@@ -273,23 +295,22 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       measurementsGroup.remove(obj);
     });
     
-    const labels = labelsGroup.children.filter(obj => 
-      obj.userData && obj.userData.measurementId === measurementId
-    );
-    labels.forEach(obj => labelsGroup.remove(obj));
-    
-    const segmentLabels = segmentLabelsGroup.children.filter(obj => 
-      obj.userData && obj.userData.measurementId === measurementId
-    );
-    segmentLabels.forEach(obj => segmentLabelsGroup.remove(obj));
+    // Remove labels
+    clearMeasurementLabels(measurementId, labelsGroup, segmentLabelsGroup);
   };
 
   const handleStartPointEdit = (id: string) => {
-    toggleEditMode(id);
-    
+    // If we're already editing this measurement, toggle off
     if (editMeasurementId === id) {
+      cancelEditing();
       toast.info('Punktbearbeitung beendet');
     } else {
+      // If we're starting to edit a new measurement, clear any existing editing state
+      if (editMeasurementId) {
+        cancelEditing();
+      }
+      
+      toggleEditMode(id);
       toast.info('Klicken Sie auf einen Punkt, um ihn zu verschieben');
     }
   };
@@ -303,6 +324,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     if (clearPreviewGroup) {
       clearPreviewGroup();
     }
+    
+    // Re-render measurements to ensure labels are properly displayed
+    renderMeasurements(
+      measurementsRef.current, 
+      labelsRef.current, 
+      segmentLabelsRef.current, 
+      measurements, 
+      true
+    );
     
     toast.info('Bearbeitung abgebrochen');
   };
