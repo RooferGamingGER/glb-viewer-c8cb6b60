@@ -15,17 +15,30 @@ export function useIsMobile() {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
       const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
       
-      return mql.matches || isMobileDevice;
+      // Also check screen size as an additional factor
+      const isSmallScreen = window.innerWidth < MOBILE_BREAKPOINT;
+      
+      return mql.matches || isMobileDevice || isSmallScreen;
     };
     
     const onChange = () => {
       setIsMobile(checkIfMobile());
     }
     
+    // Add event listeners for both resize and orientation change
     mql.addEventListener("change", onChange);
+    window.addEventListener("resize", onChange);
+    window.addEventListener("orientationchange", onChange);
+    
+    // Initial check
     setIsMobile(checkIfMobile());
     
-    return () => mql.removeEventListener("change", onChange);
+    // Cleanup listeners on component unmount
+    return () => {
+      mql.removeEventListener("change", onChange);
+      window.removeEventListener("resize", onChange);
+      window.removeEventListener("orientationchange", onChange);
+    };
   }, [])
 
   return !!isMobile

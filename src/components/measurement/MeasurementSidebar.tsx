@@ -13,6 +13,7 @@ import MeasurementList from './MeasurementList';
 import ActiveMeasurement from './ActiveMeasurement';
 import { MeasurementMode, Measurement, Point } from '@/hooks/useMeasurements';
 import EditingAlert from './EditingAlert';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MeasurementSidebarProps {
   enabled: boolean;
@@ -59,11 +60,16 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   clearCurrentPoints,
   handleClearMeasurements
 }) => {
+  const isMobile = useIsMobile();
+  
   if (!enabled) return null;
 
   const hasActiveMeasurement = activeMode !== 'none' && currentPoints.length > 0;
   const hasMeasurements = measurements.length > 0;
   const hasAlerts = editMeasurementId !== null || editingSegmentId !== null || movingPointInfo !== null;
+
+  // Adjust width for mobile screens to improve visibility
+  const sidebarWidth = isMobile ? "w-[100vw] max-w-[100vw]" : "max-w-[22rem] w-[22rem]";
 
   return (
     <div className="z-30 absolute right-0 top-0 bottom-0 pointer-events-auto">
@@ -71,7 +77,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
         side="right" 
         variant="floating" 
         collapsible="none"
-        className="mt-0 h-full max-w-[18rem] w-[18rem]"
+        className={`mt-0 h-full ${sidebarWidth}`}
         data-sidebar="true"
       >
         <SidebarHeader className="pt-4">
@@ -80,7 +86,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           </div>
         </SidebarHeader>
         
-        <SidebarContent className="flex flex-col h-[calc(100vh-200px)]">
+        <SidebarContent className="flex flex-col h-[calc(100vh-120px)]">
           {hasAlerts && (
             <EditingAlert 
               editMeasurementId={editMeasurementId}
@@ -151,9 +157,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
         </SidebarContent>
         
         <SidebarFooter>
-          <div className="p-4 text-xs text-muted-foreground">
-            <p>Messungswerkzeuge v1.0</p>
-          </div>
+          {/* Removed version text */}
         </SidebarFooter>
       </Sidebar>
     </div>
