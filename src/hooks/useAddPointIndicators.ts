@@ -97,7 +97,8 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       const verticalGeometry = new THREE.BoxGeometry(plusThickness, plusSize * 2, plusThickness);
       
       // Much brighter green color for better visibility with glow effect
-      const plusMaterial = new THREE.MeshBasicMaterial({ 
+      // Changed to MeshStandardMaterial which supports emissive property
+      const plusMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x00ff44,
         emissive: 0x00ff44,
         emissiveIntensity: 1.0

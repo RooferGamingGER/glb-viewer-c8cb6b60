@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
@@ -258,6 +259,81 @@ export const useMeasurements = () => {
     
     return segments;
   }, [calculateSegmentLength, calculateInclination]);
+
+  // Add the missing createLengthMeasurement function
+  const createLengthMeasurement = useCallback((points: Point[]) => {
+    if (points.length < 2) return;
+    
+    const p1 = points[0];
+    const p2 = points[1];
+    
+    const distance = calculateDistance(p1, p2);
+    const label = formatMeasurement(distance, 'length');
+    
+    // Calculate inclination for length measurements
+    const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+    const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+    const calculatedInclination = calculateInclination(v1, v2);
+    
+    // Only set inclination if it's above the threshold
+    const inclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD 
+      ? calculatedInclination 
+      : undefined;
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'length',
+        points: [p1, p2],
+        value: distance,
+        label,
+        visible: true,
+        unit: 'm',
+        description: '',
+        inclination
+      }
+    ]);
+    
+    // Clear current points after creating the measurement
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    // Reset to 'none' mode after creating a length measurement
+    setActiveMode('none');
+  }, [calculateDistance, calculateInclination]);
+
+  // Add the missing createHeightMeasurement function
+  const createHeightMeasurement = useCallback((points: Point[]) => {
+    if (points.length < 2) return;
+    
+    const p1 = points[0];
+    const p2 = points[1];
+    
+    const height = calculateHeight(p1, p2);
+    const label = formatMeasurement(height, 'height');
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'height',
+        points: [p1, p2],
+        value: height,
+        label,
+        visible: true,
+        unit: 'm',
+        description: ''
+      }
+    ]);
+    
+    // Clear current points after creating the measurement
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    // Reset to 'none' mode after creating a height measurement
+    setActiveMode('none');
+  }, [calculateHeight]);
 
   const toggleMeasurementVisibility = useCallback((id: string) => {
     setMeasurements(prev => prev.map(m => 
