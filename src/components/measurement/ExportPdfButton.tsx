@@ -220,7 +220,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bemerkungen</FormLabel>
+                      <FormLabel>Bemerkungen (optional)</FormLabel>
                       <FormControl>
                         <Textarea {...field} placeholder="Zusätzliche Informationen oder Notizen" />
                       </FormControl>
