@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown } from 'lucide-react';
@@ -45,7 +46,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       projectAddress: '',
       clientName: '',
       contactPerson: '',
-      droneDate: new Date().toISOString().split('T')[0],
       creationDate: new Date().toISOString().split('T')[0],
       notes: ''
     }
@@ -261,10 +261,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                       
                       <FormField
                         control={form.control}
-                        name="droneDate"
+                        name="creationDate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Datum der Drohnenaufnahmen</FormLabel>
+                            <FormLabel>Erstellungsdatum</FormLabel>
                             <FormControl>
                               <Input type="date" {...field} />
                             </FormControl>

@@ -9,7 +9,6 @@ export interface CoverPageData {
   projectAddress: string;
   clientName: string;
   contactPerson: string;
-  droneDate: string;
   creationDate: string;
   notes: string;
 }
@@ -26,8 +25,7 @@ export const exportMeasurementsToPdf = async (
     const container = document.createElement('div');
     container.className = 'pdf-container';
     container.style.fontFamily = 'Arial, sans-serif';
-    container.style.padding = '20px';
-    container.style.color = '#000000';
+    container.style.color = '#333333';
     container.style.position = 'relative';
     
     // Create and add styles for page layouts
@@ -35,7 +33,8 @@ export const exportMeasurementsToPdf = async (
     styleElement.textContent = `
       .pdf-page {
         position: relative;
-        padding-bottom: 20mm;
+        padding: 25mm 20mm;
+        margin-bottom: 20mm;
       }
       .pdf-page-break {
         page-break-after: always;
@@ -44,167 +43,145 @@ export const exportMeasurementsToPdf = async (
         page-break-after: avoid !important;
       }
       .logo-container {
-        text-align: center;
-        margin-bottom: 10px;
         display: flex;
         justify-content: center;
-        align-items: center;
+        margin-bottom: 30px;
       }
       .logo-image {
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-      }
-      .logo-icon {
-        height: 32px;
+        height: 42px;
         width: auto;
-        margin-right: 10px;
-      }
-      .logo-text {
-        font-size: 32px;
-        font-weight: bold;
-        color: #333;
-        white-space: nowrap;
       }
       .company-info {
         text-align: center;
-        margin-bottom: 20px;
-        color: #333;
-        line-height: 1.6;
-      }
-      .company-slogan {
-        font-style: italic;
-        margin-top: 10px;
+        margin-bottom: 40px;
         color: #555;
-        font-size: 14px;
-      }
-      .cover-upper {
-        margin-bottom: 30px;
+        line-height: 1.8;
       }
       .cover-title {
-        font-size: 28px;
-        font-weight: bold;
+        font-size: 32px;
+        font-weight: 600;
         text-align: center;
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #ddd;
+        margin: 40px 0;
+        color: #333;
       }
       .project-info-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 20px;
+        margin: 30px 0;
       }
       .project-info-table th {
         text-align: left;
         width: 40%;
-        padding: 8px;
+        padding: 12px;
         font-weight: normal;
         color: #555;
         vertical-align: top;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #f0f0f0;
       }
       .project-info-table td {
         width: 60%;
-        padding: 8px;
+        padding: 12px;
         font-weight: 500;
         vertical-align: top;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #f0f0f0;
       }
       .measurement-section {
-        margin-bottom: 20px;
+        margin-bottom: 30px;
       }
       .measurement-section h2 {
-        font-size: 18px;
-        margin-bottom: 10px;
-        padding-bottom: 5px;
-        border-bottom: 1px solid #ddd;
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e0e0e0;
       }
       .measurement-section h3 {
-        font-size: 16px;
-        margin-bottom: 8px;
+        font-size: 18px;
+        margin: 20px 0 15px 0;
+        color: #444;
+        font-weight: 500;
+      }
+      .measurement-section p {
         color: #555;
+        line-height: 1.6;
+        margin-bottom: 20px;
       }
       .measurement-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       }
       .measurement-table th {
         background-color: #f8f9fa;
-        padding: 8px;
+        padding: 12px;
         text-align: left;
         font-weight: 600;
-        border: 1px solid #ddd;
+        border: 1px solid #eee;
+        color: #333;
       }
       .measurement-table td {
-        padding: 8px;
-        border: 1px solid #ddd;
-        vertical-align: top;
+        padding: 12px;
+        border: 1px solid #eee;
+        vertical-align: middle;
       }
       .measurement-table tr:nth-child(even) {
-        background-color: #f9fafb;
+        background-color: #fafbfc;
       }
       .segment-table {
         width: 95%;
         margin-left: 5%;
         border-collapse: collapse;
-        margin-bottom: 15px;
+        margin-bottom: 25px;
       }
       .segment-table th {
-        background-color: #f0f2f5;
-        padding: 6px;
+        background-color: #f8f9fa;
+        padding: 10px;
         text-align: left;
-        font-weight: 600;
-        border: 1px solid #ddd;
-        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid #eee;
+        color: #444;
       }
       .segment-table td {
-        padding: 6px;
-        border: 1px solid #ddd;
-        font-size: 13px;
+        padding: 10px;
+        border: 1px solid #eee;
       }
       .summary-card {
-        background-color: #f8f9fa;
-        padding: 15px;
+        background-color: #ffffff;
+        padding: 25px;
         border-radius: 8px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
       }
       .summary-stats {
         display: flex;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 10px;
+        gap: 15px;
+        margin-top: 20px;
       }
       .summary-stat {
-        background-color: white;
-        border-radius: 6px;
-        padding: 10px;
+        background-color: #f9fafc;
+        border-radius: 8px;
+        padding: 20px;
         flex: 1;
-        min-width: 100px;
+        min-width: 120px;
         text-align: center;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        border: 1px solid #f0f0f0;
       }
       .summary-stat-value {
-        font-size: 20px;
+        font-size: 28px;
         font-weight: bold;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+        color: #333;
       }
       .summary-stat-label {
-        font-size: 12px;
-        color: #666;
-      }
-      .footer {
-        position: fixed;
-        bottom: 10mm;
-        width: 100%;
-        text-align: center;
-        font-size: 9px;
-        color: #777;
-      }
-      .page-number:after {
-        content: counter(page);
+        font-size: 14px;
+        color: #555;
+        font-weight: 500;
       }
     `;
     document.head.appendChild(styleElement);
@@ -255,18 +232,10 @@ export const exportMeasurementsToPdf = async (
       container.appendChild(areaPage);
     }
     
-    // Add footer with page number and company info
-    const footer = document.createElement('div');
-    footer.className = 'footer';
-    footer.innerHTML = `
-      DrohnenGLB by RooferGaming® | www.drohnenglb.de | Seite <span class="page-number"></span>
-    `;
-    container.appendChild(footer);
-    
     // Configure html2pdf options
     const pdfOptions = {
-      margin: [15, 15, 25, 15], // [top, right, bottom, left] - increased bottom margin for footer
-      filename: `DrohnenGLB_Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
+      margin: [10, 10, 10, 10], // [top, right, bottom, left]
+      filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2.5,
@@ -314,60 +283,19 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.style.height = '100%';
   coverPage.style.display = 'flex';
   coverPage.style.flexDirection = 'column';
-  coverPage.style.padding = '20px';
 
-  // Upper section - Company logo and info
-  const upperSection = document.createElement('div');
-  upperSection.className = 'cover-upper';
-  
-  // Logo container with flex layout
+  // Logo container
   const logoContainer = document.createElement('div');
   logoContainer.className = 'logo-container';
   
-  // Create a wrapper for logo and text with flex layout
-  const logoImage = document.createElement('div');
-  logoImage.className = 'logo-image';
-  
   // Create and add the logo icon using Base64 data
   const logoIcon = document.createElement('img');
-  logoIcon.className = 'logo-icon';
+  logoIcon.className = 'logo-image';
   logoIcon.src = LOGO_BASE64;
   logoIcon.alt = 'DrohnenGLB Logo';
-  logoIcon.style.height = '40px';
-  logoIcon.style.width = 'auto';
-  logoIcon.style.marginRight = '12px';
-  logoImage.appendChild(logoIcon);
+  logoContainer.appendChild(logoIcon);
   
-  // Create and add the logo text
-  const logoText = document.createElement('span');
-  logoText.className = 'logo-text';
-  logoText.textContent = 'DrohnenGLB by RooferGaming®';
-  logoImage.appendChild(logoText);
-  
-  logoContainer.appendChild(logoImage);
-  upperSection.appendChild(logoContainer);
-  
-  // Company information section with vertical alignment
-  const companyInfo = document.createElement('div');
-  companyInfo.className = 'company-info';
-  
-  const websiteInfo = document.createElement('div');
-  websiteInfo.style.fontSize = '14px';
-  websiteInfo.textContent = 'GLB Viewer: drohnenglb.de | Drohnenaufmaß: drohnenvermessung-roofergaming.de';
-  companyInfo.appendChild(websiteInfo);
-  
-  const emailInfo = document.createElement('div');
-  emailInfo.style.fontSize = '14px';
-  emailInfo.textContent = 'Email: info@drohnenvermessung-roofergaming.de';
-  companyInfo.appendChild(emailInfo);
-  
-  const companySlogan = document.createElement('div');
-  companySlogan.className = 'company-slogan';
-  companySlogan.textContent = 'Fliegen - Digitalisieren - tolle Ergebnisse';
-  companyInfo.appendChild(companySlogan);
-  
-  upperSection.appendChild(companyInfo);
-  coverPage.appendChild(upperSection);
+  coverPage.appendChild(logoContainer);
   
   // Cover title - centered
   const coverTitle = document.createElement('h1');
@@ -402,8 +330,7 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   addTableRow('Auftraggeber', coverData.clientName);
   addTableRow('Ausführender Betrieb', coverData.companyName);
   addTableRow('Ansprechpartner', coverData.contactPerson);
-  addTableRow('Datum der Drohnenaufnahmen', coverData.droneDate ? new Date(coverData.droneDate).toLocaleDateString('de-DE') : undefined);
-  addTableRow('Erstellungsdatum', new Date().toLocaleDateString('de-DE'));
+  addTableRow('Erstellungsdatum', coverData.creationDate ? new Date(coverData.creationDate).toLocaleDateString('de-DE') : new Date().toLocaleDateString('de-DE'));
   
   coverPage.appendChild(projectInfoTable);
   
@@ -413,8 +340,9 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
     notesSection.style.marginTop = '30px';
     
     const notesTitle = document.createElement('h3');
-    notesTitle.style.fontSize = '16px';
-    notesTitle.style.marginBottom = '10px';
+    notesTitle.style.fontSize = '18px';
+    notesTitle.style.marginBottom = '12px';
+    notesTitle.style.color = '#444';
     notesTitle.textContent = 'Bemerkungen';
     notesSection.appendChild(notesTitle);
     
@@ -423,6 +351,7 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
     notesContent.style.fontSize = '14px';
     notesContent.style.lineHeight = '1.5';
     notesContent.style.whiteSpace = 'pre-line';
+    notesContent.style.color = '#555';
     notesContent.textContent = coverData.notes;
     notesSection.appendChild(notesContent);
     
@@ -452,7 +381,7 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
   
   // Create summary text
   const summaryText = document.createElement('p');
-  summaryText.style.margin = '0 0 15px 0';
+  summaryText.style.margin = '0 0 20px 0';
   summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen, die mit DrohnenGLB erstellt wurden.`;
   summaryCard.appendChild(summaryText);
   
@@ -461,7 +390,7 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
   summaryStats.className = 'summary-stats';
   
   // Helper function to create a stat box
-  const createStatBox = (value: number, label: string, icon: string) => {
+  const createStatBox = (value: number, label: string) => {
     const statBox = document.createElement('div');
     statBox.className = 'summary-stat';
     
@@ -472,17 +401,17 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
     
     const statLabel = document.createElement('div');
     statLabel.className = 'summary-stat-label';
-    statLabel.textContent = `${icon} ${label}`;
+    statLabel.textContent = label;
     statBox.appendChild(statLabel);
     
     return statBox;
   };
   
   // Add stat boxes
-  summaryStats.appendChild(createStatBox(measurements.length, 'Gesamt', '📊'));
-  summaryStats.appendChild(createStatBox(lengthMeasurements.length, 'Längen', '📏'));
-  summaryStats.appendChild(createStatBox(heightMeasurements.length, 'Höhen', '📐'));
-  summaryStats.appendChild(createStatBox(areaMeasurements.length, 'Flächen', '🔲'));
+  summaryStats.appendChild(createStatBox(measurements.length, 'Messungen gesamt'));
+  summaryStats.appendChild(createStatBox(lengthMeasurements.length, 'Längenmessungen'));
+  summaryStats.appendChild(createStatBox(heightMeasurements.length, 'Höhenmessungen'));
+  summaryStats.appendChild(createStatBox(areaMeasurements.length, 'Flächenmessungen'));
   
   summaryCard.appendChild(summaryStats);
   summarySection.appendChild(summaryCard);
@@ -490,7 +419,6 @@ const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
   // Create detailed summary table
   const detailsTitle = document.createElement('h3');
   detailsTitle.textContent = 'Detaillierte Übersicht';
-  detailsTitle.style.marginTop = '20px';
   summarySection.appendChild(detailsTitle);
   
   // Create the summary table
@@ -573,7 +501,6 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[])
   
   // Create description based on type
   const description = document.createElement('p');
-  description.style.marginBottom = '15px';
   if (type === 'length') {
     description.textContent = `Dieser Abschnitt enthält ${measurements.length} Längenmessungen. Alle Messungen sind in Meter (m) angegeben.`;
   } else if (type === 'height') {
@@ -655,8 +582,6 @@ const createMeasurementTypeSection = (type: string, measurements: Measurement[])
       if (measurement.segments && measurement.segments.length > 0) {
         const segmentsTitle = document.createElement('h3');
         segmentsTitle.textContent = `Teilmessungen für Fläche ${mIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
-        segmentsTitle.style.marginTop = '20px';
-        segmentsTitle.style.marginBottom = '10px';
         section.appendChild(segmentsTitle);
         
         const segmentsTable = document.createElement('table');
