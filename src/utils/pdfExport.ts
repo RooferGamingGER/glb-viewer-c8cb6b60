@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -15,15 +16,12 @@ export const exportMeasurementsToPdf = async (
   coverData: CoverPageData
 ): Promise<boolean> => {
   try {
-    // Create a temporary container for PDF content that will be added to the DOM
+    // Create a container for the PDF content
     const container = document.createElement('div');
     container.className = 'pdf-container';
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.padding = '20px';
     container.style.color = '#000000';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px'; // Hide container from view
-    container.style.width = '210mm'; // A4 width
     
     // Create cover page
     const coverPage = createCoverPage(coverData);
@@ -45,145 +43,37 @@ export const exportMeasurementsToPdf = async (
       container.appendChild(areaDetailsSection);
     }
     
-    // Add the container to the document body BEFORE trying to generate the PDF
-    document.body.appendChild(container);
+    // Add footer to each page
+    const footerContent = createFooter();
     
-    // Add a delay to ensure DOM rendering is complete
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Create footer as a separate DOM element
-    const footerElement = document.createElement('div');
-    footerElement.innerHTML = createFooterContent();
-    footerElement.style.position = 'fixed';
-    footerElement.style.bottom = '0';
-    footerElement.style.left = '0';
-    footerElement.style.width = '100%';
-    footerElement.style.borderTop = '1px solid #ddd';
-    footerElement.style.padding = '10px 15px';
-    footerElement.style.backgroundColor = 'white';
-    footerElement.style.zIndex = '1000';
-    
-    // Configure html2pdf options with larger bottom margin for footer
+    // Configure html2pdf options with increased bottom margin for footer
     const pdfOptions = {
-      margin: [15, 15, 45, 15], // [top, right, bottom, left] - increased bottom margin for footer (45mm)
+      margin: [15, 15, 35, 15], // [top, right, bottom, left] - increased bottom margin for footer
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        logging: true,
-        letterRendering: true
-      },
+      html2canvas: { scale: 2, useCORS: true },
       jsPDF: { 
         unit: 'mm', 
         format: 'a4', 
-        orientation: 'portrait',
-        compress: true
+        orientation: 'portrait'
       },
-      pagebreak: { mode: ['css', 'legacy'] },
+      pagebreak: { mode: 'css' },
       footer: {
-        height: '40mm', // Increased footer height
-        contents: createFooterContent()
+        height: '30mm',
+        contents: footerContent
       }
     };
     
-    try {
-      // Generate the PDF with improved error handling
-      const pdf = await html2pdf()
-        .set(pdfOptions)
-        .from(container)
-        .toPdf() // Convert to PDF
-        .get('pdf'); // Get the jsPDF object
-        
-      // Add the footer to each page manually
-      const totalPages = pdf.internal.getNumberOfPages();
-      
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        
-        // Draw footer on each page manually
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const footerHeight = 30; // mm
-        
-        // Add footer content manually
-        pdf.setFontSize(8);
-        pdf.setTextColor(100, 100, 100);
-        
-        // Draw a line
-        pdf.setDrawColor(220, 220, 220);
-        pdf.line(15, pageHeight - footerHeight + 5, 195, pageHeight - footerHeight + 5);
-        
-        // Add logo text
-        pdf.setFont("helvetica", "bold");
-        pdf.text("DrohnenGLB by RooferGaming", 20, pageHeight - footerHeight + 15);
-        
-        // Add copyright text
-        pdf.setFont("helvetica", "normal");
-        pdf.text("Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt", 20, pageHeight - footerHeight + 20);
-        pdf.text("Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de", 20, pageHeight - footerHeight + 25);
-      }
-      
-      // Save the PDF
-      await pdf.save(`DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`, { returnPromise: true });
-      
-    } catch (innerError) {
-      console.error("Error during PDF generation:", innerError);
-      
-      // Fallback to simpler PDF generation if the manual footer approach fails
-      await html2pdf()
-        .from(container)
-        .set(pdfOptions)
-        .save();
-    }
-    
-    // Clean up: remove container from document
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
-    }
+    // Generate the PDF
+    document.body.appendChild(container);
+    await html2pdf().from(container).set(pdfOptions).save();
+    document.body.removeChild(container);
     
     return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
-    
-    // Make sure we clean up even if there's an error
-    const container = document.querySelector('.pdf-container');
-    if (container && document.body.contains(container)) {
-      document.body.removeChild(container);
-    }
-    
     return false;
   }
-};
-
-// Helper function to create footer content
-const createFooterContent = (): string => {
-  return `
-    <div style="
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      padding: 10px 15px; 
-      border-top: 1px solid #ddd; 
-      font-size: 10px; 
-      color: #666; 
-      width: 100%; 
-      background-color: white;
-      position: relative;
-      margin-top: 10px;
-      bottom: 0;
-    ">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <div style="width: 24px; height: 24px;">
-          <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjQiIGZpbGw9IiM0RjQ2RTUiLz4KICAgIDxwYXRoIGQ9Ik03IDEySDE3TTEyIDdWMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" alt="DrohnenGLB Logo" style="width: 100%; height: 100%;">
-        </div>
-        <span style="font-weight: bold;">DrohnenGLB by RooferGaming</span>
-      </div>
-      <div style="text-align: right; max-width: 70%;">
-        <div style="font-weight: bold; margin-bottom: 3px;">Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt</div>
-        <div>Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de</div>
-      </div>
-    </div>
-  `;
 };
 
 const createCoverPage = (coverData: CoverPageData): HTMLElement => {
@@ -560,4 +450,22 @@ const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
   }
   
   return areaSection;
+};
+
+const createFooter = (): string => {
+  // Create the footer as HTML string with improved styling
+  return `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; width: 100%; margin-top: 5px; position: relative;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 24px; height: 24px;">
+          <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjQiIGZpbGw9IiM0RjQ2RTUiLz4KICAgIDxwYXRoIGQ9Ik03IDEySDE3TTEyIDdWMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" alt="DrohnenGLB Logo" style="width: 100%; height: 100%;">
+        </div>
+        <span style="font-weight: bold;">DrohnenGLB by RooferGaming</span>
+      </div>
+      <div style="text-align: right; max-width: 70%;">
+        <div style="font-weight: bold; margin-bottom: 3px;">Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt</div>
+        <div>Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de</div>
+      </div>
+    </div>
+  `;
 };
