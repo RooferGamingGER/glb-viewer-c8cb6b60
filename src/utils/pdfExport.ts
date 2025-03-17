@@ -5,9 +5,12 @@ import { Measurement } from '@/hooks/useMeasurements';
 export interface CoverPageData {
   title: string;
   companyName: string;
+  projectNumber: string;
   projectAddress: string;
+  clientName: string;
   contactPerson: string;
   droneDate: string;
+  creationDate: string;
   notes: string;
 }
 
@@ -27,7 +30,7 @@ export const exportMeasurementsToPdf = async (
     container.style.color = '#000000';
     container.style.position = 'relative';
     
-    // Create and add styles for page layouts - UPDATED to fix page break issues
+    // Create and add styles for page layouts
     const styleElement = document.createElement('style');
     styleElement.textContent = `
       .pdf-page {
@@ -40,17 +43,9 @@ export const exportMeasurementsToPdf = async (
       .pdf-page-end {
         page-break-after: avoid !important;
       }
-      .logo-centered {
-        position: absolute;
-        top: 20%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 100%;
-        text-align: center;
-      }
       .logo-container {
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 10px;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -73,21 +68,143 @@ export const exportMeasurementsToPdf = async (
       }
       .company-info {
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 20px;
         color: #333;
         line-height: 1.6;
       }
       .company-slogan {
         font-style: italic;
-        margin-top: 15px;
+        margin-top: 10px;
         color: #555;
         font-size: 14px;
       }
       .cover-upper {
-        margin-bottom: 70px;
+        margin-bottom: 30px;
       }
-      .cover-lower {
-        margin-top: 70px;
+      .cover-title {
+        font-size: 28px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+      .project-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+      .project-info-table th {
+        text-align: left;
+        width: 40%;
+        padding: 8px;
+        font-weight: normal;
+        color: #555;
+        vertical-align: top;
+        border-bottom: 1px solid #eee;
+      }
+      .project-info-table td {
+        width: 60%;
+        padding: 8px;
+        font-weight: 500;
+        vertical-align: top;
+        border-bottom: 1px solid #eee;
+      }
+      .measurement-section {
+        margin-bottom: 20px;
+      }
+      .measurement-section h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
+      }
+      .measurement-section h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
+        color: #555;
+      }
+      .measurement-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+      }
+      .measurement-table th {
+        background-color: #f8f9fa;
+        padding: 8px;
+        text-align: left;
+        font-weight: 600;
+        border: 1px solid #ddd;
+      }
+      .measurement-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        vertical-align: top;
+      }
+      .measurement-table tr:nth-child(even) {
+        background-color: #f9fafb;
+      }
+      .segment-table {
+        width: 95%;
+        margin-left: 5%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+      }
+      .segment-table th {
+        background-color: #f0f2f5;
+        padding: 6px;
+        text-align: left;
+        font-weight: 600;
+        border: 1px solid #ddd;
+        font-size: 13px;
+      }
+      .segment-table td {
+        padding: 6px;
+        border: 1px solid #ddd;
+        font-size: 13px;
+      }
+      .summary-card {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .summary-stats {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .summary-stat {
+        background-color: white;
+        border-radius: 6px;
+        padding: 10px;
+        flex: 1;
+        min-width: 100px;
+        text-align: center;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      }
+      .summary-stat-value {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .summary-stat-label {
+        font-size: 12px;
+        color: #666;
+      }
+      .footer {
+        position: fixed;
+        bottom: 10mm;
+        width: 100%;
+        text-align: center;
+        font-size: 9px;
+        color: #777;
+      }
+      .page-number:after {
+        content: counter(page);
       }
     `;
     document.head.appendChild(styleElement);
@@ -104,29 +221,57 @@ export const exportMeasurementsToPdf = async (
     coverPage.appendChild(createCoverPage(coverData));
     container.appendChild(coverPage);
     
-    // Create measurement data section - only add page break if there will be an area page after
-    const dataPage = document.createElement('div');
-    dataPage.className = hasAreaMeasurements ? 'pdf-page pdf-page-break' : 'pdf-page pdf-page-end';
-    dataPage.appendChild(createMeasurementDataSection(measurements));
-    container.appendChild(dataPage);
+    // Create measurement summary section WITH page break
+    const summaryPage = document.createElement('div');
+    summaryPage.className = 'pdf-page pdf-page-break';
+    summaryPage.appendChild(createMeasurementSummary(measurements));
+    container.appendChild(summaryPage);
     
-    // Add area measurement details page if needed - ALWAYS as the last page
-    if (hasAreaMeasurements) {
+    // Create measurement data section - separate by measurement type
+    // Length measurements
+    const lengthMeasurements = measurements.filter(m => m.type === 'length');
+    if (lengthMeasurements.length > 0) {
+      const lengthPage = document.createElement('div');
+      lengthPage.className = 'pdf-page pdf-page-break';
+      lengthPage.appendChild(createMeasurementTypeSection('length', lengthMeasurements));
+      container.appendChild(lengthPage);
+    }
+    
+    // Height measurements
+    const heightMeasurements = measurements.filter(m => m.type === 'height');
+    if (heightMeasurements.length > 0) {
+      const heightPage = document.createElement('div');
+      heightPage.className = 'pdf-page pdf-page-break';
+      heightPage.appendChild(createMeasurementTypeSection('height', heightMeasurements));
+      container.appendChild(heightPage);
+    }
+    
+    // Area measurements - ALWAYS as the last section
+    const areaMeasurements = measurements.filter(m => m.type === 'area');
+    if (areaMeasurements.length > 0) {
       const areaPage = document.createElement('div');
       areaPage.className = 'pdf-page pdf-page-end';
-      areaPage.appendChild(createAreaDetailsSection(measurements));
+      areaPage.appendChild(createMeasurementTypeSection('area', areaMeasurements));
       container.appendChild(areaPage);
     }
     
-    // Configure html2pdf options - UPDATED page break options
+    // Add footer with page number and company info
+    const footer = document.createElement('div');
+    footer.className = 'footer';
+    footer.innerHTML = `
+      DrohnenGLB by RooferGaming® | www.drohnenglb.de | Seite <span class="page-number"></span>
+    `;
+    container.appendChild(footer);
+    
+    // Configure html2pdf options
     const pdfOptions = {
-      margin: [15, 15, 15, 15], // [top, right, bottom, left]
-      filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
+      margin: [15, 15, 25, 15], // [top, right, bottom, left] - increased bottom margin for footer
+      filename: `DrohnenGLB_Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2.5,
         useCORS: true,
-        logging: true,
+        logging: false,
         letterRendering: true,
         windowWidth: 1200 
       },
@@ -135,7 +280,7 @@ export const exportMeasurementsToPdf = async (
         format: 'a4', 
         orientation: 'portrait'
       },
-      pagebreak: { mode: ['css'] } // Removed 'legacy' mode to avoid unexpected page breaks
+      pagebreak: { mode: ['css'] }
     };
     
     // Add a longer delay to ensure DOM rendering is complete
@@ -171,10 +316,9 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverPage.style.flexDirection = 'column';
   coverPage.style.padding = '20px';
 
-  // Upper half of cover page - Company logo and info
-  const upperHalf = document.createElement('div');
-  upperHalf.className = 'cover-upper';
-  upperHalf.style.marginBottom = '70px';
+  // Upper section - Company logo and info
+  const upperSection = document.createElement('div');
+  upperSection.className = 'cover-upper';
   
   // Logo container with flex layout
   const logoContainer = document.createElement('div');
@@ -187,11 +331,11 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   // Create and add the logo icon using Base64 data
   const logoIcon = document.createElement('img');
   logoIcon.className = 'logo-icon';
-  logoIcon.src = LOGO_BASE64; // Use Base64 data instead of URL path
+  logoIcon.src = LOGO_BASE64;
   logoIcon.alt = 'DrohnenGLB Logo';
-  logoIcon.style.height = '32px'; // Match text height
+  logoIcon.style.height = '40px';
   logoIcon.style.width = 'auto';
-  logoIcon.style.marginRight = '10px';
+  logoIcon.style.marginRight = '12px';
   logoImage.appendChild(logoIcon);
   
   // Create and add the logo text
@@ -201,405 +345,360 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   logoImage.appendChild(logoText);
   
   logoContainer.appendChild(logoImage);
-  upperHalf.appendChild(logoContainer);
+  upperSection.appendChild(logoContainer);
   
   // Company information section with vertical alignment
   const companyInfo = document.createElement('div');
   companyInfo.className = 'company-info';
   
-  const websiteInfo1 = document.createElement('div');
-  websiteInfo1.style.marginBottom = '8px';
-  websiteInfo1.style.fontSize = '14px';
-  websiteInfo1.textContent = 'GLB Viewer: drohnenglb.de';
-  companyInfo.appendChild(websiteInfo1);
-  
-  const websiteInfo2 = document.createElement('div');
-  websiteInfo2.style.marginBottom = '8px';
-  websiteInfo2.style.fontSize = '14px';
-  websiteInfo2.textContent = 'Drohnenaufmaß: drohnenvermessung-roofergaming.de';
-  companyInfo.appendChild(websiteInfo2);
+  const websiteInfo = document.createElement('div');
+  websiteInfo.style.fontSize = '14px';
+  websiteInfo.textContent = 'GLB Viewer: drohnenglb.de | Drohnenaufmaß: drohnenvermessung-roofergaming.de';
+  companyInfo.appendChild(websiteInfo);
   
   const emailInfo = document.createElement('div');
-  emailInfo.style.marginBottom = '15px';
   emailInfo.style.fontSize = '14px';
   emailInfo.textContent = 'Email: info@drohnenvermessung-roofergaming.de';
   companyInfo.appendChild(emailInfo);
   
   const companySlogan = document.createElement('div');
   companySlogan.className = 'company-slogan';
-  companySlogan.style.fontSize = '14px';
   companySlogan.textContent = 'Fliegen - Digitalisieren - tolle Ergebnisse';
   companyInfo.appendChild(companySlogan);
   
-  upperHalf.appendChild(companyInfo);
-  coverPage.appendChild(upperHalf);
+  upperSection.appendChild(companyInfo);
+  coverPage.appendChild(upperSection);
   
   // Cover title - centered
-  const coverHeader = document.createElement('div');
-  coverHeader.style.textAlign = 'center';
-  coverHeader.style.marginBottom = '50px';
-
   const coverTitle = document.createElement('h1');
+  coverTitle.className = 'cover-title';
   coverTitle.textContent = coverData.title || 'Vermessungsbericht';
-  coverTitle.style.fontSize = '28px';
-  coverTitle.style.fontWeight = 'bold';
-  coverTitle.style.marginBottom = '15px';
-  coverTitle.style.color = '#000000';
-  coverHeader.appendChild(coverTitle);
-
-  const exportDate = document.createElement('div');
-  exportDate.textContent = `Erstellt am: ${new Date().toLocaleDateString('de-DE')}`;
-  exportDate.style.fontSize = '14px';
-  exportDate.style.color = '#555';
-  coverHeader.appendChild(exportDate);
-
-  coverPage.appendChild(coverHeader);
+  coverPage.appendChild(coverTitle);
   
-  // Lower half - User information
-  const lowerHalf = document.createElement('div');
-  lowerHalf.className = 'cover-lower';
-  lowerHalf.style.flex = '1';
+  // Project information table
+  const projectInfoTable = document.createElement('table');
+  projectInfoTable.className = 'project-info-table';
   
-  const infoWrapper = document.createElement('div');
-  infoWrapper.style.maxWidth = '100%';
-  infoWrapper.style.width = '100%';
-  infoWrapper.style.margin = '0 auto';
-  infoWrapper.style.padding = '10px 0';
-  infoWrapper.style.borderTop = '1px solid #eee';
-  infoWrapper.style.paddingTop = '30px';
-  
-  // Create table for layout with full width
-  const infoTable = document.createElement('table');
-  infoTable.style.width = '100%';
-  infoTable.style.borderCollapse = 'collapse';
-  
-  // Create table rows for each piece of information
-  const createInfoRow = (label: string, value: string) => {
-    if (!value) return null;
+  // Helper function to add row to table
+  const addTableRow = (label: string, value: string | undefined) => {
+    if (!value) return;
     
     const row = document.createElement('tr');
-    row.style.marginBottom = '25px';
-    row.style.verticalAlign = 'top';
     
-    const labelCell = document.createElement('td');
-    labelCell.style.width = '40%';
-    labelCell.style.paddingBottom = '25px';
-    labelCell.style.paddingRight = '20px';
-    labelCell.style.fontWeight = 'normal';
-    labelCell.style.color = '#666';
-    labelCell.style.fontSize = '16px';
+    const labelCell = document.createElement('th');
     labelCell.textContent = label;
     row.appendChild(labelCell);
     
     const valueCell = document.createElement('td');
-    valueCell.style.width = '60%';
-    valueCell.style.paddingBottom = '25px';
-    valueCell.style.fontWeight = 'bold';
-    valueCell.style.fontSize = '20px';
-    valueCell.style.color = '#000000';
-    valueCell.textContent = value || '';
+    valueCell.textContent = value;
     row.appendChild(valueCell);
     
-    return row;
+    projectInfoTable.appendChild(row);
   };
   
-  // Add rows for each field
-  const companyRow = createInfoRow('Name des Betriebes', coverData.companyName);
-  if (companyRow) infoTable.appendChild(companyRow);
+  // Add project information rows
+  addTableRow('Projektnummer', coverData.projectNumber);
+  addTableRow('Objektadresse', coverData.projectAddress);
+  addTableRow('Auftraggeber', coverData.clientName);
+  addTableRow('Ausführender Betrieb', coverData.companyName);
+  addTableRow('Ansprechpartner', coverData.contactPerson);
+  addTableRow('Datum der Drohnenaufnahmen', coverData.droneDate ? new Date(coverData.droneDate).toLocaleDateString('de-DE') : undefined);
+  addTableRow('Erstellungsdatum', new Date().toLocaleDateString('de-DE'));
   
-  const addressRow = createInfoRow('Anschrift des Objekts', coverData.projectAddress);
-  if (addressRow) infoTable.appendChild(addressRow);
+  coverPage.appendChild(projectInfoTable);
   
-  const contactRow = createInfoRow('Ansprechpartner', coverData.contactPerson);
-  if (contactRow) infoTable.appendChild(contactRow);
-  
-  const droneDateRow = createInfoRow('Datum der Drohnenaufnahmen', coverData.droneDate ? new Date(coverData.droneDate).toLocaleDateString('de-DE') : '');
-  if (droneDateRow) infoTable.appendChild(droneDateRow);
-  
-  // Only add notes field if notes are not empty
-  if (coverData.notes && coverData.notes.trim() !== '') {
-    const notesRow = document.createElement('tr');
-    notesRow.style.verticalAlign = 'top';
+  // Notes section (if provided)
+  if (coverData.notes && coverData.notes.trim()) {
+    const notesSection = document.createElement('div');
+    notesSection.style.marginTop = '30px';
     
-    const notesLabelCell = document.createElement('td');
-    notesLabelCell.style.width = '40%';
-    notesLabelCell.style.paddingRight = '20px';
-    notesLabelCell.style.fontWeight = 'normal';
-    notesLabelCell.style.color = '#666';
-    notesLabelCell.style.fontSize = '16px';
-    notesLabelCell.textContent = 'Bemerkungen';
-    notesRow.appendChild(notesLabelCell);
+    const notesTitle = document.createElement('h3');
+    notesTitle.style.fontSize = '16px';
+    notesTitle.style.marginBottom = '10px';
+    notesTitle.textContent = 'Bemerkungen';
+    notesSection.appendChild(notesTitle);
     
-    const notesValueCell = document.createElement('td');
-    notesValueCell.style.width = '60%';
-    notesValueCell.style.fontWeight = 'normal';
-    notesValueCell.style.fontSize = '16px';
-    notesValueCell.style.color = '#000000';
-    notesValueCell.textContent = coverData.notes;
-    notesRow.appendChild(notesValueCell);
+    const notesContent = document.createElement('p');
+    notesContent.style.margin = '0';
+    notesContent.style.fontSize = '14px';
+    notesContent.style.lineHeight = '1.5';
+    notesContent.style.whiteSpace = 'pre-line';
+    notesContent.textContent = coverData.notes;
+    notesSection.appendChild(notesContent);
     
-    infoTable.appendChild(notesRow);
+    coverPage.appendChild(notesSection);
   }
-  
-  infoWrapper.appendChild(infoTable);
-  lowerHalf.appendChild(infoWrapper);
-  coverPage.appendChild(lowerHalf);
   
   return coverPage;
 };
 
-const createMeasurementDataSection = (measurements: Measurement[]): HTMLElement => {
-  const dataSection = document.createElement('div');
-  dataSection.style.marginBottom = '30px';
+const createMeasurementSummary = (measurements: Measurement[]): HTMLElement => {
+  const summarySection = document.createElement('div');
+  summarySection.className = 'measurement-section';
+  
+  // Create section title
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Messungen - Übersicht';
+  summarySection.appendChild(sectionTitle);
+  
+  // Create summary card
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'summary-card';
   
   // Filter measurements by type
   const lengthMeasurements = measurements.filter(m => m.type === 'length');
   const heightMeasurements = measurements.filter(m => m.type === 'height');
   const areaMeasurements = measurements.filter(m => m.type === 'area');
   
-  // Add measurement summary
-  const summary = document.createElement('div');
-  summary.style.marginBottom = '30px';
+  // Create summary text
+  const summaryText = document.createElement('p');
+  summaryText.style.margin = '0 0 15px 0';
+  summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen, die mit DrohnenGLB erstellt wurden.`;
+  summaryCard.appendChild(summaryText);
   
-  const summaryTitle = document.createElement('h2');
-  summaryTitle.textContent = 'Übersicht';
-  summaryTitle.style.fontSize = '18px';
-  summaryTitle.style.marginBottom = '10px';
-  summaryTitle.style.color = '#000000';
-  summary.appendChild(summaryTitle);
+  // Create summary stats
+  const summaryStats = document.createElement('div');
+  summaryStats.className = 'summary-stats';
   
-  // Modified: Single row layout for summary stats
-  const summaryContent = document.createElement('div');
-  summaryContent.style.display = 'flex';
-  summaryContent.style.flexDirection = 'row';
-  summaryContent.style.justifyContent = 'space-between';
-  summaryContent.style.flexWrap = 'nowrap';
-  summaryContent.style.gap = '10px';
-  summaryContent.style.width = '100%';
-  
-  const createSummaryStat = (label: string, value: number, icon: string) => {
-    const stat = document.createElement('div');
-    stat.style.backgroundColor = '#f8f9fa';
-    stat.style.borderRadius = '8px';
-    stat.style.padding = '10px';
-    stat.style.width = '24%';
-    stat.style.minWidth = '80px';
-    stat.style.boxSizing = 'border-box';
-    stat.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-    stat.style.textAlign = 'center';
-    stat.style.flexShrink = '1';
+  // Helper function to create a stat box
+  const createStatBox = (value: number, label: string, icon: string) => {
+    const statBox = document.createElement('div');
+    statBox.className = 'summary-stat';
     
     const statValue = document.createElement('div');
-    statValue.style.fontSize = '22px';
-    statValue.style.fontWeight = 'bold';
-    statValue.style.marginBottom = '5px';
-    statValue.style.color = '#000000';
+    statValue.className = 'summary-stat-value';
     statValue.textContent = value.toString();
-    stat.appendChild(statValue);
+    statBox.appendChild(statValue);
     
     const statLabel = document.createElement('div');
-    statLabel.style.fontSize = '12px';
-    statLabel.style.color = '#666';
-    statLabel.style.display = 'flex';
-    statLabel.style.justifyContent = 'center';
-    statLabel.style.alignItems = 'center';
-    statLabel.style.gap = '5px';
-    statLabel.innerHTML = `${icon} ${label}`;
-    stat.appendChild(statLabel);
+    statLabel.className = 'summary-stat-label';
+    statLabel.textContent = `${icon} ${label}`;
+    statBox.appendChild(statLabel);
     
-    return stat;
+    return statBox;
   };
   
-  // Modified order of summary stats and ensure they fit in a single row
-  summaryContent.appendChild(createSummaryStat('Gesamt', measurements.length, '📊'));
-  summaryContent.appendChild(createSummaryStat('Längen', lengthMeasurements.length, '📏'));
-  summaryContent.appendChild(createSummaryStat('Höhen', heightMeasurements.length, '📐'));
-  summaryContent.appendChild(createSummaryStat('Flächen', areaMeasurements.length, '🔲'));
+  // Add stat boxes
+  summaryStats.appendChild(createStatBox(measurements.length, 'Gesamt', '📊'));
+  summaryStats.appendChild(createStatBox(lengthMeasurements.length, 'Längen', '📏'));
+  summaryStats.appendChild(createStatBox(heightMeasurements.length, 'Höhen', '📐'));
+  summaryStats.appendChild(createStatBox(areaMeasurements.length, 'Flächen', '🔲'));
   
-  summary.appendChild(summaryContent);
-  dataSection.appendChild(summary);
+  summaryCard.appendChild(summaryStats);
+  summarySection.appendChild(summaryCard);
   
-  // Main title for measurement data
-  const dataTitle = document.createElement('h2');
-  dataTitle.textContent = 'Messdaten';
-  dataTitle.style.fontSize = '18px';
-  dataTitle.style.marginBottom = '15px';
-  dataTitle.style.color = '#000000';
-  dataSection.appendChild(dataTitle);
+  // Create detailed summary table
+  const detailsTitle = document.createElement('h3');
+  detailsTitle.textContent = 'Detaillierte Übersicht';
+  detailsTitle.style.marginTop = '20px';
+  summarySection.appendChild(detailsTitle);
   
-  // Create combined table for all measurements
-  if (measurements.length > 0) {
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    table.style.marginBottom = '30px';
+  // Create the summary table
+  const summaryTable = document.createElement('table');
+  summaryTable.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Nr.', 'Beschreibung', 'Typ', 'Wert', 'Neigung'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  summaryTable.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  measurements.forEach((measurement, index) => {
+    const row = document.createElement('tr');
     
-    // Create table header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    headerRow.style.backgroundColor = '#f3f4f6';
+    // Nr column
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
     
-    ['Nr.', 'Beschreibung', 'Typ', 'Messwert', 'Dachneigung'].forEach(column => {
-      const th = document.createElement('th');
-      th.textContent = column;
-      th.style.padding = '10px';
-      th.style.textAlign = 'left';
-      th.style.border = '1px solid #ddd';
-      th.style.color = '#000000';
-      headerRow.appendChild(th);
-    });
+    // Description column
+    const descCell = document.createElement('td');
+    descCell.textContent = measurement.description || '–';
+    row.appendChild(descCell);
     
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+    // Type column
+    const typeCell = document.createElement('td');
+    typeCell.textContent = measurement.type === 'length' ? 'Länge' : 
+                         measurement.type === 'height' ? 'Höhe' : 
+                         measurement.type === 'area' ? 'Fläche' : '–';
+    row.appendChild(typeCell);
     
-    // Create table body
-    const tbody = document.createElement('tbody');
+    // Value column
+    const valueCell = document.createElement('td');
+    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
+    if (measurement.type === 'area') {
+      valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
+    }
+    valueCell.style.fontWeight = 'bold';
+    row.appendChild(valueCell);
     
-    measurements.forEach((measurement, index) => {
-      const row = document.createElement('tr');
-      row.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
-      
-      // Nr column
-      const numCell = document.createElement('td');
-      numCell.textContent = (index + 1).toString();
-      numCell.style.padding = '10px';
-      numCell.style.border = '1px solid #ddd';
-      numCell.style.color = '#000000';
-      row.appendChild(numCell);
-      
-      // Description column
-      const descCell = document.createElement('td');
-      descCell.textContent = measurement.description || '–';
-      descCell.style.padding = '10px';
-      descCell.style.border = '1px solid #ddd';
-      descCell.style.color = '#000000';
-      row.appendChild(descCell);
-      
-      // Type column
-      const typeCell = document.createElement('td');
-      typeCell.textContent = measurement.type === 'length' ? 'Länge' : 
-                           measurement.type === 'height' ? 'Höhe' : 
-                           measurement.type === 'area' ? 'Fläche' : '–';
-      typeCell.style.padding = '10px';
-      typeCell.style.border = '1px solid #ddd';
-      typeCell.style.color = '#000000';
-      row.appendChild(typeCell);
-      
-      // Value column
-      const valueCell = document.createElement('td');
-      valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
-      if (measurement.type === 'area') {
-        valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
-      }
-      valueCell.style.padding = '10px';
-      valueCell.style.border = '1px solid #ddd';
-      valueCell.style.fontWeight = 'bold';
-      valueCell.style.color = '#000000';
-      row.appendChild(valueCell);
-      
-      // Inclination column
+    // Inclination column
+    const inclinationCell = document.createElement('td');
+    if (measurement.type === 'length' && measurement.inclination !== undefined) {
+      inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
+    } else {
+      inclinationCell.textContent = '–';
+    }
+    row.appendChild(inclinationCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  summaryTable.appendChild(tableBody);
+  summarySection.appendChild(summaryTable);
+  
+  return summarySection;
+};
+
+const createMeasurementTypeSection = (type: string, measurements: Measurement[]): HTMLElement => {
+  const section = document.createElement('div');
+  section.className = 'measurement-section';
+  
+  // Create title based on measurement type
+  const title = document.createElement('h2');
+  title.textContent = type === 'length' ? 'Längenmessungen' : 
+                      type === 'height' ? 'Höhenmessungen' : 
+                      'Flächenmessungen';
+  section.appendChild(title);
+  
+  // Create description based on type
+  const description = document.createElement('p');
+  description.style.marginBottom = '15px';
+  if (type === 'length') {
+    description.textContent = `Dieser Abschnitt enthält ${measurements.length} Längenmessungen. Alle Messungen sind in Meter (m) angegeben.`;
+  } else if (type === 'height') {
+    description.textContent = `Dieser Abschnitt enthält ${measurements.length} Höhenmessungen. Alle Messungen sind in Meter (m) angegeben.`;
+  } else {
+    description.textContent = `Dieser Abschnitt enthält ${measurements.length} Flächenmessungen. Alle Messungen sind in Quadratmeter (m²) angegeben.`;
+  }
+  section.appendChild(description);
+  
+  // Create measurements table
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  // Columns depend on measurement type
+  let columns: string[];
+  if (type === 'length') {
+    columns = ['Nr.', 'Beschreibung', 'Länge (m)', 'Neigung'];
+  } else if (type === 'height') {
+    columns = ['Nr.', 'Beschreibung', 'Höhe (m)'];
+  } else { // area
+    columns = ['Nr.', 'Beschreibung', 'Fläche (m²)'];
+  }
+  
+  columns.forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  measurements.forEach((measurement, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr column
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description column
+    const descCell = document.createElement('td');
+    descCell.textContent = measurement.description || '–';
+    row.appendChild(descCell);
+    
+    // Value column
+    const valueCell = document.createElement('td');
+    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}`;
+    valueCell.style.fontWeight = 'bold';
+    row.appendChild(valueCell);
+    
+    // Inclination column for length measurements
+    if (type === 'length') {
       const inclinationCell = document.createElement('td');
-      if (measurement.type === 'length' && measurement.inclination !== undefined) {
+      if (measurement.inclination !== undefined) {
         inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
       } else {
         inclinationCell.textContent = '–';
       }
-      inclinationCell.style.padding = '10px';
-      inclinationCell.style.border = '1px solid #ddd';
-      inclinationCell.style.color = '#000000';
       row.appendChild(inclinationCell);
-      
-      tbody.appendChild(row);
-    });
+    }
     
-    table.appendChild(tbody);
-    dataSection.appendChild(table);
-  }
+    tableBody.appendChild(row);
+  });
   
-  return dataSection;
-};
-
-const createAreaDetailsSection = (measurements: Measurement[]): HTMLElement => {
-  const areaSection = document.createElement('div');
-  areaSection.style.marginBottom = '30px';
+  table.appendChild(tableBody);
+  section.appendChild(table);
   
-  const areaMeasurements = measurements.filter(m => m.type === 'area');
-  
-  if (areaMeasurements.length > 0) {
-    const areaDetailsTitle = document.createElement('h2');
-    areaDetailsTitle.textContent = 'Flächendetails';
-    areaDetailsTitle.style.fontSize = '18px';
-    areaDetailsTitle.style.marginBottom = '15px';
-    areaDetailsTitle.style.color = '#000000';
-    areaSection.appendChild(areaDetailsTitle);
-    
-    // For each area measurement, show its segments
-    areaMeasurements.forEach((measurement, mIndex) => {
+  // For area measurements, add segments tables
+  if (type === 'area') {
+    measurements.forEach((measurement, mIndex) => {
       if (measurement.segments && measurement.segments.length > 0) {
-        const areaTitle = document.createElement('h3');
-        areaTitle.textContent = measurement.description 
-          ? `Fläche: ${measurement.description}` 
-          : `Fläche ${mIndex + 1}`;
-        areaTitle.style.fontSize = '16px';
-        areaTitle.style.marginTop = '20px';
-        areaTitle.style.marginBottom = '10px';
-        areaTitle.style.color = '#000000';
-        areaSection.appendChild(areaTitle);
+        const segmentsTitle = document.createElement('h3');
+        segmentsTitle.textContent = `Teilmessungen für Fläche ${mIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+        segmentsTitle.style.marginTop = '20px';
+        segmentsTitle.style.marginBottom = '10px';
+        section.appendChild(segmentsTitle);
         
-        const segmentTable = document.createElement('table');
-        segmentTable.style.width = '100%';
-        segmentTable.style.borderCollapse = 'collapse';
-        segmentTable.style.marginBottom = '20px';
+        const segmentsTable = document.createElement('table');
+        segmentsTable.className = 'segment-table';
         
-        // Segment table header
-        const segmentThead = document.createElement('thead');
-        const segmentHeaderRow = document.createElement('tr');
-        segmentHeaderRow.style.backgroundColor = '#f3f4f6';
+        // Segments table header
+        const segmentsTableHead = document.createElement('thead');
+        const segmentsHeaderRow = document.createElement('tr');
         
-        ['Teilmessung', 'Länge'].forEach(column => {
+        ['Teilmessung', 'Länge (m)'].forEach(column => {
           const th = document.createElement('th');
           th.textContent = column;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #ddd';
-          th.style.color = '#000000';
-          segmentHeaderRow.appendChild(th);
+          segmentsHeaderRow.appendChild(th);
         });
         
-        segmentThead.appendChild(segmentHeaderRow);
-        segmentTable.appendChild(segmentThead);
+        segmentsTableHead.appendChild(segmentsHeaderRow);
+        segmentsTable.appendChild(segmentsTableHead);
         
-        // Segment table body
-        const segmentTbody = document.createElement('tbody');
+        // Segments table body
+        const segmentsTableBody = document.createElement('tbody');
         
         measurement.segments.forEach((segment, sIndex) => {
           const segmentRow = document.createElement('tr');
-          segmentRow.style.backgroundColor = sIndex % 2 === 0 ? '#ffffff' : '#f9fafb';
           
-          // Teilmessung column
+          // Segment number column
           const segmentNumCell = document.createElement('td');
           segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
-          segmentNumCell.style.padding = '8px';
-          segmentNumCell.style.border = '1px solid #ddd';
-          segmentNumCell.style.color = '#000000';
           segmentRow.appendChild(segmentNumCell);
           
-          // Segment length
+          // Segment length column
           const segmentLengthCell = document.createElement('td');
           segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
-          segmentLengthCell.style.padding = '8px';
-          segmentLengthCell.style.border = '1px solid #ddd';
-          segmentLengthCell.style.color = '#000000';
           segmentRow.appendChild(segmentLengthCell);
           
-          segmentTbody.appendChild(segmentRow);
+          segmentsTableBody.appendChild(segmentRow);
         });
         
-        segmentTable.appendChild(segmentTbody);
-        areaSection.appendChild(segmentTable);
+        segmentsTable.appendChild(segmentsTableBody);
+        section.appendChild(segmentsTable);
       }
     });
   }
   
-  return areaSection;
+  return section;
 };
