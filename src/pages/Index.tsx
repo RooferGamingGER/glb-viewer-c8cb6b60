@@ -1,3 +1,4 @@
+
 import React from 'react';
 import FileUpload from '@/components/FileUpload';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield } from 'lucide-react';
@@ -61,7 +62,15 @@ const Index = () => {
         </div>
 
         <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2 flex-grow overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min overflow-auto pb-2">
+          {/* Swapped the order: Upload panel first (left side), features grid second (right side) */}
+          <div className="glass-panel p-5 md:p-6 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300 order-1 lg:order-1">
+            <div className="w-full max-w-md mx-auto">
+              <h2 className="text-xl font-bold mb-5 text-center">Modell hochladen</h2>
+              <FileUpload />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min overflow-auto pb-2 order-2 lg:order-2">
             <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                 <MoveHorizontal className="w-5 h-5 text-primary" />
@@ -120,13 +129,6 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">
                 Ihre 3D-Modelle werden lokal im Browser verarbeitet und nicht auf externe Server hochgeladen.
               </p>
-            </div>
-          </div>
-
-          <div className="glass-panel p-5 md:p-6 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
-            <div className="w-full max-w-md mx-auto">
-              <h2 className="text-xl font-bold mb-5 text-center">Modell hochladen</h2>
-              <FileUpload />
             </div>
           </div>
         </div>
