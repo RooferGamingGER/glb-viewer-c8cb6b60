@@ -475,11 +475,8 @@ export function renderMeasurements(
         // Calculate centroid for label placement
         const centroid = calculateCentroid(points3D);
         
-        // Create label text with inclination if available
-        let labelText = formatMeasurementLabel(measurement.value, 'area');
-        if (measurement.inclination !== undefined && Math.abs(measurement.inclination) > 1.0) {
-          labelText += ` | Ø ${Math.abs(measurement.inclination).toFixed(1)}°`;
-        }
+        // Create label text (without inclination for area measurements)
+        const labelText = formatMeasurementLabel(measurement.value, 'area');
         
         // Update the existing label
         const label = existingLabels[0] as THREE.Sprite;
@@ -768,14 +765,8 @@ function renderAreaMeasurement(
       // Offset midpoint slightly to avoid overlap with lines
       midpoint.y += 0.05;
       
-      // Include segment inclination in label if available and significant
-      let segmentLabel = segment.label || "";
-      if (segment.inclination !== undefined && Math.abs(segment.inclination) > 1.0) {
-        segmentLabel += ` | ${Math.abs(segment.inclination).toFixed(1)}°`;
-      }
-      
       // Create label with smaller size
-      const segmentLabelSprite = createMeasurementLabel(segmentLabel, midpoint);
+      const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint);
       
       // Adjust the scale to make it slightly smaller than area labels
       segmentLabelSprite.scale.multiplyScalar(0.75);
@@ -798,11 +789,8 @@ function renderAreaMeasurement(
     // Calculate centroid for label placement
     const centroid = calculateCentroid(points3D);
     
-    // Create label text with inclination if available
-    let labelText = formatMeasurementLabel(measurement.value, 'area');
-    if (measurement.inclination !== undefined && Math.abs(measurement.inclination) > 1.0) {
-      labelText += ` | Ø ${Math.abs(measurement.inclination).toFixed(1)}°`;
-    }
+    // Create label text (without inclination for area measurements)
+    const labelText = formatMeasurementLabel(measurement.value, 'area');
     
     const label = createMeasurementLabel(labelText, centroid);
     

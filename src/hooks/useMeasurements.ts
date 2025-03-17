@@ -70,6 +70,36 @@ export const useMeasurements = () => {
     currentPointsRef.current = currentPoints;
   }, [currentPoints]);
 
+  // Listen for custom events to handle adding points to existing area measurements
+  useEffect(() => {
+    const handleAreaPointAdded = (event: CustomEvent) => {
+      const { measurementId, updatedMeasurement } = event.detail;
+      
+      setMeasurements(prev => prev.map(m => {
+        if (m.id === measurementId) {
+          // Recalculate area based on the new points
+          const newValue = calculateArea(updatedMeasurement.points);
+          const segments = generateSegments(updatedMeasurement.points);
+          
+          return {
+            ...updatedMeasurement,
+            value: newValue,
+            label: formatMeasurement(newValue, 'area'),
+            segments
+          };
+        }
+        return m;
+      }));
+    };
+    
+    // Add event listener for the custom event
+    document.addEventListener('areaPointAdded', handleAreaPointAdded as EventListener);
+    
+    return () => {
+      document.removeEventListener('areaPointAdded', handleAreaPointAdded as EventListener);
+    };
+  }, []);
+
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);
     setCurrentPoints([]);
@@ -217,12 +247,12 @@ export const useMeasurements = () => {
       const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
       const inclination = calculateInclination(v1, v2);
       
+      // For area measurements, don't include inclination in segment label
       segments.push({
         id: nanoid(),
         points: [p1, p2],
         length,
-        label,
-        inclination
+        label
       });
     }
     
@@ -301,17 +331,12 @@ export const useMeasurements = () => {
           // Update segments for area measurements
           const newSegments = generateSegments(newPoints);
           
-          // Calculate average inclination for area if there's meaningful inclination
-          // This will apply the threshold in calculateAverageInclination
-          const avgInclination = calculateAverageInclination(newSegments);
-          
           return {
             ...m,
             points: newPoints,
             value: newValue,
             label: formatMeasurement(newValue, m.type),
-            segments: newSegments,
-            inclination: avgInclination
+            segments: newSegments
           };
         } else {
           newValue = m.value; // Fallback
@@ -326,7 +351,7 @@ export const useMeasurements = () => {
         };
       });
     });
-  }, [calculateDistance, calculateHeight, calculateArea, generateSegments, calculateInclination, calculateAverageInclination]);
+  }, [calculateDistance, calculateHeight, calculateArea, generateSegments, calculateInclination]);
 
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => prev.map(m => 
@@ -461,9 +486,6 @@ export const useMeasurements = () => {
       const label = formatMeasurement(value, 'area');
       const segments = generateSegments(points);
       
-      // Calculate average inclination for area if there's meaningful inclination
-      const avgInclination = calculateAverageInclination(segments);
-      
       setMeasurements(prev => [
         ...prev,
         {
@@ -475,14 +497,13 @@ export const useMeasurements = () => {
           visible: true,
           unit: 'm²',
           description: '',
-          segments,
-          inclination: avgInclination
+          segments
         }
       ]);
       setCurrentPoints([]);
       currentPointsRef.current = [];
     }
-  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement, generateSegments, calculateAverageInclination]);
+  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement, generateSegments]);
 
   const addPoint = useCallback((point: Point) => {
     // If we're in edit mode and have a point selected, update that point
@@ -603,3 +624,4 @@ export const useMeasurements = () => {
     calculateSegmentLength
   };
 };
+

@@ -39,6 +39,9 @@ export const useMeasurementInteraction = (
   // Preview point during movement
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   const previewRef = useRef<THREE.Group | null>(null);
+  
+  // Track multitouch state for mobile
+  const touchCountRef = useRef<number>(0);
 
   // Initialize preview group
   useEffect(() => {
@@ -180,6 +183,44 @@ export const useMeasurementInteraction = (
     }
   }, [movingPointInfo, scene, camera]);
 
+  // Helper function to find the closest point on a line segment
+  const findClosestPointOnLine = useCallback((
+    point: THREE.Vector3,
+    lineStart: THREE.Vector3,
+    lineEnd: THREE.Vector3
+  ): THREE.Vector3 => {
+    // Create line direction vector
+    const line = new THREE.Vector3().subVectors(lineEnd, lineStart);
+    const lineLength = line.length();
+    line.normalize();
+    
+    // Vector from line start to point
+    const pointVector = new THREE.Vector3().subVectors(point, lineStart);
+    
+    // Project pointVector onto line
+    const projection = pointVector.dot(line);
+    
+    // Clamp projection to line segment
+    const clamped = Math.max(0, Math.min(projection, lineLength));
+    
+    // Get the point on the line
+    return new THREE.Vector3().addVectors(
+      lineStart, 
+      new THREE.Vector3().copy(line).multiplyScalar(clamped)
+    );
+  }, []);
+
+  // Check if a point is close to a line segment
+  const isPointNearLine = useCallback((
+    point: THREE.Vector3,
+    lineStart: THREE.Vector3,
+    lineEnd: THREE.Vector3,
+    threshold: number = 0.1
+  ): boolean => {
+    const closestPoint = findClosestPointOnLine(point, lineStart, lineEnd);
+    return point.distanceTo(closestPoint) <= threshold;
+  }, [findClosestPointOnLine]);
+
   // Helper function to filter out measurement objects from intersections
   const filterMeasurementObjects = useCallback((intersects: THREE.Intersection[]) => {
     return intersects.filter(intersect => {
@@ -203,16 +244,121 @@ export const useMeasurementInteraction = (
     });
   }, []);
 
+  // Find intersection point with area measurement lines (for adding points to existing areas)
+  const findIntersectionWithAreaLines = useCallback((
+    raycaster: THREE.Raycaster, 
+    scene: THREE.Scene,
+    measurements: any[]
+  ): { point: Point, measurementId: string, segmentIndex: number } | null => {
+    // Only check area measurements that are visible
+    const areaMeasurements = measurements.filter(m => 
+      m.type === 'area' && m.visible !== false
+    );
+
+    if (areaMeasurements.length === 0) return null;
+
+    // Get all valid intersections with the scene
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    const validIntersects = filterMeasurementObjects(intersects);
+    
+    if (validIntersects.length === 0) return null;
+    
+    // Get the closest intersection point
+    const intersectionPoint = new THREE.Vector3(
+      validIntersects[0].point.x,
+      validIntersects[0].point.y,
+      validIntersects[0].point.z
+    );
+    
+    // Check each area measurement for a close line segment
+    for (const measurement of areaMeasurements) {
+      const points = measurement.points;
+      if (points.length < 3) continue;
+      
+      // Check each line segment
+      for (let i = 0; i < points.length; i++) {
+        const pointA = new THREE.Vector3(points[i].x, points[i].y, points[i].z);
+        const pointB = new THREE.Vector3(
+          points[(i + 1) % points.length].x,
+          points[(i + 1) % points.length].y, 
+          points[(i + 1) % points.length].z
+        );
+        
+        // Check if the intersection point is close to this line segment
+        if (isPointNearLine(intersectionPoint, pointA, pointB, 0.1)) {
+          // Get the exact point on the line
+          const pointOnLine = findClosestPointOnLine(intersectionPoint, pointA, pointB);
+          
+          return {
+            point: {
+              x: pointOnLine.x,
+              y: pointOnLine.y,
+              z: pointOnLine.z
+            },
+            measurementId: measurement.id,
+            segmentIndex: i
+          };
+        }
+      }
+    }
+    
+    return null;
+  }, [filterMeasurementObjects, isPointNearLine, findClosestPointOnLine]);
+
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
     
     const canvasElement = document.querySelector('canvas');
     if (!canvasElement) return;
     
-    // Mouse and touch event handlers
+    // Track touch events for multitouch detection
+    const handleTouchStart = (event: TouchEvent) => {
+      touchCountRef.current = event.touches.length;
+      
+      // Skip measurement interactions if using multitouch (2 or more fingers)
+      if (touchCountRef.current >= 2) return;
+      
+      // Single touch - process as normal click for measurements
+      handlePointerDown(event);
+    };
+    
+    const handleTouchMove = (event: TouchEvent) => {
+      touchCountRef.current = event.touches.length;
+      
+      // Skip measurement preview if using multitouch
+      if (touchCountRef.current >= 2) return;
+      
+      if (movingPointInfo) {
+        updatePreviewPoint(event);
+      }
+    };
+    
+    const handleTouchEnd = (event: TouchEvent) => {
+      // Update touch count
+      touchCountRef.current = event.touches.length;
+    };
+    
+    // Mouse event handlers (left click only for measurements)
+    const handleMouseDown = (event: MouseEvent) => {
+      // Only process left mouse button clicks (button 0) for measurement
+      if (event.button !== 0) return;
+      
+      handlePointerDown(event);
+    };
+    
+    const handleMouseMove = (event: MouseEvent) => {
+      if (movingPointInfo) {
+        updatePreviewPoint(event);
+      }
+    };
+    
+    // Generic pointer event processing
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
       // Ensure we're enabled and the sidebar is open
       if (!enabled || !open) return;
+      
+      // Skip if using multitouch
+      if (event instanceof TouchEvent && event.touches.length >= 2) return;
       
       let clientX, clientY;
       
@@ -325,6 +471,42 @@ export const useMeasurementInteraction = (
         }
       }
       
+      // Special case for adding points to existing area measurements
+      if (activeMode === 'none') {
+        // Check if we're clicking near an existing area measurement line
+        const lineIntersection = findIntersectionWithAreaLines(raycaster, scene, measurements);
+        
+        if (lineIntersection) {
+          const { point, measurementId, segmentIndex } = lineIntersection;
+          
+          // Get the measurement
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (!measurement) return;
+          
+          // Create a new array of points with the new point inserted at the correct position
+          const newPoints = [...measurement.points];
+          newPoints.splice(segmentIndex + 1, 0, point);
+          
+          // Update the measurement with the new point
+          const updatedMeasurement = {
+            ...measurement,
+            points: newPoints
+          };
+          
+          // We'll use a custom event to notify about this change to avoid modifying too many hooks
+          const pointAddedEvent = new CustomEvent('areaPointAdded', {
+            detail: {
+              measurementId,
+              updatedMeasurement
+            }
+          });
+          document.dispatchEvent(pointAddedEvent);
+          
+          toast.success(`Punkt hinzugefügt zu Flächenmessung`);
+          return;
+        }
+      }
+      
       // General intersections for adding points - should work regardless of whether edit mode is active
       if (activeMode !== 'none') {
         const intersects = raycaster.intersectObjects(scene.children, true);
@@ -369,32 +551,27 @@ export const useMeasurementInteraction = (
       }
     };
     
-    // Handle mouse/touch move for preview
-    const handlePointerMove = (event: MouseEvent | TouchEvent) => {
-      if (movingPointInfo) {
-        updatePreviewPoint(event);
-      }
-    };
-    
     // Add event listeners
-    canvasElement.addEventListener('mousedown', handlePointerDown);
-    canvasElement.addEventListener('mousemove', handlePointerMove);
-    canvasElement.addEventListener('touchstart', handlePointerDown);
-    canvasElement.addEventListener('touchmove', handlePointerMove);
+    canvasElement.addEventListener('mousedown', handleMouseDown);
+    canvasElement.addEventListener('mousemove', handleMouseMove);
+    canvasElement.addEventListener('touchstart', handleTouchStart);
+    canvasElement.addEventListener('touchmove', handleTouchMove);
+    canvasElement.addEventListener('touchend', handleTouchEnd);
     
     // Cleanup function
     return () => {
-      canvasElement.removeEventListener('mousedown', handlePointerDown);
-      canvasElement.removeEventListener('mousemove', handlePointerMove);
-      canvasElement.removeEventListener('touchstart', handlePointerDown);
-      canvasElement.removeEventListener('touchmove', handlePointerMove);
+      canvasElement.removeEventListener('mousedown', handleMouseDown);
+      canvasElement.removeEventListener('mousemove', handleMouseMove);
+      canvasElement.removeEventListener('touchstart', handleTouchStart);
+      canvasElement.removeEventListener('touchmove', handleTouchMove);
+      canvasElement.removeEventListener('touchend', handleTouchEnd);
     };
   }, [
     enabled, scene, camera, open, measurements, currentPoints, activeMode,
     editMeasurementId, editingPointIndex, movingPointInfo, previewPoint,
     handlers.addPoint, handlers.startPointEdit, handlers.updateMeasurementPoint,
     updatePreviewPoint, filterMeasurementObjects, clearPreviewGroup,
-    refs.editPointsRef, refs.segmentLabelsRef
+    refs.editPointsRef, refs.segmentLabelsRef, findIntersectionWithAreaLines
   ]);
 
   return {
