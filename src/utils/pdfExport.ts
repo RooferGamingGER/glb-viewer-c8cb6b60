@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -26,24 +27,26 @@ export const exportMeasurementsToPdf = async (
     container.style.color = '#000000';
     container.style.position = 'relative';
     
-    // Create and add styles for page layouts
+    // Create and add styles for page layouts - UPDATED to fix page break issues
     const styleElement = document.createElement('style');
     styleElement.textContent = `
       .pdf-page {
         position: relative;
-        page-break-after: always;
-        padding-bottom: 10mm;
+        padding-bottom: 20mm;
       }
-      .pdf-last-page {
-        page-break-after: avoid;
+      .pdf-page-break {
+        page-break-after: always;
+      }
+      .pdf-page-end {
+        page-break-after: avoid !important;
       }
       .logo-centered {
         position: absolute;
-        top: 20%; /* Platzierung etwas weiter oben, da es das Logo ist */
+        top: 20%;
         left: 50%;
         transform: translate(-50%, -50%);
         width: 100%;
-        text-align: center; /* Sicherstellen, dass der Text innerhalb des Containers zentriert ist */
+        text-align: center;
       }
       .logo-container {
         text-align: center;
@@ -92,27 +95,30 @@ export const exportMeasurementsToPdf = async (
     // Add container to document before building content
     document.body.appendChild(container);
     
-    // Create cover page without footer
+    // Determine which page will be the last to avoid page breaks
+    const hasAreaMeasurements = measurements.filter(m => m.type === 'area').length > 0;
+    
+    // Create cover page WITH page break after
     const coverPage = document.createElement('div');
-    coverPage.className = 'pdf-page';
+    coverPage.className = 'pdf-page pdf-page-break';
     coverPage.appendChild(createCoverPage(coverData));
     container.appendChild(coverPage);
     
-    // Create measurement data section without footer
+    // Create measurement data section - only add page break if there will be an area page after
     const dataPage = document.createElement('div');
-    dataPage.className = 'pdf-page';
+    dataPage.className = hasAreaMeasurements ? 'pdf-page pdf-page-break' : 'pdf-page pdf-page-end';
     dataPage.appendChild(createMeasurementDataSection(measurements));
     container.appendChild(dataPage);
     
-    // Add area measurement details without footer if needed
-    if (measurements.filter(m => m.type === 'area').length > 0) {
+    // Add area measurement details page if needed - ALWAYS as the last page
+    if (hasAreaMeasurements) {
       const areaPage = document.createElement('div');
-      areaPage.className = 'pdf-page pdf-last-page'; // Last page doesn't need page break
+      areaPage.className = 'pdf-page pdf-page-end';
       areaPage.appendChild(createAreaDetailsSection(measurements));
       container.appendChild(areaPage);
     }
     
-    // Configure html2pdf options
+    // Configure html2pdf options - UPDATED page break options
     const pdfOptions = {
       margin: [15, 15, 15, 15], // [top, right, bottom, left]
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
@@ -129,7 +135,7 @@ export const exportMeasurementsToPdf = async (
         format: 'a4', 
         orientation: 'portrait'
       },
-      pagebreak: { mode: ['css', 'legacy'] }
+      pagebreak: { mode: ['css'] } // Removed 'legacy' mode to avoid unexpected page breaks
     };
     
     // Add a longer delay to ensure DOM rendering is complete
