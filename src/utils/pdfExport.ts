@@ -103,7 +103,7 @@ export const exportMeasurementsToPdf = async (
     
     // Configure html2pdf options - removing footer option since we embed footers
     const pdfOptions = {
-      margin: [15, 15, 20, 15], // [top, right, bottom, left] - reduced bottom margin
+      margin: [15, 15, 5, 15], // [top, right, bottom, left] - reduced bottom margin
       filename: `DrohnenGLB_Messung_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
