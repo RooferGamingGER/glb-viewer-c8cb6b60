@@ -39,7 +39,7 @@ export const exportMeasurementsToPdf = async (
         color: #666;
         background-color: white;
         z-index: 1000;
-        height: 20mm;
+        height: 5mm;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -538,7 +538,7 @@ const createEmbeddedFooter = (): HTMLElement => {
   companyLine.textContent = 'Dieser Service wird kostenlos von Drohnenvermessung by RooferGaming® zur Verfügung gestellt';
   
   const contactLine = document.createElement('div');
-  contactLine.textContent = 'Homepage: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de';
+  contactLine.textContent = 'GLB Viewer: drohnenglb.de | Drohnenaufmaß: drohnenvermessung-roofergaming.de | Email: info@drohnenvermessung-roofergaming.de';
   
   footerContent.appendChild(companyLine);
   footerContent.appendChild(contactLine);
