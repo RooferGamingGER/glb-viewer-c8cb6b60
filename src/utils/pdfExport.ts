@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -53,7 +52,7 @@ export const exportMeasurementsToPdf = async (
         font-style: italic;
         margin-top: 15px;
         color: #555;
-        font-size: 16px;
+        font-size: 14px;
       }
       .cover-upper {
         margin-bottom: 70px;
@@ -152,10 +151,11 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   // Create logo placeholder with text (replace with actual logo)
   const logoImage = document.createElement('div');
   logoImage.className = 'logo-image';
-  logoImage.style.fontSize = '36px';
+  logoImage.style.fontSize = '32px';
   logoImage.style.fontWeight = 'bold';
   logoImage.style.color = '#333';
   logoImage.style.marginBottom = '20px';
+  logoImage.style.textAlign = 'center';
   logoImage.textContent = 'DrohnenGLB by RooferGaming®';
   
   logoContainer.appendChild(logoImage);
@@ -185,7 +185,7 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   
   const companySlogan = document.createElement('div');
   companySlogan.className = 'company-slogan';
-  companySlogan.style.fontSize = '16px';
+  companySlogan.style.fontSize = '14px';
   companySlogan.textContent = 'Fliegen - Digitalisieren - tolle Ergebnisse';
   companyInfo.appendChild(companySlogan);
   
