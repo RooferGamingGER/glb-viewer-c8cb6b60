@@ -89,29 +89,24 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       };
       
       // Create plus sign using lines
-      const plusSize = 0.05;
+      const plusSize = 0.07; // Increased size for better visibility
+      const plusThickness = 0.015; // Add thickness to the plus sign
       
-      // Horizontal line of plus
-      const horizontalPoints = [
-        new THREE.Vector3(midpoint.x - plusSize, midpoint.y, midpoint.z),
-        new THREE.Vector3(midpoint.x + plusSize, midpoint.y, midpoint.z)
-      ];
+      // Create 3D plus sign using box geometries
+      const horizontalGeometry = new THREE.BoxGeometry(plusSize * 2, plusThickness, plusThickness);
+      const verticalGeometry = new THREE.BoxGeometry(plusThickness, plusSize * 2, plusThickness);
       
-      const horizontalGeometry = new THREE.BufferGeometry().setFromPoints(horizontalPoints);
-      const plusMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 });
-      const horizontalLine = new THREE.Line(horizontalGeometry, plusMaterial);
+      // Brighter green color for better visibility
+      const plusMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff44 });
       
-      // Vertical line of plus
-      const verticalPoints = [
-        new THREE.Vector3(midpoint.x, midpoint.y - plusSize, midpoint.z),
-        new THREE.Vector3(midpoint.x, midpoint.y + plusSize, midpoint.z)
-      ];
+      const horizontalLine = new THREE.Mesh(horizontalGeometry, plusMaterial);
+      horizontalLine.position.set(midpoint.x, midpoint.y, midpoint.z);
       
-      const verticalGeometry = new THREE.BufferGeometry().setFromPoints(verticalPoints);
-      const verticalLine = new THREE.Line(verticalGeometry, plusMaterial);
+      const verticalLine = new THREE.Mesh(verticalGeometry, plusMaterial);
+      verticalLine.position.set(midpoint.x, midpoint.y, midpoint.z);
       
       // Create a detection sphere (invisible but slightly larger for easier clicking)
-      const sphereGeometry = new THREE.SphereGeometry(plusSize * 1.5, 8, 8);
+      const sphereGeometry = new THREE.SphereGeometry(plusSize * 1.8, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: 0x00ff00,
         opacity: 0.0,
@@ -134,6 +129,11 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       indicatorGroup.add(horizontalLine);
       indicatorGroup.add(verticalLine);
       indicatorGroup.add(sphere);
+      
+      // Set high render order to ensure visibility
+      indicatorGroup.renderOrder = 999;
+      horizontalLine.renderOrder = 999;
+      verticalLine.renderOrder = 999;
       
       addPointIndicatorsRef.current.add(indicatorGroup);
     }
