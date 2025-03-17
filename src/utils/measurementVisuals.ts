@@ -403,7 +403,7 @@ export function renderMeasurements(
       child => child.userData.measurementId === measurement.id
     );
     
-    // For measurements being edited, we'll recreate labels to ensure they're up to date
+    // Always recreate labels for measurements being edited or that have changed
     const isMeasurementBeingEdited = measurement.editMode || 
                                      existingLabels.length === 0 || 
                                      existingSegmentLabels.length === 0 ||
@@ -554,41 +554,28 @@ export function renderMeasurements(
     }
   });
   
-  // Make sure all labels and segment labels are visible
-  measurements.forEach(measurement => {
-    if (measurement.visible === false) return;
-    
-    // Update visibility of labels based on measurement visibility
-    if (labelsRef) {
-      const labels = labelsRef.children.filter(label => 
-        label.userData && label.userData.measurementId === measurement.id && !label.userData.isPreview
-      );
-      
-      labels.forEach(label => {
-        label.visible = measurement.visible !== false && !measurement.editMode;
-      });
-    }
-    
-    if (segmentLabelsRef) {
-      const segmentLabels = segmentLabelsRef.children.filter(label => 
-        label.userData && label.userData.measurementId === measurement.id
-      );
-      
-      segmentLabels.forEach(label => {
-        label.visible = measurement.visible !== false && !measurement.editMode;
-      });
-    }
-  });
+  // Control visibility of all labels based on edit mode
+  // This ensures that all labels are properly hidden during editing
+  const anyMeasurementBeingEdited = measurements.some(m => m.editMode);
   
   labelsRef.children.forEach(child => {
     const measurementId = child.userData.measurementId;
     const measurement = measurements.find(m => m.id === measurementId);
     
-    // Only set visibility if the measurement exists
+    // If any measurement is being edited, hide all non-preview labels
+    if (anyMeasurementBeingEdited && !child.userData.isPreview) {
+      child.visible = false;
+      return;
+    }
+    
+    // Otherwise follow normal visibility rules
     if (measurement) {
-      child.visible = measurement.visible !== false;
+      child.visible = measurement.visible !== false && !measurement.editMode;
+    } else if (child.userData.isPreview) {
+      // Preview labels always visible
+      child.visible = true;
     } else {
-      // For preview labels or orphaned labels
+      // Default to visible
       child.visible = true;
     }
     
@@ -600,11 +587,17 @@ export function renderMeasurements(
     const measurementId = child.userData.measurementId;
     const measurement = measurements.find(m => m.id === measurementId);
     
-    // Only set visibility if the measurement exists
+    // If any measurement is being edited, hide all segment labels
+    if (anyMeasurementBeingEdited) {
+      child.visible = false;
+      return;
+    }
+    
+    // Otherwise follow normal visibility rules
     if (measurement) {
-      child.visible = measurement.visible !== false;
+      child.visible = measurement.visible !== false && !measurement.editMode;
     } else {
-      // For orphaned labels
+      // Default to visible
       child.visible = true;
     }
     

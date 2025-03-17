@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Pencil, Trash2, Save, X } from 'lucide-react';
@@ -151,8 +150,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </div>
       )}
       
-      {/* Point edit section for area measurements */}
-      {measurement.editMode && handleDeletePoint && movingPointInfo && (
+      {measurement.editMode && handleDeletePoint && (
         <PointEditList 
           measurement={measurement}
           handleDeletePoint={handleDeletePoint}
@@ -160,7 +158,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       )}
       
-      {/* Segment management for area measurements */}
       {measurement.type === 'area' && measurement.segments && (
         <SegmentList 
           measurementId={measurement.id}

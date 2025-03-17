@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
@@ -375,7 +374,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         toast.info('Klicken Sie auf einen Punkt, um ihn zu verschieben');
       }
       
-      // Hide all measurement labels during editing
+      // Hide ALL measurement labels during editing - both main and segment labels
       if (labelsRef.current) {
         labelsRef.current.children.forEach(label => {
           if (!label.userData.isPreview) {
@@ -407,13 +406,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
     
     // Re-render measurements to ensure labels are properly displayed
-    renderMeasurements(
-      measurementsRef.current, 
-      labelsRef.current, 
-      segmentLabelsRef.current, 
-      measurements, 
-      true
-    );
+    setTimeout(() => {
+      renderMeasurements(
+        measurementsRef.current, 
+        labelsRef.current, 
+        segmentLabelsRef.current, 
+        measurements, 
+        true
+      );
+    }, 10);
     
     toast.info('Bearbeitung abgebrochen');
   };
