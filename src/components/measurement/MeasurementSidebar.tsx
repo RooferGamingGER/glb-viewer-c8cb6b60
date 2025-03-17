@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -69,7 +68,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
 }) => {
   const [showTable, setShowTable] = useState<boolean>(false);
   
-  // Check if we're editing an area measurement
   const editingAreaMeasurement = React.useMemo(() => {
     if (!editMeasurementId) return false;
     const measurement = measurements.find(m => m.id === editMeasurementId);
@@ -127,7 +125,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             </Button>
           </div>
           
-          {/* View toggle and download buttons */}
           {measurements.length > 0 && (
             <div className="flex space-x-2 mt-2">
               <Button
@@ -152,7 +149,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             </div>
           )}
           
-          {/* Active measurement controls */}
           {activeMode !== 'none' && (
             <div className="mt-3 p-2 border border-primary/30 rounded-md bg-primary/5">
               <div className="text-sm font-medium mb-2">
@@ -219,7 +215,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             </div>
           )}
           
-          {/* Display alert when in edit mode */}
           {(editMeasurementId || editingSegmentId || movingPointInfo) && (
             <EditingAlert 
               editMeasurementId={editMeasurementId}
@@ -264,6 +259,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               segmentsOpen={segmentsOpen}
               toggleSegments={toggleSegments}
               onEditSegment={setEditingSegmentId}
+              movingPointInfo={movingPointInfo}
             />
           )}
           

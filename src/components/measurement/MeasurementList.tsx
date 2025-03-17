@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -16,11 +15,9 @@ interface MeasurementListProps {
   handleDeleteMeasurement: (id: string) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
-  editingSegmentId: string | null;
-  handleCancelEditing: () => void;
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
-  setEditingSegmentId: (id: string | null) => void;
+  onEditSegment: (id: string | null) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
 }
 
@@ -31,11 +28,9 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   handleDeleteMeasurement,
   updateMeasurement,
   editMeasurementId,
-  editingSegmentId,
-  handleCancelEditing,
   segmentsOpen,
   toggleSegments,
-  setEditingSegmentId,
+  onEditSegment,
   movingPointInfo
 }) => {
   if (measurements.length === 0 && !editMeasurementId && !editingSegmentId) return null;

@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
@@ -44,6 +45,30 @@ export const useMeasurementInteraction = (
   
   // Track multitouch state for mobile
   const touchCountRef = useRef<number>(0);
+
+  // Helper function to filter out measurement objects from intersections
+  const filterMeasurementObjects = useCallback((intersects: THREE.Intersection[]) => {
+    return intersects.filter(intersect => {
+      let currentObj = intersect.object;
+      while (currentObj) {
+        if (
+          currentObj.name === "measurementPoints" || 
+          currentObj.name === "measurementLines" ||
+          currentObj.name === "measurementLabels" ||
+          currentObj.name === "editPoints" ||
+          currentObj.name === "textLabels" ||
+          currentObj.name === "segmentLabels" ||
+          currentObj.name === "previewPoints" ||
+          currentObj.name === "addPointIndicators"
+        ) {
+          return false;
+        }
+        // @ts-ignore - parent property exists on THREE.Object3D
+        currentObj = currentObj.parent;
+      }
+      return true;
+    });
+  }, []);
 
   // Initialize preview group
   useEffect(() => {
@@ -343,30 +368,6 @@ export const useMeasurementInteraction = (
     const closestPoint = findClosestPointOnLine(point, lineStart, lineEnd);
     return point.distanceTo(closestPoint) <= threshold;
   }, [findClosestPointOnLine]);
-
-  // Helper function to filter out measurement objects from intersections
-  const filterMeasurementObjects = useCallback((intersects: THREE.Intersection[]) => {
-    return intersects.filter(intersect => {
-      let currentObj = intersect.object;
-      while (currentObj) {
-        if (
-          currentObj.name === "measurementPoints" || 
-          currentObj.name === "measurementLines" ||
-          currentObj.name === "measurementLabels" ||
-          currentObj.name === "editPoints" ||
-          currentObj.name === "textLabels" ||
-          currentObj.name === "segmentLabels" ||
-          currentObj.name === "previewPoints" ||
-          currentObj.name === "addPointIndicators"
-        ) {
-          return false;
-        }
-        // @ts-ignore - parent property exists on THREE.Object3D
-        currentObj = currentObj.parent;
-      }
-      return true;
-    });
-  }, []);
 
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
