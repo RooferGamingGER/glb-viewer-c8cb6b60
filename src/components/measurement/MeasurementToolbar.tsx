@@ -4,10 +4,9 @@ import {
   Ruler, 
   ArrowUpDown, 
   Square, 
-  Trash2,
-  FileDown
+  Trash2
 } from 'lucide-react';
-import { MeasurementMode } from '@/hooks/useMeasurements';
+import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -27,7 +26,7 @@ interface MeasurementToolbarProps {
   visible: boolean;
   setVisible: (visible: boolean) => void;
   handleClearMeasurements: () => void;
-  measurements: any[];
+  measurements: Measurement[];
 }
 
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
@@ -103,7 +102,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               </SidebarMenu>
               
               <div className="flex flex-col gap-2 mt-4">
-                {/* Direkte Integration des PDF Export Buttons mit direktem Rendering */}
+                {/* Correctly pass measurements to ExportPdfButton */}
                 <ExportPdfButton measurements={measurements} />
                 
                 {measurements.length > 0 && (

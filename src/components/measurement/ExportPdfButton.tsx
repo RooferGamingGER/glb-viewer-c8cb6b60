@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown } from 'lucide-react';
@@ -37,7 +36,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   
   const form = useForm<CoverPageData>({
     defaultValues: {
@@ -99,8 +97,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     <Dialog>
       <DialogTrigger asChild>
         <Button 
-          ref={triggerRef}
-          data-pdf-export-trigger
           variant="outline" 
           size="sm" 
           className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white w-full" 
@@ -111,6 +107,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           <span>PDF Export</span>
         </Button>
       </DialogTrigger>
+      
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Vermessungsbericht exportieren</DialogTitle>
@@ -126,7 +123,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             <TabsTrigger value="preview">Datenvorschau</TabsTrigger>
           </TabsList>
           
-          {/* Übersicht Tab */}
           <TabsContent value="overview">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -176,7 +172,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             </div>
           </TabsContent>
           
-          {/* Projektdaten Tab */}
           <TabsContent value="project">
             <Form {...form}>
               <div className="space-y-4">
@@ -297,7 +292,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             </Form>
           </TabsContent>
           
-          {/* Datenvorschau Tab */}
           <TabsContent value="preview">
             <Card>
               <CardContent className="pt-4">

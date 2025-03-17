@@ -152,26 +152,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               </Button>
             </div>
           )}
-          
-          {measurements.length > 0 && (
-            <div className="w-full mt-2" data-export-pdf-button>
-              <Button
-                variant="outline" 
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  // Find the ExportPdfButton component and trigger its dialog
-                  const pdfButtons = document.querySelectorAll('[data-pdf-export-trigger]');
-                  if (pdfButtons.length > 0) {
-                    (pdfButtons[0] as HTMLElement).click();
-                  }
-                }}
-              >
-                <FileDown className="h-4 w-4 mr-1" />
-                PDF Export
-              </Button>
-            </div>
-          )}
         </div>
         
         {activeMode !== 'none' && (

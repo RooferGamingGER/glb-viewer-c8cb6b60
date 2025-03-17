@@ -36,7 +36,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   onEditSegment,
   movingPointInfo
 }) => {
-  if (measurements.length === 0 && !editMeasurementId) return null;
+  if (!measurements || measurements.length === 0 && !editMeasurementId) return null;
   
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full">
