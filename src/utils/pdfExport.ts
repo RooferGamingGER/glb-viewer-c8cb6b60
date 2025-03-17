@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 
@@ -105,7 +104,7 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   
   coverPage.appendChild(coverHeader);
   
-  // Main content of cover page with two-column layout
+  // Main content of cover page with improved layout
   const coverContent = document.createElement('div');
   coverContent.style.flex = '1';
   coverContent.style.display = 'flex';
@@ -113,27 +112,28 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   coverContent.style.justifyContent = 'center';
   
   const infoWrapper = document.createElement('div');
-  infoWrapper.style.maxWidth = '600px';
+  infoWrapper.style.maxWidth = '100%';
+  infoWrapper.style.width = '100%';
   infoWrapper.style.margin = '0 auto';
-  infoWrapper.style.padding = '30px';
+  infoWrapper.style.padding = '10px 0';
   
-  // Two-column layout using a table for perfect alignment
+  // Create table for layout with full width
   const infoTable = document.createElement('table');
   infoTable.style.width = '100%';
   infoTable.style.borderCollapse = 'collapse';
   
   // Create table rows for each piece of information
   const createInfoRow = (label: string, value: string) => {
-    if (!value) return null;
+    if (!value && label !== 'Bemerkungen') return null;
     
     const row = document.createElement('tr');
-    row.style.marginBottom = '30px';
+    row.style.marginBottom = '25px';
     row.style.verticalAlign = 'top';
     
     const labelCell = document.createElement('td');
     labelCell.style.width = '40%';
     labelCell.style.paddingBottom = '25px';
-    labelCell.style.paddingRight = '15px';
+    labelCell.style.paddingRight = '20px';
     labelCell.style.fontWeight = 'normal';
     labelCell.style.color = '#666';
     labelCell.style.fontSize = '16px';
@@ -146,7 +146,7 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
     valueCell.style.fontWeight = 'bold';
     valueCell.style.fontSize = '20px';
     valueCell.style.color = '#000000';
-    valueCell.textContent = value;
+    valueCell.textContent = value || '';
     row.appendChild(valueCell);
     
     return row;
@@ -165,29 +165,28 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   const droneDateRow = createInfoRow('Datum der Drohnenaufnahmen', coverData.droneDate ? new Date(coverData.droneDate).toLocaleDateString('de-DE') : '');
   if (droneDateRow) infoTable.appendChild(droneDateRow);
   
-  if (coverData.notes) {
-    const notesRow = document.createElement('tr');
-    notesRow.style.verticalAlign = 'top';
-    
-    const notesLabelCell = document.createElement('td');
-    notesLabelCell.style.width = '40%';
-    notesLabelCell.style.paddingRight = '15px';
-    notesLabelCell.style.fontWeight = 'normal';
-    notesLabelCell.style.color = '#666';
-    notesLabelCell.style.fontSize = '16px';
-    notesLabelCell.textContent = 'Bemerkungen';
-    notesRow.appendChild(notesLabelCell);
-    
-    const notesValueCell = document.createElement('td');
-    notesValueCell.style.width = '60%';
-    notesValueCell.style.fontWeight = 'normal';
-    notesValueCell.style.fontSize = '16px';
-    notesValueCell.style.color = '#000000';
-    notesValueCell.textContent = coverData.notes;
-    notesRow.appendChild(notesValueCell);
-    
-    infoTable.appendChild(notesRow);
-  }
+  // Add notes field even if empty (as per requirements)
+  const notesRow = document.createElement('tr');
+  notesRow.style.verticalAlign = 'top';
+  
+  const notesLabelCell = document.createElement('td');
+  notesLabelCell.style.width = '40%';
+  notesLabelCell.style.paddingRight = '20px';
+  notesLabelCell.style.fontWeight = 'normal';
+  notesLabelCell.style.color = '#666';
+  notesLabelCell.style.fontSize = '16px';
+  notesLabelCell.textContent = 'Bemerkungen';
+  notesRow.appendChild(notesLabelCell);
+  
+  const notesValueCell = document.createElement('td');
+  notesValueCell.style.width = '60%';
+  notesValueCell.style.fontWeight = 'normal';
+  notesValueCell.style.fontSize = '16px';
+  notesValueCell.style.color = '#000000';
+  notesValueCell.textContent = coverData.notes || '';
+  notesRow.appendChild(notesValueCell);
+  
+  infoTable.appendChild(notesRow);
   
   infoWrapper.appendChild(infoTable);
   coverContent.appendChild(infoWrapper);
