@@ -4,7 +4,8 @@ import {
   Ruler, 
   ArrowUpDown, 
   Square, 
-  Trash2
+  Trash2,
+  FileDown
 } from 'lucide-react';
 import { MeasurementMode } from '@/hooks/useMeasurements';
 import { 
@@ -101,8 +102,13 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 </SidebarMenuItem>
               </SidebarMenu>
               
-              {measurements.length > 0 && (
-                <div className="flex mt-4 justify-between">
+              <div className="flex flex-col gap-2 mt-4">
+                {/* PDF Export Button - Always visible now */}
+                <div className="w-full">
+                  <ExportPdfButton measurements={measurements} />
+                </div>
+                
+                {measurements.length > 0 && (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -113,15 +119,8 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                     <Trash2 className="h-4 w-4 mr-2" />
                     Alle löschen
                   </Button>
-                </div>
-              )}
-              
-              {/* PDF Export Button */}
-              {measurements.length > 0 && (
-                <div className="mt-4">
-                  <ExportPdfButton measurements={measurements} />
-                </div>
-              )}
+                )}
+              </div>
             </SidebarGroupContent>
           </AccordionContent>
         </AccordionItem>
