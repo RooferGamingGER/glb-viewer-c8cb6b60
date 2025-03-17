@@ -3,12 +3,11 @@ import React from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
 import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
-import EditingAlert from './EditingAlert';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface MeasurementListProps {
   measurements: Measurement[];
@@ -43,32 +42,33 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   
   return (
     <SidebarGroup className="flex-1 flex flex-col min-h-0">
-      <SidebarGroupLabel>Messungen</SidebarGroupLabel>
-      <SidebarGroupContent className="flex-1 flex flex-col min-h-0">
-        <EditingAlert 
-          editMeasurementId={editMeasurementId}
-          editingSegmentId={editingSegmentId}
-          movingPointInfo={movingPointInfo}
-          handleCancelEditing={handleCancelEditing}
-        />
-        
-        <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 500px)' }}>
-          {measurements.map((measurement) => (
-            <MeasurementItem
-              key={measurement.id}
-              measurement={measurement}
-              toggleMeasurementVisibility={toggleMeasurementVisibility}
-              handleStartPointEdit={handleStartPointEdit}
-              handleDeleteMeasurement={handleDeleteMeasurement}
-              updateMeasurement={updateMeasurement}
-              editMeasurementId={editMeasurementId}
-              segmentsOpen={segmentsOpen}
-              toggleSegments={toggleSegments}
-              onEditSegment={setEditingSegmentId}
-            />
-          ))}
-        </ScrollArea>
-      </SidebarGroupContent>
+      <Accordion type="single" collapsible defaultValue="measurements">
+        <AccordionItem value="measurements" className="border-0">
+          <AccordionTrigger className="py-2 px-1 font-medium">
+            Messungen ({measurements.length})
+          </AccordionTrigger>
+          <AccordionContent>
+            <SidebarGroupContent className="flex-1 flex flex-col min-h-0">
+              <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 500px)' }}>
+                {measurements.map((measurement) => (
+                  <MeasurementItem
+                    key={measurement.id}
+                    measurement={measurement}
+                    toggleMeasurementVisibility={toggleMeasurementVisibility}
+                    handleStartPointEdit={handleStartPointEdit}
+                    handleDeleteMeasurement={handleDeleteMeasurement}
+                    updateMeasurement={updateMeasurement}
+                    editMeasurementId={editMeasurementId}
+                    segmentsOpen={segmentsOpen}
+                    toggleSegments={toggleSegments}
+                    onEditSegment={setEditingSegmentId}
+                  />
+                ))}
+              </ScrollArea>
+            </SidebarGroupContent>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </SidebarGroup>
   );
 };

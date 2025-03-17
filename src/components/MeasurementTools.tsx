@@ -1,13 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MeasurementMode } from '@/hooks/useMeasurements';
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarHeader, 
-  SidebarFooter,
-  useSidebar
-} from "@/components/ui/sidebar";
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -24,11 +18,8 @@ import {
   clearAllVisuals
 } from '@/utils/measurementVisuals';
 
-// Import smaller components
-import MeasurementToolbar from './measurement/MeasurementToolbar';
-import ActiveMeasurement from './measurement/ActiveMeasurement';
-import MeasurementList from './measurement/MeasurementList';
-import EditingAlert from './measurement/EditingAlert';
+// Import the new sidebar component
+import MeasurementSidebar from './measurement/MeasurementSidebar';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -43,8 +34,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   camera,
   autoOpenSidebar = false
 }) => {
-  const { open, setOpen } = useSidebar();
-  const [visible, setVisible] = useState(true);
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
 
@@ -88,7 +77,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     enabled,
     scene,
     camera,
-    open,
+    true, // Always open
     {
       pointsRef,
       linesRef,
@@ -106,10 +95,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
-
-  useEffect(() => {
-    setOpen(true);
-  }, [setOpen]);
 
   useEffect(() => {
     renderCurrentPoints(
@@ -291,71 +276,29 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
-  if (!enabled) return null;
-
   return (
-    <div className="relative z-20">
-      <Sidebar 
-        side="right" 
-        variant="floating" 
-        collapsible="none"
-        className="mt-0 h-full"
-        data-sidebar="true"
-      >
-        <SidebarHeader className="pt-4">
-          <div className="flex justify-between items-center px-4 py-2">
-            <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
-          </div>
-        </SidebarHeader>
-        
-        <SidebarContent className="flex flex-col h-[calc(100vh-200px)]">
-          <EditingAlert 
-            editMeasurementId={editMeasurementId}
-            editingSegmentId={editingSegmentId}
-            movingPointInfo={movingPointInfo}
-            handleCancelEditing={handleCancelEditing}
-          />
-          
-          <MeasurementToolbar 
-            activeMode={activeMode}
-            toggleMeasurementTool={toggleMeasurementTool}
-            visible={visible}
-            setVisible={setVisible}
-            handleClearMeasurements={handleClearMeasurements}
-            measurements={measurements}
-          />
-          
-          <ActiveMeasurement 
-            activeMode={activeMode}
-            currentPoints={currentPoints}
-            handleFinalizeMeasurement={handleFinalizeMeasurement}
-            handleUndoLastPoint={handleUndoLastPoint}
-            clearCurrentPoints={clearCurrentPoints}
-          />
-          
-          <MeasurementList 
-            measurements={measurements}
-            toggleMeasurementVisibility={toggleMeasurementVisibility}
-            handleStartPointEdit={handleStartPointEdit}
-            handleDeleteMeasurement={handleDeleteMeasurement}
-            updateMeasurement={updateMeasurement}
-            editMeasurementId={editMeasurementId}
-            editingSegmentId={editingSegmentId}
-            handleCancelEditing={handleCancelEditing}
-            segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
-            setEditingSegmentId={setEditingSegmentId}
-            movingPointInfo={movingPointInfo}
-          />
-        </SidebarContent>
-        
-        <SidebarFooter>
-          <div className="p-4 text-xs text-muted-foreground">
-            <p>Messungswerkzeuge v1.0</p>
-          </div>
-        </SidebarFooter>
-      </Sidebar>
-    </div>
+    <MeasurementSidebar
+      enabled={enabled}
+      measurements={measurements}
+      currentPoints={currentPoints}
+      activeMode={activeMode}
+      toggleMeasurementTool={toggleMeasurementTool}
+      toggleMeasurementVisibility={toggleMeasurementVisibility}
+      handleStartPointEdit={handleStartPointEdit}
+      handleDeleteMeasurement={handleDeleteMeasurement}
+      updateMeasurement={updateMeasurement}
+      editMeasurementId={editMeasurementId}
+      editingSegmentId={editingSegmentId}
+      handleCancelEditing={handleCancelEditing}
+      segmentsOpen={segmentsOpen}
+      toggleSegments={toggleSegments}
+      setEditingSegmentId={setEditingSegmentId}
+      movingPointInfo={movingPointInfo}
+      handleFinalizeMeasurement={handleFinalizeMeasurement}
+      handleUndoLastPoint={handleUndoLastPoint}
+      clearCurrentPoints={clearCurrentPoints}
+      handleClearMeasurements={handleClearMeasurements}
+    />
   );
 };
 

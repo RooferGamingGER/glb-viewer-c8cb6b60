@@ -4,9 +4,7 @@ import {
   Ruler, 
   ArrowUpDown, 
   Square, 
-  Trash2, 
-  Eye, 
-  EyeOff,
+  Trash2
 } from 'lucide-react';
 import { MeasurementMode } from '@/hooks/useMeasurements';
 import { 
@@ -20,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import ExportPdfButton from './ExportPdfButton';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
@@ -48,83 +47,76 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
       toast.info(`${mode === 'length' ? 'Längen' : mode === 'height' ? 'Höhen' : mode === 'area' ? 'Flächen' : 'Navigations'}messung ausgewählt`);
     }
   };
-
-  const toggleVisibility = () => {
-    setVisible(!visible);
-    toast.info(visible ? 'Messungen in der Seitenleiste ausgeblendet' : 'Messungen in der Seitenleiste eingeblendet');
-  };
   
   return (
     <SidebarGroup className="mt-0">
-      <div className="flex justify-between items-center">
-        <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
-        {measurements.length > 0 && (
-          <div className="flex space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7"
-              onClick={toggleVisibility}
-              title={visible ? "Messungen in der Seitenleiste ausblenden" : "Messungen in der Seitenleiste einblenden"}
-            >
-              {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7"
-              onClick={handleClearMeasurements}
-              title="Alle Messungen löschen"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={activeMode === 'length'}
-              onClick={() => selectTool('length')}
-              tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
-            >
-              <Ruler />
-              <span>Länge</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={activeMode === 'height'}
-              onClick={() => selectTool('height')}
-              tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
-            >
-              <ArrowUpDown />
-              <span>Höhe</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={activeMode === 'area'}
-              onClick={() => selectTool('area')}
-              tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
-            >
-              <Square />
-              <span>Fläche</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        
-        {/* PDF Export Button */}
-        {measurements.length > 0 && (
-          <div className="mt-4 px-2">
-            <ExportPdfButton measurements={measurements} />
-          </div>
-        )}
-      </SidebarGroupContent>
+      <Accordion type="single" collapsible defaultValue="measurement-tools">
+        <AccordionItem value="measurement-tools" className="border-0">
+          <AccordionTrigger className="py-2 px-1">
+            <SidebarGroupLabel className="!m-0">Messwerkzeuge</SidebarGroupLabel>
+          </AccordionTrigger>
+          <AccordionContent>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'length'}
+                    onClick={() => selectTool('length')}
+                    tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
+                  >
+                    <Ruler />
+                    <span>Länge</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'height'}
+                    onClick={() => selectTool('height')}
+                    tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
+                  >
+                    <ArrowUpDown />
+                    <span>Höhe</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'area'}
+                    onClick={() => selectTool('area')}
+                    tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                  >
+                    <Square />
+                    <span>Fläche</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+              
+              {measurements.length > 0 && (
+                <div className="flex mt-4 justify-between">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={handleClearMeasurements}
+                    title="Alle Messungen löschen"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Alle löschen
+                  </Button>
+                </div>
+              )}
+              
+              {/* PDF Export Button */}
+              {measurements.length > 0 && (
+                <div className="mt-4">
+                  <ExportPdfButton measurements={measurements} />
+                </div>
+              )}
+            </SidebarGroupContent>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </SidebarGroup>
   );
 };
