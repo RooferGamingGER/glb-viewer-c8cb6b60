@@ -276,29 +276,34 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
+  // Make sure the sidebar is positioned correctly and only affects the sidebar area
   return (
-    <MeasurementSidebar
-      enabled={enabled}
-      measurements={measurements}
-      currentPoints={currentPoints}
-      activeMode={activeMode}
-      toggleMeasurementTool={toggleMeasurementTool}
-      toggleMeasurementVisibility={toggleMeasurementVisibility}
-      handleStartPointEdit={handleStartPointEdit}
-      handleDeleteMeasurement={handleDeleteMeasurement}
-      updateMeasurement={updateMeasurement}
-      editMeasurementId={editMeasurementId}
-      editingSegmentId={editingSegmentId}
-      handleCancelEditing={handleCancelEditing}
-      segmentsOpen={segmentsOpen}
-      toggleSegments={toggleSegments}
-      setEditingSegmentId={setEditingSegmentId}
-      movingPointInfo={movingPointInfo}
-      handleFinalizeMeasurement={handleFinalizeMeasurement}
-      handleUndoLastPoint={handleUndoLastPoint}
-      clearCurrentPoints={clearCurrentPoints}
-      handleClearMeasurements={handleClearMeasurements}
-    />
+    <div className="pointer-events-none absolute inset-0">
+      <div className="w-full h-full">
+        <MeasurementSidebar
+          enabled={enabled}
+          measurements={measurements}
+          currentPoints={currentPoints}
+          activeMode={activeMode}
+          toggleMeasurementTool={toggleMeasurementTool}
+          toggleMeasurementVisibility={toggleMeasurementVisibility}
+          handleStartPointEdit={handleStartPointEdit}
+          handleDeleteMeasurement={handleDeleteMeasurement}
+          updateMeasurement={updateMeasurement}
+          editMeasurementId={editMeasurementId}
+          editingSegmentId={editingSegmentId}
+          handleCancelEditing={handleCancelEditing}
+          segmentsOpen={segmentsOpen}
+          toggleSegments={toggleSegments}
+          setEditingSegmentId={setEditingSegmentId}
+          movingPointInfo={movingPointInfo}
+          handleFinalizeMeasurement={handleFinalizeMeasurement}
+          handleUndoLastPoint={handleUndoLastPoint}
+          clearCurrentPoints={clearCurrentPoints}
+          handleClearMeasurements={handleClearMeasurements}
+        />
+      </div>
+    </div>
   );
 };
 

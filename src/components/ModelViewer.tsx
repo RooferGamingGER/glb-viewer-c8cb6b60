@@ -25,11 +25,10 @@ function Loader3D() {
 }
 
 function Model({
-  url,
-  onClick
+  url
 }: {
   url: string;
-  onClick: (event: THREE.Intersection) => void;
+  onClick?: (event: THREE.Intersection) => void;
 }) {
   const { scene } = useGLTF(url);
   const modelRef = useRef<THREE.Group>(null);
@@ -93,7 +92,6 @@ const ModelCanvas = ({
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
-  // Remove the click handler that might be blocking events
   return <Canvas shadows style={{
     background: '#222222'
   }} className="w-full h-full" ref={canvasRef}>
@@ -107,7 +105,7 @@ const ModelCanvas = ({
         
         <Environment preset="city" />
         
-        <Model url={fileUrl} onClick={() => {}} />
+        <Model url={fileUrl} />
         
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} rotateSpeed={1} zoomSpeed={1} panSpeed={1} minDistance={0.5} maxDistance={100} />
       </Suspense>

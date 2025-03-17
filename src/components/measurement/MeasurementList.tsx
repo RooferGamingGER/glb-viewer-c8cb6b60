@@ -49,21 +49,23 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
           </AccordionTrigger>
           <AccordionContent>
             <SidebarGroupContent className="flex-1 flex flex-col min-h-0">
-              <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 500px)' }}>
-                {measurements.map((measurement) => (
-                  <MeasurementItem
-                    key={measurement.id}
-                    measurement={measurement}
-                    toggleMeasurementVisibility={toggleMeasurementVisibility}
-                    handleStartPointEdit={handleStartPointEdit}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                    updateMeasurement={updateMeasurement}
-                    editMeasurementId={editMeasurementId}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    onEditSegment={setEditingSegmentId}
-                  />
-                ))}
+              <ScrollArea className="flex-1 max-h-[calc(100vh-400px)]">
+                <div className="pr-2">
+                  {measurements.map((measurement) => (
+                    <MeasurementItem
+                      key={measurement.id}
+                      measurement={measurement}
+                      toggleMeasurementVisibility={toggleMeasurementVisibility}
+                      handleStartPointEdit={handleStartPointEdit}
+                      handleDeleteMeasurement={handleDeleteMeasurement}
+                      updateMeasurement={updateMeasurement}
+                      editMeasurementId={editMeasurementId}
+                      segmentsOpen={segmentsOpen}
+                      toggleSegments={toggleSegments}
+                      onEditSegment={setEditingSegmentId}
+                    />
+                  ))}
+                </div>
               </ScrollArea>
             </SidebarGroupContent>
           </AccordionContent>

@@ -38,29 +38,31 @@ const Viewer = () => {
   }, []);
 
   return (
-    <SidebarProvider defaultOpen={true} open={true}>
-      <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
-        <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="glass-button"
-            onClick={() => navigate('/')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
-          </Button>
-          
-          <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
-        </header>
+    <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
+      <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-50 flex items-center">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="glass-button"
+          onClick={() => navigate('/')}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Zurück
+        </Button>
         
-        <main className="flex-1 relative">
-          {fileUrl && (
-            <ModelViewer fileUrl={fileUrl} fileName={fileName} />
-          )}
-        </main>
+        <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
+      </header>
+      
+      <div className="flex-1 relative flex overflow-hidden">
+        <SidebarProvider defaultOpen={true} open={true}>
+          <main className="flex-1 relative w-full h-full">
+            {fileUrl && (
+              <ModelViewer fileUrl={fileUrl} fileName={fileName} />
+            )}
+          </main>
+        </SidebarProvider>
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 
