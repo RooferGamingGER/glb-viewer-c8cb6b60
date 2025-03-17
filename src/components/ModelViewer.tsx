@@ -5,8 +5,7 @@ import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgre
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import * as THREE from 'three';
-import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Ruler, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 
@@ -96,8 +95,6 @@ const ModelCanvas = ({
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
-  const [showStats, setShowStats] = useState(false);
-
   const handleCanvasClick = (event: React.MouseEvent) => {
     if (onMeasurementClick) {
       onMeasurementClick(event);
@@ -120,8 +117,6 @@ const ModelCanvas = ({
         <Model url={fileUrl} onClick={() => {}} />
         
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} rotateSpeed={1} zoomSpeed={1} panSpeed={1} minDistance={0.5} maxDistance={100} />
-        
-        {showStats && <Stats />}
       </Suspense>
     </Canvas>;
 };
@@ -130,13 +125,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
   fileName
 }) => {
-  const isMobile = useIsMobile();
-  const [showStats, setShowStats] = useState(false);
-  const [measurementsEnabled, setMeasurementsEnabled] = useState(false);
-  const [measurementToolsEverEnabled, setMeasurementToolsEverEnabled] = useState(false);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.Camera | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Always enable measurements
+  const [measurementsEnabled] = useState(true);
+  const [measurementToolsEverEnabled] = useState(true);
   
   const { measurements } = useMeasurements();
 
@@ -157,47 +152,27 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     // Empty handler, kept for compatibility
   };
 
-  const toggleMeasurements = () => {
-    const newState = !measurementsEnabled;
-    setMeasurementsEnabled(newState);
-    
-    // If this is the first time enabling measurement tools, 
-    // track it so we can open the sidebar
-    if (newState && !measurementToolsEverEnabled) {
-      setMeasurementToolsEverEnabled(true);
-    }
-    
-    toast.info(measurementsEnabled ? 'Messwerkzeuge deaktiviert' : 'Messwerkzeuge aktiviert');
-  };
-
-  return <div className="relative w-full h-full">
+  return (
+    <div className="relative w-full h-full">
       <div className="absolute inset-0 z-0">
-        <ModelCanvas fileUrl={fileUrl} onMeasurementClick={handleMeasurementClick} onSceneReady={handleSceneReady} canvasRef={canvasRef} />
+        <ModelCanvas 
+          fileUrl={fileUrl} 
+          onMeasurementClick={handleMeasurementClick} 
+          onSceneReady={handleSceneReady} 
+          canvasRef={canvasRef} 
+        />
       </div>
       
-      <div className="absolute top-4 right-4 flex gap-2 z-10">
-        <Button size="sm" variant="outline" className="glass-button" onClick={() => setShowStats(!showStats)}>
-          {showStats ? <EyeOff size={16} /> : <Eye size={16} />}
-          <span className="sr-only">{showStats ? 'Statistiken ausblenden' : 'Statistiken einblenden'}</span>
-        </Button>
-        
-        <Button 
-          size="sm" 
-          variant={measurementsEnabled ? "default" : "outline"} 
-          className="glass-button"
-          onClick={toggleMeasurements}
-        >
-          <Ruler size={16} className={measurementsEnabled ? 'text-primary-foreground' : ''} />
-          <span className="sr-only">{measurementsEnabled ? 'Messwerkzeuge deaktivieren' : 'Messwerkzeuge aktivieren'}</span>
-        </Button>
-      </div>
-      
-      <div className="absolute top-4 left-4 z-10 bg-background/75 px-3 py-1.5 rounded-md text-sm font-medium">
-        {fileName}
-      </div>
-      
-      {scene && camera && <MeasurementTools enabled={measurementsEnabled} scene={scene} camera={camera} autoOpenSidebar={measurementToolsEverEnabled} />}
-    </div>;
+      {scene && camera && (
+        <MeasurementTools 
+          enabled={measurementsEnabled} 
+          scene={scene} 
+          camera={camera} 
+          autoOpenSidebar={measurementToolsEverEnabled} 
+        />
+      )}
+    </div>
+  );
 };
 
 export default ModelViewer;

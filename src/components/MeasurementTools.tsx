@@ -6,12 +6,9 @@ import {
   SidebarContent, 
   SidebarHeader, 
   SidebarFooter,
-  SidebarTrigger,
-  SidebarRail,
   useSidebar
 } from "@/components/ui/sidebar";
 import * as THREE from 'three';
-import { ChevronLeft, X } from 'lucide-react';
 
 // Import custom hooks
 import { useThreeObjects } from '@/hooks/useThreeObjects';
@@ -46,7 +43,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   camera,
   autoOpenSidebar = false
 }) => {
-  const { open, setOpen, toggleSidebar } = useSidebar();
+  const { open, setOpen } = useSidebar();
   const [visible, setVisible] = useState(true);
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
@@ -111,10 +108,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
 
   useEffect(() => {
-    if (enabled && autoOpenSidebar && !open) {
-      setOpen(true);
-    }
-  }, [enabled, autoOpenSidebar, open, setOpen]);
+    setOpen(true);
+  }, [setOpen]);
 
   useEffect(() => {
     renderCurrentPoints(
@@ -296,50 +291,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }));
   };
 
-  const handleSidebarToggle = () => {
-    toggleSidebar();
-  };
-
-  const closeSidebar = () => {
-    setOpen(false);
-  };
-
   if (!enabled) return null;
 
   return (
     <div className="relative z-20">
-      {!open && (
-        <button 
-          onClick={handleSidebarToggle}
-          className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-secondary border border-border border-r-0 rounded-l-md p-2 z-30 transition-opacity duration-200 ease-in-out"
-          aria-label="Öffne Messwerkzeuge"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-      )}
-      
       <Sidebar 
         side="right" 
         variant="floating" 
-        collapsible="offcanvas"
-        className="mt-24 transition-transform duration-200 ease-in-out"
+        collapsible="none"
+        className="mt-0 h-full"
         data-sidebar="true"
       >
-        <SidebarRail />
-        <SidebarHeader>
+        <SidebarHeader className="pt-4">
           <div className="flex justify-between items-center px-4 py-2">
             <h3 className="text-lg font-semibold">Messwerkzeuge</h3>
-            <button
-              onClick={closeSidebar}
-              className="h-7 w-7 rounded-md hover:bg-sidebar-accent/50 flex items-center justify-center"
-              aria-label="Messwerkzeuge schließen"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
         </SidebarHeader>
         
-        <SidebarContent className="flex flex-col h-[calc(100vh-220px)]">
+        <SidebarContent className="flex flex-col h-[calc(100vh-200px)]">
           <EditingAlert 
             editMeasurementId={editMeasurementId}
             editingSegmentId={editingSegmentId}

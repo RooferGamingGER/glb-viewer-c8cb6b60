@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
   ArrowUpDown, 
@@ -19,6 +18,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
 import ExportPdfButton from './ExportPdfButton';
 
 interface MeasurementToolbarProps {
@@ -55,7 +55,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   };
   
   return (
-    <SidebarGroup className="mt-4">
+    <SidebarGroup className="mt-0">
       <div className="flex justify-between items-center">
         <SidebarGroupLabel>Werkzeuge</SidebarGroupLabel>
         {measurements.length > 0 && (
