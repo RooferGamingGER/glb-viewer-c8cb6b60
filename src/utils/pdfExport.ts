@@ -47,8 +47,9 @@ export const exportMeasurementsToPdf = async (
         margin-bottom: 30px;
       }
       .logo-image {
-        max-width: 200px;
-        height: auto;
+        width: auto;
+        white-space: nowrap;
+        display: inline-block;
       }
       .company-info {
         text-align: center;
@@ -164,6 +165,8 @@ const createCoverPage = (coverData: CoverPageData): HTMLElement => {
   logoImage.style.color = '#333';
   logoImage.style.marginBottom = '20px';
   logoImage.style.textAlign = 'center';
+  logoImage.style.whiteSpace = 'nowrap'; // Prevent text from wrapping
+  logoImage.style.width = 'auto'; // Allow the text to take its natural width
   logoImage.textContent = 'DrohnenGLB by RooferGaming®';
   
   logoContainer.appendChild(logoImage);
