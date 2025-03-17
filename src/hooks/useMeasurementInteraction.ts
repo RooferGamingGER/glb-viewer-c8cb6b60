@@ -66,16 +66,22 @@ export const useMeasurementInteraction = (
     while (previewRef.current.children.length > 0) {
       const child = previewRef.current.children[0];
       
-      // Dispose of geometries and materials
-      if ('geometry' in child && child.geometry) {
-        child.geometry.dispose();
+      // Dispose of geometries and materials - Fixed TypeScript errors
+      if ('geometry' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.geometry) {
+          meshChild.geometry.dispose();
+        }
       }
       
-      if ('material' in child && child.material) {
-        if (Array.isArray(child.material)) {
-          child.material.forEach(mat => mat.dispose());
-        } else {
-          child.material.dispose();
+      if ('material' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.material) {
+          if (Array.isArray(meshChild.material)) {
+            meshChild.material.forEach(mat => mat.dispose());
+          } else {
+            meshChild.material.dispose();
+          }
         }
       }
       
