@@ -18,7 +18,9 @@ import {
   Square,
   Anchor,
   EyeIcon,
-  BookmarkX
+  BookmarkX,
+  MoveUp,
+  MoveDown
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,8 @@ interface MeasurementItemProps {
   toggleSegments: (id: string) => void;
   onEditSegment: (segmentId: string) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -54,7 +58,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   segmentsOpen,
   toggleSegments,
   onEditSegment,
-  movingPointInfo
+  movingPointInfo,
+  handleMoveMeasurementUp,
+  handleMoveMeasurementDown
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -247,6 +253,43 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           </span>
         )}
       </div>
+      
+      {/* Move up/down buttons for roof elements and penetrations */}
+      {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
+        <div className="flex justify-end space-x-1 mt-1 mb-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleMoveMeasurementUp(measurement.id)}
+                >
+                  <MoveUp className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Nach oben verschieben</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleMoveMeasurementDown(measurement.id)}
+                >
+                  <MoveDown className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Nach unten verschieben</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
       
       {editingId === measurement.id ? (
         <div className="flex flex-col space-y-2 mt-2">

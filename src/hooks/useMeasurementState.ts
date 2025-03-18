@@ -23,6 +23,8 @@ export const useMeasurementState = (
     clearMeasurements: () => void;
     cancelEditing: () => void;
     toggleMeasurementTool: (mode: MeasurementMode) => void;
+    moveMeasurementUp?: (id: string) => void;
+    moveMeasurementDown?: (id: string) => void;
   }
 ) => {
   const [showTable, setShowTable] = useState<boolean>(false);
@@ -124,6 +126,20 @@ export const useMeasurementState = (
     toast.info(`Punkt ${pointIndex + 1} wurde entfernt`);
   }, [measurements, handlers]);
 
+  // Handler for moving a measurement up in the list
+  const handleMoveMeasurementUp = useCallback((id: string) => {
+    if (handlers.moveMeasurementUp) {
+      handlers.moveMeasurementUp(id);
+    }
+  }, [handlers]);
+
+  // Handler for moving a measurement down in the list
+  const handleMoveMeasurementDown = useCallback((id: string) => {
+    if (handlers.moveMeasurementDown) {
+      handlers.moveMeasurementDown(id);
+    }
+  }, [handlers]);
+
   return {
     showTable,
     setShowTable,
@@ -137,6 +153,8 @@ export const useMeasurementState = (
     handleCancelEditing,
     handleStartPointEdit,
     handleDeleteMeasurement,
-    handleDeletePoint
+    handleDeletePoint,
+    handleMoveMeasurementUp,
+    handleMoveMeasurementDown
   };
 };

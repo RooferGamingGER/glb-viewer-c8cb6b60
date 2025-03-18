@@ -36,6 +36,8 @@ interface MeasurementSidebarProps {
   toggleAllLabelsVisibility: () => void;
   allLabelsVisible: boolean;
   activeMode?: string;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
 const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({ 
@@ -55,7 +57,9 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   handleClearMeasurements,
   toggleAllLabelsVisibility,
   allLabelsVisible,
-  activeMode
+  activeMode,
+  handleMoveMeasurementUp,
+  handleMoveMeasurementDown
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
   
@@ -137,6 +141,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               toggleSegments={toggleSegments}
               onEditSegment={onEditSegment}
               movingPointInfo={movingPointInfo}
+              handleMoveMeasurementUp={handleMoveMeasurementUp}
+              handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
           )}
         </ScrollArea>

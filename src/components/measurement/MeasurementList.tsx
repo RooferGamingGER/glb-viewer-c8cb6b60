@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -22,6 +23,8 @@ interface MeasurementListProps {
   toggleSegments: (id: string) => void;
   onEditSegment: (id: string | null) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -36,7 +39,9 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   segmentsOpen,
   toggleSegments,
   onEditSegment,
-  movingPointInfo
+  movingPointInfo,
+  handleMoveMeasurementUp,
+  handleMoveMeasurementDown
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
   
@@ -103,6 +108,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                   toggleSegments={toggleSegments}
                   onEditSegment={onEditSegment}
                   movingPointInfo={movingPointInfo}
+                  handleMoveMeasurementUp={handleMoveMeasurementUp}
+                  handleMoveMeasurementDown={handleMoveMeasurementDown}
                 />
               ))
             ) : (
@@ -130,6 +137,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                   toggleSegments={toggleSegments}
                   onEditSegment={onEditSegment}
                   movingPointInfo={movingPointInfo}
+                  handleMoveMeasurementUp={handleMoveMeasurementUp}
+                  handleMoveMeasurementDown={handleMoveMeasurementDown}
                 />
               ))
             ) : (
@@ -157,6 +166,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                   toggleSegments={toggleSegments}
                   onEditSegment={onEditSegment}
                   movingPointInfo={movingPointInfo}
+                  handleMoveMeasurementUp={handleMoveMeasurementUp}
+                  handleMoveMeasurementDown={handleMoveMeasurementDown}
                 />
               ))
             ) : (
@@ -186,6 +197,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                 toggleSegments={toggleSegments}
                 onEditSegment={onEditSegment}
                 movingPointInfo={movingPointInfo}
+                handleMoveMeasurementUp={handleMoveMeasurementUp}
+                handleMoveMeasurementDown={handleMoveMeasurementDown}
               />
             ))}
           </div>

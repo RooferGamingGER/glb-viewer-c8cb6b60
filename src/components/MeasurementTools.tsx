@@ -23,7 +23,7 @@ import MeasurementSidebar from './measurement/MeasurementSidebar';
 import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
-import RoofElementControls from './measurement/RoofElementControls';
+import RoofElementControls from './RoofElementControls';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -62,7 +62,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     startPointEdit,
     cancelEditing,
     updateMeasurementPoint,
-    allLabelsVisible
+    allLabelsVisible,
+    moveMeasurementUp,
+    moveMeasurementDown
   } = useMeasurements();
 
   // Three.js object references
@@ -148,7 +150,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handleCancelEditing,
     handleStartPointEdit,
     handleDeleteMeasurement,
-    handleDeletePoint
+    handleDeletePoint,
+    handleMoveMeasurementUp,
+    handleMoveMeasurementDown
   } = useMeasurementState(
     measurements,
     currentPoints,
@@ -165,7 +169,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       clearCurrentPoints,
       clearMeasurements,
       cancelEditing,
-      toggleMeasurementTool
+      toggleMeasurementTool,
+      moveMeasurementUp,
+      moveMeasurementDown
     }
   );
 
@@ -347,7 +353,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
-          className={`absolute top-0 right-0 h-full w-72 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
           {/* Fixed Header - Tools Section */}
           <div className="flex-shrink-0 border-b border-border/50">
@@ -417,6 +423,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
             allLabelsVisible={allLabelsVisible}
             activeMode={activeMode}
+            handleMoveMeasurementUp={handleMoveMeasurementUp}
+            handleMoveMeasurementDown={handleMoveMeasurementDown}
           />
         </div>
       </div>

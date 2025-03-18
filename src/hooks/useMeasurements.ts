@@ -55,7 +55,9 @@ export const useMeasurements = () => {
     toggleMeasurementVisibility,
     toggleLabelVisibility,
     toggleAllMeasurementsVisibility,
-    toggleAllLabelsVisibility
+    toggleAllLabelsVisibility,
+    moveMeasurementUp,
+    moveMeasurementDown
   } = useMeasurementVisibilityToggle(
     measurements,
     setMeasurements,
@@ -107,6 +109,8 @@ export const useMeasurements = () => {
     startPointEdit,
     updateMeasurementPoint,
     cancelEditing,
+    moveMeasurementUp,
+    moveMeasurementDown,
     
     // Utilities
     getNearestPointIndex,
