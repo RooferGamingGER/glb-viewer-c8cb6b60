@@ -15,12 +15,16 @@ interface MeasurementTableProps {
   measurements: Measurement[];
   title?: string;
   showTableHeaders?: boolean;
+  toggleMeasurementVisibility?: (id: string) => void;
+  handleDeleteMeasurement?: (id: string) => void;
 }
 
 const MeasurementTable: React.FC<MeasurementTableProps> = ({
   measurements,
   title = "Messungen",
-  showTableHeaders = true
+  showTableHeaders = true,
+  toggleMeasurementVisibility,
+  handleDeleteMeasurement
 }) => {
   if (measurements.length === 0) {
     return (
