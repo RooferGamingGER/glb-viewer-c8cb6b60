@@ -56,6 +56,7 @@ export interface Measurement {
     height?: number;
     diameter?: number;
     area?: number;
+    perimeter?: number;  // Adding perimeter to dimensions
   };
   position?: {           // Reference position
     x: number;
