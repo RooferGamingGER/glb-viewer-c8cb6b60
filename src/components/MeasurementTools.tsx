@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -361,7 +360,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               setShowTable={setShowTable}
             />
             
-            {activeMode !== 'none' && (
+            {/* Only render MeasurementControls for standard measurements */}
+            {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
               <MeasurementControls
                 activeMode={activeMode}
                 currentPoints={currentPoints}
@@ -371,6 +371,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               />
             )}
             
+            {/* Only render RoofElementControls for roof elements */}
             {isRoofElementMode && (
               <RoofElementControls
                 activeMode={activeMode}

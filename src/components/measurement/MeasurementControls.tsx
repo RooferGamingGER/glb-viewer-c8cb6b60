@@ -27,19 +27,13 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
+  // Exit early if no measurement tool is active
   if (activeMode === 'none') return null;
   
-  // For roof elements and penetrations, use the specialized roof element controls
-  if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
-    return (
-      <RoofElementControls
-        activeMode={activeMode}
-        currentPoints={currentPoints}
-        handleFinalizeMeasurement={handleFinalizeMeasurement}
-        handleUndoLastPoint={handleUndoLastPoint}
-        clearCurrentPoints={clearCurrentPoints}
-      />
-    );
+  // For roof elements and penetrations, don't render anything here
+  // This prevents duplicate UI for roof elements like 'solar'
+  if (!['length', 'height', 'area'].includes(activeMode)) {
+    return null;
   }
   
   // Standard measurement controls for length, height, area
