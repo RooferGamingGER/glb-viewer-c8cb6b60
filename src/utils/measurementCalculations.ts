@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
@@ -20,37 +21,6 @@ export const calculateDistance = (point1: Point, point2: Point): number => {
  */
 export const calculateHeight = (point1: Point, point2: Point): number => {
   return Math.abs(point2.y - point1.y);
-};
-
-/**
- * Calculate midpoint between two points
- */
-export const getMidpoint = (point1: Point, point2: Point): Point => {
-  return {
-    x: (point1.x + point2.x) / 2,
-    y: (point1.y + point2.y) / 2,
-    z: (point1.z + point2.z) / 2
-  };
-};
-
-/**
- * Calculate the center of a polygon (average of all points)
- */
-export const calculatePolygonCenter = (points: Point[]): Point => {
-  if (points.length === 0) return { x: 0, y: 0, z: 0 };
-  
-  let x = 0, y = 0, z = 0;
-  for (const point of points) {
-    x += point.x;
-    y += point.y;
-    z += point.z;
-  }
-  
-  return {
-    x: x / points.length,
-    y: y / points.length,
-    z: z / points.length
-  };
 };
 
 /**

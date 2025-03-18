@@ -17,37 +17,12 @@ import {
   validatePolygon,
   calculateAverageInclination,
   calculateQuadrilateralDimensions,
+  createChimneyMeasurement,
   calculateBoundingBox,
   calculateCentroid
 } from '@/utils/measurementCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
 import * as THREE from 'three';
-
-// Threshold for distinguishing between Ortgang and Traufe (in degrees)
-const ORTGANG_TRAUFE_THRESHOLD = 5;
-
-/**
- * Gets a default description based on measurement type
- */
-const getDefaultDescription = (type: MeasurementMode, subType?: string): string => {
-  const descriptions: Record<MeasurementMode, string> = {
-    'length': 'Längenmessung',
-    'height': 'Höhenmessung',
-    'area': 'Flächenmessung',
-    'none': '',
-    'dormer': 'Gaube',
-    'chimney': subType || 'Kaminausschnitt',
-    'skylight': 'Dachfenster',
-    'solar': 'Solaranlage',
-    'gutter': 'Dachrinne',
-    'verge': subType || 'Ortgang/Traufe',
-    'valley': 'Kehle',
-    'ridge': 'Grat',
-    'vent': 'Lüfter/Durchdringung'
-  };
-  
-  return descriptions[type] || '';
-};
 
 /**
  * Core measurement functionality hook
@@ -174,7 +149,7 @@ export const useMeasurementCore = () => {
         label,
         visible: true,
         unit: 'm',
-        description: getDefaultDescription('length'),
+        description: '',
         inclination
       }
     ]);
@@ -204,7 +179,7 @@ export const useMeasurementCore = () => {
         label,
         visible: true,
         unit: 'm',
-        description: getDefaultDescription('height')
+        description: ''
       }
     ]);
     
@@ -249,7 +224,7 @@ export const useMeasurementCore = () => {
     area: number;
     perimeter: number;
   } => {
-    // For chimneys and skylights with 4 points
+    // Für Kamine und Dachfenster mit 4 Punkten
     if (points.length >= 4) {
       const dimensions = calculateQuadrilateralDimensions(points);
       
@@ -262,7 +237,7 @@ export const useMeasurementCore = () => {
       };
     }
     
-    // Fallback for less than 4 points
+    // Fallback für weniger als 4 Punkte
     return {
       value: 0,
       width: 0,
@@ -294,7 +269,6 @@ export const useMeasurementCore = () => {
     let subType: string | undefined;
     let count: number | undefined;
     let penetrationType: 'vent' | 'other' | undefined;
-    let description: string = '';
     
     switch(type) {
       case 'dormer': {
@@ -309,17 +283,10 @@ export const useMeasurementCore = () => {
           length: result.length,
           height: result.height
         };
-        description = getDefaultDescription('dormer');
         break;
       }
       
       case 'chimney': {
-        // Kamine brauchen 4 Messpunkte
-        if (points.length < 4) {
-          toast.error('Kamine benötigen 4 Messpunkte für eine präzise Messung.');
-          return;
-        }
-        
         const result = createChimneyOrSkylightMeasurement(points, 'chimney');
         value = result.area;
         label = `${result.width.toFixed(2)} × ${result.length.toFixed(2)} m (Kaminausschnitt)`;
@@ -332,17 +299,10 @@ export const useMeasurementCore = () => {
         };
         segments = generateSegments(points);
         subType = 'Kaminausschnitt';
-        description = getDefaultDescription('chimney', subType);
         break;
       }
       
       case 'skylight': {
-        // Dachfenster brauchen 4 Messpunkte
-        if (points.length < 4) {
-          toast.error('Dachfenster benötigen 4 Messpunkte für eine präzise Messung.');
-          return;
-        }
-        
         const result = createChimneyOrSkylightMeasurement(points, 'skylight');
         value = result.area;
         label = `${result.width.toFixed(2)} × ${result.length.toFixed(2)} m`;
@@ -354,7 +314,6 @@ export const useMeasurementCore = () => {
           perimeter: result.perimeter
         };
         segments = generateSegments(points);
-        description = getDefaultDescription('skylight');
         break;
       }
       
@@ -372,7 +331,6 @@ export const useMeasurementCore = () => {
           area: value
         };
         
-        description = getDefaultDescription('solar');
         break;
       }
       
@@ -386,7 +344,6 @@ export const useMeasurementCore = () => {
           value = totalLength;
           label = `${value.toFixed(2)} m`;
         }
-        description = getDefaultDescription('gutter');
         break;
       }
       
@@ -406,19 +363,15 @@ export const useMeasurementCore = () => {
           }
           
           if (type === 'verge') {
-            // Unterscheide zwischen Ortgang und Traufe basierend auf der Neigung
-            if (Math.abs(inclination || 0) <= ORTGANG_TRAUFE_THRESHOLD) {
+            if (Math.abs(inclination || 0) < 10) {
               subType = 'Traufe';
             } else {
               subType = 'Ortgang';
             }
-            description = getDefaultDescription('verge', subType);
           } else if (type === 'valley') {
             subType = 'Kehle';
-            description = getDefaultDescription('valley');
           } else if (type === 'ridge') {
             subType = 'Grat';
-            description = getDefaultDescription('ridge');
           }
         }
         break;
@@ -433,7 +386,6 @@ export const useMeasurementCore = () => {
         count = 1;
         
         penetrationType = 'vent';
-        description = getDefaultDescription('vent');
         break;
       }
       
@@ -451,7 +403,7 @@ export const useMeasurementCore = () => {
         label,
         visible: true,
         unit,
-        description,
+        description: '',
         segments,
         inclination,
         subType,
@@ -507,7 +459,7 @@ export const useMeasurementCore = () => {
           label,
           visible: true,
           unit: 'm²',
-          description: getDefaultDescription('area'),
+          description: '',
           segments
         }
       ]);
@@ -517,8 +469,8 @@ export const useMeasurementCore = () => {
     else if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'dormer': 3,
-        'chimney': 4, // Erhöht von 3 auf 4 für präzisere Messungen
-        'skylight': 4, // Erhöht von 3 auf 4 für präzisere Messungen
+        'chimney': 4,
+        'skylight': 4,
         'solar': 3,
         'gutter': 2,
         'verge': 2,

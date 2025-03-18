@@ -201,9 +201,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             {measurement.dimensions.area !== undefined && (
               <div><strong>Fläche:</strong> {measurement.dimensions.area.toFixed(2)} m²</div>
             )}
-            {measurement.dimensions.perimeter !== undefined && (
-              <div><strong>Umfang:</strong> {measurement.dimensions.perimeter.toFixed(2)} m</div>
-            )}
           </div>
         )}
         
