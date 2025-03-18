@@ -1,4 +1,3 @@
-
 import { Measurement } from '@/types/measurements';
 
 /**
@@ -167,19 +166,9 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
  * Format the value display for a measurement based on its type
  */
 export const formatMeasurementValue = (measurement: Measurement): string => {
-  // For skylights, prioritize dimensions in format "L.LL m × B.BB m" if available
-  if (measurement.type === 'skylight' && measurement.dimensions) {
-    const width = measurement.dimensions.width;
-    const height = measurement.dimensions.height;
-    
-    if (width !== undefined && height !== undefined) {
-      // Format: "H.HH m × W.WW m (X.XX m²)"
-      return `${height.toFixed(2)} m × ${width.toFixed(2)} m (${measurement.value.toFixed(2)} ${measurement.unit || 'm²'})`;
-    }
-  }
-  
-  // Special formatting for penetration types (vent, hook, other)
-  if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
+  // Special formatting for skylights, vents, hooks, and other penetrations
+  if (measurement.type === 'skylight' || measurement.type === 'vent' || 
+      measurement.type === 'hook' || measurement.type === 'other') {
     const count = measurement.count || 1;
     return `${count} ${measurement.unit || 'Stk'}`;
   }
@@ -189,7 +178,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   
   // Add count information for other items if needed
   if (measurement.count && measurement.count > 1 && 
-      !['vent', 'hook', 'other'].includes(measurement.type)) {
+      !['skylight', 'vent', 'hook', 'other'].includes(measurement.type)) {
     valueText += ` (${measurement.count} Stück)`;
   }
   
