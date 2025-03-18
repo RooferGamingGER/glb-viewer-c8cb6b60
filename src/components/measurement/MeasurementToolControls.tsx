@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -12,7 +12,8 @@ import {
   SplitSquareVertical,
   Cylinder,
   Wind,
-  Anchor
+  Anchor,
+  Droplet
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -26,6 +27,7 @@ interface MeasurementToolControlsProps {
   measurements: any[];
   showTable: boolean;
   setShowTable: (show: boolean) => void;
+  onCategoryChange?: (category: string) => void;
 }
 
 /**
@@ -37,18 +39,42 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   editMeasurementId,
   measurements,
   showTable,
-  setShowTable
+  setShowTable,
+  onCategoryChange
 }) => {
+  const [activeTab, setActiveTab] = useState("standard");
+  
   const handleDownload = () => {
     if (measurements.length === 0) return;
     exportMeasurementsToCSV(measurements);
   };
+  
+  // When tab changes, notify parent if callback provided
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (onCategoryChange) {
+      onCategoryChange(value);
+    }
+  };
+  
+  // Sync the active tab with the current measurement tool
+  useEffect(() => {
+    if (activeMode === 'none') return;
+    
+    if (['length', 'height', 'area'].includes(activeMode)) {
+      setActiveTab("standard");
+    } else if (['solar', 'gutter'].includes(activeMode)) {
+      setActiveTab("roof-elements");
+    } else if (['skylight', 'chimney', 'vent', 'hook', 'other'].includes(activeMode)) {
+      setActiveTab("penetrations");
+    }
+  }, [activeMode]);
 
   return (
     <div className="p-3">
       <div className="text-lg font-medium mb-2">Messwerkzeuge</div>
       
-      <Tabs defaultValue="standard" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-3 mb-2">
           <TabsTrigger value="standard">Standard</TabsTrigger>
           <TabsTrigger value="roof-elements">Dachelemente</TabsTrigger>
@@ -128,6 +154,17 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             >
               <Sun className="h-4 w-4 mr-1" />
               <span className="text-xs">Solaranlagen</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'gutter' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'gutter' ? 'none' : 'gutter')}
+              disabled={!!editMeasurementId}
+            >
+              <Droplet className="h-4 w-4 mr-1" />
+              <span className="text-xs">Dachrinnen</span>
             </Button>
           </div>
         </TabsContent>

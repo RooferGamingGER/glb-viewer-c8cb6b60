@@ -390,6 +390,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             movingPointInfo={movingPointInfo}
             showTable={showTable}
             handleClearMeasurements={handleClearMeasurements}
+            activeMode={activeMode}
           />
         </div>
       </div>
