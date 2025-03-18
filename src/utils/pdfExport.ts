@@ -483,7 +483,6 @@ const createHeader = (title: string): HTMLElement => {
   return header;
 };
 
-// Create a summary card with statistics
 const createSummaryCard = (
   measurements: Measurement[],
   lengthMeasurements: Measurement[],
@@ -532,7 +531,6 @@ const createSummaryCard = (
   return summaryCard;
 };
 
-// Create summary table for all measurements
 const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   const summaryTable = document.createElement('table');
   summaryTable.className = 'measurement-table';
@@ -541,7 +539,6 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   const tableHead = document.createElement('thead');
   const headerRow = document.createElement('tr');
   
-  // Removed 'Subtyp' and 'Anzahl' columns
   ['Nr.', 'Beschreibung', 'Typ', 'Wert', 'Neigung'].forEach(column => {
     const th = document.createElement('th');
     th.textContent = column;
@@ -557,29 +554,24 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   measurements.forEach((measurement, index) => {
     const row = document.createElement('tr');
     
-    // Nr column
     const numCell = document.createElement('td');
     numCell.textContent = (index + 1).toString();
     row.appendChild(numCell);
     
-    // Description column
     const descCell = document.createElement('td');
     descCell.textContent = measurement.description || '–';
     row.appendChild(descCell);
     
-    // Type column
     const typeCell = document.createElement('td');
     const typeDisplayName = getMeasurementTypeDisplayName(measurement.type);
     typeCell.textContent = typeDisplayName || '–';
     row.appendChild(typeCell);
     
-    // Value column with formatted value
     const valueCell = document.createElement('td');
     valueCell.textContent = formatMeasurementValue(measurement);
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
-    // Inclination column
     const inclinationCell = document.createElement('td');
     if (measurement.type === 'length' && measurement.inclination !== undefined) {
       inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
@@ -595,7 +587,6 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   return summaryTable;
 };
 
-// Helper function to add a measurement type section to the content wrapper
 const appendMeasurementTypeSection = (
   contentWrapper: HTMLElement, 
   type: string, 
@@ -650,7 +641,6 @@ const appendMeasurementTypeSection = (
   contentWrapper.appendChild(sectionContent);
 };
 
-// Helper function to add area measurements section to the content wrapper
 const appendAreaMeasurementSection = (
   contentWrapper: HTMLElement, 
   areaMeasurements: Measurement[], 
@@ -696,7 +686,6 @@ const appendAreaMeasurementSection = (
   contentWrapper.appendChild(areaContent);
 };
 
-// Helper function to create a generic measurement table
 const createMeasurementTable = (
   measurements: Measurement[], 
   columns: string[], 
@@ -758,13 +747,11 @@ const createMeasurementTable = (
   return table;
 };
 
-// Helper function to create area measurement table without segments
 const createAreaMeasurementsTable = (measurements: Measurement[]): HTMLElement => {
   const columns = ['Nr.', 'Beschreibung', 'Fläche (m²)'];
   return createMeasurementTable(measurements, columns, 'area');
 };
 
-// Helper function to create segment tables for area measurements
 const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLElement => {
   const container = document.createElement('div');
   container.style.marginTop = '30px'; // Added extra spacing
@@ -816,7 +803,6 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
   return container;
 };
 
-// Helper function for creating measurement summary (moved to separate function)
 const createMeasurementSummary = (measurements: Measurement[], title: string): HTMLElement => {
   const summarySection = document.createElement('div');
   summarySection.className = 'measurement-section';
@@ -878,4 +864,24 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   
   // Add roof elements stats if any exist
   if (roofElements.chimneys > 0) {
-    summaryStats.appendChild(create
+    summaryStats.appendChild(createStatBox(roofElements.chimneys, 'Kamine'));
+  }
+  
+  if (roofElements.skylights > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.skylights, 'Dachfenster'));
+  }
+  
+  const penetrations = getPenetrationCount(measurements);
+  if (penetrations > 0) {
+    summaryStats.appendChild(createStatBox(penetrations, 'Durchdringungen'));
+  }
+  
+  if (roofElements.solarArea > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.solarArea.toFixed(2) + ' m²', 'Solarfläche'));
+  }
+  
+  summaryCard.appendChild(summaryStats);
+  summarySection.appendChild(summaryCard);
+  
+  return summarySection;
+};
