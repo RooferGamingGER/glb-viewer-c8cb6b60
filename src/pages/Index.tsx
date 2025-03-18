@@ -17,13 +17,15 @@ const Index = () => {
           </h1>
           
           <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in hidden md:block">
-            Laden Sie Ihre GLB-Dateien vom Server und fügen diese hier ein, zum und visualisieren in einer interaktiven 3D-Umgebung, 
-            wo Sie Messungen und Messbericht erstellen können.
+            Laden Sie Ihre 3D-Modelle im GLB-Format hoch und erleben Sie diese in einer interaktiven 3D-Umgebung. 
+            Erstellen Sie präzise Messungen für Längen, Höhen und Flächen, und generieren Sie professionelle Messberichte mit einem Klick.
           </p>
           
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl mx-auto hidden md:block">
-            Hinweis: Es handelt sich aktuell um eine Testversion, so dass Bugs oder Fehler an 
-            info@drohnenvermessung-roofergaming.de gesendet werden sollen.
+            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter{" "}
+            <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
+              info@drohnenvermessung-roofergaming.de
+            </a>
           </p>
         </div>
 
@@ -37,7 +39,10 @@ const Index = () => {
           
           <div className="grid grid-cols-1 gap-2 overflow-hidden">
             <p className="text-xs text-muted-foreground mt-1 mb-1 text-center">
-              Hinweis: Es handelt sich um eine Testversion. Fehler bitte an info@drohnenvermessung-roofergaming.de melden.
+              Hinweis: Bei Fragen kontaktieren Sie uns unter{" "}
+              <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
+                info@drohnenvermessung-roofergaming.de
+              </a>
             </p>
             <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
               <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
