@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -24,6 +25,7 @@ import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
 import EditingAlert from './EditingAlert';
 import RoofElementControls from './RoofElementControls';
+import { Measurement } from '@/types/measurements';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -62,7 +64,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     startPointEdit,
     cancelEditing,
     updateMeasurementPoint,
-    allLabelsVisible
+    allLabelsVisible,
+    moveMeasurementUp,
+    moveMeasurementDown,
+    setUpdateVisualState
   } = useMeasurements();
 
   // Three.js object references
@@ -74,6 +79,54 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     labelsRef,
     segmentLabelsRef
   } = useThreeObjects(scene, enabled);
+
+  // Utils for handling measurement visibility
+  const { 
+    handleToggleMeasurementVisibility,
+    handleToggleLabelVisibility,
+    updateAllLabelsVisibility,
+    updateMeasurementMarkers
+  } = useMeasurementVisibility(
+    measurements,
+    toggleMeasurementVisibility,
+    toggleLabelVisibility,
+    {
+      pointsRef,
+      linesRef,
+      measurementsRef,
+      labelsRef,
+      segmentLabelsRef
+    }
+  );
+
+  // Define the visual update function
+  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean) => {
+    // Update all labels visibility
+    if (labelsRef.current && segmentLabelsRef.current) {
+      updateAllLabelsVisibility(labelVisible);
+    }
+    
+    // Update measurement markers visibility
+    if (measurementsRef.current) {
+      updateMeasurementMarkers();
+    }
+    
+    // Ensure the measurements are rendered with their updated state
+    if (measurementsRef.current && labelsRef.current && segmentLabelsRef.current) {
+      renderMeasurements(
+        measurementsRef.current, 
+        labelsRef.current, 
+        segmentLabelsRef.current, 
+        updatedMeasurements, 
+        true
+      );
+    }
+  }, [updateAllLabelsVisibility, updateMeasurementMarkers]);
+
+  // Set the update function in the measurements hook
+  useEffect(() => {
+    setUpdateVisualState(updateVisualState);
+  }, [setUpdateVisualState, updateVisualState]);
 
   // Handlers for measurement interaction
   const interactionHandlers = {
@@ -114,25 +167,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   
   // Utils for cleaning up measurement visuals
   const { clearMeasurementVisuals } = useMeasurementCleanup();
-  
-  // Utils for handling measurement visibility
-  const { 
-    handleToggleMeasurementVisibility,
-    handleToggleLabelVisibility,
-    updateAllLabelsVisibility,
-    updateMeasurementMarkers
-  } = useMeasurementVisibility(
-    measurements,
-    toggleMeasurementVisibility,
-    toggleLabelVisibility,
-    {
-      pointsRef,
-      linesRef,
-      measurementsRef,
-      labelsRef,
-      segmentLabelsRef
-    }
-  );
 
   // Additional state and handlers for UI
   const { 
@@ -148,7 +182,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handleCancelEditing,
     handleStartPointEdit,
     handleDeleteMeasurement,
-    handleDeletePoint
+    handleDeletePoint,
+    handleMoveMeasurementUp,
+    handleMoveMeasurementDown
   } = useMeasurementState(
     measurements,
     currentPoints,
@@ -165,7 +201,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       clearCurrentPoints,
       clearMeasurements,
       cancelEditing,
-      toggleMeasurementTool
+      toggleMeasurementTool,
+      moveMeasurementUp,
+      moveMeasurementDown
     }
   );
 
@@ -336,13 +374,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     'length', 'height', 'area', 'none'
   ].includes(activeMode);
 
-  // Handle label visibility toggling
+  // Handle label visibility toggling with direct visual update
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
-    updateAllLabelsVisibility(!allLabelsVisible);
   };
 
-  // Break up the component into logical sections
+  // Component rendering
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
@@ -417,6 +454,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
             allLabelsVisible={allLabelsVisible}
             activeMode={activeMode}
+            handleMoveMeasurementUp={handleMoveMeasurementUp}
+            handleMoveMeasurementDown={handleMoveMeasurementDown}
           />
         </div>
       </div>

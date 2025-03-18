@@ -5,6 +5,7 @@ import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
 import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
+import { useCallback } from 'react';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
@@ -34,6 +35,12 @@ export const useMeasurements = () => {
     undoLastPoint
   } = useMeasurementCore();
   
+  // Function to update THREE.js scene - this will be passed to the visibility toggle hook
+  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisibility: boolean) => {
+    // This will be a no-op here but will be replaced by the actual implementation
+    // in the MeasurementTools component
+  }, []);
+  
   // Editing functionality
   const {
     toggleEditMode,
@@ -50,7 +57,7 @@ export const useMeasurements = () => {
     setEditingPointIndex
   );
   
-  // Visibility toggling
+  // Visibility toggling with visual update callback
   const {
     toggleMeasurementVisibility,
     toggleLabelVisibility,
@@ -64,7 +71,8 @@ export const useMeasurements = () => {
     allMeasurementsVisible,
     setAllMeasurementsVisible,
     allLabelsVisible,
-    setAllLabelsVisible
+    setAllLabelsVisible,
+    updateVisualState
   );
   
   // Tool toggling
@@ -111,6 +119,11 @@ export const useMeasurements = () => {
     cancelEditing,
     moveMeasurementUp,
     moveMeasurementDown,
+    
+    // Visual state update function - expose this so it can be replaced
+    setUpdateVisualState: (fn: typeof updateVisualState) => {
+      updateVisualState = fn;
+    },
     
     // Utilities
     getNearestPointIndex,

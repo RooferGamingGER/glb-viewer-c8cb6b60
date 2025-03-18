@@ -11,35 +11,74 @@ export const useMeasurementVisibilityToggle = (
   allMeasurementsVisible: boolean,
   setAllMeasurementsVisible: React.Dispatch<React.SetStateAction<boolean>>,
   allLabelsVisible: boolean,
-  setAllLabelsVisible: React.Dispatch<React.SetStateAction<boolean>>
+  setAllLabelsVisible: React.Dispatch<React.SetStateAction<boolean>>,
+  updateVisualState?: (measurements: Measurement[], allLabelsVisible: boolean) => void
 ) => {
   // Toggle visibility for a single measurement
   const toggleMeasurementVisibility = useCallback((id: string) => {
-    setMeasurements(prev => prev.map(m => 
-      m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
-    ));
-  }, [setMeasurements]);
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => 
+        m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
+      );
+      
+      // Update visual state if the callback is provided
+      if (updateVisualState) {
+        updateVisualState(updatedMeasurements, allLabelsVisible);
+      }
+      
+      return updatedMeasurements;
+    });
+  }, [setMeasurements, allLabelsVisible, updateVisualState]);
 
   // Toggle label visibility for a single measurement
   const toggleLabelVisibility = useCallback((id: string) => {
-    setMeasurements(prev => prev.map(m => 
-      m.id === id ? { ...m, labelVisible: m.labelVisible === false ? true : false } : m
-    ));
-  }, [setMeasurements]);
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => 
+        m.id === id ? { ...m, labelVisible: m.labelVisible === false ? true : false } : m
+      );
+      
+      // Update visual state if the callback is provided
+      if (updateVisualState) {
+        updateVisualState(updatedMeasurements, allLabelsVisible);
+      }
+      
+      return updatedMeasurements;
+    });
+  }, [setMeasurements, allLabelsVisible, updateVisualState]);
 
   // Toggle visibility for all measurements
   const toggleAllMeasurementsVisibility = useCallback(() => {
     const newVisibility = !allMeasurementsVisible;
     setAllMeasurementsVisible(newVisibility);
-    setMeasurements(prev => prev.map(m => ({ ...m, visible: newVisibility })));
-  }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements]);
+    
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => ({ ...m, visible: newVisibility }));
+      
+      // Update visual state if the callback is provided
+      if (updateVisualState) {
+        updateVisualState(updatedMeasurements, allLabelsVisible);
+      }
+      
+      return updatedMeasurements;
+    });
+  }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements, allLabelsVisible, updateVisualState]);
 
-  // Toggle visibility for all labels - fixed to correctly toggle state
+  // Toggle visibility for all labels - fixed to correctly toggle state and update visuals
   const toggleAllLabelsVisibility = useCallback(() => {
     const newLabelVisibility = !allLabelsVisible;
     setAllLabelsVisible(newLabelVisibility);
-    setMeasurements(prev => prev.map(m => ({ ...m, labelVisible: newLabelVisibility })));
-  }, [allLabelsVisible, setAllLabelsVisible, setMeasurements]);
+    
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => ({ ...m, labelVisible: newLabelVisibility }));
+      
+      // Update visual state if the callback is provided
+      if (updateVisualState) {
+        updateVisualState(updatedMeasurements, newLabelVisibility);
+      }
+      
+      return updatedMeasurements;
+    });
+  }, [allLabelsVisible, setAllLabelsVisible, setMeasurements, updateVisualState]);
 
   // Move a measurement up in the list within its type category
   const moveMeasurementUp = useCallback((id: string) => {
