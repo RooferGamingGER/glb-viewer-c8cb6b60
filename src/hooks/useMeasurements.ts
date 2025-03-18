@@ -1,9 +1,7 @@
-
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
-import { useRectangleEditor } from './useRectangleEditor';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
 import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
 
@@ -49,18 +47,6 @@ export const useMeasurements = () => {
     setEditingPointIndex
   );
   
-  // Rectangle editing functionality
-  const {
-    editingRectangleId,
-    startRectangleEdit,
-    updateRectanglePoints,
-    finishRectangleEdit,
-    cancelRectangleEdit
-  } = useRectangleEditor(
-    measurements,
-    setMeasurements
-  );
-  
   // Visibility toggling
   const {
     toggleMeasurementVisibility,
@@ -94,7 +80,6 @@ export const useMeasurements = () => {
     editMeasurementId,
     editingPointIndex,
     allMeasurementsVisible,
-    editingRectangleId,
     
     // Actions
     addPoint,
@@ -112,12 +97,6 @@ export const useMeasurements = () => {
     startPointEdit,
     updateMeasurementPoint,
     cancelEditing,
-    
-    // Rectangle editing
-    startRectangleEdit,
-    updateRectanglePoints,
-    finishRectangleEdit,
-    cancelRectangleEdit,
     
     // Utilities
     getNearestPointIndex,

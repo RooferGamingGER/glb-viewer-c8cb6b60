@@ -58,12 +58,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editingPointIndex,
     startPointEdit,
     cancelEditing,
-    updateMeasurementPoint,
-    startRectangleEdit,
-    updateRectanglePoints,
-    finishRectangleEdit,
-    cancelRectangleEdit,
-    editingRectangleId
+    updateMeasurementPoint
   } = useMeasurements();
 
   // Three.js object references
@@ -321,20 +316,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   };
 
-  // Handle rectangle editing button click
-  const handleStartRectangleEdit = (id: string) => {
-    // Check if this measurement is already being edited as a rectangle
-    const isAlreadyEditing = editingRectangleId === id;
-    
-    if (isAlreadyEditing) {
-      // If already editing, cancel it
-      cancelRectangleEdit(id);
-    } else {
-      // Start editing this rectangle
-      startRectangleEdit(id);
-    }
-  };
-
   // Check if current mode is a roof element mode
   const isRoofElementMode = ![
     'length', 'height', 'area', 'none'
@@ -400,10 +381,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             movingPointInfo={movingPointInfo}
             showTable={showTable}
             handleClearMeasurements={handleClearMeasurements}
-            startRectangleEdit={handleStartRectangleEdit}
-            finishRectangleEdit={finishRectangleEdit}
-            cancelRectangleEdit={cancelRectangleEdit}
-            editingRectangleId={editingRectangleId}
           />
         </div>
       </div>
