@@ -1,5 +1,5 @@
 
-import { Measurement } from '@/hooks/useMeasurements';
+import { Measurement } from '@/types/measurements';
 
 /**
  * Map measurement types to German display names
@@ -31,6 +31,7 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
   const header = [
     'ID', 
     'Typ', 
+    'Subtyp',
     'Wert', 
     'Einheit', 
     'Beschreibung', 
@@ -40,7 +41,8 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
     'Höhe', 
     'Durchmesser', 
     'Fläche',
-    'Subtyp'
+    'Umfang',
+    'Anzahl'
   ];
   
   // Daten für die CSV-Datei
@@ -54,10 +56,12 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
     const height = m.dimensions?.height !== undefined ? m.dimensions.height.toFixed(2) : '';
     const diameter = m.dimensions?.diameter !== undefined ? m.dimensions.diameter.toFixed(2) : '';
     const area = m.dimensions?.area !== undefined ? m.dimensions.area.toFixed(2) : '';
+    const perimeter = m.dimensions?.perimeter !== undefined ? m.dimensions.perimeter.toFixed(2) : '';
     
     return [
       m.id,
       type,
+      m.subType || '',
       m.value.toFixed(2),
       unit,
       m.description || '',
@@ -67,7 +71,8 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
       height,
       diameter,
       area,
-      m.subType || ''
+      perimeter,
+      m.count || ''
     ];
   });
   
@@ -106,4 +111,40 @@ export const groupMeasurementsByType = (measurements: Measurement[]) => {
   });
   
   return groups;
+};
+
+/**
+ * Get count of penetrations (vents)
+ */
+export const getPenetrationCount = (measurements: Measurement[]): number => {
+  return measurements.filter(m => m.type === 'vent').length;
+};
+
+/**
+ * Get summary data for roof elements and installations
+ */
+export const getRoofElementsSummary = (measurements: Measurement[]): {
+  dormers: number;
+  chimneys: number;
+  skylights: number;
+  vents: number;
+  solarArea: number;
+} => {
+  const dormers = measurements.filter(m => m.type === 'dormer').length;
+  const chimneys = measurements.filter(m => m.type === 'chimney').length;
+  const skylights = measurements.filter(m => m.type === 'skylight').length;
+  const vents = measurements.filter(m => m.type === 'vent').length;
+  
+  // Calculate total solar area
+  const solarArea = measurements
+    .filter(m => m.type === 'solar')
+    .reduce((sum, m) => sum + m.value, 0);
+  
+  return {
+    dormers,
+    chimneys,
+    skylights,
+    vents,
+    solarArea
+  };
 };

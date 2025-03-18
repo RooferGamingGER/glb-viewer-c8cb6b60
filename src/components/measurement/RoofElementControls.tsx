@@ -7,7 +7,7 @@ import {
   X,
   Info 
 } from 'lucide-react';
-import { MeasurementMode, Point } from '@/hooks/useMeasurements';
+import { MeasurementMode, Point } from '@/types/measurements';
 import { 
   Tooltip,
   TooltipContent,
@@ -40,9 +40,9 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'solar': 
         return 3; // Flächenmessung
       case 'skylight': 
-        return 2; // Zwei Diagonalpunkte
+        return 4; // Vier Punkte für exakte Rechteckdefinition
       case 'chimney': 
-        return 3; // Position + Durchmesser + Höhe
+        return 4; // Vier Punkte für genaue Vermessung
       case 'gutter':
       case 'verge':
       case 'valley':
@@ -69,18 +69,20 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       
       case 'chimney':
         if (currentPoints.length === 0) {
-          return "Markieren Sie die Position des Kamins.";
-        } else if (currentPoints.length === 1) {
-          return "Messen Sie den Durchmesser des Kamins.";
+          return "Markieren Sie die erste Ecke des Kaminausschnitts im Dach.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken des Kaminausschnitts. Noch ${remainingPoints} Punkt(e) benötigt.`;
         } else {
-          return "Messen Sie die Höhe des Kamins oder schließen Sie die Messung ab.";
+          return "Kaminausschnitt vollständig definiert. Schließen Sie die Messung ab.";
         }
       
       case 'skylight':
         if (currentPoints.length === 0) {
           return "Markieren Sie die erste Ecke des Dachfensters.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken des Dachfensters. Noch ${remainingPoints} Punkt(e) benötigt.`;
         } else {
-          return "Markieren Sie die gegenüberliegende Ecke des Dachfensters.";
+          return "Dachfenster vollständig definiert. Schließen Sie die Messung ab.";
         }
       
       case 'solar':
@@ -123,7 +125,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   const getElementTitle = (mode: MeasurementMode): string => {
     switch(mode) {
       case 'dormer': return "Gaube";
-      case 'chimney': return "Kamin";
+      case 'chimney': return "Kaminausschnitt";
       case 'skylight': return "Dachfenster";
       case 'solar': return "Solaranlage";
       case 'gutter': return "Dachrinne";

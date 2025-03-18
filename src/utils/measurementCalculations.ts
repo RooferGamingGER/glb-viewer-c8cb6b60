@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
@@ -217,19 +218,35 @@ export const calculateDiameter = (point1: Point, point2: Point): number => {
 };
 
 /**
- * Calculate rectangular dimensions (width and length) from two diagonal points
+ * Calculate rectangular dimensions (width and length) from 4 points
+ * For skylights and chimney cutouts
  */
-export const calculateRectangleDimensions = (p1: Point, p2: Point): { width: number; length: number; area: number } => {
-  // Calculate width (X difference)
-  const width = Math.abs(p2.x - p1.x);
+export const calculateQuadrilateralDimensions = (points: Point[]): { 
+  width: number; 
+  length: number; 
+  area: number;
+  perimeter: number;
+} => {
+  if (points.length < 4) {
+    return { width: 0, length: 0, area: 0, perimeter: 0 };
+  }
+
+  // Calculate perimeter
+  let perimeter = 0;
+  for (let i = 0; i < points.length; i++) {
+    const nextIdx = (i + 1) % points.length;
+    perimeter += calculateDistance(points[i], points[nextIdx]);
+  }
   
-  // Calculate length (Z difference)
-  const length = Math.abs(p2.z - p1.z);
+  // Calculate area using the polygon area formula
+  const area = calculateArea(points);
   
-  // Calculate area
-  const area = width * length;
+  // Use bounding box for width and length approximation
+  const boundingBox = calculateBoundingBox(points);
+  const width = boundingBox.max.x - boundingBox.min.x;
+  const length = boundingBox.max.z - boundingBox.min.z;
   
-  return { width, length, area };
+  return { width, length, area, perimeter };
 };
 
 /**
@@ -239,7 +256,11 @@ export const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'ven
   value: number;
   diameter?: number;
   height?: number;
-  position: Point;
+  width?: number;
+  length?: number;
+  area?: number;
+  perimeter?: number;
+  position?: Point;
 } => {
   // For a vent, we just need position
   if (type === 'vent' || points.length === 1) {
@@ -249,7 +270,20 @@ export const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'ven
     };
   }
   
-  // For a chimney with diameter measurement
+  // For a chimney with 4 points (cutout measurement)
+  if (points.length >= 4) {
+    const dimensions = calculateQuadrilateralDimensions(points);
+    
+    return {
+      value: dimensions.area,
+      width: dimensions.width,
+      length: dimensions.length,
+      area: dimensions.area,
+      perimeter: dimensions.perimeter
+    };
+  }
+  
+  // Fallback for older measurements with 2-3 points
   if (points.length >= 2) {
     const diameter = calculateDiameter(points[0], points[1]);
     let height: number | undefined;
@@ -268,8 +302,7 @@ export const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'ven
   }
   
   return {
-    value: 0,
-    position: points[0]
+    value: 0
   };
 };
 

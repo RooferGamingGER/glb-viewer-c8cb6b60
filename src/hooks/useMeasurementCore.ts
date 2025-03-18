@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -15,8 +16,8 @@ import {
   calculateInclination,
   validatePolygon,
   calculateAverageInclination,
-  calculateRectangleDimensions,
-  calculateDiameter,
+  calculateQuadrilateralDimensions,
+  createChimneyMeasurement,
   calculateBoundingBox,
   calculateCentroid
 } from '@/utils/measurementCalculations';
@@ -216,38 +217,43 @@ export const useMeasurementCore = () => {
     };
   };
 
-  const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'vent'): {
+  const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
     value: number;
-    diameter?: number;
-    height?: number;
-    position: Point;
+    width: number;
+    length: number;
+    area: number;
+    perimeter: number;
   } => {
-    if (type === 'vent' || points.length === 1) {
+    // Für Kamine und Dachfenster mit 4 Punkten
+    if (points.length >= 4) {
+      const dimensions = calculateQuadrilateralDimensions(points);
+      
       return {
-        value: 0,
-        position: points[0]
+        value: dimensions.area,
+        width: dimensions.width,
+        length: dimensions.length,
+        area: dimensions.area,
+        perimeter: dimensions.perimeter
       };
     }
     
-    if (points.length >= 2) {
-      const diameter = calculateDiameter(points[0], points[1]);
-      let height: number | undefined;
-      
-      if (points.length >= 3) {
-        height = calculateHeight(points[0], points[2]);
-      }
-      
-      return {
-        value: diameter,
-        diameter,
-        height,
-        position: points[0]
-      };
-    }
-    
+    // Fallback für weniger als 4 Punkte
     return {
       value: 0,
-      position: points[0]
+      width: 0,
+      length: 0,
+      area: 0,
+      perimeter: 0
+    };
+  };
+
+  const createVentMeasurement = (point: Point): {
+    value: number;
+    position: Point;
+  } => {
+    return {
+      value: 0,
+      position: point
     };
   };
 
@@ -281,28 +287,33 @@ export const useMeasurementCore = () => {
       }
       
       case 'chimney': {
-        const result = createChimneyMeasurement(points, 'chimney');
-        value = result.diameter || 0;
-        label = `Ø ${value.toFixed(2)} m`;
+        const result = createChimneyOrSkylightMeasurement(points, 'chimney');
+        value = result.area;
+        label = `${result.width.toFixed(2)} × ${result.length.toFixed(2)} m (Kaminausschnitt)`;
+        unit = 'm²';
         dimensions = {
-          diameter: result.diameter,
-          height: result.height
+          width: result.width,
+          length: result.length,
+          area: result.area,
+          perimeter: result.perimeter
         };
+        segments = generateSegments(points);
+        subType = 'Kaminausschnitt';
         break;
       }
       
       case 'skylight': {
-        if (points.length >= 2) {
-          const { width, length, area } = calculateRectangleDimensions(points[0], points[1]);
-          value = area;
-          label = `${width.toFixed(2)} × ${length.toFixed(2)} m`;
-          dimensions = {
-            width,
-            length,
-            area
-          };
-          unit = 'm²';
-        }
+        const result = createChimneyOrSkylightMeasurement(points, 'skylight');
+        value = result.area;
+        label = `${result.width.toFixed(2)} × ${result.length.toFixed(2)} m`;
+        unit = 'm²';
+        dimensions = {
+          width: result.width,
+          length: result.length,
+          area: result.area,
+          perimeter: result.perimeter
+        };
+        segments = generateSegments(points);
         break;
       }
       
@@ -367,6 +378,7 @@ export const useMeasurementCore = () => {
       }
       
       case 'vent': {
+        const result = createVentMeasurement(points[0]);
         label = 'Lüfter/Durchdringung';
         value = 0;
         
@@ -457,8 +469,8 @@ export const useMeasurementCore = () => {
     else if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'dormer': 3,
-        'chimney': 2,
-        'skylight': 2,
+        'chimney': 4,
+        'skylight': 4,
         'solar': 3,
         'gutter': 2,
         'verge': 2,

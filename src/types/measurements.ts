@@ -49,7 +49,7 @@ export interface Measurement {
   inclination?: number;
   
   // Roof element specific fields
-  subType?: string;      // Additional classification within type
+  subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
   dimensions?: {         // Specific dimensions for roof elements
     width?: number;
     length?: number;
