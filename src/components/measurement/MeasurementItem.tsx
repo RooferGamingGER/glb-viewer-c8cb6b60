@@ -18,14 +18,15 @@ import PointEditList from './PointEditList';
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
-  handleStartPointEdit: (id: string, pointIndex: number) => void;
+  handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  isSegmentOpen: boolean;
-  toggleSegment: () => void;
+  editMeasurementId: string | null;
+  segmentsOpen: Record<string, boolean>;
+  toggleSegments: (id: string) => void;
   onEditSegment: (segmentId: string | null) => void;
-  movingPointInfo: { measurementId: string; pointIndex: number } | null;
-  handleDeletePoint: (measurementId: string, pointIndex: number) => void;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   onEditRectangle?: (id: string) => void;
   editingRectangleId?: string | null;
 }
@@ -35,12 +36,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   toggleMeasurementVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
+  handleDeletePoint,
   updateMeasurement,
-  isSegmentOpen,
-  toggleSegment,
+  editMeasurementId,
+  segmentsOpen,
+  toggleSegments,
   onEditSegment,
   movingPointInfo,
-  handleDeletePoint,
   onEditRectangle,
   editingRectangleId
 }) => {
@@ -49,6 +51,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const isRectangleEditing = editingRectangleId === measurement.id;
   
   const hasSegments = measurement.segments && measurement.segments.length > 0;
+  const isSegmentOpen = segmentsOpen[measurement.id];
   
   return (
     <div className={`border border-border/50 rounded-md mb-2 overflow-hidden ${
@@ -140,7 +143,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={toggleSegment}
+            onClick={() => toggleSegments(measurement.id)}
             title={isSegmentOpen ? "Segmente ausblenden" : "Segmente einblenden"}
           >
             {isSegmentOpen ? (
@@ -159,7 +162,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       )}
       
-      {measurement.editMode && measurement.type === 'area' && (
+      {measurement.editMode && measurement.type === 'area' && handleDeletePoint && (
         <PointEditList 
           measurement={measurement}
           handleDeletePoint={handleDeletePoint}

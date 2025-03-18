@@ -21,6 +21,8 @@ interface MeasurementListProps {
   toggleSegments: (id: string) => void;
   onEditSegment: (id: string | null) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  onEditRectangle?: (id: string) => void;
+  editingRectangleId?: string | null;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -34,7 +36,9 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   segmentsOpen,
   toggleSegments,
   onEditSegment,
-  movingPointInfo
+  movingPointInfo,
+  onEditRectangle,
+  editingRectangleId
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) return null;
   
@@ -55,6 +59,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
             toggleSegments={toggleSegments}
             onEditSegment={onEditSegment}
             movingPointInfo={movingPointInfo}
+            onEditRectangle={onEditRectangle}
+            editingRectangleId={editingRectangleId}
           />
         ))}
       </div>
