@@ -62,18 +62,10 @@ export const calculateArea = (points: Point[]): number => {
     totalArea += triangleArea;
   }
   
-  // Korrektur für geneigte Flächen durch Projektion auf die Grundebene
-  // Den Faktor berechnen basierend auf dem Winkel der Flächennormale zur XZ-Ebene
-  const correctionFactor = 1 / Math.abs(planeNormal.dot(new THREE.Vector3(0, 1, 0)));
-  
-  // Wir begrenzen den Korrekturfaktor, um extreme Werte zu vermeiden
-  const clampedCorrection = Math.min(correctionFactor, 5);
-  
-  // Korrigierte Fläche zurückgeben, jedoch numerisch stabilisieren
-  // Wir wenden die Korrektur nur an, wenn die Neigung signifikant ist
-  if (Math.abs(planeNormal.y) < 0.95) {  // Ungefähr 18 Grad Abweichung von der Horizontalen
-    return totalArea * clampedCorrection;
-  }
+  // Korrektur für geneigte Flächen
+  // Wichtig: Da wir bereits die tatsächliche 3D-Fläche berechnet haben,
+  // müssen wir hier KEINE Korrektur für die Neigung anwenden.
+  // Die Heronsche Formel gibt bereits die korrekte Dreiecksfläche im 3D-Raum.
   
   return totalArea;
 };
