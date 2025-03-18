@@ -1,10 +1,9 @@
 
 import { useCallback } from 'react';
-import { MeasurementMode, Measurement } from '@/types/measurements';
-import { toast } from 'sonner';
+import { MeasurementMode } from '@/types/measurements';
 
 /**
- * Hook for toggling measurement tools
+ * Hook for toggling between measurement tools
  */
 export const useMeasurementToolToggle = (
   activeMode: MeasurementMode,
@@ -12,81 +11,28 @@ export const useMeasurementToolToggle = (
   clearCurrentPoints: () => void,
   setEditMeasurementId: React.Dispatch<React.SetStateAction<string | null>>,
   setEditingPointIndex: React.Dispatch<React.SetStateAction<number | null>>,
-  setMeasurements: React.Dispatch<React.SetStateAction<Measurement[]>>
+  setMeasurements: React.Dispatch<React.SetStateAction<any[]>>
 ) => {
-  // Toggle between tool modes
+  // Toggle measurement tool function
   const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
-    // Special handling for cancel, which just resets to "none"
-    if (mode === 'none') {
-      clearCurrentPoints();
+    if (activeMode === mode) {
+      // If the same tool is clicked again, disable it by setting mode to 'none'
       setActiveMode('none');
-      // Don't cancel editing mode when tool is canceled - this allows better user experience
-      // when the user wants to toggle between navigation and editing
-      return;
-    }
-    
-    // Cancel any ongoing editing when switching tools
-    setEditMeasurementId(null);
-    setEditingPointIndex(null);
-    
-    // If toggling to the same tool that's already active, turn it off
-    if (mode === activeMode) {
       clearCurrentPoints();
-      setActiveMode('none');
-      return;
+      // Also clear edit mode
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+      setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
+    } else {
+      // If a different tool is clicked, activate it
+      setActiveMode(mode);
+      clearCurrentPoints();
+      // Clear edit mode
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+      setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
     }
-    
-    // When switching to a new tool, clear any current points and set the new mode
-    clearCurrentPoints();
-    setActiveMode(mode);
-    
-    // Display guidance message based on the activated tool
-    switch (mode) {
-      case 'length':
-        toast.info('Längenmessung aktiviert. Platzieren Sie zwei Punkte, um eine Linie zu messen.');
-        break;
-      case 'height':
-        toast.info('Höhenmessung aktiviert. Platzieren Sie zwei Punkte, um eine vertikale Distanz zu messen.');
-        break;
-      case 'area':
-        toast.info('Flächenmessung aktiviert. Platzieren Sie mindestens drei Punkte und schließen Sie die Fläche.');
-        break;
-      case 'skylight':
-        toast.info('Dachfenster-Messung aktiviert. Markieren Sie die vier Ecken des Fensters.');
-        break;
-      case 'chimney':
-        toast.info('Kamin-Messung aktiviert. Markieren Sie die vier Ecken des Kamins.');
-        break;
-      case 'solar':
-        toast.info('Solaranlagen-Messung aktiviert. Markieren Sie den Umriss der Solaranlage mit mindestens drei Punkten.');
-        break;
-      case 'gutter':
-        toast.info('Dachrinnen-Messung aktiviert. Markieren Sie Anfangs- und Endpunkt der Dachrinne.');
-        break;
-      case 'vent':
-        toast.info('Lüfter-Markierung aktiviert. Klicken Sie auf jeden Lüfter, um ihn zu markieren.');
-        break;
-      case 'hook':
-        toast.info('Dachhaken-Markierung aktiviert. Klicken Sie auf jeden Dachhaken, um ihn zu markieren.');
-        break;
-      case 'other':
-        toast.info('Sonstige Einbauten-Markierung aktiviert. Klicken Sie auf jedes Element, um es zu markieren.');
-        break;
-    }
-    
-    // Reset all measurement visibility to true when switching tools
-    // This ensures all measurements are visible when a new tool is selected
-    setMeasurements(prevMeasurements => 
-      prevMeasurements.map(m => ({ ...m, visible: true, editMode: false }))
-    );
-  }, [
-    activeMode, 
-    setActiveMode, 
-    clearCurrentPoints, 
-    setEditMeasurementId, 
-    setEditingPointIndex,
-    setMeasurements
-  ]);
+  }, [activeMode, clearCurrentPoints, setActiveMode, setEditMeasurementId, setEditingPointIndex, setMeasurements]);
 
   return {
     toggleMeasurementTool

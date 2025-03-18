@@ -1,6 +1,4 @@
-
 import * as THREE from 'three';
-import { Point } from '@/types/measurements';
 
 export interface SpriteConfig {
   text: string;
@@ -346,11 +344,11 @@ export function createMeasurementLabel(
 /**
  * Calculate midpoint between two 3D points
  */
-export function calculateMidpoint(p1: THREE.Vector3, p2: THREE.Vector3): THREE.Vector3 {
+export function calculateMidpoint(point1: THREE.Vector3, point2: THREE.Vector3): THREE.Vector3 {
   return new THREE.Vector3(
-    (p1.x + p2.x) / 2,
-    (p1.y + p2.y) / 2 + 0.1, // Add offset for visibility
-    (p1.z + p2.z) / 2
+    (point1.x + point2.x) / 2,
+    (point1.y + point2.y) / 2 + 0.1, // Add offset for visibility
+    (point1.z + point2.z) / 2
   );
 }
 

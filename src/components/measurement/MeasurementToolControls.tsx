@@ -1,36 +1,35 @@
 
 import React from 'react';
+import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
   ArrowUpDown, 
+  X, 
   Square, 
   Table, 
-  List,
-  FileText,
-  Home,
-  Wind,
-  Layers,
+  Download,
+  Sun,
   SplitSquareVertical,
   Cylinder,
-  Sun,
-  Droplet,
+  Wind,
   Anchor
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { MeasurementMode } from '@/types/measurements';
+import ExportPdfButton from './ExportPdfButton';
+import { exportMeasurementsToCSV } from '@/utils/exportUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
 
 interface MeasurementToolControlsProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
   editMeasurementId: string | null;
-  measurements: Measurement[];
+  measurements: any[];
   showTable: boolean;
   setShowTable: (show: boolean) => void;
 }
 
 /**
- * Tool selection panel for measurement controls
+ * Controls for measurement tools selection
  */
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   activeMode,
@@ -40,126 +39,162 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   showTable,
   setShowTable
 }) => {
-  const isToolDisabled = editMeasurementId !== null;
-  
-  // Group tools into categories
-  const standardTools = [
-    { id: 'length', icon: <Ruler className="w-4 h-4" />, label: 'Länge' },
-    { id: 'height', icon: <ArrowUpDown className="w-4 h-4" />, label: 'Höhe' },
-    { id: 'area', icon: <Square className="w-4 h-4" />, label: 'Fläche' }
-  ];
-  
-  const roofElementTools = [
-    { id: 'skylight', icon: <SplitSquareVertical className="w-4 h-4" />, label: 'Dachfenster' },
-    { id: 'chimney', icon: <Cylinder className="w-4 h-4" />, label: 'Kamin' },
-    { id: 'solar', icon: <Sun className="w-4 h-4" />, label: 'Solaranlage' },
-    { id: 'gutter', icon: <Droplet className="w-4 h-4" />, label: 'Dachrinne' }
-  ];
-  
-  const penetrationTools = [
-    { id: 'vent', icon: <Wind className="w-4 h-4" />, label: 'Lüfter' },
-    { id: 'hook', icon: <Anchor className="w-4 h-4" />, label: 'Dachhaken' },
-    { id: 'other', icon: <Layers className="w-4 h-4" />, label: 'Sonstige' }
-  ];
-  
+  const handleDownload = () => {
+    if (measurements.length === 0) return;
+    exportMeasurementsToCSV(measurements);
+  };
+
   return (
     <div className="p-3">
-      <Tabs defaultValue="standard">
-        <TabsList className="w-full mb-3">
-          <TabsTrigger value="standard">
-            <Ruler className="w-4 h-4 mr-1" />
-            Standard
-          </TabsTrigger>
-          <TabsTrigger value="roofelements">
-            <Home className="w-4 h-4 mr-1" />
-            Dachelemente
-          </TabsTrigger>
-          <TabsTrigger value="penetrations">
-            <Wind className="w-4 h-4 mr-1" />
-            Einbauten
-          </TabsTrigger>
+      <div className="text-lg font-medium mb-2">Messwerkzeuge</div>
+      
+      <Tabs defaultValue="standard" className="w-full">
+        <TabsList className="grid grid-cols-3 mb-2">
+          <TabsTrigger value="standard">Standard</TabsTrigger>
+          <TabsTrigger value="roof-elements">Dachelemente</TabsTrigger>
+          <TabsTrigger value="penetrations">Einbauten</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="standard" className="m-0">
-          <div className="grid grid-cols-3 gap-2">
-            {standardTools.map(tool => (
-              <Button
-                key={tool.id}
-                variant={activeMode === tool.id ? "default" : "outline"}
-                size="sm"
-                className="h-10 flex-col py-1"
-                onClick={() => toggleMeasurementTool(tool.id as MeasurementMode)}
-                disabled={isToolDisabled}
-                title={`${tool.label} ${activeMode === tool.id ? 'deaktivieren' : 'messen'}`}
-              >
-                {tool.icon}
-                <span className="text-xs mt-1">{tool.label}</span>
-              </Button>
-            ))}
+        <TabsContent value="standard">
+          <div className="flex space-x-2">
+            <Button
+              variant={activeMode === 'length' ? "default" : "outline"} 
+              size="sm"
+              className="flex-1"
+              onClick={() => toggleMeasurementTool('length')}
+              disabled={!!editMeasurementId}
+              title="Längenmessung"
+            >
+              <Ruler className="h-4 w-4 mr-1" />
+              Länge
+            </Button>
+            
+            <Button
+              variant={activeMode === 'height' ? "default" : "outline"} 
+              size="sm"
+              className="flex-1"
+              onClick={() => toggleMeasurementTool('height')}
+              disabled={!!editMeasurementId}
+              title="Höhenmessung"
+            >
+              <ArrowUpDown className="h-4 w-4 mr-1" />
+              Höhe
+            </Button>
+            
+            <Button
+              variant={activeMode === 'area' ? "default" : "outline"} 
+              size="sm"
+              className="flex-1"
+              onClick={() => toggleMeasurementTool('area')}
+              disabled={!!editMeasurementId}
+              title="Flächenmessung"
+            >
+              <Square className="h-4 w-4 mr-1" />
+              Fläche
+            </Button>
           </div>
         </TabsContent>
         
-        <TabsContent value="roofelements" className="m-0">
-          <div className="grid grid-cols-4 gap-2">
-            {roofElementTools.map(tool => (
-              <Button
-                key={tool.id}
-                variant={activeMode === tool.id ? "default" : "outline"}
-                size="sm"
-                className="h-10 flex-col py-1"
-                onClick={() => toggleMeasurementTool(tool.id as MeasurementMode)}
-                disabled={isToolDisabled}
-                title={`${tool.label} ${activeMode === tool.id ? 'deaktivieren' : 'messen'}`}
-              >
-                {tool.icon}
-                <span className="text-xs mt-1">{tool.label}</span>
-              </Button>
-            ))}
+        <TabsContent value="roof-elements">
+          <div className="grid grid-cols-3 gap-1">
+            <Button
+              variant={activeMode === 'skylight' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'skylight' ? 'none' : 'skylight')}
+              disabled={!!editMeasurementId}
+            >
+              <SplitSquareVertical className="h-4 w-4 mr-1" />
+              <span className="text-xs">Dachfenster</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'chimney' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'chimney' ? 'none' : 'chimney')}
+              disabled={!!editMeasurementId}
+            >
+              <Cylinder className="h-4 w-4 mr-1" />
+              <span className="text-xs">Kamine</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'solar' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'solar' ? 'none' : 'solar')}
+              disabled={!!editMeasurementId}
+            >
+              <Sun className="h-4 w-4 mr-1" />
+              <span className="text-xs">Solaranlagen</span>
+            </Button>
           </div>
         </TabsContent>
         
-        <TabsContent value="penetrations" className="m-0">
-          <div className="grid grid-cols-3 gap-2">
-            {penetrationTools.map(tool => (
-              <Button
-                key={tool.id}
-                variant={activeMode === tool.id ? "default" : "outline"}
-                size="sm"
-                className="h-10 flex-col py-1"
-                onClick={() => toggleMeasurementTool(tool.id as MeasurementMode)}
-                disabled={isToolDisabled}
-                title={`${tool.label} ${activeMode === tool.id ? 'deaktivieren' : 'markieren'}`}
-              >
-                {tool.icon}
-                <span className="text-xs mt-1">{tool.label}</span>
-              </Button>
-            ))}
+        <TabsContent value="penetrations">
+          <div className="grid grid-cols-3 gap-1">
+            <Button
+              variant={activeMode === 'vent' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'vent' ? 'none' : 'vent')}
+              disabled={!!editMeasurementId}
+            >
+              <Wind className="h-4 w-4 mr-1" />
+              <span className="text-xs">Lüfter</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'hook' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'hook' ? 'none' : 'hook')}
+              disabled={!!editMeasurementId}
+            >
+              <Anchor className="h-4 w-4 mr-1" />
+              <span className="text-xs">Dachhaken</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'other' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'other' ? 'none' : 'other')}
+              disabled={!!editMeasurementId}
+            >
+              <X className="h-4 w-4 mr-1" />
+              <span className="text-xs">Sonstiges</span>
+            </Button>
           </div>
         </TabsContent>
       </Tabs>
       
-      <div className="flex justify-between mt-3">
-        <Button 
-          variant={showTable ? "default" : "outline"} 
-          size="sm" 
-          className="flex-1 mr-1"
-          onClick={() => setShowTable(true)}
-          disabled={isToolDisabled || showTable}
-        >
-          <Table className="w-4 h-4 mr-1" />
-          Tabelle
-        </Button>
-        <Button 
-          variant={!showTable ? "default" : "outline"} 
-          size="sm" 
-          className="flex-1 ml-1"
-          onClick={() => setShowTable(false)}
-          disabled={isToolDisabled || !showTable}
-        >
-          <List className="w-4 h-4 mr-1" />
-          Liste
-        </Button>
-      </div>
+      {measurements.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          <Button
+            variant="outline" 
+            size="sm"
+            className="w-full"
+            onClick={() => setShowTable(!showTable)}
+          >
+            <Table className="h-4 w-4 mr-1" />
+            {showTable ? "Liste" : "Tabelle"}
+          </Button>
+          
+          <ExportPdfButton measurements={measurements} />
+          
+          <Button
+            variant="outline" 
+            size="sm"
+            className="w-full"
+            onClick={handleDownload}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            CSV
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
