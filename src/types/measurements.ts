@@ -66,4 +66,10 @@ export interface Measurement {
   count?: number;        // For elements that need counting (e.g., vents)
   relatedMeasurements?: string[]; // IDs of related measurements
   penetrationType?: 'vent' | 'other'; // Type of penetration
+  
+  // Added for the rectangle editor
+  isRectangleMode?: boolean; // Flag to indicate if the element uses rectangle editing
+  rectanglePoints?: Point[]; // The 4 corners of the rectangle (for chimney/skylight)
+  isEditing?: boolean;      // Flag for active rectangle editing
+  activeCorner?: number;    // Index of the currently active corner (0-3)
 }

@@ -1,31 +1,39 @@
 
-import React from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useState } from 'react';
+import { Measurement } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
-import { Trash2 } from 'lucide-react';
-import { Measurement, Point } from '@/hooks/useMeasurements';
-import MeasurementList from './MeasurementList';
+import { 
+  Trash, 
+  Table as TableIcon,
+  Download
+} from 'lucide-react';
+import { exportMeasurementsToCSV } from '@/utils/exportUtils';
+import MeasurementItem from './MeasurementItem';
 import MeasurementTable from './MeasurementTable';
+import { toast } from 'sonner';
+import { SidebarContent } from "@/components/ui/sidebar";
+import RectangleEditor from './RectangleEditor';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
-  handleStartPointEdit: (id: string) => void;
+  handleStartPointEdit: (id: string, pointIndex: number) => void;
   handleDeleteMeasurement: (id: string) => void;
-  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
+  handleDeletePoint: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
-  onEditSegment: (id: string | null) => void;
+  onEditSegment: (segmentId: string | null) => void;
   movingPointInfo: { measurementId: string; pointIndex: number } | null;
   showTable: boolean;
   handleClearMeasurements: () => void;
+  startRectangleEdit?: (id: string) => void;
+  finishRectangleEdit?: (id: string) => void;
+  cancelRectangleEdit?: (id: string) => void;
+  editingRectangleId?: string | null;
 }
 
-/**
- * Component for displaying measurements in a sidebar
- */
 const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   measurements,
   toggleMeasurementVisibility,
@@ -39,59 +47,104 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   onEditSegment,
   movingPointInfo,
   showTable,
-  handleClearMeasurements
+  handleClearMeasurements,
+  startRectangleEdit,
+  finishRectangleEdit,
+  cancelRectangleEdit,
+  editingRectangleId
 }) => {
+  // Export measurements function
+  const handleExport = () => {
+    if (measurements.length === 0) {
+      toast.error('Keine Messungen zum Exportieren vorhanden');
+      return;
+    }
+    
+    exportMeasurementsToCSV(measurements);
+    toast.success('Messungen wurden als CSV exportiert');
+  };
+
+  // If table view is active, show the table instead of the list
+  if (showTable) {
+    return (
+      <SidebarContent className="px-3 pt-3 overflow-auto">
+        <MeasurementTable measurements={measurements} />
+      </SidebarContent>
+    );
+  }
+
+  // If we have an active rectangle being edited, show the rectangle editor
+  const rectangleEditingMeasurement = editingRectangleId ? 
+    measurements.find(m => m.id === editingRectangleId) : null;
+
   return (
-    <>
-      {/* Fixed title bar for measurements */}
-      <div className="flex-shrink-0 p-3 border-t border-b border-border/50 flex justify-between items-center">
-        <div className="text-base font-medium">
-          {showTable ? "Messungen (Tabelle)" : "Messungen"}
-        </div>
+    <SidebarContent className="px-3 pt-3 overflow-auto">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-sm font-semibold">Messungen ({measurements.length})</h3>
         
-        {measurements.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2"
-            onClick={handleClearMeasurements}
-            disabled={!!editMeasurementId}
+        <div className="flex space-x-1">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={handleExport}
+            title="Als CSV exportieren"
+            disabled={measurements.length === 0}
           >
-            <Trash2 className="h-3 w-3 mr-1" />
-            Alle löschen
+            <Download className="h-4 w-4" />
           </Button>
-        )}
+          
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={handleClearMeasurements}
+            title="Alle Messungen löschen"
+            disabled={measurements.length === 0}
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       
-      {/* Scrollable content area */}
-      <ScrollArea className="flex-1 overflow-auto">
-        <div className="p-3">
-          {showTable ? (
-            <MeasurementTable measurements={measurements} />
-          ) : (
-            <MeasurementList 
-              measurements={measurements}
+      {measurements.length === 0 ? (
+        <div className="text-center py-6 text-muted-foreground text-sm">
+          Keine Messungen vorhanden
+        </div>
+      ) : (
+        <div>
+          {measurements.map((measurement) => (
+            <MeasurementItem
+              key={measurement.id}
+              measurement={measurement}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
-              handleDeletePoint={handleDeletePoint}
               updateMeasurement={updateMeasurement}
-              editMeasurementId={editMeasurementId}
-              segmentsOpen={segmentsOpen}
-              toggleSegments={toggleSegments}
+              isSegmentOpen={segmentsOpen[measurement.id] || false}
+              toggleSegment={() => toggleSegments(measurement.id)}
               onEditSegment={onEditSegment}
               movingPointInfo={movingPointInfo}
+              handleDeletePoint={handleDeletePoint}
+              onEditRectangle={startRectangleEdit}
+              editingRectangleId={editingRectangleId}
             />
-          )}
-          
-          {measurements.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              Keine Messungen vorhanden
-            </div>
-          )}
+          ))}
         </div>
-      </ScrollArea>
-    </>
+      )}
+      
+      {/* Rectangle Editor - render only if a rectangle is being edited */}
+      {rectangleEditingMeasurement && finishRectangleEdit && cancelRectangleEdit && (
+        <RectangleEditor 
+          measurement={rectangleEditingMeasurement}
+          onUpdate={(id, points) => {
+            // This function is handled by the interaction system now
+          }}
+          onFinishEdit={finishRectangleEdit}
+          onCancelEdit={cancelRectangleEdit}
+        />
+      )}
+    </SidebarContent>
   );
 };
 

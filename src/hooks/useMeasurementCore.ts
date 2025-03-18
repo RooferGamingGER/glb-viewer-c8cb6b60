@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -19,7 +18,8 @@ import {
   calculateQuadrilateralDimensions,
   createChimneyMeasurement,
   calculateBoundingBox,
-  calculateCentroid
+  calculateCentroid,
+  createRectangleFromDiagonalPoints
 } from '@/utils/measurementCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -269,6 +269,7 @@ export const useMeasurementCore = () => {
     let subType: string | undefined;
     let count: number | undefined;
     let penetrationType: 'vent' | 'other' | undefined;
+    let isRectangleMode: boolean = false;
     
     switch(type) {
       case 'dormer': {
@@ -299,6 +300,7 @@ export const useMeasurementCore = () => {
         };
         segments = generateSegments(points);
         subType = 'Kaminausschnitt';
+        isRectangleMode = true;
         break;
       }
       
@@ -314,6 +316,7 @@ export const useMeasurementCore = () => {
           perimeter: result.perimeter
         };
         segments = generateSegments(points);
+        isRectangleMode = true;
         break;
       }
       
@@ -363,7 +366,8 @@ export const useMeasurementCore = () => {
           }
           
           if (type === 'verge') {
-            if (Math.abs(inclination || 0) < 10) {
+            // Automatically classify as Ortgang or Traufe based on inclination
+            if (Math.abs(inclination || 0) <= 5) {
               subType = 'Traufe';
             } else {
               subType = 'Ortgang';
@@ -409,7 +413,11 @@ export const useMeasurementCore = () => {
         subType,
         dimensions,
         count,
-        penetrationType
+        penetrationType,
+        isRectangleMode,
+        rectanglePoints: isRectangleMode ? [...points] : undefined,
+        isEditing: false,
+        activeCorner: undefined
       }
     ]);
     
@@ -469,8 +477,8 @@ export const useMeasurementCore = () => {
     else if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'dormer': 3,
-        'chimney': 4,
-        'skylight': 4,
+        'chimney': 2,  // Changed from 4 to 2
+        'skylight': 2, // Changed from 4 to 2
         'solar': 3,
         'gutter': 2,
         'verge': 2,
@@ -484,7 +492,13 @@ export const useMeasurementCore = () => {
       };
       
       if (points.length >= (requiredPoints[activeMode] || 0)) {
-        createRoofElementMeasurement(activeMode, points);
+        // For rectangle-based measurements (chimney and skylight), create 4 points from 2
+        if ((activeMode === 'chimney' || activeMode === 'skylight') && points.length === 2) {
+          const rectanglePoints = createRectangleFromDiagonalPoints(points[0], points[1]);
+          createRoofElementMeasurement(activeMode, rectanglePoints);
+        } else {
+          createRoofElementMeasurement(activeMode, points);
+        }
         toast.success(`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)}-Messung abgeschlossen`);
       } else {
         toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
@@ -523,7 +537,15 @@ export const useMeasurementCore = () => {
       return;
     }
     
-    if (['skylight', 'verge', 'valley', 'ridge'].includes(currentMode) && updatedPoints.length === 2) {
+    // Handle skylight and chimney with 2 points - create as rectangle
+    if ((currentMode === 'skylight' || currentMode === 'chimney') && updatedPoints.length === 2) {
+      // For rectangle-based measurements, we create all 4 corners from 2 diagonal points
+      const rectanglePoints = createRectangleFromDiagonalPoints(updatedPoints[0], updatedPoints[1]);
+      createRoofElementMeasurement(currentMode, rectanglePoints);
+      toast.success(`${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    }
+    
+    if (['verge', 'valley', 'ridge'].includes(currentMode) && updatedPoints.length === 2) {
       createRoofElementMeasurement(currentMode as MeasurementMode, updatedPoints);
       toast.success(`${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}-Messung abgeschlossen - Messwerkzeug deaktiviert`);
     }
@@ -579,3 +601,8 @@ export const useMeasurementCore = () => {
     createRoofElementMeasurement
   };
 };
+
+/**
+ * External import for the new rectangle function
+ */
+import { createRectangleFromDiagonalPoints } from '@/utils/measurementCalculations';

@@ -8,12 +8,6 @@ import {
   Info 
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface RoofElementControlsProps {
   activeMode: MeasurementMode;
@@ -40,9 +34,9 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'solar': 
         return 3; // Flächenmessung
       case 'skylight': 
-        return 4; // Vier Punkte für exakte Rechteckdefinition
+        return 2; // Zwei Punkte für die Rechteckdefinition (aktualisiert)
       case 'chimney': 
-        return 4; // Vier Punkte für genaue Vermessung
+        return 2; // Zwei Punkte für die Rechteckdefinition (aktualisiert)
       case 'gutter':
       case 'verge':
       case 'valley':
@@ -70,19 +64,19 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'chimney':
         if (currentPoints.length === 0) {
           return "Markieren Sie die erste Ecke des Kaminausschnitts im Dach.";
-        } else if (currentPoints.length < 4) {
-          return `Markieren Sie die weiteren Ecken des Kaminausschnitts. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else if (currentPoints.length === 1) {
+          return "Markieren Sie die gegenüberliegende Ecke des Kaminausschnitts.";
         } else {
-          return "Kaminausschnitt vollständig definiert. Schließen Sie die Messung ab.";
+          return "Rechteck vollständig definiert. Sie können die Größe nach dem Abschluss anpassen.";
         }
       
       case 'skylight':
         if (currentPoints.length === 0) {
           return "Markieren Sie die erste Ecke des Dachfensters.";
-        } else if (currentPoints.length < 4) {
-          return `Markieren Sie die weiteren Ecken des Dachfensters. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else if (currentPoints.length === 1) {
+          return "Markieren Sie die gegenüberliegende Ecke des Dachfensters.";
         } else {
-          return "Dachfenster vollständig definiert. Schließen Sie die Messung ab.";
+          return "Rechteck vollständig definiert. Sie können die Größe nach dem Abschluss anpassen.";
         }
       
       case 'solar':

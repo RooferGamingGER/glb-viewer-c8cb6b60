@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
@@ -394,4 +393,30 @@ export const calculateBoundingBox = (points: Point[]): { min: Point; max: Point 
   }
   
   return { min, max };
+};
+
+/**
+ * Create a rectangle from two diagonal points
+ * Used for skylight and chimney measurements when only two corner points are provided
+ */
+export const createRectangleFromDiagonalPoints = (p1: Point, p2: Point): Point[] => {
+  // Create the other two points to form a rectangle
+  // We need to determine the other two corners based on the two diagonal points
+  
+  // Create point 3 (same x as p1, same z as p2)
+  const p3: Point = {
+    x: p1.x,
+    y: (p1.y + p2.y) / 2, // Average Y for better rectangle placement on sloped surfaces
+    z: p2.z
+  };
+  
+  // Create point 4 (same x as p2, same z as p1)
+  const p4: Point = {
+    x: p2.x,
+    y: (p1.y + p2.y) / 2, // Average Y for better rectangle placement on sloped surfaces
+    z: p1.z
+  };
+  
+  // Return all 4 points in clockwise order
+  return [p1, p4, p2, p3];
 };
