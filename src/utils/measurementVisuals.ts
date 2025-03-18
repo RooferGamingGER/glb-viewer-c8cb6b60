@@ -150,7 +150,7 @@ export function renderCurrentPoints(
     }
   });
 
-  // Add current points as spheres
+  // Add current points as spheres with elevated Y position
   currentPoints.forEach((point, index) => {
     const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
@@ -164,14 +164,16 @@ export function renderCurrentPoints(
              0xffaa00 
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.set(point.x, point.y, point.z);
+    // Add a small Y offset to raise points slightly
+    sphere.position.set(point.x, point.y + 0.1, point.z);
     pointsRef.add(sphere);
 
-    // Add connecting lines between points
+    // Add connecting lines between points - also raised
     if (index > 0) {
       const prevPoint = currentPoints[index - 1];
-      const p1 = pointToVector3(prevPoint);
-      const p2 = pointToVector3(point);
+      // Add Y offset to both points when creating the line
+      const p1 = new THREE.Vector3(prevPoint.x, prevPoint.y + 0.1, prevPoint.z);
+      const p2 = new THREE.Vector3(point.x, point.y + 0.1, point.z);
       
       const points = [p1, p2];
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -195,8 +197,8 @@ export function renderCurrentPoints(
   if ((activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') && currentPoints.length >= 3) {
     const firstPoint = currentPoints[0];
     const lastPoint = currentPoints[currentPoints.length - 1];
-    const p1 = pointToVector3(lastPoint);
-    const p2 = pointToVector3(firstPoint);
+    const p1 = new THREE.Vector3(lastPoint.x, lastPoint.y + 0.1, lastPoint.z);
+    const p2 = new THREE.Vector3(firstPoint.x, firstPoint.y + 0.1, firstPoint.z);
     
     const closingPoints = [p1, p2];
     const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
@@ -342,7 +344,7 @@ export function renderEditPoints(
   const measurement = measurements.find(m => m.id === editMeasurementId);
   if (!measurement || measurement.visible === false) return;
   
-  // Add editable points with a different appearance
+  // Add editable points with a different appearance and raised Y position
   measurement.points.forEach((point, index) => {
     const isSelected = index === editingPointIndex;
     
@@ -359,7 +361,8 @@ export function renderEditPoints(
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.set(point.x, point.y, point.z);
+    // Add Y offset to raise edit points
+    sphere.position.set(point.x, point.y + 0.1, point.z);
     
     // Add user data to the sphere for identification when clicking
     sphere.userData = {
@@ -782,9 +785,9 @@ function renderLengthMeasurement(
 ) {
   const [p1, p2] = measurement.points;
   
-  // Convert to THREE.Vector3
-  const point1 = pointToVector3(p1);
-  const point2 = pointToVector3(p2);
+  // Convert to THREE.Vector3 and add Y offset
+  const point1 = new THREE.Vector3(p1.x, p1.y + 0.1, p1.z);
+  const point2 = new THREE.Vector3(p2.x, p2.y + 0.1, p2.z);
   
   // Draw the line
   const linePoints = [point1, point2];
@@ -796,13 +799,13 @@ function renderLengthMeasurement(
   const line = new THREE.Line(lineGeometry, lineMaterial);
   measurementsRef.add(line);
   
-  // Add small spheres at endpoints
+  // Add small spheres at endpoints with Y offset
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   
   measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.set(point.x, point.y, point.z);
+    sphere.position.set(point.x, point.y + 0.1, point.z);
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -843,9 +846,9 @@ function renderHeightMeasurement(
 ) {
   const [p1, p2] = measurement.points;
   
-  // Convert to THREE.Vector3
-  const point1 = pointToVector3(p1);
-  const point2 = pointToVector3(p2);
+  // Convert to THREE.Vector3 with Y offset
+  const point1 = new THREE.Vector3(p1.x, p1.y + 0.1, p1.z);
+  const point2 = new THREE.Vector3(p2.x, p2.y + 0.1, p2.z);
   
   // Determine which point is higher
   const higherPoint = point1.y > point2.y ? point1 : point2;
@@ -933,7 +936,8 @@ function renderAreaMeasurement(
   shouldCreateLabel: boolean,
   shouldCreateSegmentLabels: boolean
 ) {
-  const points3D = pointsToVector3Array(measurement.points);
+  // Convert points to THREE.Vector3 with Y offset
+  const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + 0.1, p.z));
   
   // Create outline from points
   for (let i = 0; i < points3D.length; i++) {

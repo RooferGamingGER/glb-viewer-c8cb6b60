@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -382,8 +383,8 @@ export function createMeasurementLabel(
     // Position the sprite
     sprite.position.copy(position);
     
-    // Add slight Y offset to avoid z-fighting with geometry
-    sprite.position.y += 0.05;
+    // Add larger Y offset to float higher above the model
+    sprite.position.y += 0.2; // Increased from 0.05 to 0.2
     
     return sprite;
   }
@@ -398,8 +399,8 @@ export function createMeasurementLabel(
   // Position the sprite
   sprite.position.copy(position);
   
-  // Add slight Y offset to avoid z-fighting with geometry
-  sprite.position.y += 0.05;
+  // Add larger Y offset to float higher above the model
+  sprite.position.y += 0.2; // Increased from 0.05 to 0.2
   
   return sprite;
 }
@@ -410,7 +411,7 @@ export function createMeasurementLabel(
 export function calculateMidpoint(point1: THREE.Vector3, point2: THREE.Vector3): THREE.Vector3 {
   return new THREE.Vector3(
     (point1.x + point2.x) / 2,
-    (point1.y + point2.y) / 2 + 0.1,
+    (point1.y + point2.y) / 2 + 0.3, // Increased from 0.1 to 0.3
     (point1.z + point2.z) / 2
   );
 }
@@ -427,7 +428,7 @@ export function calculateCentroid(points: THREE.Vector3[]): THREE.Vector3 {
   });
   
   centroid.divideScalar(points.length);
-  centroid.y += 0.1;
+  centroid.y += 0.3; // Increased from 0.1 to 0.3
   
   return centroid;
 }
