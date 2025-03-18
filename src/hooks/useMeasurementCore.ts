@@ -128,6 +128,153 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
   }, []);
 
+  const createRoofElementMeasurement = useCallback((type: MeasurementMode, points: Point[]) => {
+    if (points.length === 0) return;
+    
+    let value = 0;
+    let label = '';
+    let unit = 'm';
+    let segments: Segment[] | undefined;
+    let dimensions: any = {};
+    let inclination: number | undefined;
+    let subType: string | undefined;
+    
+    switch(type) {
+      case 'dormer': {
+        const result = createDormerMeasurement(points);
+        value = result.area;
+        label = `${result.area.toFixed(2)} m²`;
+        unit = 'm²';
+        segments = generateSegments(points.slice(0, points.length > 3 ? points.length - 1 : 3));
+        dimensions = {
+          area: result.area,
+          width: result.width,
+          length: result.length,
+          height: result.height
+        };
+        break;
+      }
+      
+      case 'chimney': {
+        const result = createChimneyMeasurement(points, 'chimney');
+        value = result.diameter || 0;
+        label = `Ø ${value.toFixed(2)} m`;
+        dimensions = {
+          diameter: result.diameter,
+          height: result.height
+        };
+        break;
+      }
+      
+      case 'skylight': {
+        if (points.length >= 2) {
+          const { width, length, area } = calculateRectangleDimensions(points[0], points[1]);
+          value = area;
+          label = `${width.toFixed(2)} × ${length.toFixed(2)} m`;
+          dimensions = {
+            width,
+            length,
+            area
+          };
+          unit = 'm²';
+        }
+        break;
+      }
+      
+      case 'solar': {
+        value = calculateArea(points);
+        label = `${value.toFixed(2)} m²`;
+        unit = 'm²';
+        segments = generateSegments(points);
+        
+        if (segments.length > 0) {
+          inclination = calculateAverageInclination(segments);
+        }
+        
+        dimensions = {
+          area: value
+        };
+        
+        break;
+      }
+      
+      case 'gutter': {
+        if (points.length >= 2) {
+          let totalLength = 0;
+          for (let i = 0; i < points.length - 1; i++) {
+            totalLength += calculateDistance(points[i], points[i + 1]);
+          }
+          
+          value = totalLength;
+          label = `${value.toFixed(2)} m`;
+        }
+        break;
+      }
+      
+      case 'verge': 
+      case 'valley':
+      case 'ridge': {
+        if (points.length >= 2) {
+          value = calculateDistance(points[0], points[1]);
+          label = `${value.toFixed(2)} m`;
+          
+          const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+          const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+          const calculatedInclination = calculateInclination(p1, p2);
+          
+          if (Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD) {
+            inclination = calculatedInclination;
+          }
+          
+          if (type === 'verge') {
+            if (Math.abs(inclination || 0) < 10) {
+              subType = 'Traufe';
+            } else {
+              subType = 'Ortgang';
+            }
+          } else if (type === 'valley') {
+            subType = 'Kehle';
+          } else if (type === 'ridge') {
+            subType = 'Grat';
+          }
+        }
+        break;
+      }
+      
+      case 'vent': {
+        label = 'Lüfter';
+        value = 0;
+        break;
+      }
+      
+      default:
+        break;
+    }
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type,
+        points: [...points],
+        value,
+        label,
+        visible: true,
+        unit,
+        description: '',
+        segments,
+        inclination,
+        subType,
+        dimensions
+      }
+    ]);
+    
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    setActiveMode('none');
+  }, [setMeasurements, setCurrentPoints, setActiveMode]);
+
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
     
@@ -140,19 +287,16 @@ export const useMeasurementCore = () => {
       createHeightMeasurement([points[0], points[1]]);
     }
     else if (activeMode === 'area' && points.length >= 3) {
-      // Polygon auf Gültigkeit prüfen
       const validation = validatePolygon(points);
       if (!validation.valid) {
         toast.error(validation.message || 'Ungültiges Polygon');
         return;
       }
       
-      // Warnung anzeigen, falls vorhanden
       if (validation.message) {
         toast.warning(validation.message);
       }
       
-      // Berechnung der Fläche mit verbesserter 3D-Methode
       const value = calculateArea(points);
       const label = formatMeasurement(value, 'area');
       const segments = generateSegments(points);
@@ -178,7 +322,31 @@ export const useMeasurementCore = () => {
       setCurrentPoints([]);
       currentPointsRef.current = [];
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
+    else if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
+      const requiredPoints: Record<MeasurementMode, number> = {
+        'dormer': 3,
+        'chimney': 2,
+        'skylight': 2,
+        'solar': 3,
+        'gutter': 2,
+        'verge': 2,
+        'valley': 2,
+        'ridge': 2,
+        'vent': 1,
+        'length': 2,
+        'height': 2,
+        'area': 3,
+        'none': 0
+      };
+      
+      if (points.length >= (requiredPoints[activeMode] || 0)) {
+        createRoofElementMeasurement(activeMode, points);
+        toast.success(`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)}-Messung abgeschlossen`);
+      } else {
+        toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
+      }
+    }
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
@@ -203,7 +371,17 @@ export const useMeasurementCore = () => {
         toast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
       }
     }
-  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement]);
+    
+    if (currentMode === 'vent' && updatedPoints.length === 1) {
+      createRoofElementMeasurement('vent', updatedPoints);
+      toast.success('Lüfter markiert - Messwerkzeug deaktiviert');
+    }
+    
+    if (['skylight', 'verge', 'valley', 'ridge'].includes(currentMode) && updatedPoints.length === 2) {
+      createRoofElementMeasurement(currentMode as MeasurementMode, updatedPoints);
+      toast.success(`${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    }
+  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
   const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
     setMeasurements(prev => {
@@ -228,26 +406,20 @@ export const useMeasurementCore = () => {
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
-          // Polygon auf Gültigkeit prüfen
           const validation = validatePolygon(newPoints);
           if (!validation.valid) {
             toast.error(validation.message || 'Ungültiges Polygon');
-            return m; // Original-Messung beibehalten, wenn die Änderung ungültig ist
+            return m;
           }
           
-          // Warnung anzeigen, falls vorhanden
-          if (validation.message) {
-            toast.warning(validation.message);
-          }
-          
-          newValue = calculateArea(newPoints);
+          const label = formatMeasurement(calculateArea(newPoints), m.type);
           const newSegments = generateSegments(newPoints);
           
           return {
             ...m,
             points: newPoints,
-            value: newValue,
-            label: formatMeasurement(newValue, m.type),
+            value: calculateArea(newPoints),
+            label,
             segments: newSegments
           };
         } else {
@@ -311,6 +483,7 @@ export const useMeasurementCore = () => {
     updateMeasurementPoint,
     undoLastPoint,
     createLengthMeasurement,
-    createHeightMeasurement
+    createHeightMeasurement,
+    createRoofElementMeasurement
   };
 };

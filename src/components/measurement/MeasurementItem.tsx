@@ -1,11 +1,27 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Pencil, Trash2, Save, X } from 'lucide-react';
+import { 
+  Eye, 
+  EyeOff, 
+  Pencil, 
+  Trash2, 
+  Save, 
+  X,
+  House,
+  Cylinder,
+  SplitSquareVertical,
+  Sun,
+  Droplet,
+  LineHorizontal,
+  LineVertical,
+  Wind
+} from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';
+import { Badge } from "@/components/ui/badge";
 
 interface MeasurementItemProps {
   measurement: Measurement;
@@ -47,18 +63,67 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     setEditingId(null);
   };
 
+  const getTypeIcon = (type: string) => {
+    switch(type) {
+      case 'dormer': return <House className="h-4 w-4 mr-1" />;
+      case 'chimney': return <Cylinder className="h-4 w-4 mr-1" />;
+      case 'skylight': return <SplitSquareVertical className="h-4 w-4 mr-1" />;
+      case 'solar': return <Sun className="h-4 w-4 mr-1" />;
+      case 'gutter': return <Droplet className="h-4 w-4 mr-1" />;
+      case 'verge': return <LineHorizontal className="h-4 w-4 mr-1" />;
+      case 'valley': return <LineVertical className="h-4 w-4 mr-1" />;
+      case 'ridge': return <LineVertical className="h-4 w-4 rotate-45 mr-1" />;
+      case 'vent': return <Wind className="h-4 w-4 mr-1" />;
+      case 'length': return <LineHorizontal className="h-4 w-4 mr-1" />;
+      case 'height': return <LineVertical className="h-4 w-4 mr-1" />;
+      case 'area': return <Square className="h-4 w-4 mr-1" />;
+      default: return null;
+    }
+  };
+
+  const getTypeName = (type: string) => {
+    const typeNames: Record<string, string> = {
+      'length': 'Länge',
+      'height': 'Höhe',
+      'area': 'Fläche',
+      'dormer': 'Gaube',
+      'chimney': 'Kamin',
+      'skylight': 'Dachfenster',
+      'solar': 'Solaranlage',
+      'gutter': 'Dachrinne',
+      'verge': 'Ortgang/Traufe',
+      'valley': 'Kehle',
+      'ridge': 'Grat',
+      'vent': 'Lüfter'
+    };
+    
+    return typeNames[type] || type;
+  };
+
+  const isRoofElement = [
+    'dormer', 'chimney', 'skylight', 'solar', 
+    'gutter', 'verge', 'valley', 'ridge', 'vent'
+  ].includes(measurement.type);
+
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
-        measurement.editMode ? 'border-primary bg-secondary/20' : 'border-border'
+        measurement.editMode ? 'border-primary bg-secondary/20' : 
+        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 'border-border'
       }`}
     >
       <div className="flex justify-between items-center mb-1">
-        <div className="font-medium">
-          {measurement.type === 'length' && "Länge"}
-          {measurement.type === 'height' && "Höhe"}
-          {measurement.type === 'area' && "Fläche"}
+        <div className="font-medium flex items-center">
+          {getTypeIcon(measurement.type)}
+          {getTypeName(measurement.type)}
+          
+          {measurement.subType && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              {measurement.subType}
+            </Badge>
+          )}
         </div>
+        
         <div className="flex space-x-1">
           <Button 
             variant="ghost" 
@@ -98,8 +163,31 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       
       <div className="text-sm mb-1">
         <strong>Wert:</strong> {measurement.label}
+        
+        {/* Abmessungen für Dachelemente */}
+        {measurement.dimensions && (
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
+            {measurement.dimensions.length !== undefined && (
+              <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.width !== undefined && (
+              <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.height !== undefined && (
+              <div><strong>Höhe:</strong> {measurement.dimensions.height.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.diameter !== undefined && (
+              <div><strong>Durchmesser:</strong> {measurement.dimensions.diameter.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.area !== undefined && (
+              <div><strong>Fläche:</strong> {measurement.dimensions.area.toFixed(2)} m²</div>
+            )}
+          </div>
+        )}
+        
         {/* Nur für Längenmessungen die Neigung anzeigen */}
-        {measurement.type === 'length' && measurement.inclination !== undefined && (
+        {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
+         measurement.inclination !== undefined && (
           <span className="ml-2">
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
           </span>
@@ -158,7 +246,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       )}
       
-      {measurement.type === 'area' && measurement.segments && (
+      {(measurement.type === 'area' || measurement.type === 'solar' || measurement.type === 'dormer') && 
+        measurement.segments && (
         <SegmentList 
           measurementId={measurement.id}
           segments={measurement.segments}

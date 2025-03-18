@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -24,6 +23,7 @@ import MeasurementSidebar from './measurement/MeasurementSidebar';
 import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
+import RoofElementControls from './measurement/RoofElementControls';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -316,6 +316,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   };
 
+  // Check if current mode is a roof element mode
+  const isRoofElementMode = ![
+    'length', 'height', 'area', 'none'
+  ].includes(activeMode);
+
   // Break up the component into logical sections
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
@@ -351,7 +356,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   editingSegmentId={editingSegmentId}
                   movingPointInfo={movingPointInfo}
                   handleCancelEditing={handleCancelEditingWithCleanup}
-                  editingAreaMeasurement={editMeasurementId ? measurements.find(m => m.id === editMeasurementId)?.type === 'area' : false}
+                  editingAreaMeasurement={editMeasurementId ? 
+                    measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
+                    measurements.find(m => m.id === editMeasurementId)?.type === 'solar' || 
+                    measurements.find(m => m.id === editMeasurementId)?.type === 'dormer' 
+                    : false}
                 />
               </div>
             )}

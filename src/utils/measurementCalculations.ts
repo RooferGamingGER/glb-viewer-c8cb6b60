@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
@@ -207,4 +208,158 @@ export const validatePolygon = (points: Point[]): {
   }
   
   return { valid: true };
+};
+
+/**
+ * Calculate diameter from two opposite points of a circle
+ */
+export const calculateDiameter = (point1: Point, point2: Point): number => {
+  return calculateDistance(point1, point2);
+};
+
+/**
+ * Calculate rectangular dimensions (width and length) from two diagonal points
+ */
+export const calculateRectangleDimensions = (p1: Point, p2: Point): { width: number; length: number; area: number } => {
+  // Calculate width (X difference)
+  const width = Math.abs(p2.x - p1.x);
+  
+  // Calculate length (Z difference)
+  const length = Math.abs(p2.z - p1.z);
+  
+  // Calculate area
+  const area = width * length;
+  
+  return { width, length, area };
+};
+
+/**
+ * Create a measurement object for a chimney or vent
+ */
+export const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'vent'): {
+  value: number;
+  diameter?: number;
+  height?: number;
+  position: Point;
+} => {
+  // For a vent, we just need position
+  if (type === 'vent' || points.length === 1) {
+    return {
+      value: 0,
+      position: points[0]
+    };
+  }
+  
+  // For a chimney with diameter measurement
+  if (points.length >= 2) {
+    const diameter = calculateDiameter(points[0], points[1]);
+    let height: number | undefined;
+    
+    // If we have a height measurement
+    if (points.length >= 3) {
+      height = calculateHeight(points[0], points[2]);
+    }
+    
+    return {
+      value: diameter,
+      diameter,
+      height,
+      position: points[0]
+    };
+  }
+  
+  return {
+    value: 0,
+    position: points[0]
+  };
+};
+
+/**
+ * Create a measurement object for a dormer
+ */
+export const createDormerMeasurement = (points: Point[]): {
+  value: number;
+  area: number;
+  width?: number;
+  length?: number;
+  height?: number;
+} => {
+  // Calculate base area
+  const area = calculateArea(points.slice(0, points.length > 3 ? points.length - 1 : 3));
+  
+  // Try to estimate width and length from the points
+  const boundingBox = calculateBoundingBox(points.slice(0, points.length > 3 ? points.length - 1 : 3));
+  const width = boundingBox.max.x - boundingBox.min.x;
+  const length = boundingBox.max.z - boundingBox.min.z;
+  
+  // If we have an additional point for height
+  let height: number | undefined;
+  if (points.length > 3) {
+    const baseCenter = calculateCentroid(points.slice(0, 3));
+    height = calculateHeight(baseCenter, points[3]);
+  }
+  
+  return {
+    value: area,
+    area,
+    width,
+    length,
+    height
+  };
+};
+
+/**
+ * Calculate a centroid (center point) of a set of points
+ */
+export const calculateCentroid = (points: Point[]): Point => {
+  const numPoints = points.length;
+  let sumX = 0, sumY = 0, sumZ = 0;
+  
+  for (const point of points) {
+    sumX += point.x;
+    sumY += point.y;
+    sumZ += point.z;
+  }
+  
+  return {
+    x: sumX / numPoints,
+    y: sumY / numPoints,
+    z: sumZ / numPoints
+  };
+};
+
+/**
+ * Calculate bounding box of a set of points
+ */
+export const calculateBoundingBox = (points: Point[]): { min: Point; max: Point } => {
+  if (points.length === 0) {
+    return {
+      min: { x: 0, y: 0, z: 0 },
+      max: { x: 0, y: 0, z: 0 }
+    };
+  }
+  
+  const min = { 
+    x: points[0].x, 
+    y: points[0].y, 
+    z: points[0].z 
+  };
+  
+  const max = { 
+    x: points[0].x, 
+    y: points[0].y, 
+    z: points[0].z 
+  };
+  
+  for (let i = 1; i < points.length; i++) {
+    min.x = Math.min(min.x, points[i].x);
+    min.y = Math.min(min.y, points[i].y);
+    min.z = Math.min(min.z, points[i].z);
+    
+    max.x = Math.max(max.x, points[i].x);
+    max.y = Math.max(max.y, points[i].y);
+    max.z = Math.max(max.z, points[i].z);
+  }
+  
+  return { min, max };
 };

@@ -1,7 +1,20 @@
 
 import * as THREE from 'three';
 
-export type MeasurementMode = 'length' | 'height' | 'area' | 'none';
+export type MeasurementMode = 
+  | 'length' 
+  | 'height' 
+  | 'area' 
+  | 'none' 
+  | 'dormer'    // Gaube
+  | 'chimney'   // Kamin
+  | 'skylight'  // Dachfenster
+  | 'solar'     // Solaranlage
+  | 'gutter'    // Dachrinne
+  | 'verge'     // Ortgang/Traufe
+  | 'valley'    // Kehle
+  | 'ridge'     // Grat
+  | 'vent';     // Lüfter (nur Markierung)
 
 export interface Point {
   x: number;
@@ -34,4 +47,21 @@ export interface Measurement {
   description?: string;
   segments?: Segment[];
   inclination?: number;
+  
+  // Roof element specific fields
+  subType?: string;      // Additional classification within type
+  dimensions?: {         // Specific dimensions for roof elements
+    width?: number;
+    length?: number;
+    height?: number;
+    diameter?: number;
+    area?: number;
+  };
+  position?: {           // Reference position
+    x: number;
+    y: number;
+    z: number;
+  };
+  count?: number;        // For elements that need counting (e.g., vents)
+  relatedMeasurements?: string[]; // IDs of related measurements
 }

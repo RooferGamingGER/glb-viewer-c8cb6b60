@@ -7,6 +7,7 @@ import {
   X 
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/hooks/useMeasurements';
+import RoofElementControls from './RoofElementControls';
 
 interface MeasurementControlsProps {
   activeMode: MeasurementMode;
@@ -28,6 +29,20 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
 }) => {
   if (activeMode === 'none') return null;
   
+  // For roof elements, use the specialized roof element controls
+  if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
+    return (
+      <RoofElementControls
+        activeMode={activeMode}
+        currentPoints={currentPoints}
+        handleFinalizeMeasurement={handleFinalizeMeasurement}
+        handleUndoLastPoint={handleUndoLastPoint}
+        clearCurrentPoints={clearCurrentPoints}
+      />
+    );
+  }
+  
+  // Standard measurement controls for length, height, area
   return (
     <div className="p-3 pb-0">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
