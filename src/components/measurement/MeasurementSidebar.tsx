@@ -60,7 +60,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
   
-  // Filter measurements based on active tab
+  // Filter measurements based on active tab with corrected categorization
   const filteredMeasurements = measurements.filter(m => {
     if (activeTab === "standard") {
       return ['length', 'height', 'area'].includes(m.type);

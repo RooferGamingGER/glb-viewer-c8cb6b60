@@ -360,7 +360,6 @@ export const useMeasurementCore = () => {
         'other': 'Sonstige Einbauten'
       };
       toast.success(`${labels[currentMode]} markiert - Messwerkzeug bleibt aktiviert`);
-      setActiveMode(currentMode);
       return;
     }
     
@@ -426,8 +425,19 @@ export const useMeasurementCore = () => {
       ]);
       setCurrentPoints([]);
       currentPointsRef.current = [];
+      setActiveMode('none');
     }
-    else if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
+    else if (activeMode === 'solar' && points.length >= 3) {
+      const validation = validatePolygon(points);
+      if (!validation.valid) {
+        toast.error(validation.message || 'Ungültiges Polygon');
+        return;
+      }
+      
+      createRoofElementMeasurement(activeMode, points);
+      toast.success(`Solaranlage-Messung abgeschlossen`);
+    }
+    else if (!['length', 'height', 'area', 'solar', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,

@@ -42,17 +42,19 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   
   if (!measurements || measurements.length === 0 && !editMeasurementId) return null;
   
-  // Group measurements by category
+  // Group measurements by category with corrected categorization
   const standardMeasurements = measurements.filter(m => 
     ['length', 'height', 'area'].includes(m.type)
   );
   
+  // Fixed categorization for roof elements - solar, chimney, and skylight
   const roofElementMeasurements = measurements.filter(m => 
-    ['solar'].includes(m.type)
+    ['solar', 'chimney', 'skylight'].includes(m.type)
   );
   
+  // Fixed categorization for penetrations - vent, hook, and other
   const penetrationMeasurements = measurements.filter(m => 
-    ['skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
+    ['vent', 'hook', 'other'].includes(m.type)
   );
   
   // Other measurements (if any new types are added in the future)

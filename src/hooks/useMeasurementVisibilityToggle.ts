@@ -29,14 +29,16 @@ export const useMeasurementVisibilityToggle = (
 
   // Toggle visibility for all measurements
   const toggleAllMeasurementsVisibility = useCallback(() => {
-    setAllMeasurementsVisible(prev => !prev);
-    setMeasurements(prev => prev.map(m => ({ ...m, visible: !allMeasurementsVisible })));
+    const newVisibility = !allMeasurementsVisible;
+    setAllMeasurementsVisible(newVisibility);
+    setMeasurements(prev => prev.map(m => ({ ...m, visible: newVisibility })));
   }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements]);
 
   // Toggle visibility for all labels
   const toggleAllLabelsVisibility = useCallback(() => {
-    setAllLabelsVisible(prev => !prev);
-    setMeasurements(prev => prev.map(m => ({ ...m, labelVisible: !allLabelsVisible })));
+    const newLabelVisibility = !allLabelsVisible;
+    setAllLabelsVisible(newLabelVisibility);
+    setMeasurements(prev => prev.map(m => ({ ...m, labelVisible: newLabelVisibility })));
   }, [allLabelsVisible, setAllLabelsVisible, setMeasurements]);
 
   return {

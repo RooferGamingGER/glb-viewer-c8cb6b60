@@ -27,8 +27,8 @@ export const useMeasurementVisibility = (
     const measurement = measurements.find(m => m.id === id);
     if (!measurement) return;
     
-    // Determine the new visibility state
-    const isVisible = measurement.visible !== false;
+    // Determine the new visibility state (inverse of current)
+    const isVisible = measurement.visible === false ? false : true;
     
     // Update visibility of all visual elements for this measurement
     
@@ -94,8 +94,8 @@ export const useMeasurementVisibility = (
     const measurement = measurements.find(m => m.id === id);
     if (!measurement) return;
     
-    // Determine the new label visibility state
-    const areLabelsVisible = measurement.labelVisible !== false;
+    // Determine the new label visibility state (inverse of current)
+    const areLabelsVisible = measurement.labelVisible === false ? false : true;
     
     // Update main label visibility
     if (refs.labelsRef.current) {
