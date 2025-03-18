@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
 import { MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
+import { earClip, projectPointsToPlane } from './triangulation';
 
 /**
  * Calculate 3D distance between two points
@@ -28,49 +29,50 @@ export const calculateHeight = (point1: Point, point2: Point): number => {
 export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
-  // For polygons, triangulate and sum the areas of the triangles
-  const triangleCount = points.length - 2;
+  // Projektion auf die am besten passende Ebene durchführen
+  const { projectedPoints, planeNormal } = projectPointsToPlane(points);
+  
+  // Ear-Clipping für robuste Triangulation verwenden
+  const triangles = earClip(projectedPoints);
+  
   let totalArea = 0;
   
-  // Project points to best-fit plane for more accurate area calculation
-  // First, find the normal of the polygon by cross product of two edges
-  const edge1 = new THREE.Vector3(
-    points[1].x - points[0].x,
-    points[1].y - points[0].y,
-    points[1].z - points[0].z
-  );
-  
-  const edge2 = new THREE.Vector3(
-    points[2].x - points[0].x,
-    points[2].y - points[0].y,
-    points[2].z - points[0].z
-  );
-  
-  const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-  
-  // Simple triangulation using the first point as a pivot
-  for (let i = 0; i < triangleCount; i++) {
-    const p0 = points[0];
-    const p1 = points[i + 1];
-    const p2 = points[i + 2];
+  // Fläche der einzelnen Dreiecke berechnen und summieren
+  for (const triangle of triangles) {
+    const p0 = projectedPoints[triangle[0]];
+    const p1 = projectedPoints[triangle[1]];
+    const p2 = projectedPoints[triangle[2]];
     
-    // Create 3D vectors
+    // 3D-Vektoren für präzise Berechnung erstellen
     const v0 = new THREE.Vector3(p0.x, p0.y, p0.z);
     const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
     const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
     
-    // Calculate sides of the triangle
+    // Dreiecksseiten berechnen
     const a = v0.distanceTo(v1);
     const b = v1.distanceTo(v2);
     const c = v2.distanceTo(v0);
     
-    // Calculate semi-perimeter
+    // Halbumfang berechnen
     const s = (a + b + c) / 2;
     
-    // Calculate triangle area using Heron's formula
-    const triangleArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
+    // Dreiecksfläche mit der Formel von Heron berechnen
+    const triangleArea = Math.sqrt(Math.max(0, s * (s - a) * (s - b) * (s - c)));
     
     totalArea += triangleArea;
+  }
+  
+  // Korrektur für geneigte Flächen durch Projektion auf die Grundebene
+  // Den Faktor berechnen basierend auf dem Winkel der Flächennormale zur XZ-Ebene
+  const correctionFactor = 1 / Math.abs(planeNormal.dot(new THREE.Vector3(0, 1, 0)));
+  
+  // Wir begrenzen den Korrekturfaktor, um extreme Werte zu vermeiden
+  const clampedCorrection = Math.min(correctionFactor, 5);
+  
+  // Korrigierte Fläche zurückgeben, jedoch numerisch stabilisieren
+  // Wir wenden die Korrektur nur an, wenn die Neigung signifikant ist
+  if (Math.abs(planeNormal.y) < 0.95) {  // Ungefähr 18 Grad Abweichung von der Horizontalen
+    return totalArea * clampedCorrection;
   }
   
   return totalArea;
@@ -189,4 +191,38 @@ export const getNearestPointIndex = (measurement: any, position: Point): number 
   });
   
   return nearestIndex;
+};
+
+/**
+ * Validate a polygon to check if it's valid for area calculation
+ */
+export const validatePolygon = (points: Point[]): { 
+  valid: boolean; 
+  message?: string;
+} => {
+  if (points.length < 3) {
+    return { valid: false, message: 'Mindestens 3 Punkte werden benötigt.' };
+  }
+  
+  // Prüfen, ob alle Punkte koplanar (auf einer Ebene) sind
+  if (points.length > 3) {
+    const { projectedPoints } = projectPointsToPlane(points);
+    
+    // Vergleiche die Originalpunkte mit den projizierten Punkten
+    let maxDeviation = 0;
+    for (let i = 0; i < points.length; i++) {
+      const deviation = calculateDistance(points[i], projectedPoints[i]);
+      maxDeviation = Math.max(maxDeviation, deviation);
+    }
+    
+    // Wenn die maximale Abweichung zu groß ist, ist das Polygon nicht ausreichend planar
+    if (maxDeviation > 0.5) {  // 0.5 Meter Toleranz
+      return { 
+        valid: true,  // Immer noch gültig, aber mit Warnung
+        message: 'Warnung: Die Punkte liegen nicht auf einer Ebene. Die Flächenberechnung könnte ungenau sein.' 
+      };
+    }
+  }
+  
+  return { valid: true };
 };

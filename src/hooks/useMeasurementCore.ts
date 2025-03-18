@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -11,7 +12,8 @@ import {
   calculateHeight, 
   calculateArea,
   generateSegments,
-  calculateInclination
+  calculateInclination,
+  validatePolygon
 } from '@/utils/measurementCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -139,6 +141,18 @@ export const useMeasurementCore = () => {
       createHeightMeasurement([points[0], points[1]]);
     }
     else if (activeMode === 'area' && points.length >= 3) {
+      // Polygon auf Gültigkeit prüfen
+      const validation = validatePolygon(points);
+      if (!validation.valid) {
+        toast.error(validation.message || 'Ungültiges Polygon');
+        return;
+      }
+      
+      // Warnung anzeigen, falls vorhanden
+      if (validation.message) {
+        toast.warning(validation.message);
+      }
+      
       const value = calculateArea(points);
       const label = formatMeasurement(value, 'area');
       const segments = generateSegments(points);
@@ -210,6 +224,18 @@ export const useMeasurementCore = () => {
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
+          // Polygon auf Gültigkeit prüfen
+          const validation = validatePolygon(newPoints);
+          if (!validation.valid) {
+            toast.error(validation.message || 'Ungültiges Polygon');
+            return m; // Original-Messung beibehalten, wenn die Änderung ungültig ist
+          }
+          
+          // Warnung anzeigen, falls vorhanden
+          if (validation.message) {
+            toast.warning(validation.message);
+          }
+          
           newValue = calculateArea(newPoints);
           const newSegments = generateSegments(newPoints);
           
