@@ -879,4 +879,42 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
     statBox.appendChild(statValue);
     
     const statLabel = document.createElement('div');
-    statLabel.className = 'summary
+    statLabel.className = 'summary-stat-label';
+    statLabel.textContent = label;
+    statBox.appendChild(statLabel);
+    
+    return statBox;
+  };
+  
+  // Add stats
+  summaryStats.appendChild(createStatBox(measurements.length, 'Messungen gesamt'));
+  summaryStats.appendChild(createStatBox(lengthMeasurements.length, 'Längenmessungen'));
+  summaryStats.appendChild(createStatBox(heightMeasurements.length, 'Höhenmessungen'));
+  summaryStats.appendChild(createStatBox(areaMeasurements.length, 'Flächenmessungen'));
+  
+  // Add roof elements stats if any exist
+  if (roofElements.dormers > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.dormers, 'Gauben'));
+  }
+  
+  if (roofElements.chimneys > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.chimneys, 'Kamine'));
+  }
+  
+  if (roofElements.skylights > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.skylights, 'Dachfenster'));
+  }
+  
+  if (roofElements.vents > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.vents, 'Lüfter'));
+  }
+  
+  if (roofElements.solarArea > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.solarArea.toFixed(2) + ' m²', 'Solaranlagen'));
+  }
+  
+  summaryCard.appendChild(summaryStats);
+  summarySection.appendChild(summaryCard);
+  
+  return summarySection;
+};
