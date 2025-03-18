@@ -184,3 +184,97 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   
   return valueText;
 };
+
+/**
+ * Sort measurements in the specified order for PDF export
+ * 
+ * Sort order:
+ * 1. Standard measurements: length, area, height
+ * 2. Roof elements: skylight, chimney, solar
+ * 3. Installations: vent, hook, other
+ */
+export const sortMeasurementsForExport = (measurements: Measurement[]): Measurement[] => {
+  // Define type order for sorting
+  const typeOrder: Record<string, number> = {
+    // Standard measurements
+    'length': 1,
+    'area': 2,
+    'height': 3,
+    // Roof elements
+    'skylight': 4,
+    'chimney': 5,
+    'solar': 6,
+    // Installations
+    'vent': 7,
+    'hook': 8,
+    'other': 9
+  };
+  
+  // Create a copy of the measurements array and sort it
+  return [...measurements].sort((a, b) => {
+    // Get the order values for each measurement type
+    const orderA = typeOrder[a.type] || 999; // Use a high number for unknown types
+    const orderB = typeOrder[b.type] || 999;
+    
+    return orderA - orderB;
+  });
+};
+
+/**
+ * Group penetration items (vents, hooks, other) by type and subtype
+ * to consolidate them in the PDF report
+ */
+export const consolidatePenetrations = (measurements: Measurement[]): Measurement[] => {
+  // Get all measurements that aren't penetrations
+  const nonPenetrations = measurements.filter(
+    m => !['vent', 'hook', 'other'].includes(m.type)
+  );
+  
+  // Group penetrations by type and subtype
+  const penetrationGroups: Record<string, Record<string, Measurement[]>> = {};
+  
+  measurements.forEach(m => {
+    if (['vent', 'hook', 'other'].includes(m.type)) {
+      if (!penetrationGroups[m.type]) {
+        penetrationGroups[m.type] = {};
+      }
+      
+      // Group by subType if available, otherwise use description or a default key
+      const groupKey = m.subType || m.description || 'default';
+      
+      if (!penetrationGroups[m.type][groupKey]) {
+        penetrationGroups[m.type][groupKey] = [];
+      }
+      
+      penetrationGroups[m.type][groupKey].push(m);
+    }
+  });
+  
+  // Create consolidated measurements for each group
+  const consolidatedPenetrations: Measurement[] = [];
+  
+  Object.entries(penetrationGroups).forEach(([type, subtypeGroups]) => {
+    Object.entries(subtypeGroups).forEach(([subtype, items]) => {
+      if (items.length > 0) {
+        // Use the first item as a template
+        const template = items[0];
+        const totalCount = items.reduce((sum, item) => sum + (item.count || 1), 0);
+        
+        // Create a consolidated measurement
+        consolidatedPenetrations.push({
+          ...template,
+          id: template.id, // Keep ID of the first item
+          count: totalCount,
+          description: template.description || getMeasurementTypeDisplayName(type),
+          // Add a note about consolidated items if multiple
+          notes: items.length > 1 
+            ? `${totalCount} Stück ${getMeasurementTypeDisplayName(type)}${template.subType ? ` (${template.subType})` : ''}`
+            : template.notes
+        });
+      }
+    });
+  });
+  
+  // Return all non-penetration measurements plus the consolidated ones
+  return [...nonPenetrations, ...consolidatedPenetrations];
+};
