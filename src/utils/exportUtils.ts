@@ -14,9 +14,6 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'skylight': 'Dachfenster',
     'solar': 'Solaranlage',
     'gutter': 'Dachrinne',
-    'verge': 'Ortgang/Traufe',
-    'valley': 'Kehle',
-    'ridge': 'Grat',
     'vent': 'Lüfter'
   };
   
@@ -117,7 +114,7 @@ export const groupMeasurementsByType = (measurements: Measurement[]) => {
  * Get count of penetrations (vents)
  */
 export const getPenetrationCount = (measurements: Measurement[]): number => {
-  return measurements.filter(m => m.type === 'vent').length;
+  return measurements.filter(m => m.type === 'vent').reduce((sum, m) => sum + (m.count || 1), 0);
 };
 
 /**
@@ -133,7 +130,7 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   const dormers = measurements.filter(m => m.type === 'dormer').length;
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
-  const vents = measurements.filter(m => m.type === 'vent').length;
+  const vents = getPenetrationCount(measurements);
   
   // Calculate total solar area
   const solarArea = measurements

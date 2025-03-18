@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -257,167 +256,51 @@ export const useMeasurementCore = () => {
     };
   };
 
-  const createRoofElementMeasurement = useCallback((type: MeasurementMode, points: Point[]) => {
-    if (points.length === 0) return;
-    
-    let value = 0;
-    let label = '';
-    let unit = 'm';
-    let segments: Segment[] | undefined;
-    let dimensions: any = {};
-    let inclination: number | undefined;
-    let subType: string | undefined;
-    let count: number | undefined;
-    let penetrationType: 'vent' | 'other' | undefined;
-    
-    switch(type) {
-      case 'dormer': {
-        const result = createDormerMeasurement(points);
-        value = result.area;
-        label = `${result.area.toFixed(2)} m²`;
-        unit = 'm²';
-        segments = generateSegments(points.slice(0, points.length > 3 ? points.length - 1 : 3));
-        dimensions = {
-          area: result.area,
-          width: result.width,
-          length: result.length,
-          height: result.height
-        };
-        break;
-      }
-      
-      case 'chimney': {
-        const result = createChimneyOrSkylightMeasurement(points, 'chimney');
-        value = result.area;
-        label = `${result.width.toFixed(2)} × ${result.length.toFixed(2)} m (Kaminausschnitt)`;
-        unit = 'm²';
-        dimensions = {
-          width: result.width,
-          length: result.length,
-          area: result.area,
-          perimeter: result.perimeter
-        };
-        segments = generateSegments(points);
-        subType = 'Kaminausschnitt';
-        break;
-      }
-      
-      case 'skylight': {
-        const result = createChimneyOrSkylightMeasurement(points, 'skylight');
-        value = result.area;
-        label = `${result.width.toFixed(2)} × ${result.length.toFixed(2)} m`;
-        unit = 'm²';
-        dimensions = {
-          width: result.width,
-          length: result.length,
-          area: result.area,
-          perimeter: result.perimeter
-        };
-        segments = generateSegments(points);
-        break;
-      }
-      
-      case 'solar': {
-        value = calculateArea(points);
-        label = `${value.toFixed(2)} m²`;
-        unit = 'm²';
-        segments = generateSegments(points);
-        
-        if (segments.length > 0) {
-          inclination = calculateAverageInclination(segments);
-        }
-        
-        dimensions = {
-          area: value
-        };
-        
-        break;
-      }
-      
-      case 'gutter': {
-        if (points.length >= 2) {
-          let totalLength = 0;
-          for (let i = 0; i < points.length - 1; i++) {
-            totalLength += calculateDistance(points[i], points[i + 1]);
-          }
-          
-          value = totalLength;
-          label = `${value.toFixed(2)} m`;
-        }
-        break;
-      }
-      
-      case 'verge': 
-      case 'valley':
-      case 'ridge': {
-        if (points.length >= 2) {
-          value = calculateDistance(points[0], points[1]);
-          label = `${value.toFixed(2)} m`;
-          
-          const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-          const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-          const calculatedInclination = calculateInclination(p1, p2);
-          
-          if (Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD) {
-            inclination = calculatedInclination;
-          }
-          
-          if (type === 'verge') {
-            if (Math.abs(inclination || 0) < 10) {
-              subType = 'Traufe';
-            } else {
-              subType = 'Ortgang';
-            }
-          } else if (type === 'valley') {
-            subType = 'Kehle';
-          } else if (type === 'ridge') {
-            subType = 'Grat';
-          }
-        }
-        break;
-      }
-      
-      case 'vent': {
-        const result = createVentMeasurement(points[0]);
-        label = 'Lüfter/Durchdringung';
-        value = 0;
-        
-        const existingVents = measurements.filter(m => m.type === 'vent').length + 1;
-        count = 1;
-        
-        penetrationType = 'vent';
-        break;
-      }
-      
-      default:
-        break;
+  const addPoint = useCallback((point: Point) => {
+    if (editMeasurementId && editingPointIndex !== null) {
+      updateMeasurementPoint(editMeasurementId, editingPointIndex, point);
+      setEditingPointIndex(null);
+      return;
     }
     
-    setMeasurements(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        type,
-        points: [...points],
-        value,
-        label,
-        visible: true,
-        unit,
-        description: '',
-        segments,
-        inclination,
-        subType,
-        dimensions,
-        count,
-        penetrationType
+    const updatedPoints = [...currentPointsRef.current, point];
+    currentPointsRef.current = updatedPoints;
+    
+    setCurrentPoints(updatedPoints);
+    
+    const currentMode = activeMode;
+    
+    if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
+      if (currentMode === 'length') {
+        createLengthMeasurement(updatedPoints);
+        toast.success('Längenmessung abgeschlossen - Messwerkzeug deaktiviert');
+      } else if (currentMode === 'height') {
+        createHeightMeasurement(updatedPoints);
+        toast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
       }
-    ]);
+    }
     
-    setCurrentPoints([]);
-    currentPointsRef.current = [];
+    if (currentMode === 'vent' && updatedPoints.length === 1) {
+      createRoofElementMeasurement('vent', updatedPoints);
+      toast.success('Lüfter/Durchdringung markiert - Messwerkzeug bleibt aktiviert');
+      setActiveMode('vent');
+      return;
+    }
     
-    setActiveMode('none');
-  }, [measurements]);
+    if (currentMode === 'skylight' && updatedPoints.length === 4) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      toast.success(`Dachfenster-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'skylight' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für Dachfenster platziert`);
+    }
+    
+    if (currentMode === 'chimney' && updatedPoints.length === 4) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      toast.success(`Kamin-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'chimney' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
+    }
+  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -473,9 +356,6 @@ export const useMeasurementCore = () => {
         'skylight': 4,
         'solar': 3,
         'gutter': 2,
-        'verge': 2,
-        'valley': 2,
-        'ridge': 2,
         'vent': 1,
         'length': 2,
         'height': 2,
@@ -488,46 +368,13 @@ export const useMeasurementCore = () => {
         toast.success(`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)}-Messung abgeschlossen`);
       } else {
         toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
+        
+        if (activeMode === 'skylight' || activeMode === 'chimney') {
+          toast.error(`Für ${activeMode === 'skylight' ? 'Dachfenster' : 'Kamin'} werden genau 4 Punkte benötigt.`);
+        }
       }
     }
   }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement]);
-
-  const addPoint = useCallback((point: Point) => {
-    if (editMeasurementId && editingPointIndex !== null) {
-      updateMeasurementPoint(editMeasurementId, editingPointIndex, point);
-      setEditingPointIndex(null);
-      return;
-    }
-    
-    const updatedPoints = [...currentPointsRef.current, point];
-    currentPointsRef.current = updatedPoints;
-    
-    setCurrentPoints(updatedPoints);
-    
-    const currentMode = activeMode;
-    
-    if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
-      if (currentMode === 'length') {
-        createLengthMeasurement(updatedPoints);
-        toast.success('Längenmessung abgeschlossen - Messwerkzeug deaktiviert');
-      } else if (currentMode === 'height') {
-        createHeightMeasurement(updatedPoints);
-        toast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
-      }
-    }
-    
-    if (currentMode === 'vent' && updatedPoints.length === 1) {
-      createRoofElementMeasurement('vent', updatedPoints);
-      toast.success('Lüfter/Durchdringung markiert - Messwerkzeug bleibt aktiviert');
-      setActiveMode('vent');
-      return;
-    }
-    
-    if (['skylight', 'verge', 'valley', 'ridge'].includes(currentMode) && updatedPoints.length === 2) {
-      createRoofElementMeasurement(currentMode as MeasurementMode, updatedPoints);
-      toast.success(`${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}-Messung abgeschlossen - Messwerkzeug deaktiviert`);
-    }
-  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {

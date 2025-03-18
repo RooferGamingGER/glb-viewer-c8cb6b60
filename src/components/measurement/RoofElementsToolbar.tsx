@@ -6,8 +6,6 @@ import {
   SplitSquareVertical,
   Sun, 
   Droplet,
-  Minus,
-  ArrowDown,
   Wind
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
@@ -42,13 +40,10 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
     } else {
       const toolMessages: Record<string, string> = {
         'dormer': 'Gauben-Messung ausgewählt - Definieren Sie die Fläche und Höhe',
-        'chimney': 'Kamin-Messung ausgewählt - Messen Sie Durchmesser und Höhe',
-        'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie die diagonalen Punkte',
+        'chimney': 'Kamin-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
+        'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'solar': 'Solaranlagen-Messung ausgewählt - Definieren Sie die Fläche',
         'gutter': 'Dachrinnen-Messung ausgewählt - Markieren Sie den Verlauf',
-        'verge': 'Ortgang/Traufe-Messung ausgewählt - Messen Sie die Länge',
-        'valley': 'Kehlen-Messung ausgewählt - Messen Sie die Kante',
-        'ridge': 'Grat-Messung ausgewählt - Messen Sie die Kante',
         'vent': 'Lüfter-Markierung ausgewählt - Platzieren Sie einen Punkt'
       };
       
@@ -104,42 +99,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                     >
                       <Droplet className="h-4 w-4" />
                       <span className="text-xs">Rinne</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'verge'}
-                      onClick={() => selectTool('verge')}
-                      tooltip="Ortgang/Traufe messen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <Minus className="h-4 w-4" />
-                      <span className="text-xs">Ortgang</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'valley'}
-                      onClick={() => selectTool('valley')}
-                      tooltip="Kehle messen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <ArrowDown className="h-4 w-4 rotate-45" />
-                      <span className="text-xs">Kehle</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'ridge'}
-                      onClick={() => selectTool('ridge')}
-                      tooltip="Grat messen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <ArrowDown className="h-4 w-4 rotate-135" />
-                      <span className="text-xs">Grat</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </div>

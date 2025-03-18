@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -71,18 +70,15 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       case 'skylight': return <SplitSquareVertical className="h-4 w-4 mr-1" />;
       case 'solar': return <Sun className="h-4 w-4 mr-1" />;
       case 'gutter': return <Droplet className="h-4 w-4 mr-1" />;
-      case 'verge': return <Minus className="h-4 w-4 mr-1" />;
-      case 'valley': return <ArrowDown className="h-4 w-4 rotate-45 mr-1" />;
-      case 'ridge': return <ArrowDown className="h-4 w-4 rotate-135 mr-1" />;
-      case 'vent': return <Wind className="h-4 w-4 mr-1" />;
       case 'length': return <Minus className="h-4 w-4 mr-1" />;
       case 'height': return <ArrowDown className="h-4 w-4 mr-1" />;
       case 'area': return <Square className="h-4 w-4 mr-1" />;
+      case 'vent': return <Wind className="h-4 w-4 mr-1" />;
       default: return null;
     }
   };
 
-  const getTypeName = (type: string) => {
+  const getTypeName = (type: string): string => {
     const typeNames: Record<string, string> = {
       'length': 'Länge',
       'height': 'Höhe',
@@ -92,9 +88,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       'skylight': 'Dachfenster',
       'solar': 'Solaranlage',
       'gutter': 'Dachrinne',
-      'verge': 'Ortgang/Traufe',
-      'valley': 'Kehle',
-      'ridge': 'Grat',
       'vent': 'Lüfter'
     };
     
@@ -103,7 +96,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 
   const isRoofElement = [
     'dormer', 'chimney', 'skylight', 'solar', 
-    'gutter', 'verge', 'valley', 'ridge', 'vent'
+    'gutter', 'vent'
   ].includes(measurement.type);
 
   const isPenetration = ['skylight', 'chimney', 'vent'].includes(measurement.type);

@@ -15,3 +15,20 @@ export const formatMeasurement = (value: number, type: 'length' | 'height' | 'ar
   // Format length or height measurements
   return `${value.toFixed(2)} m`;
 };
+
+// Map measurement types to German display names
+export const getMeasurementTypeDisplayName = (type: string): string => {
+  const typeMapping: Record<string, string> = {
+    'length': 'Länge',
+    'height': 'Höhe',
+    'area': 'Fläche',
+    'dormer': 'Gaube',
+    'chimney': 'Kamin',
+    'skylight': 'Dachfenster',
+    'solar': 'Solaranlage',
+    'gutter': 'Dachrinne',
+    'vent': 'Lüfter'
+  };
+  
+  return typeMapping[type] || type;
+};

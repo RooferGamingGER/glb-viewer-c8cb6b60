@@ -1,5 +1,7 @@
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
+import { getMeasurementTypeDisplayName } from '@/constants/measurements';
+import { getRoofElementsSummary, getPenetrationCount } from './exportUtils';
 
 export interface CoverPageData {
   title: string;
@@ -539,7 +541,7 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   const tableHead = document.createElement('thead');
   const headerRow = document.createElement('tr');
   
-  ['Nr.', 'Beschreibung', 'Typ', 'Wert', 'Neigung'].forEach(column => {
+  ['Nr.', 'Beschreibung', 'Typ', 'Subtyp', 'Wert', 'Neigung', 'Anzahl'].forEach(column => {
     const th = document.createElement('th');
     th.textContent = column;
     headerRow.appendChild(th);
@@ -566,10 +568,14 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
     
     // Type column
     const typeCell = document.createElement('td');
-    typeCell.textContent = measurement.type === 'length' ? 'Länge' : 
-                        measurement.type === 'height' ? 'Höhe' : 
-                        measurement.type === 'area' ? 'Fläche' : '–';
+    const typeDisplayName = getMeasurementTypeDisplayName(measurement.type);
+    typeCell.textContent = typeDisplayName || '–';
     row.appendChild(typeCell);
+    
+    // Subtype column
+    const subtypeCell = document.createElement('td');
+    subtypeCell.textContent = measurement.subType || '–';
+    row.appendChild(subtypeCell);
     
     // Value column
     const valueCell = document.createElement('td');
@@ -588,6 +594,15 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
       inclinationCell.textContent = '–';
     }
     row.appendChild(inclinationCell);
+    
+    // Count column
+    const countCell = document.createElement('td');
+    if (measurement.count) {
+      countCell.textContent = measurement.count.toString();
+    } else {
+      countCell.textContent = '–';
+    }
+    row.appendChild(countCell);
     
     tableBody.appendChild(row);
   });
@@ -836,26 +851,32 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   const heightMeasurements = measurements.filter(m => m.type === 'height');
   const areaMeasurements = measurements.filter(m => m.type === 'area');
   
+  // Get roof elements stats
+  const roofElements = getRoofElementsSummary(measurements);
+  
   // Create summary card
-  const summaryCard = createSummaryCard(
-    measurements, 
-    lengthMeasurements, 
-    heightMeasurements, 
-    areaMeasurements
-  );
-  summarySection.appendChild(summaryCard);
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'summary-card';
   
-  // Create detailed summary table
-  const tableContainer = document.createElement('div');
-  tableContainer.className = 'keep-together section-content';
+  // Summary text
+  const summaryText = document.createElement('p');
+  summaryText.style.margin = '0 0 15px 0';
+  summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen.`;
+  summaryCard.appendChild(summaryText);
   
-  const detailsTitle = document.createElement('h3');
-  detailsTitle.textContent = 'Detaillierte Übersicht';
-  tableContainer.appendChild(detailsTitle);
+  // Create summary stats
+  const summaryStats = document.createElement('div');
+  summaryStats.className = 'summary-stats';
   
-  // Create the summary table
-  tableContainer.appendChild(createSummaryTable(measurements));
-  summarySection.appendChild(tableContainer);
-  
-  return summarySection;
-};
+  // Helper function to create a stat box
+  const createStatBox = (value: number | string, label: string) => {
+    const statBox = document.createElement('div');
+    statBox.className = 'summary-stat';
+    
+    const statValue = document.createElement('div');
+    statValue.className = 'summary-stat-value';
+    statValue.textContent = value.toString();
+    statBox.appendChild(statValue);
+    
+    const statLabel = document.createElement('div');
+    statLabel.className = 'summary
