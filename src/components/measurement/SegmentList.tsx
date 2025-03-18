@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Move, ChevronDown, ChevronRight } from 'lucide-react';
-import { Segment } from '@/hooks/useMeasurements';
+import { Segment } from '@/types/measurements';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from 'sonner';
 

@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { CircleMinus } from 'lucide-react';
-import { Point, Measurement } from '@/hooks/useMeasurements';
+import { Point, Measurement } from '@/types/measurements';
 
 interface PointEditListProps {
   measurement: Measurement;

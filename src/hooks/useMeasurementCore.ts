@@ -27,22 +27,18 @@ export const useMeasurementCore = () => {
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
   const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
   
-  // Use a ref to track points separately from state to avoid timing issues
   const currentPointsRef = useRef<Point[]>([]);
 
-  // Keep the ref in sync with the state
   useEffect(() => {
     currentPointsRef.current = currentPoints;
   }, [currentPoints]);
 
-  // Listen for custom events to handle adding points to existing area measurements
   useEffect(() => {
     const handleAreaPointAdded = (event: CustomEvent) => {
       const { measurementId, updatedMeasurement } = event.detail;
       
       setMeasurements(prev => prev.map(m => {
         if (m.id === measurementId) {
-          // Recalculate area based on the new points
           const newValue = calculateArea(updatedMeasurement.points);
           const segments = generateSegments(updatedMeasurement.points);
           
@@ -57,7 +53,6 @@ export const useMeasurementCore = () => {
       }));
     };
     
-    // Add event listener for the custom event
     document.addEventListener('areaPointAdded', handleAreaPointAdded as EventListener);
     
     return () => {
@@ -65,7 +60,6 @@ export const useMeasurementCore = () => {
     };
   }, []);
 
-  // Create a length measurement from two points
   const createLengthMeasurement = useCallback((points: Point[]) => {
     if (points.length < 2) return;
     
@@ -75,12 +69,10 @@ export const useMeasurementCore = () => {
     const distance = calculateDistance(p1, p2);
     const label = formatMeasurement(distance, 'length');
     
-    // Calculate inclination for length measurements
     const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
     const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
     const calculatedInclination = calculateInclination(v1, v2);
     
-    // Only set inclination if it's above the threshold
     const inclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD 
       ? calculatedInclination 
       : undefined;
@@ -100,15 +92,12 @@ export const useMeasurementCore = () => {
       }
     ]);
     
-    // Clear current points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
     
-    // Reset to 'none' mode after creating a length measurement
     setActiveMode('none');
   }, []);
 
-  // Create a height measurement from two points
   const createHeightMeasurement = useCallback((points: Point[]) => {
     if (points.length < 2) return;
     
@@ -132,15 +121,12 @@ export const useMeasurementCore = () => {
       }
     ]);
     
-    // Clear current points after creating the measurement
     setCurrentPoints([]);
     currentPointsRef.current = [];
     
-    // Reset to 'none' mode after creating a height measurement
     setActiveMode('none');
   }, []);
 
-  // Finalize the current measurement (create it based on the points and type)
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
     
@@ -169,7 +155,6 @@ export const useMeasurementCore = () => {
           unit: 'm²',
           description: '',
           segments
-          // Keine Neigung für Flächenmessungen
         }
       ]);
       setCurrentPoints([]);
@@ -177,27 +162,20 @@ export const useMeasurementCore = () => {
     }
   }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
 
-  // Add a point to the current measurement
   const addPoint = useCallback((point: Point) => {
-    // If we're in edit mode and have a point selected, update that point
     if (editMeasurementId && editingPointIndex !== null) {
       updateMeasurementPoint(editMeasurementId, editingPointIndex, point);
-      setEditingPointIndex(null); // Finish editing this point
+      setEditingPointIndex(null);
       return;
     }
     
-    // Regular point adding behavior for new measurements
-    // First update the ref directly to ensure we have accurate count
     const updatedPoints = [...currentPointsRef.current, point];
     currentPointsRef.current = updatedPoints;
     
-    // Then update the state
     setCurrentPoints(updatedPoints);
     
-    // Immediately check if we need to finalize measurement
     const currentMode = activeMode;
     
-    // Auto-finalize length and height measurements after exactly 2 points
     if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
       if (currentMode === 'length') {
         createLengthMeasurement(updatedPoints);
@@ -209,36 +187,30 @@ export const useMeasurementCore = () => {
     }
   }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement]);
 
-  // Update a point in an existing measurement
   const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
     setMeasurements(prev => {
       return prev.map(m => {
         if (m.id !== measurementId) return m;
         
-        // Create a new points array with the updated point
         const newPoints = [...m.points];
         newPoints[pointIndex] = newPoint;
         
-        // Recalculate the measurement value
         let newValue: number;
         let newInclination: number | undefined;
         
         if (m.type === 'length') {
           newValue = calculateDistance(newPoints[0], newPoints[1]);
           
-          // Recalculate inclination for length measurements
           const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
           const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
           const calculatedInclination = calculateInclination(p1, p2);
           
-          // Only set inclination if it's above the threshold
           newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
           
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
         } else if (m.type === 'area') {
           newValue = calculateArea(newPoints);
-          // Update segments for area measurements
           const newSegments = generateSegments(newPoints);
           
           return {
@@ -249,7 +221,7 @@ export const useMeasurementCore = () => {
             segments: newSegments
           };
         } else {
-          newValue = m.value; // Fallback
+          newValue = m.value;
         }
         
         return {
@@ -263,7 +235,6 @@ export const useMeasurementCore = () => {
     });
   }, []);
 
-  // Undo the last point of the current measurement
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {
       return false;
@@ -276,13 +247,11 @@ export const useMeasurementCore = () => {
     return true;
   }, [currentPoints]);
   
-  // Clear all current measurement points
   const clearCurrentPoints = useCallback(() => {
     setCurrentPoints([]);
     currentPointsRef.current = [];
   }, []);
 
-  // Clear all measurements
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);
     setCurrentPoints([]);

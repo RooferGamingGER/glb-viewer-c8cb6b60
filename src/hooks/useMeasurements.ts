@@ -1,10 +1,9 @@
-
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
-import { MeasurementMode, Point, Measurement } from '@/types/measurements';
+import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
@@ -106,4 +105,4 @@ export const useMeasurements = () => {
 };
 
 // Re-export types
-export type { MeasurementMode, Point, Measurement } from '@/types/measurements';
+export type { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
