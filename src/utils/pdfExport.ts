@@ -541,7 +541,8 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   const tableHead = document.createElement('thead');
   const headerRow = document.createElement('tr');
   
-  ['Nr.', 'Beschreibung', 'Typ', 'Subtyp', 'Wert', 'Neigung', 'Anzahl'].forEach(column => {
+  // Removed 'Subtyp' and 'Anzahl' columns
+  ['Nr.', 'Beschreibung', 'Typ', 'Wert', 'Neigung'].forEach(column => {
     const th = document.createElement('th');
     th.textContent = column;
     headerRow.appendChild(th);
@@ -572,17 +573,17 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
     typeCell.textContent = typeDisplayName || '–';
     row.appendChild(typeCell);
     
-    // Subtype column
-    const subtypeCell = document.createElement('td');
-    subtypeCell.textContent = measurement.subType || '–';
-    row.appendChild(subtypeCell);
-    
-    // Value column
+    // Value column (now including count if available)
     const valueCell = document.createElement('td');
-    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
+    let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
     if (measurement.type === 'area') {
-      valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
+      valueText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
     }
+    // Add count information to value cell if available
+    if (measurement.count && measurement.count > 1) {
+      valueText += ` (${measurement.count} Stück)`;
+    }
+    valueCell.textContent = valueText;
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
@@ -594,15 +595,6 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
       inclinationCell.textContent = '–';
     }
     row.appendChild(inclinationCell);
-    
-    // Count column
-    const countCell = document.createElement('td');
-    if (measurement.count) {
-      countCell.textContent = measurement.count.toString();
-    } else {
-      countCell.textContent = '–';
-    }
-    row.appendChild(countCell);
     
     tableBody.appendChild(row);
   });
@@ -651,7 +643,7 @@ const appendMeasurementTypeSection = (
   tableContainer.className = 'keep-together table-container';
   tableContainer.style.marginTop = '30px'; // Added extra spacing
   
-  // Create columns based on measurement type
+  // Create columns based on measurement type (removed 'Subtyp' and 'Anzahl')
   let columns: string[];
   if (type === 'length') {
     columns = ['Nr.', 'Beschreibung', 'Länge (m)', 'Neigung'];
@@ -750,9 +742,14 @@ const createMeasurementTable = (
     descCell.textContent = measurement.description || '–';
     row.appendChild(descCell);
     
-    // Value column
+    // Value column (now including count if available)
     const valueCell = document.createElement('td');
-    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}`;
+    let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}`;
+    // Add count information to value cell if available
+    if (measurement.count && measurement.count > 1) {
+      valueText += ` (${measurement.count} Stück)`;
+    }
+    valueCell.textContent = valueText;
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
@@ -922,4 +919,3 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   
   return summarySection;
 };
-
