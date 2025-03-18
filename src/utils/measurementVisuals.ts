@@ -1,6 +1,5 @@
-
 import * as THREE from 'three';
-import { Point, Measurement } from '@/hooks/useMeasurements';
+import { Point, Measurement, Segment } from '@/hooks/useMeasurements';
 import {
   createMeasurementLabel,
   formatMeasurementLabel,
@@ -40,6 +39,20 @@ function safelyDisposeObject(object: THREE.Object3D) {
     }
   }
 }
+
+/**
+ * Convert a Point to a THREE.Vector3
+ */
+const pointToVector3 = (point: Point): THREE.Vector3 => {
+  return new THREE.Vector3(point.x, point.y, point.z);
+};
+
+/**
+ * Convert an array of Points to an array of THREE.Vector3
+ */
+const pointsToVector3Array = (points: Point[]): THREE.Vector3[] => {
+  return points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+};
 
 /**
  * Clears all measurement visualizations from the scene
@@ -143,10 +156,8 @@ export const renderCurrentPoints = (
   if (points.length >= 2) {
     // For length and height measurements, simply connect two points
     if (mode === 'length' || mode === 'height') {
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(points[0].x, points[0].y, points[0].z),
-        new THREE.Vector3(points[1].x, points[1].y, points[1].z)
-      ]);
+      const vector3Points = pointsToVector3Array([points[0], points[1]]);
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(vector3Points);
       
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.userData = { isCurrentLine: true };
@@ -154,8 +165,8 @@ export const renderCurrentPoints = (
       
       // Add measurement label
       if (points.length === 2) {
-        const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-        const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+        const p1 = pointToVector3(points[0]);
+        const p2 = pointToVector3(points[1]);
         
         // Calculate midpoint for label placement
         const midpoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
@@ -172,7 +183,12 @@ export const renderCurrentPoints = (
         }
         
         // Create label
-        const labelSprite = createMeasurementLabel(labelText, { x: midpoint.x, y: midpoint.y, z: midpoint.z });
+        const labelSprite = createMeasurementLabel(labelText, { 
+          x: midpoint.x, 
+          y: midpoint.y, 
+          z: midpoint.z 
+        });
+        
         labelSprite.userData = { 
           isCurrentMeasurement: true,
           measurementType: mode
@@ -185,14 +201,14 @@ export const renderCurrentPoints = (
     // For skylight, chimney, solar - connect all points and close the shape
     else if (['skylight', 'chimney', 'solar', 'area'].includes(mode)) {
       // Create closed polygon for area measurements
-      const vertices: THREE.Vector3[] = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+      const vector3Points = pointsToVector3Array(points);
       
       // If area, close the polygon
       if (['area', 'solar'].includes(mode) && points.length >= 3) {
-        vertices.push(vertices[0]); // Close the loop
+        vector3Points.push(vector3Points[0]); // Close the loop
       }
       
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(vector3Points);
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.userData = { isCurrentLine: true };
       linesGroup.add(line);
@@ -220,10 +236,8 @@ export const renderCurrentPoints = (
     // For gutter, just connect the two points
     else if (mode === 'gutter') {
       if (points.length === 2) {
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(points[0].x, points[0].y, points[0].z),
-          new THREE.Vector3(points[1].x, points[1].y, points[1].z)
-        ]);
+        const vector3Points = pointsToVector3Array([points[0], points[1]]);
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(vector3Points);
         
         const line = new THREE.Line(lineGeometry, lineMaterial);
         line.userData = { isCurrentLine: true };
@@ -318,11 +332,17 @@ export const renderEditPoints = (
     editPointsGroup.add(labelMesh);
     
     // Add the number as a text sprite
-    const numLabel = createMeasurementLabel(`${index + 1}`, {
-      x: point.x + 0.15,
-      y: point.y + 0.15,
-      z: point.z + 0.01
-    }, 0.4, 0x000000, 0xffffff);
+    const numLabel = createMeasurementLabel(
+      `${index + 1}`, 
+      {
+        x: point.x + 0.15,
+        y: point.y + 0.15,
+        z: point.z + 0.01
+      }, 
+      0.4, 
+      0x000000, 
+      0xffffff
+    );
     
     numLabel.userData = {
       isEditPointLabel: true,
@@ -355,7 +375,7 @@ export const createElementMarker = (
       if (points.length < 3) return null;
       
       // Convert points to Vector3
-      const vertices = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+      const vertices = pointsToVector3Array(points);
       
       // Create a shape from the points
       const shape = new THREE.Shape();
@@ -628,12 +648,13 @@ export const renderMeasurements = (
       
       // For area measurements, close the loop
       if (['area', 'solar', 'skylight', 'chimney'].includes(type) && points.length >= 3) {
+        const pointsVectors = pointsToVector3Array(points);
         vertices = [
-          ...points.map(p => new THREE.Vector3(p.x, p.y, p.z)),
+          ...pointsVectors,
           new THREE.Vector3(points[0].x, points[0].y, points[0].z) // Close the loop
         ];
       } else {
-        vertices = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+        vertices = pointsToVector3Array(points);
       }
       
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
@@ -652,8 +673,8 @@ export const renderMeasurements = (
       
       if (type === 'length' || type === 'height' || type === 'gutter') {
         // For length/height/gutter, place label at midpoint
-        const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-        const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+        const p1 = pointToVector3(points[0]);
+        const p2 = pointToVector3(points[1]);
         const midpoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
         
         labelPosition = { x: midpoint.x, y: midpoint.y, z: midpoint.z };
@@ -689,14 +710,19 @@ export const renderMeasurements = (
       // Add segment labels for area measurements
       if (segmentLabelsGroup && (type === 'area' || type === 'solar') && segments) {
         segments.forEach((segment, index) => {
-          const segmentMidpoint = calculateMidpoint(segment.start, segment.end);
+          // Get the points of the segment
+          if (!segment.points || segment.points.length !== 2) return;
+          
+          const segmentStart = segment.points[0];
+          const segmentEnd = segment.points[1];
+          const segmentMidpoint = calculateMidpoint(segmentStart, segmentEnd);
+          
           const segmentLabel = createMeasurementLabel(
             `${segment.length.toFixed(2)} m`,
             segmentMidpoint,
             0.6, // Smaller font size for segment labels
             0x000000, // Black text
-            0xffffff, // White background
-            0.7 // Lower opacity
+            0xffffff  // White background
           );
           
           segmentLabel.userData = {
