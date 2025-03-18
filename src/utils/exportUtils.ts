@@ -164,3 +164,31 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
     solarArea
   };
 };
+
+/**
+ * Format the value display for a measurement based on its type
+ */
+export const formatMeasurementValue = (measurement: Measurement): string => {
+  // For skylights, include dimensions if available
+  if (measurement.type === 'skylight' && measurement.dimensions) {
+    const width = measurement.dimensions.width;
+    const height = measurement.dimensions.height;
+    
+    if (width !== undefined && height !== undefined) {
+      return `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'} (${height.toFixed(2)}×${width.toFixed(2)} m)`;
+    }
+  }
+  
+  // Standard formatting for other measurement types
+  let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || (measurement.type === 'area' ? 'm²' : 'm')}`;
+  
+  // Add count information if available
+  if ((measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') && measurement.count) {
+    const count = measurement.count > 1 ? measurement.count : 1;
+    valueText += ` (${count} Stück)`;
+  } else if (measurement.count && measurement.count > 1) {
+    valueText += ` (${measurement.count} Stück)`;
+  }
+  
+  return valueText;
+};

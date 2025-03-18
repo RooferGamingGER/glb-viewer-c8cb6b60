@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Table,
@@ -12,6 +11,7 @@ import {
 import { Measurement } from '@/hooks/useMeasurements';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, EyeIcon, BookmarkX, Trash2 } from 'lucide-react';
+import { formatMeasurementValue } from '@/utils/exportUtils';
 
 interface MeasurementTableProps {
   measurements: Measurement[];
@@ -42,6 +42,10 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
   const lengthMeasurements = measurements.filter(m => m.type === 'length');
   const heightMeasurements = measurements.filter(m => m.type === 'height');
   const areaMeasurements = measurements.filter(m => m.type === 'area');
+  const skylightMeasurements = measurements.filter(m => m.type === 'skylight');
+  const otherMeasurements = measurements.filter(m => 
+    !['length', 'height', 'area', 'skylight'].includes(m.type)
+  );
 
   return (
     <div className="space-y-6">
@@ -195,6 +199,78 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
         </div>
       )}
 
+      {/* Skylight measurements */}
+      {skylightMeasurements.length > 0 && (
+        <div>
+          {showTableHeaders && <h3 className="text-base font-medium mb-2">Dachfenster</h3>}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nr.</TableHead>
+                <TableHead>Wert</TableHead>
+                <TableHead>Beschreibung</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  <TableHead className="w-24">Aktionen</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {skylightMeasurements.map((measurement, index) => (
+                <TableRow key={measurement.id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{formatMeasurementValue(measurement)}</TableCell>
+                  <TableCell>{measurement.description || '–'}</TableCell>
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                    <TableCell>
+                      <div className="flex space-x-1 justify-end">
+                        {toggleMeasurementVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible === false ? (
+                              <Eye className="h-3 w-3" />
+                            ) : (
+                              <EyeOff className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {toggleLabelVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleLabelVisibility(measurement.id)}
+                          >
+                            {measurement.labelVisible === false ? (
+                              <EyeIcon className="h-3 w-3" />
+                            ) : (
+                              <BookmarkX className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {handleDeleteMeasurement && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
       {/* Area measurements */}
       {areaMeasurements.length > 0 && (
         <div>
@@ -291,6 +367,91 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
               </div>
             )
           ))}
+        </div>
+      )}
+
+      {/* Other measurements (chimney, vents, etc.) */}
+      {otherMeasurements.length > 0 && (
+        <div>
+          {showTableHeaders && <h3 className="text-base font-medium mb-2">Dacheinbauten</h3>}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nr.</TableHead>
+                <TableHead>Typ</TableHead>
+                <TableHead>Wert</TableHead>
+                <TableHead>Beschreibung</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  <TableHead className="w-24">Aktionen</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {otherMeasurements.map((measurement, index) => (
+                <TableRow key={measurement.id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      switch(measurement.type) {
+                        case 'chimney': return 'Kamin';
+                        case 'vent': return 'Lüfter';
+                        case 'hook': return 'Dachhaken';
+                        case 'solar': return 'Solaranlage';
+                        case 'other': return 'Sonstiges';
+                        default: return measurement.type;
+                      }
+                    })()}
+                  </TableCell>
+                  <TableCell>{formatMeasurementValue(measurement)}</TableCell>
+                  <TableCell>{measurement.description || '–'}</TableCell>
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                    <TableCell>
+                      <div className="flex space-x-1 justify-end">
+                        {toggleMeasurementVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible === false ? (
+                              <Eye className="h-3 w-3" />
+                            ) : (
+                              <EyeOff className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {toggleLabelVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleLabelVisibility(measurement.id)}
+                          >
+                            {measurement.labelVisible === false ? (
+                              <EyeIcon className="h-3 w-3" />
+                            ) : (
+                              <BookmarkX className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {handleDeleteMeasurement && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

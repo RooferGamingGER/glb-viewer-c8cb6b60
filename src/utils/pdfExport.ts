@@ -1,7 +1,7 @@
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
-import { getRoofElementsSummary, getPenetrationCount } from './exportUtils';
+import { getRoofElementsSummary, getPenetrationCount, formatMeasurementValue } from './exportUtils';
 
 export interface CoverPageData {
   title: string;
@@ -573,20 +573,9 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
     typeCell.textContent = typeDisplayName || '–';
     row.appendChild(typeCell);
     
-    // Value column (now including count if available)
+    // Value column with formatted value
     const valueCell = document.createElement('td');
-    let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
-    if (measurement.type === 'area') {
-      valueText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
-    }
-    // Add count information to value cell if available
-    if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
-      const count = measurement.count && measurement.count > 1 ? measurement.count : 1;
-      valueText += ` (${count} Stück)`;
-    } else if (measurement.count && measurement.count > 1) {
-      valueText += ` (${measurement.count} Stück)`;
-    }
-    valueCell.textContent = valueText;
+    valueCell.textContent = formatMeasurementValue(measurement);
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
@@ -745,19 +734,9 @@ const createMeasurementTable = (
     descCell.textContent = measurement.description || '–';
     row.appendChild(descCell);
     
-    // Value column (now including count if available)
+    // Value column using the formatted value
     const valueCell = document.createElement('td');
-    let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}`;
-    
-    // Always show at least 1 piece for vent, hook, or other penetration types
-    if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
-      const count = measurement.count && measurement.count > 1 ? measurement.count : 1;
-      valueText += ` (${count} Stück)`;
-    } else if (measurement.count && measurement.count > 1) {
-      valueText += ` (${measurement.count} Stück)`;
-    }
-    
-    valueCell.textContent = valueText;
+    valueCell.textContent = formatMeasurementValue(measurement);
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
@@ -899,31 +878,4 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   
   // Add roof elements stats if any exist
   if (roofElements.chimneys > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.chimneys, 'Kamine'));
-  }
-  
-  if (roofElements.skylights > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.skylights, 'Dachfenster'));
-  }
-  
-  if (roofElements.vents > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.vents, 'Lüfter'));
-  }
-  
-  if (roofElements.hooks > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.hooks, 'Dachhaken'));
-  }
-  
-  if (roofElements.otherPenetrations > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.otherPenetrations, 'Sonstige Einbauten'));
-  }
-  
-  if (roofElements.solarArea > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.solarArea.toFixed(2) + ' m²', 'Solaranlagen'));
-  }
-  
-  summaryCard.appendChild(summaryStats);
-  summarySection.appendChild(summaryCard);
-  
-  return summarySection;
-};
+    summaryStats.appendChild(create
