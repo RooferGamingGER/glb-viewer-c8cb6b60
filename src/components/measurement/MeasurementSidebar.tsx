@@ -5,7 +5,7 @@ import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { BookmarkX, EyeIcon, EyeOff, Trash2 } from 'lucide-react';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -17,10 +17,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
+  toggleLabelVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -32,12 +34,15 @@ interface MeasurementSidebarProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   showTable: boolean;
   handleClearMeasurements: () => void;
+  toggleAllLabelsVisibility: () => void;
+  allLabelsVisible: boolean;
   activeMode?: string;
 }
 
 const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({ 
   measurements,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -49,9 +54,23 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   movingPointInfo,
   showTable,
   handleClearMeasurements,
+  toggleAllLabelsVisibility,
+  allLabelsVisible,
   activeMode
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
+  
+  // Filter measurements based on active tab
+  const filteredMeasurements = measurements.filter(m => {
+    if (activeTab === "standard") {
+      return ['length', 'height', 'area'].includes(m.type);
+    } else if (activeTab === "roofElements") {
+      return ['skylight', 'chimney', 'solar'].includes(m.type);
+    } else if (activeTab === "penetrations") {
+      return ['vent', 'hook', 'other'].includes(m.type);
+    }
+    return true;
+  });
   
   // Sync the active tab with the current measurement tool when appropriate
   useEffect(() => {
@@ -59,9 +78,9 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
     
     if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
-    } else if (['solar', 'gutter'].includes(activeMode)) {
+    } else if (['solar', 'chimney', 'skylight'].includes(activeMode)) {
       setActiveTab("roofElements");
-    } else if (['skylight', 'chimney', 'vent', 'hook', 'other'].includes(activeMode)) {
+    } else if (['vent', 'hook', 'other'].includes(activeMode)) {
       setActiveTab("penetrations");
     }
   }, [activeMode]);
@@ -70,44 +89,67 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 pt-2 pb-1">
         <h2 className="text-md font-semibold">Messungen</h2>
-        {measurements.length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="h-4 w-4 mr-1" />
-                Alle löschen
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Diese Aktion kann nicht rückgängig gemacht werden. Alle Messungen werden dauerhaft gelöscht.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction onClick={handleClearMeasurements}>
+        <div className="flex space-x-1">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={toggleAllLabelsVisibility}
+            title={allLabelsVisible ? "Alle Labels ausblenden" : "Alle Labels einblenden"}
+          >
+            {allLabelsVisible ? <BookmarkX className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+          </Button>
+          
+          {measurements.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-1" />
                   Alle löschen
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Diese Aktion kann nicht rückgängig gemacht werden. Alle Messungen werden dauerhaft gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearMeasurements}>
+                    Alle löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+      </div>
+      
+      <div className="px-4 pb-2">
+        <Tabs defaultValue="standard" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="standard">Standard</TabsTrigger>
+            <TabsTrigger value="roofElements">Dachelemente</TabsTrigger>
+            <TabsTrigger value="penetrations">Einbauten</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full pr-2">
           {showTable ? (
             <MeasurementTable 
-              measurements={measurements} 
+              measurements={filteredMeasurements} 
               toggleMeasurementVisibility={toggleMeasurementVisibility} 
+              toggleLabelVisibility={toggleLabelVisibility}
               handleDeleteMeasurement={handleDeleteMeasurement}
             />
           ) : (
             <MeasurementList 
-              measurements={measurements}
+              measurements={filteredMeasurements}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
+              toggleLabelVisibility={toggleLabelVisibility}
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
               handleDeletePoint={handleDeletePoint}

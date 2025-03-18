@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -11,21 +12,25 @@ import {
   Cylinder,
   SplitSquareVertical,
   Sun,
-  Droplet,
   Minus,
   ArrowDown,
   Wind,
-  Square
+  Square,
+  Anchor,
+  EyeIcon,
+  BookmarkX
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
+  toggleLabelVisibility?: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -40,6 +45,7 @@ interface MeasurementItemProps {
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
   measurement,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -69,11 +75,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       case 'chimney': return <Cylinder className="h-4 w-4 mr-1" />;
       case 'skylight': return <SplitSquareVertical className="h-4 w-4 mr-1" />;
       case 'solar': return <Sun className="h-4 w-4 mr-1" />;
-      case 'gutter': return <Droplet className="h-4 w-4 mr-1" />;
       case 'length': return <Minus className="h-4 w-4 mr-1" />;
       case 'height': return <ArrowDown className="h-4 w-4 mr-1" />;
       case 'area': return <Square className="h-4 w-4 mr-1" />;
       case 'vent': return <Wind className="h-4 w-4 mr-1" />;
+      case 'hook': return <Anchor className="h-4 w-4 mr-1" />;
+      case 'other': return <BookmarkX className="h-4 w-4 mr-1" />;
       default: return null;
     }
   };
@@ -87,7 +94,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       'chimney': 'Kamin',
       'skylight': 'Dachfenster',
       'solar': 'Solaranlage',
-      'gutter': 'Dachrinne',
       'vent': 'Lüfter',
       'hook': 'Dachhaken',
       'other': 'Sonstige Einbauten'
@@ -97,11 +103,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   };
 
   const isRoofElement = [
-    'chimney', 'skylight', 'solar', 
-    'gutter', 'vent'
+    'chimney', 'skylight', 'solar'
   ].includes(measurement.type);
 
-  const isPenetration = ['skylight', 'chimney', 'vent', 'hook', 'other'].includes(measurement.type);
+  const isPenetration = ['vent', 'hook', 'other'].includes(measurement.type);
 
   return (
     <div 
@@ -116,7 +121,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           {getTypeIcon(measurement.type)}
           {getTypeName(measurement.type)}
           
-          {measurement.type === 'vent' && (
+          {isPenetration && (
             <Badge variant="outline" className="ml-2 text-xs bg-orange-50/30">
               Durchdringung
             </Badge>
@@ -136,19 +141,53 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </div>
         
         <div className="flex space-x-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6" 
-            onClick={() => toggleMeasurementVisibility(measurement.id)}
-            title={measurement.visible === false ? "Einblenden" : "Ausblenden"}
-          >
-            {measurement.visible === false ? (
-              <Eye className="h-3 w-3" />
-            ) : (
-              <EyeOff className="h-3 w-3" />
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={() => toggleMeasurementVisibility(measurement.id)}
+                  title={measurement.visible === false ? "Einblenden" : "Ausblenden"}
+                >
+                  {measurement.visible === false ? (
+                    <Eye className="h-3 w-3" />
+                  ) : (
+                    <EyeOff className="h-3 w-3" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {measurement.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {toggleLabelVisibility && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    onClick={() => toggleLabelVisibility(measurement.id)}
+                    title={measurement.labelVisible === false ? "Label einblenden" : "Label ausblenden"}
+                  >
+                    {measurement.labelVisible === false ? (
+                      <EyeIcon className="h-3 w-3" />
+                    ) : (
+                      <BookmarkX className="h-3 w-3" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {measurement.labelVisible === false ? "Label einblenden" : "Label ausblenden"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           
           <Button 
             variant="ghost" 
@@ -173,10 +212,11 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       </div>
       
       <div className="text-sm mb-1">
-        {measurement.type !== 'vent' && (
-          <strong>Wert:</strong>
-        )} 
-        {measurement.label}
+        {!isPenetration && (
+          <>
+            <strong>Wert:</strong> {measurement.label}
+          </>
+        )}
         
         {/* Abmessungen für Dachelemente */}
         {measurement.dimensions && (

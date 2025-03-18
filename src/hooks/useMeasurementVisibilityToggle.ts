@@ -9,12 +9,21 @@ export const useMeasurementVisibilityToggle = (
   measurements: Measurement[],
   setMeasurements: React.Dispatch<React.SetStateAction<Measurement[]>>,
   allMeasurementsVisible: boolean,
-  setAllMeasurementsVisible: React.Dispatch<React.SetStateAction<boolean>>
+  setAllMeasurementsVisible: React.Dispatch<React.SetStateAction<boolean>>,
+  allLabelsVisible: boolean = true,
+  setAllLabelsVisible?: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
   // Toggle visibility for a single measurement
   const toggleMeasurementVisibility = useCallback((id: string) => {
     setMeasurements(prev => prev.map(m => 
       m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
+    ));
+  }, [setMeasurements]);
+
+  // Toggle label visibility for a single measurement
+  const toggleLabelVisibility = useCallback((id: string) => {
+    setMeasurements(prev => prev.map(m => 
+      m.id === id ? { ...m, labelVisible: m.labelVisible === false ? true : false } : m
     ));
   }, [setMeasurements]);
 
@@ -24,8 +33,18 @@ export const useMeasurementVisibilityToggle = (
     setMeasurements(prev => prev.map(m => ({ ...m, visible: !allMeasurementsVisible })));
   }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements]);
 
+  // Toggle visibility for all labels
+  const toggleAllLabelsVisibility = useCallback(() => {
+    if (setAllLabelsVisible) {
+      setAllLabelsVisible(prev => !prev);
+      setMeasurements(prev => prev.map(m => ({ ...m, labelVisible: !allLabelsVisible })));
+    }
+  }, [allLabelsVisible, setAllLabelsVisible, setMeasurements]);
+
   return {
     toggleMeasurementVisibility,
-    toggleAllMeasurementsVisibility
+    toggleLabelVisibility,
+    toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility
   };
 };

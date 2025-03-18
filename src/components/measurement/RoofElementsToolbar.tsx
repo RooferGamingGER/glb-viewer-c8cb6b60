@@ -4,7 +4,6 @@ import {
   Cylinder, 
   SplitSquareVertical,
   Sun, 
-  Droplet,
   Wind,
   Anchor,
   X
@@ -43,7 +42,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
         'chimney': 'Kamin-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'solar': 'Solaranlagen-Messung ausgewählt - Definieren Sie die Fläche',
-        'gutter': 'Dachrinnen-Messung ausgewählt - Markieren Sie den Verlauf',
         'vent': 'Lüfter-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'hook': 'Dachhaken-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'other': 'Sonstige Einbauten-Markierung ausgewählt - Platzieren Sie einen Punkt'
@@ -101,18 +99,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                     >
                       <Sun className="h-4 w-4" />
                       <span className="text-xs">Solar</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'gutter'}
-                      onClick={() => selectTool('gutter')}
-                      tooltip="Dachrinne messen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <Droplet className="h-4 w-4" />
-                      <span className="text-xs">Rinne</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </div>

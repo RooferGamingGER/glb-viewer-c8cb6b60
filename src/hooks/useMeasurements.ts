@@ -1,3 +1,4 @@
+
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
@@ -19,6 +20,8 @@ export const useMeasurements = () => {
     setActiveMode,
     allMeasurementsVisible,
     setAllMeasurementsVisible,
+    allLabelsVisible,
+    setAllLabelsVisible,
     editMeasurementId,
     setEditMeasurementId,
     editingPointIndex,
@@ -50,12 +53,16 @@ export const useMeasurements = () => {
   // Visibility toggling
   const {
     toggleMeasurementVisibility,
-    toggleAllMeasurementsVisibility
+    toggleLabelVisibility,
+    toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility
   } = useMeasurementVisibilityToggle(
     measurements,
     setMeasurements,
     allMeasurementsVisible,
-    setAllMeasurementsVisible
+    setAllMeasurementsVisible,
+    allLabelsVisible,
+    setAllLabelsVisible
   );
   
   // Tool toggling
@@ -80,6 +87,7 @@ export const useMeasurements = () => {
     editMeasurementId,
     editingPointIndex,
     allMeasurementsVisible,
+    allLabelsVisible,
     
     // Actions
     addPoint,
@@ -88,7 +96,9 @@ export const useMeasurements = () => {
     clearCurrentPoints,
     finalizeMeasurement,
     toggleMeasurementVisibility,
+    toggleLabelVisibility,
     toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility,
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,

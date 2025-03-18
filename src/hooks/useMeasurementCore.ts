@@ -30,6 +30,7 @@ export const useMeasurementCore = () => {
   const [activeMode, setActiveMode] = useState<MeasurementMode>('none');
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
+  const [allLabelsVisible, setAllLabelsVisible] = useState<boolean>(true);
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
   const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
   
@@ -146,6 +147,7 @@ export const useMeasurementCore = () => {
         value: distance,
         label,
         visible: true,
+        labelVisible: true,
         unit: 'm',
         description: '',
         inclination
@@ -176,6 +178,7 @@ export const useMeasurementCore = () => {
         value: height,
         label,
         visible: true,
+        labelVisible: true,
         unit: 'm',
         description: ''
       }
@@ -234,7 +237,8 @@ export const useMeasurementCore = () => {
       value: 0,
       label: '0 m',
       description: '',
-      dimensions: {}
+      dimensions: {},
+      labelVisible: true
     };
     
     switch (type) {
@@ -281,24 +285,6 @@ export const useMeasurementCore = () => {
         };
         break;
         
-      case 'gutter':
-        const length = calculateDistance(points[0], points[1]);
-        
-        const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-        const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-        const calculatedInclination = calculateInclination(p1, p2);
-        
-        const inclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD 
-          ? calculatedInclination 
-          : undefined;
-          
-        measurementData = {
-          value: length,
-          label: formatMeasurement(length, 'length'),
-          inclination
-        };
-        break;
-        
       case 'vent':
       case 'hook':
       case 'other':
@@ -325,6 +311,7 @@ export const useMeasurementCore = () => {
         type,
         points: [...points],
         visible: true,
+        labelVisible: true,
         unit: type === 'solar' ? 'm²' : 
               type === 'gutter' ? 'm' : 
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
@@ -432,6 +419,7 @@ export const useMeasurementCore = () => {
           value,
           label,
           visible: true,
+          labelVisible: true,
           unit: 'm²',
           description: '',
           segments
@@ -514,6 +502,8 @@ export const useMeasurementCore = () => {
     setActiveMode,
     allMeasurementsVisible,
     setAllMeasurementsVisible,
+    allLabelsVisible,
+    setAllLabelsVisible,
     editMeasurementId, 
     setEditMeasurementId,
     editingPointIndex,

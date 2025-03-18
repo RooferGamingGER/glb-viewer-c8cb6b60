@@ -10,12 +10,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Measurement } from '@/hooks/useMeasurements';
+import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, EyeIcon, BookmarkX, Trash2 } from 'lucide-react';
 
 interface MeasurementTableProps {
   measurements: Measurement[];
   title?: string;
   showTableHeaders?: boolean;
   toggleMeasurementVisibility?: (id: string) => void;
+  toggleLabelVisibility?: (id: string) => void;
   handleDeleteMeasurement?: (id: string) => void;
 }
 
@@ -24,6 +27,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
   title = "Messungen",
   showTableHeaders = true,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleDeleteMeasurement
 }) => {
   if (measurements.length === 0) {
@@ -52,6 +56,9 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Wert</TableHead>
                 <TableHead>Neigung</TableHead>
                 <TableHead>Beschreibung</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  <TableHead className="w-24">Aktionen</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -65,6 +72,50 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                       : '–'}
                   </TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                    <TableCell>
+                      <div className="flex space-x-1 justify-end">
+                        {toggleMeasurementVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible === false ? (
+                              <Eye className="h-3 w-3" />
+                            ) : (
+                              <EyeOff className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {toggleLabelVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleLabelVisibility(measurement.id)}
+                          >
+                            {measurement.labelVisible === false ? (
+                              <EyeIcon className="h-3 w-3" />
+                            ) : (
+                              <BookmarkX className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {handleDeleteMeasurement && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -82,6 +133,9 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Nr.</TableHead>
                 <TableHead>Wert</TableHead>
                 <TableHead>Beschreibung</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  <TableHead className="w-24">Aktionen</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -90,6 +144,50 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                    <TableCell>
+                      <div className="flex space-x-1 justify-end">
+                        {toggleMeasurementVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible === false ? (
+                              <Eye className="h-3 w-3" />
+                            ) : (
+                              <EyeOff className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {toggleLabelVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleLabelVisibility(measurement.id)}
+                          >
+                            {measurement.labelVisible === false ? (
+                              <EyeIcon className="h-3 w-3" />
+                            ) : (
+                              <BookmarkX className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {handleDeleteMeasurement && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -107,6 +205,9 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Nr.</TableHead>
                 <TableHead>Wert</TableHead>
                 <TableHead>Beschreibung</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  <TableHead className="w-24">Aktionen</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -115,6 +216,50 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                    <TableCell>
+                      <div className="flex space-x-1 justify-end">
+                        {toggleMeasurementVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleMeasurementVisibility(measurement.id)}
+                          >
+                            {measurement.visible === false ? (
+                              <Eye className="h-3 w-3" />
+                            ) : (
+                              <EyeOff className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {toggleLabelVisibility && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => toggleLabelVisibility(measurement.id)}
+                          >
+                            {measurement.labelVisible === false ? (
+                              <EyeIcon className="h-3 w-3" />
+                            ) : (
+                              <BookmarkX className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                        {handleDeleteMeasurement && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleDeleteMeasurement(measurement.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

@@ -9,7 +9,6 @@ export type MeasurementMode =
   | 'chimney'   // Kamin
   | 'skylight'  // Dachfenster
   | 'solar'     // Solaranlage
-  | 'gutter'    // Dachrinne
   | 'vent'      // Lüfter (nur Markierung)
   | 'hook'      // Dachhaken
   | 'other';    // Sonstige Einbauten
@@ -40,6 +39,7 @@ export interface Measurement {
   value: number;
   label?: string;
   visible?: boolean;
+  labelVisible?: boolean;
   editMode?: boolean;
   unit?: string;
   description?: string;
