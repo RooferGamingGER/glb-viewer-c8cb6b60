@@ -9,7 +9,7 @@ import { Measurement } from '@/types/measurements';
 export const useMeasurementVisibility = (
   measurements: Measurement[],
   toggleMeasurementVisibility: (id: string) => void,
-  toggleLabelVisibility?: (id: string) => void,
+  toggleLabelVisibility: (id: string) => void,
   refs: {
     pointsRef: React.RefObject<THREE.Group>,
     linesRef: React.RefObject<THREE.Group>,
@@ -52,7 +52,7 @@ export const useMeasurementVisibility = (
     if (refs.labelsRef.current) {
       refs.labelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = isVisible;
+          label.visible = isVisible && (measurement.labelVisible !== false);
         }
       });
     }
@@ -61,7 +61,7 @@ export const useMeasurementVisibility = (
     if (refs.segmentLabelsRef.current) {
       refs.segmentLabelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id) {
-          label.visible = isVisible;
+          label.visible = isVisible && (measurement.labelVisible !== false);
         }
       });
     }
@@ -87,8 +87,6 @@ export const useMeasurementVisibility = (
 
   // Function to toggle label visibility
   const handleToggleLabelVisibility = useCallback((id: string) => {
-    if (!toggleLabelVisibility) return;
-    
     // First update the state
     toggleLabelVisibility(id);
     

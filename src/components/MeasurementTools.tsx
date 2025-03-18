@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -49,6 +50,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     clearCurrentPoints,
     finalizeMeasurement,
     toggleMeasurementVisibility,
+    toggleLabelVisibility,
+    toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility,
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,
@@ -58,7 +62,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editingPointIndex,
     startPointEdit,
     cancelEditing,
-    updateMeasurementPoint
+    updateMeasurementPoint,
+    allLabelsVisible
   } = useMeasurements();
 
   // Three.js object references
@@ -112,9 +117,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const { clearMeasurementVisuals } = useMeasurementCleanup();
   
   // Utils for handling measurement visibility
-  const { handleToggleMeasurementVisibility } = useMeasurementVisibility(
+  const { 
+    handleToggleMeasurementVisibility,
+    handleToggleLabelVisibility,
+    updateAllLabelsVisibility,
+    updateMeasurementMarkers
+  } = useMeasurementVisibility(
     measurements,
     toggleMeasurementVisibility,
+    toggleLabelVisibility,
     {
       pointsRef,
       linesRef,
@@ -159,6 +170,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   );
 
+  // Update visibility when allLabelsVisible changes
+  useEffect(() => {
+    updateAllLabelsVisibility(allLabelsVisible);
+  }, [allLabelsVisible, updateAllLabelsVisibility]);
+
   // Handle label visibility based on edit mode
   useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
@@ -187,7 +203,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (measurementId) {
         const measurement = measurements.find(m => m.id === measurementId);
         // Only show label if measurement exists and is visible
-        label.visible = measurement?.visible !== false;
+        label.visible = measurement?.visible !== false && measurement?.labelVisible !== false;
       } else {
         // If no measurement ID, default to visible
         label.visible = true;
@@ -204,7 +220,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       processLabel(label, true);
     });
     
-  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements]);
+  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
 
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
@@ -321,6 +337,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     'length', 'height', 'area', 'none'
   ].includes(activeMode);
 
+  // Handle label visibility toggling
+  const handleToggleAllLabelsVisibility = () => {
+    toggleAllLabelsVisibility();
+    updateAllLabelsVisibility(!allLabelsVisible);
+  };
+
   // Break up the component into logical sections
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
@@ -379,6 +401,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <MeasurementSidebar
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+            toggleLabelVisibility={handleToggleLabelVisibility}
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
@@ -390,6 +413,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             movingPointInfo={movingPointInfo}
             showTable={showTable}
             handleClearMeasurements={handleClearMeasurements}
+            toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
+            allLabelsVisible={allLabelsVisible}
             activeMode={activeMode}
           />
         </div>

@@ -63,7 +63,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     
     if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
-    } else if (['solar', 'gutter'].includes(activeMode)) {
+    } else if (['solar'].includes(activeMode)) {
       setActiveTab("roof-elements");
     } else if (['skylight', 'chimney', 'vent', 'hook', 'other'].includes(activeMode)) {
       setActiveTab("penetrations");
@@ -154,17 +154,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             >
               <Sun className="h-4 w-4 mr-1" />
               <span className="text-xs">Solaranlagen</span>
-            </Button>
-            
-            <Button
-              variant={activeMode === 'gutter' ? "default" : "outline"} 
-              size="sm"
-              className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'gutter' ? 'none' : 'gutter')}
-              disabled={!!editMeasurementId}
-            >
-              <Droplet className="h-4 w-4 mr-1" />
-              <span className="text-xs">Dachrinnen</span>
             </Button>
           </div>
         </TabsContent>

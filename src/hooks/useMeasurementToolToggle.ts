@@ -51,7 +51,7 @@ export const useMeasurementToolToggle = (
 
   // Check if the active mode is a line-type mode
   const isLineMode = useCallback(() => {
-    return ['length', 'height', 'gutter'].includes(activeMode);
+    return ['length', 'height'].includes(activeMode);
   }, [activeMode]);
 
   return {

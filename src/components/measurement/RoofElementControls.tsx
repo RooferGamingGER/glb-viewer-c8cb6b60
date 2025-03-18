@@ -42,8 +42,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         return 4; // Vier Punkte für exakte Rechteckdefinition
       case 'chimney': 
         return 4; // Vier Punkte für genaue Vermessung
-      case 'gutter':
-        return 2; // Lineare Messungen
       case 'vent': 
       case 'hook': 
       case 'other': 
@@ -79,13 +77,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'solar':
         return `Markieren Sie die Eckpunkte der Solaranlage. Noch ${remainingPoints} Punkt(e) benötigt.`;
       
-      case 'gutter':
-        if (currentPoints.length === 0) {
-          return "Markieren Sie den Startpunkt der Dachrinne.";
-        } else {
-          return "Markieren Sie das Ende der Dachrinne oder weitere Punkte für einen Linienzug.";
-        }
-      
       case 'vent':
         return "Markieren Sie die Position des Lüfters.";
         
@@ -109,7 +100,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'chimney': return "Kaminausschnitt";
       case 'skylight': return "Dachfenster";
       case 'solar': return "Solaranlage";
-      case 'gutter': return "Dachrinne";
       case 'vent': return "Lüfter";
       case 'hook': return "Dachhaken";
       case 'other': return "Sonstige Einbauten";
