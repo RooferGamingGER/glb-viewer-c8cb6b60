@@ -5,7 +5,7 @@ import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { BookmarkX, EyeIcon, EyeOff, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +21,7 @@ import {
 interface MeasurementSidebarProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility: (id: string) => void;
+  toggleLabelVisibility?: (id: string) => void; // Keep for backward compatibility but we won't use it
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -33,8 +33,8 @@ interface MeasurementSidebarProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   showTable: boolean;
   handleClearMeasurements: () => void;
-  toggleAllLabelsVisibility: () => void;
-  allLabelsVisible: boolean;
+  toggleAllLabelsVisibility?: () => void; // Keep for backward compatibility but we won't use it
+  allLabelsVisible?: boolean; // Keep for backward compatibility but we won't use it
   activeMode?: string;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
@@ -81,16 +81,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <h2 className="text-md font-semibold">Messungen</h2>
         <div className="flex space-x-1">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={toggleAllLabelsVisibility}
-            title={allLabelsVisible ? "Alle Labels ausblenden" : "Alle Labels einblenden"}
-            className="h-7 w-7 p-0"
-          >
-            {allLabelsVisible ? <BookmarkX className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
-          </Button>
-          
           {measurements.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -124,14 +114,12 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             <MeasurementTable 
               measurements={measurements} 
               toggleMeasurementVisibility={toggleMeasurementVisibility} 
-              toggleLabelVisibility={toggleLabelVisibility}
               handleDeleteMeasurement={handleDeleteMeasurement}
             />
           ) : (
             <MeasurementList 
               measurements={measurements}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
-              toggleLabelVisibility={toggleLabelVisibility}
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
               handleDeletePoint={handleDeletePoint}

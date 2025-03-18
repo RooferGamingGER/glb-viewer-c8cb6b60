@@ -48,20 +48,20 @@ export const useMeasurementVisibility = (
       });
     }
     
-    // Update main label visibility
+    // Update main label visibility - always link to measurement visibility
     if (refs.labelsRef.current) {
       refs.labelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = newVisibility && (measurement.labelVisible !== false);
+          label.visible = newVisibility; // Always show label when measurement is visible
         }
       });
     }
     
-    // Update segment label visibility
+    // Update segment label visibility - always link to measurement visibility
     if (refs.segmentLabelsRef.current) {
       refs.segmentLabelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id) {
-          label.visible = newVisibility && (measurement.labelVisible !== false);
+          label.visible = newVisibility; // Always show label when measurement is visible
         }
       });
     }
@@ -85,62 +85,37 @@ export const useMeasurementVisibility = (
     }
   }, [measurements, toggleMeasurementVisibility, refs]);
 
-  // Function to toggle label visibility
+  // Function to toggle label visibility - no longer functional
   const handleToggleLabelVisibility = useCallback((id: string) => {
-    // First update the state
-    toggleLabelVisibility(id);
-    
-    // Get the measurement to determine its new label visibility state
-    const measurement = measurements.find(m => m.id === id);
-    if (!measurement) return;
-    
-    // Determine the new label visibility state (inverse of current)
-    const newLabelVisibility = measurement.labelVisible === false;
-    
-    // Update main label visibility
-    if (refs.labelsRef.current) {
-      refs.labelsRef.current.children.forEach(label => {
-        if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = measurement.visible !== false && newLabelVisibility;
-        }
-      });
-    }
-    
-    // Update segment label visibility
-    if (refs.segmentLabelsRef.current) {
-      refs.segmentLabelsRef.current.children.forEach(label => {
-        if (label.userData && label.userData.measurementId === id) {
-          label.visible = measurement.visible !== false && newLabelVisibility;
-        }
-      });
-    }
-  }, [measurements, toggleLabelVisibility, refs]);
+    // This function is now a no-op since labels are always visible
+    console.log('Label visibility toggle is deprecated - labels are always visible');
+  }, []);
 
-  // Function to update all labels visibility
+  // Function to update all labels visibility - now ensures all labels are visible
   const updateAllLabelsVisibility = useCallback((visible: boolean) => {
     if (!refs.labelsRef.current || !refs.segmentLabelsRef.current) return;
     
-    // Update all main labels
+    // Always ensure labels are visible for visible measurements
     refs.labelsRef.current.children.forEach(label => {
       if (label.userData && !label.userData.isPreview) {
         const measurementId = label.userData.measurementId;
         if (measurementId) {
           const measurement = measurements.find(m => m.id === measurementId);
           if (measurement && measurement.visible !== false) {
-            label.visible = visible;
+            label.visible = true; // Always visible
           }
         }
       }
     });
     
-    // Update all segment labels
+    // Always ensure segment labels are visible for visible measurements
     refs.segmentLabelsRef.current.children.forEach(label => {
       if (label.userData) {
         const measurementId = label.userData.measurementId;
         if (measurementId) {
           const measurement = measurements.find(m => m.id === measurementId);
           if (measurement && measurement.visible !== false) {
-            label.visible = visible;
+            label.visible = true; // Always visible
           }
         }
       }
