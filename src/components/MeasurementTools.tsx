@@ -23,7 +23,7 @@ import MeasurementSidebar from './measurement/MeasurementSidebar';
 import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
-import RoofElementControls from './RoofElementControls';
+import RoofElementControls from './measurement/RoofElementControls';
 
 interface MeasurementToolsProps {
   enabled: boolean;
