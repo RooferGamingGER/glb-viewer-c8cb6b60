@@ -18,7 +18,7 @@ export const useMeasurementState = (
     deletePoint: (measurementId: string, pointIndex: number) => void;
     updateMeasurement: (id: string, data: Partial<Measurement>) => void;
     finalizeMeasurement: () => void;
-    undoLastPoint: () => void;
+    undoLastPoint: () => boolean;  // Change return type to boolean
     clearCurrentPoints: () => void;
     clearMeasurements: () => void;
     cancelEditing: () => void;
@@ -61,7 +61,8 @@ export const useMeasurementState = (
 
   // Handler for undoing last point
   const handleUndoLastPoint = useCallback(() => {
-    if (handlers.undoLastPoint()) {
+    const pointRemoved = handlers.undoLastPoint();
+    if (pointRemoved) {
       toast.info('Letzter Messpunkt entfernt');
     } else {
       toast.error('Keine Messpunkte zum Entfernen vorhanden');
