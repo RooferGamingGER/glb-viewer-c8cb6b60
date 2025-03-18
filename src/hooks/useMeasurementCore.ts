@@ -17,10 +17,11 @@ import {
   calculateAverageInclination,
   calculateQuadrilateralDimensions,
   createChimneyMeasurement,
+  createDormerMeasurement,
   calculateBoundingBox,
   calculateCentroid
 } from '@/utils/measurementCalculations';
-import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
+import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
 
 /**
@@ -223,7 +224,6 @@ export const useMeasurementCore = () => {
     area: number;
     perimeter: number;
   } => {
-    // Für Kamine und Dachfenster mit 4 Punkten
     if (points.length >= 4) {
       const dimensions = calculateQuadrilateralDimensions(points);
       
@@ -236,7 +236,6 @@ export const useMeasurementCore = () => {
       };
     }
     
-    // Fallback für weniger als 4 Punkte
     return {
       value: 0,
       width: 0,
@@ -255,6 +254,126 @@ export const useMeasurementCore = () => {
       position: point
     };
   };
+
+  const createRoofElementMeasurement = useCallback((type: MeasurementMode, points: Point[]) => {
+    if (points.length === 0) return;
+    
+    let measurementData: any = {
+      value: 0,
+      label: '0 m',
+      description: '',
+      dimensions: {}
+    };
+    
+    switch (type) {
+      case 'dormer':
+        const dormerData = createDormerMeasurement(points);
+        measurementData = {
+          value: dormerData.area,
+          label: formatMeasurement(dormerData.area, 'area'),
+          dimensions: {
+            area: dormerData.area,
+            width: dormerData.width,
+            length: dormerData.length,
+            height: dormerData.height
+          }
+        };
+        break;
+        
+      case 'chimney':
+        const chimneyData = createChimneyOrSkylightMeasurement(points, 'chimney');
+        measurementData = {
+          value: chimneyData.area,
+          label: `${chimneyData.width.toFixed(2)} × ${chimneyData.length.toFixed(2)} m`,
+          subType: 'Kaminausschnitt',
+          dimensions: {
+            width: chimneyData.width,
+            length: chimneyData.length,
+            area: chimneyData.area,
+            perimeter: chimneyData.perimeter
+          }
+        };
+        break;
+        
+      case 'skylight':
+        const skylightData = createChimneyOrSkylightMeasurement(points, 'skylight');
+        measurementData = {
+          value: skylightData.area,
+          label: `${skylightData.width.toFixed(2)} × ${skylightData.length.toFixed(2)} m`,
+          dimensions: {
+            width: skylightData.width,
+            length: skylightData.length,
+            area: skylightData.area,
+            perimeter: skylightData.perimeter
+          }
+        };
+        break;
+        
+      case 'solar':
+        const area = calculateArea(points);
+        const segments = generateSegments(points);
+        
+        measurementData = {
+          value: area,
+          label: formatMeasurement(area, 'area'),
+          segments,
+          dimensions: {
+            area
+          }
+        };
+        break;
+        
+      case 'gutter':
+        const length = calculateDistance(points[0], points[1]);
+        
+        const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+        const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+        const calculatedInclination = calculateInclination(p1, p2);
+        
+        const inclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD 
+          ? calculatedInclination 
+          : undefined;
+          
+        measurementData = {
+          value: length,
+          label: formatMeasurement(length, 'length'),
+          inclination
+        };
+        break;
+        
+      case 'vent':
+        const ventData = createVentMeasurement(points[0]);
+        measurementData = {
+          value: 0,
+          label: 'Lüfter',
+          position: ventData.position,
+          count: 1,
+          penetrationType: 'vent'
+        };
+        break;
+    }
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type,
+        points: [...points],
+        visible: true,
+        unit: type === 'solar' || type === 'dormer' ? 'm²' : 
+              type === 'gutter' ? 'm' : 
+              type === 'vent' ? 'Stk' : 'm',
+        ...measurementData
+      }
+    ]);
+    
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    if (type !== 'vent') {
+      setActiveMode('none');
+    }
+  }, [setMeasurements, setActiveMode, setCurrentPoints]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
@@ -426,3 +545,4 @@ export const useMeasurementCore = () => {
     createRoofElementMeasurement
   };
 };
+

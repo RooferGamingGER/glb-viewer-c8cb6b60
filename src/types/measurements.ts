@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -11,9 +10,6 @@ export type MeasurementMode =
   | 'skylight'  // Dachfenster
   | 'solar'     // Solaranlage
   | 'gutter'    // Dachrinne
-  | 'verge'     // Ortgang/Traufe
-  | 'valley'    // Kehle
-  | 'ridge'     // Grat
   | 'vent';     // Lüfter (nur Markierung)
 
 export interface Point {

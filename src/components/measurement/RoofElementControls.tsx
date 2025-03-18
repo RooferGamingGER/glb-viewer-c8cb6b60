@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -44,9 +43,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'chimney': 
         return 4; // Vier Punkte für genaue Vermessung
       case 'gutter':
-      case 'verge':
-      case 'valley':
-      case 'ridge':
         return 2; // Lineare Messungen
       case 'vent': 
         return 1; // Positionsmarkierung
@@ -95,21 +91,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
           return "Markieren Sie das Ende der Dachrinne oder weitere Punkte für einen Linienzug.";
         }
       
-      case 'verge':
-        if (currentPoints.length === 0) {
-          return "Markieren Sie den Startpunkt des Ortgangs/der Traufe.";
-        } else {
-          return "Markieren Sie das Ende des Ortgangs/der Traufe.";
-        }
-      
-      case 'valley':
-      case 'ridge':
-        if (currentPoints.length === 0) {
-          return `Markieren Sie den Startpunkt der ${mode === 'valley' ? 'Kehle' : 'des Grats'}.`;
-        } else {
-          return `Markieren Sie das Ende der ${mode === 'valley' ? 'Kehle' : 'des Grats'}.`;
-        }
-      
       case 'vent':
         return "Markieren Sie die Position des Lüfters.";
       
@@ -129,9 +110,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'skylight': return "Dachfenster";
       case 'solar': return "Solaranlage";
       case 'gutter': return "Dachrinne";
-      case 'verge': return "Ortgang/Traufe";
-      case 'valley': return "Kehle";
-      case 'ridge': return "Grat";
       case 'vent': return "Lüfter";
       default: return "Element";
     }
