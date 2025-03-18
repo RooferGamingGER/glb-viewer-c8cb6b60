@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface MeasurementListProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
+  toggleLabelVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -26,6 +27,7 @@ interface MeasurementListProps {
 const MeasurementList: React.FC<MeasurementListProps> = ({
   measurements,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -46,7 +48,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   );
   
   const roofElementMeasurements = measurements.filter(m => 
-    ['solar', 'gutter'].includes(m.type)
+    ['solar'].includes(m.type)
   );
   
   const penetrationMeasurements = measurements.filter(m => 
@@ -55,7 +57,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   
   // Other measurements (if any new types are added in the future)
   const otherMeasurements = measurements.filter(m => 
-    !['length', 'height', 'area', 'solar', 'gutter', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
+    !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
   );
   
   // Counts for each category
@@ -89,6 +91,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                   key={measurement.id}
                   measurement={measurement}
                   toggleMeasurementVisibility={toggleMeasurementVisibility}
+                  toggleLabelVisibility={toggleLabelVisibility}
                   handleStartPointEdit={handleStartPointEdit}
                   handleDeleteMeasurement={handleDeleteMeasurement}
                   handleDeletePoint={handleDeletePoint}
@@ -115,6 +118,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                   key={measurement.id}
                   measurement={measurement}
                   toggleMeasurementVisibility={toggleMeasurementVisibility}
+                  toggleLabelVisibility={toggleLabelVisibility}
                   handleStartPointEdit={handleStartPointEdit}
                   handleDeleteMeasurement={handleDeleteMeasurement}
                   handleDeletePoint={handleDeletePoint}
@@ -141,6 +145,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                   key={measurement.id}
                   measurement={measurement}
                   toggleMeasurementVisibility={toggleMeasurementVisibility}
+                  toggleLabelVisibility={toggleLabelVisibility}
                   handleStartPointEdit={handleStartPointEdit}
                   handleDeleteMeasurement={handleDeleteMeasurement}
                   handleDeletePoint={handleDeletePoint}
@@ -169,6 +174,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
                 key={measurement.id}
                 measurement={measurement}
                 toggleMeasurementVisibility={toggleMeasurementVisibility}
+                toggleLabelVisibility={toggleLabelVisibility}
                 handleStartPointEdit={handleStartPointEdit}
                 handleDeleteMeasurement={handleDeleteMeasurement}
                 handleDeletePoint={handleDeletePoint}
