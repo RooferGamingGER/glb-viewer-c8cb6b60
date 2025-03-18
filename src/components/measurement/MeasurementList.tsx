@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   SidebarGroup,
@@ -21,6 +21,7 @@ interface MeasurementListProps {
   toggleSegments: (id: string) => void;
   onEditSegment: (id: string | null) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  activeCategory?: 'standard' | 'roofelements' | 'penetrations';
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -34,14 +35,35 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   segmentsOpen,
   toggleSegments,
   onEditSegment,
-  movingPointInfo
+  movingPointInfo,
+  activeCategory = 'standard'
 }) => {
-  if (!measurements || measurements.length === 0 && !editMeasurementId) return null;
+  // Group measurements by category
+  const categorizedMeasurements = useMemo(() => {
+    // Define which types belong to which category
+    const standardTypes = ['length', 'height', 'area'];
+    const roofElementTypes = ['skylight', 'chimney', 'solar', 'gutter', 'dormer'];
+    const penetrationTypes = ['vent', 'hook', 'other'];
+    
+    // Filter measurements based on active category
+    if (activeCategory === 'standard') {
+      return measurements.filter(m => standardTypes.includes(m.type));
+    } else if (activeCategory === 'roofelements') {
+      return measurements.filter(m => roofElementTypes.includes(m.type));
+    } else if (activeCategory === 'penetrations') {
+      return measurements.filter(m => penetrationTypes.includes(m.type));
+    }
+    
+    // Default: return all
+    return measurements;
+  }, [measurements, activeCategory]);
+  
+  if (!measurements || (categorizedMeasurements.length === 0 && !editMeasurementId)) return null;
   
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full">
       <div className="pr-2">
-        {measurements.map((measurement) => (
+        {categorizedMeasurements.map((measurement) => (
           <MeasurementItem
             key={measurement.id}
             measurement={measurement}
@@ -57,6 +79,12 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
             movingPointInfo={movingPointInfo}
           />
         ))}
+        
+        {categorizedMeasurements.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground">
+            Keine Messungen in dieser Kategorie
+          </div>
+        )}
       </div>
     </div>
   );
