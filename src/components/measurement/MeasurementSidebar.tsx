@@ -17,7 +17,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -59,18 +58,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   activeMode
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
-  
-  // Filter measurements based on active tab with corrected categorization
-  const filteredMeasurements = measurements.filter(m => {
-    if (activeTab === "standard") {
-      return ['length', 'height', 'area'].includes(m.type);
-    } else if (activeTab === "roofElements") {
-      return ['skylight', 'chimney', 'solar'].includes(m.type);
-    } else if (activeTab === "penetrations") {
-      return ['vent', 'hook', 'other'].includes(m.type);
-    }
-    return true;
-  });
   
   // Sync the active tab with the current measurement tool when appropriate
   useEffect(() => {
@@ -127,28 +114,18 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
         </div>
       </div>
       
-      <div className="px-3 pb-2">
-        <Tabs defaultValue="standard" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 w-full text-xs h-8">
-            <TabsTrigger value="standard">Standard</TabsTrigger>
-            <TabsTrigger value="roofElements">Dachelemente</TabsTrigger>
-            <TabsTrigger value="penetrations">Einbauten</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-      
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full pr-2">
           {showTable ? (
             <MeasurementTable 
-              measurements={filteredMeasurements} 
+              measurements={measurements} 
               toggleMeasurementVisibility={toggleMeasurementVisibility} 
               toggleLabelVisibility={toggleLabelVisibility}
               handleDeleteMeasurement={handleDeleteMeasurement}
             />
           ) : (
             <MeasurementList 
-              measurements={filteredMeasurements}
+              measurements={measurements}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
               toggleLabelVisibility={toggleLabelVisibility}
               handleStartPointEdit={handleStartPointEdit}

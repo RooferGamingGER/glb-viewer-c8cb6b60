@@ -28,7 +28,7 @@ export const useMeasurementVisibility = (
     if (!measurement) return;
     
     // Determine the new visibility state (inverse of current)
-    const isVisible = measurement.visible === false ? false : true;
+    const newVisibility = measurement.visible === false;
     
     // Update visibility of all visual elements for this measurement
     
@@ -36,12 +36,12 @@ export const useMeasurementVisibility = (
     if (refs.measurementsRef.current) {
       refs.measurementsRef.current.children.forEach(obj => {
         if (obj.userData && obj.userData.measurementId === id) {
-          obj.visible = isVisible;
+          obj.visible = newVisibility;
           
           // For groups, update all children as well
           if (obj instanceof THREE.Group) {
             obj.children.forEach(child => {
-              child.visible = isVisible;
+              child.visible = newVisibility;
             });
           }
         }
@@ -52,7 +52,7 @@ export const useMeasurementVisibility = (
     if (refs.labelsRef.current) {
       refs.labelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = isVisible && (measurement.labelVisible !== false);
+          label.visible = newVisibility && (measurement.labelVisible !== false);
         }
       });
     }
@@ -61,7 +61,7 @@ export const useMeasurementVisibility = (
     if (refs.segmentLabelsRef.current) {
       refs.segmentLabelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id) {
-          label.visible = isVisible && (measurement.labelVisible !== false);
+          label.visible = newVisibility && (measurement.labelVisible !== false);
         }
       });
     }
@@ -70,7 +70,7 @@ export const useMeasurementVisibility = (
     if (refs.pointsRef.current) {
       refs.pointsRef.current.children.forEach(point => {
         if (point.userData && point.userData.measurementId === id) {
-          point.visible = isVisible;
+          point.visible = newVisibility;
         }
       });
     }
@@ -79,7 +79,7 @@ export const useMeasurementVisibility = (
     if (refs.linesRef.current) {
       refs.linesRef.current.children.forEach(line => {
         if (line.userData && line.userData.measurementId === id) {
-          line.visible = isVisible;
+          line.visible = newVisibility;
         }
       });
     }
@@ -95,13 +95,13 @@ export const useMeasurementVisibility = (
     if (!measurement) return;
     
     // Determine the new label visibility state (inverse of current)
-    const areLabelsVisible = measurement.labelVisible === false ? false : true;
+    const newLabelVisibility = measurement.labelVisible === false;
     
     // Update main label visibility
     if (refs.labelsRef.current) {
       refs.labelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = measurement.visible !== false && areLabelsVisible;
+          label.visible = measurement.visible !== false && newLabelVisibility;
         }
       });
     }
@@ -110,7 +110,7 @@ export const useMeasurementVisibility = (
     if (refs.segmentLabelsRef.current) {
       refs.segmentLabelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id) {
-          label.visible = measurement.visible !== false && areLabelsVisible;
+          label.visible = measurement.visible !== false && newLabelVisibility;
         }
       });
     }

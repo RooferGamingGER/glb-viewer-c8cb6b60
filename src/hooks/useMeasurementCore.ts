@@ -243,32 +243,40 @@ export const useMeasurementCore = () => {
     
     switch (type) {
       case 'chimney':
-        const chimneyData = createChimneyOrSkylightMeasurement(points, 'chimney');
-        measurementData = {
-          value: chimneyData.area,
-          label: `${chimneyData.width.toFixed(2)} × ${chimneyData.length.toFixed(2)} m`,
-          subType: 'Kaminausschnitt',
-          dimensions: {
-            width: chimneyData.width,
-            length: chimneyData.length,
-            area: chimneyData.area,
-            perimeter: chimneyData.perimeter
-          }
-        };
+        if (points.length >= 4) {
+          const area = calculateArea(points);
+          const dimensions = calculateQuadrilateralDimensions(points);
+          
+          measurementData = {
+            value: area,
+            label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
+            subType: 'Kaminausschnitt',
+            dimensions: {
+              width: dimensions.width,
+              length: dimensions.length,
+              area: area,
+              perimeter: dimensions.perimeter
+            }
+          };
+        }
         break;
         
       case 'skylight':
-        const skylightData = createChimneyOrSkylightMeasurement(points, 'skylight');
-        measurementData = {
-          value: skylightData.area,
-          label: `${skylightData.width.toFixed(2)} × ${skylightData.length.toFixed(2)} m`,
-          dimensions: {
-            width: skylightData.width,
-            length: skylightData.length,
-            area: skylightData.area,
-            perimeter: skylightData.perimeter
-          }
-        };
+        if (points.length >= 4) {
+          const area = calculateArea(points);
+          const dimensions = calculateQuadrilateralDimensions(points);
+          
+          measurementData = {
+            value: area,
+            label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
+            dimensions: {
+              width: dimensions.width,
+              length: dimensions.length,
+              area: area,
+              perimeter: dimensions.perimeter
+            }
+          };
+        }
         break;
         
       case 'solar':
