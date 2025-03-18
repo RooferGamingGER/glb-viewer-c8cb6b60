@@ -1,14 +1,14 @@
 
-import { useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { Point } from '@/hooks/useMeasurements';
+import { Point } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
 import { useMeasurementEvents } from './useMeasurementEvents';
 
 /**
- * Haupthook für Messinteraktionen - kombiniert alle anderen spezialisierten Hooks
+ * Main hook for measurement interactions - combines all other specialized hooks
  */
 export const useMeasurementInteraction = (
   enabled: boolean,
@@ -34,7 +34,7 @@ export const useMeasurementInteraction = (
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
-  // Hook für Vorschau-Visualisierung
+  // Hook for preview visualization
   const {
     previewPoint,
     setPreviewPoint,
@@ -42,14 +42,14 @@ export const useMeasurementInteraction = (
     updatePreviewVisualization
   } = useMeasurementPreview(scene);
 
-  // Hook für Plus-Symbole zum Hinzufügen von Punkten
+  // Hook for plus symbols for adding points
   const {
     addPointIndicatorsRef,
     clearAddPointIndicators,
     updateAddPointIndicators
   } = useAddPointIndicators(scene);
 
-  // Hook für Punktbewegung
+  // Hook for point movement
   const {
     movingPointInfo,
     setMovingPointInfo,
@@ -58,17 +58,17 @@ export const useMeasurementInteraction = (
     updateMovingPoint
   } = usePointMovement(scene, camera, handlers.updateMeasurementPoint);
 
-  // Aktualisiere Vorschauanzeige, wenn sich der Vorschaupunkt ändert
+  // Update preview display when the preview point changes
   useEffect(() => {
     updatePreviewVisualization(movingPointInfo, measurements);
   }, [previewPoint, movingPointInfo, measurements, updatePreviewVisualization]);
 
-  // Aktualisiere die Plus-Symbole für Flächenmessungen im Bearbeitungsmodus
+  // Update the plus symbols for area measurements in edit mode
   useEffect(() => {
     updateAddPointIndicators(editMeasurementId, measurements);
   }, [editMeasurementId, measurements, updateAddPointIndicators]);
 
-  // Event-Handler für Interaktionen
+  // Event handlers for interactions
   useMeasurementEvents(
     enabled,
     scene,
@@ -93,7 +93,7 @@ export const useMeasurementInteraction = (
     }
   );
 
-  // Aufräumen, wenn der enabled-Status sich ändert
+  // Clean up when enabled status changes
   useEffect(() => {
     if (!enabled) {
       clearPreviewGroup();

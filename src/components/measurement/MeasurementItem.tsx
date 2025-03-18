@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Pencil, Trash2, Save, X } from 'lucide-react';
-import { Measurement, Segment } from '@/hooks/useMeasurements';
+import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';

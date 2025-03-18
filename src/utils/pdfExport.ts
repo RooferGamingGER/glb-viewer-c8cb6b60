@@ -115,39 +115,40 @@ export const exportMeasurementsToPdf = async (
       }
       .measurement-section h2 {
         font-size: 24px;
-        margin-bottom: 15px;
+        margin-bottom: 25px;
         color: #333;
         font-weight: 600;
-        padding-bottom: 8px;
+        padding-bottom: 12px;
         border-bottom: 1px solid #e0e0e0;
       }
       .measurement-section h3 {
         font-size: 18px;
-        margin: 15px 0 10px 0;
+        margin: 25px 0 15px 0;
         color: #444;
         font-weight: 500;
       }
       .measurement-section p {
         color: #555;
         line-height: 1.6;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
       }
       .measurement-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 15px;
+        margin-top: 25px;
+        margin-bottom: 25px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       }
       .measurement-table th {
         background-color: #f8f9fa;
-        padding: 10px;
+        padding: 12px;
         text-align: left;
         font-weight: 600;
         border: 1px solid #eee;
         color: #333;
       }
       .measurement-table td {
-        padding: 10px;
+        padding: 12px;
         border: 1px solid #eee;
         vertical-align: middle;
       }
@@ -157,25 +158,27 @@ export const exportMeasurementsToPdf = async (
       .segment-table {
         width: 95%;
         margin-left: 5%;
+        margin-top: 20px;
         border-collapse: collapse;
-        margin-bottom: 15px;
+        margin-bottom: 25px;
       }
       .segment-table th {
         background-color: #f8f9fa;
-        padding: 8px;
+        padding: 10px;
         text-align: left;
         font-weight: 500;
         border: 1px solid #eee;
         color: #444;
       }
       .segment-table td {
-        padding: 8px;
+        padding: 10px;
         border: 1px solid #eee;
       }
       .summary-card {
         background-color: #ffffff;
         border-radius: 8px;
-        margin-bottom: 20px;
+        margin-bottom: 30px;
+        padding: 20px;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
       }
@@ -184,12 +187,12 @@ export const exportMeasurementsToPdf = async (
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 15px;
-        margin-top: 15px;
+        margin-top: 20px;
       }
       .summary-stat {
         background-color: #f9fafc;
         border-radius: 8px;
-        padding: 12px;
+        padding: 15px;
         flex: 1;
         min-width: 120px;
         text-align: center;
@@ -209,14 +212,14 @@ export const exportMeasurementsToPdf = async (
       }
       .promo-section {
         text-align: center;
-        margin-top: 30px;
-        padding: 15px;
+        margin-top: 40px;
+        padding: 20px;
         background-color: #f9fafc;
         border-radius: 8px;
         border: 1px solid #f0f0f0;
       }
       .promo-item {
-        margin: 8px 0;
+        margin: 10px 0;
         font-size: 15px;
         line-height: 1.5;
       }
@@ -226,9 +229,11 @@ export const exportMeasurementsToPdf = async (
       }
       .section-with-header {
         break-inside: avoid;
+        margin-bottom: 30px;
       }
       .table-container {
         break-inside: avoid;
+        margin-top: 30px;
       }
     `;
     document.head.appendChild(styleElement);
@@ -264,6 +269,8 @@ export const exportMeasurementsToPdf = async (
       
       const sectionTitle = document.createElement('h2');
       sectionTitle.textContent = 'Messungen - Übersicht';
+      sectionTitle.style.marginTop = '20px'; // Added extra spacing
+      sectionTitle.style.marginBottom = '30px'; // Added extra spacing
       summarySection.appendChild(sectionTitle);
       
       summaryContent.appendChild(summarySection);
@@ -277,6 +284,7 @@ export const exportMeasurementsToPdf = async (
       // Create detailed summary table in its own keep-together block
       const tableContainer = document.createElement('div');
       tableContainer.className = 'keep-together table-container';
+      tableContainer.style.marginTop = '30px'; // Added extra spacing
       
       const detailsTitle = document.createElement('h3');
       detailsTitle.textContent = 'Detaillierte Übersicht';
@@ -303,7 +311,7 @@ export const exportMeasurementsToPdf = async (
     
     // Configure html2pdf options with improved page break handling
     const pdfOptions = {
-      margin: [10, 10, 10, 10], // [top, right, bottom, left] in mm
+      margin: [15, 15, 15, 15], // [top, right, bottom, left] in mm - increased margins
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
@@ -608,6 +616,8 @@ const appendMeasurementTypeSection = (
   // Create title based on measurement type
   const sectionTitle = document.createElement('h2');
   sectionTitle.textContent = type === 'length' ? 'Längenmessungen' : 'Höhenmessungen';
+  sectionTitle.style.marginTop = '20px'; // Added extra spacing
+  sectionTitle.style.marginBottom = '30px'; // Added extra spacing
   section.appendChild(sectionTitle);
   
   // Create description based on type
@@ -624,6 +634,7 @@ const appendMeasurementTypeSection = (
   // Create measurements table in its own container to prevent breaks
   const tableContainer = document.createElement('div');
   tableContainer.className = 'keep-together table-container';
+  tableContainer.style.marginTop = '30px'; // Added extra spacing
   
   // Create columns based on measurement type
   let columns: string[];
@@ -656,6 +667,8 @@ const appendAreaMeasurementSection = (
   
   const sectionTitle = document.createElement('h2');
   sectionTitle.textContent = 'Flächenmessungen';
+  sectionTitle.style.marginTop = '20px'; // Added extra spacing
+  sectionTitle.style.marginBottom = '30px'; // Added extra spacing
   areaSection.appendChild(sectionTitle);
   
   const description = document.createElement('p');
@@ -667,6 +680,7 @@ const appendAreaMeasurementSection = (
   // Create main area measurements table in its own container
   const mainTableContainer = document.createElement('div');
   mainTableContainer.className = 'keep-together table-container';
+  mainTableContainer.style.marginTop = '30px'; // Added extra spacing
   mainTableContainer.appendChild(createAreaMeasurementsTable(areaMeasurements));
   areaContent.appendChild(mainTableContainer);
   
@@ -754,6 +768,7 @@ const createAreaMeasurementsTable = (measurements: Measurement[]): HTMLElement =
 // Helper function to create segment tables for area measurements
 const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLElement => {
   const container = document.createElement('div');
+  container.style.marginTop = '30px'; // Added extra spacing
   
   const segmentsTitle = document.createElement('h3');
   segmentsTitle.textContent = `Teilmessungen für Fläche ${index + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
@@ -806,6 +821,7 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
 const createMeasurementSummary = (measurements: Measurement[], title: string): HTMLElement => {
   const summarySection = document.createElement('div');
   summarySection.className = 'measurement-section';
+  summarySection.style.marginBottom = '40px'; // Added extra spacing
   
   // Add header
   summarySection.appendChild(createHeader(title));
