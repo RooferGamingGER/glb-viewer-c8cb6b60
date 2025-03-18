@@ -1,5 +1,6 @@
+
 import * as THREE from 'three';
-import { Point, Measurement, Segment } from '@/hooks/useMeasurements';
+import { Point, Measurement, Segment } from '@/types/measurements';
 import {
   createMeasurementLabel,
   formatMeasurementLabel,
@@ -183,11 +184,11 @@ export const renderCurrentPoints = (
         }
         
         // Create label
-        const labelSprite = createMeasurementLabel(labelText, { 
-          x: midpoint.x, 
-          y: midpoint.y, 
-          z: midpoint.z 
-        });
+        const labelSprite = createMeasurementLabel(
+          labelText,
+          midpoint,
+          false
+        );
         
         labelSprite.userData = { 
           isCurrentMeasurement: true,
@@ -216,14 +217,19 @@ export const renderCurrentPoints = (
       // For area measures with at least 3 points, show area label
       if (['area', 'solar'].includes(mode) && points.length >= 3) {
         // Calculate center point of polygon for label placement
-        const centerPoint = calculateCentroid(points);
+        const centerPoint = calculateCentroid(pointsToVector3Array(points));
         
         // Calculate area (implemented elsewhere)
         // This is just a placeholder for the real area calculation
         const labelText = `Messung...`;
         
         // Create label
-        const labelSprite = createMeasurementLabel(labelText, centerPoint);
+        const labelSprite = createMeasurementLabel(
+          labelText,
+          centerPoint,
+          false
+        );
+        
         labelSprite.userData = { 
           isCurrentMeasurement: true,
           measurementType: mode
@@ -332,16 +338,16 @@ export const renderEditPoints = (
     editPointsGroup.add(labelMesh);
     
     // Add the number as a text sprite
+    const positionVector = new THREE.Vector3(
+      point.x + 0.15,
+      point.y + 0.15,
+      point.z + 0.01
+    );
+    
     const numLabel = createMeasurementLabel(
       `${index + 1}`, 
-      {
-        x: point.x + 0.15,
-        y: point.y + 0.15,
-        z: point.z + 0.01
-      }, 
-      0.4, 
-      0x000000, 
-      0xffffff
+      positionVector,
+      false
     );
     
     numLabel.userData = {
@@ -625,11 +631,17 @@ export const renderMeasurements = (
       const labelText = measurement.label || 
         (type === 'vent' ? 'Lüfter' : type === 'hook' ? 'Dachhaken' : 'Einbau');
       
-      const labelSprite = createMeasurementLabel(labelText, {
-        x: position.x,
-        y: position.y + 0.2, // Position above the marker
-        z: position.z
-      });
+      const positionVector = new THREE.Vector3(
+        position.x,
+        position.y + 0.2, // Position above the marker
+        position.z
+      );
+      
+      const labelSprite = createMeasurementLabel(
+        labelText,
+        positionVector,
+        false
+      );
       
       labelSprite.userData = { 
         measurementId: id,
@@ -668,7 +680,7 @@ export const renderMeasurements = (
       measurementsGroup.add(line);
       
       // Add measurement label
-      let labelPosition: Point;
+      let labelPosition: THREE.Vector3;
       let labelText = '';
       
       if (type === 'length' || type === 'height' || type === 'gutter') {
@@ -677,7 +689,7 @@ export const renderMeasurements = (
         const p2 = pointToVector3(points[1]);
         const midpoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
         
-        labelPosition = { x: midpoint.x, y: midpoint.y, z: midpoint.z };
+        labelPosition = midpoint;
         
         // Include inclination in label if available
         if (inclination !== undefined && Math.abs(inclination) > 0.001) {
@@ -687,18 +699,22 @@ export const renderMeasurements = (
         }
       } else if (type === 'area' || type === 'solar') {
         // For area/solar, place label at centroid
-        labelPosition = calculateCentroid(points);
+        labelPosition = calculateCentroid(pointsToVector3Array(points));
         labelText = `${value.toFixed(2)} ${unit || 'm²'}`;
       } else if (type === 'skylight' || type === 'chimney') {
         // For skylight/chimney, place label at centroid
-        labelPosition = calculateCentroid(points);
+        labelPosition = calculateCentroid(pointsToVector3Array(points));
         
         // Use the provided label or generate a default
         labelText = measurement.label || `${type === 'skylight' ? 'Dachfenster' : 'Kamin'}`;
       }
       
       // Create the label sprite
-      const labelSprite = createMeasurementLabel(labelText, labelPosition);
+      const labelSprite = createMeasurementLabel(
+        labelText,
+        labelPosition,
+        false
+      );
       
       labelSprite.userData = { 
         measurementId: id,
@@ -713,16 +729,14 @@ export const renderMeasurements = (
           // Get the points of the segment
           if (!segment.points || segment.points.length !== 2) return;
           
-          const segmentStart = segment.points[0];
-          const segmentEnd = segment.points[1];
-          const segmentMidpoint = calculateMidpoint(segmentStart, segmentEnd);
+          const segmentStart = pointToVector3(segment.points[0]);
+          const segmentEnd = pointToVector3(segment.points[1]);
+          const segmentMidpoint = new THREE.Vector3().addVectors(segmentStart, segmentEnd).multiplyScalar(0.5);
           
           const segmentLabel = createMeasurementLabel(
             `${segment.length.toFixed(2)} m`,
             segmentMidpoint,
-            0.6, // Smaller font size for segment labels
-            0x000000, // Black text
-            0xffffff  // White background
+            false
           );
           
           segmentLabel.userData = {
