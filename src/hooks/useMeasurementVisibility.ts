@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import * as THREE from 'three';
-import { Measurement } from '@/hooks/useMeasurements';
+import { Measurement } from '@/types/measurements';
 
 /**
  * Hook for managing visibility of measurement visualizations

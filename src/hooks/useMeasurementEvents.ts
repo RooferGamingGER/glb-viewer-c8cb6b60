@@ -2,7 +2,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
-import { Point } from '@/hooks/useMeasurements';
+import { Point } from '@/types/measurements';
 import { useMeasurementRaycasting } from './useMeasurementRaycasting';
 
 /**

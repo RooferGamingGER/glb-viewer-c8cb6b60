@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { Point } from '@/hooks/useMeasurements';
+import { Point } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';

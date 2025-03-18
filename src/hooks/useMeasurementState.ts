@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { MeasurementMode, Measurement, Point } from '@/hooks/useMeasurements';
+import { MeasurementMode, Measurement, Point } from '@/types/measurements';
 import { toast } from 'sonner';
 
 /**
@@ -18,7 +18,7 @@ export const useMeasurementState = (
     deletePoint: (measurementId: string, pointIndex: number) => void;
     updateMeasurement: (id: string, data: Partial<Measurement>) => void;
     finalizeMeasurement: () => void;
-    undoLastPoint: () => boolean;  // Change return type to boolean
+    undoLastPoint: () => boolean;
     clearCurrentPoints: () => void;
     clearMeasurements: () => void;
     cancelEditing: () => void;
