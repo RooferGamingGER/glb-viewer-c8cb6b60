@@ -1,8 +1,8 @@
-
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
 import { MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
+import { earClip, projectPointsToPlane } from './triangulation';
 
 /**
  * Calculate 3D distance between two points
@@ -23,52 +23,36 @@ export const calculateHeight = (point1: Point, point2: Point): number => {
 };
 
 /**
- * Calculate area of polygon defined by points
+ * Calculate area of polygon defined by points using 3D triangulation
+ * Based on approach used in Potree for accurate 3D surface area measurement
  */
 export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
-  // For polygons, triangulate and sum the areas of the triangles
-  const triangleCount = points.length - 2;
+  // Projektion auf die am besten passende Ebene durchführen
+  const { projectedPoints, planeNormal } = projectPointsToPlane(points);
+  
+  // Ear-Clipping für robuste Triangulation verwenden
+  const triangles = earClip(projectedPoints);
+  
   let totalArea = 0;
   
-  // Project points to best-fit plane for more accurate area calculation
-  // First, find the normal of the polygon by cross product of two edges
-  const edge1 = new THREE.Vector3(
-    points[1].x - points[0].x,
-    points[1].y - points[0].y,
-    points[1].z - points[0].z
-  );
-  
-  const edge2 = new THREE.Vector3(
-    points[2].x - points[0].x,
-    points[2].y - points[0].y,
-    points[2].z - points[0].z
-  );
-  
-  const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-  
-  // Simple triangulation using the first point as a pivot
-  for (let i = 0; i < triangleCount; i++) {
-    const p0 = points[0];
-    const p1 = points[i + 1];
-    const p2 = points[i + 2];
+  // Fläche berechnen mit der Kreuzprodukt-Methode (wie in Potree)
+  // Diese Methode ist genauer als die Heronsche Formel für 3D-Flächen
+  for (const triangle of triangles) {
+    const p0 = new THREE.Vector3(points[triangle[0]].x, points[triangle[0]].y, points[triangle[0]].z);
+    const p1 = new THREE.Vector3(points[triangle[1]].x, points[triangle[1]].y, points[triangle[1]].z);
+    const p2 = new THREE.Vector3(points[triangle[2]].x, points[triangle[2]].y, points[triangle[2]].z);
     
-    // Create 3D vectors
-    const v0 = new THREE.Vector3(p0.x, p0.y, p0.z);
-    const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
-    const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+    // Vektoren zwischen den Punkten berechnen
+    const v1 = new THREE.Vector3().subVectors(p1, p0);
+    const v2 = new THREE.Vector3().subVectors(p2, p0);
     
-    // Calculate sides of the triangle
-    const a = v0.distanceTo(v1);
-    const b = v1.distanceTo(v2);
-    const c = v2.distanceTo(v0);
+    // Kreuzprodukt der Vektoren berechnen
+    const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
     
-    // Calculate semi-perimeter
-    const s = (a + b + c) / 2;
-    
-    // Calculate triangle area using Heron's formula
-    const triangleArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
+    // Die Länge des Kreuzprodukts ist doppelt so groß wie die Fläche
+    const triangleArea = crossProduct.length() * 0.5;
     
     totalArea += triangleArea;
   }
@@ -189,4 +173,38 @@ export const getNearestPointIndex = (measurement: any, position: Point): number 
   });
   
   return nearestIndex;
+};
+
+/**
+ * Validate a polygon to check if it's valid for area calculation
+ */
+export const validatePolygon = (points: Point[]): { 
+  valid: boolean; 
+  message?: string;
+} => {
+  if (points.length < 3) {
+    return { valid: false, message: 'Mindestens 3 Punkte werden benötigt.' };
+  }
+  
+  // Prüfen, ob alle Punkte koplanar (auf einer Ebene) sind
+  if (points.length > 3) {
+    const { projectedPoints } = projectPointsToPlane(points);
+    
+    // Vergleiche die Originalpunkte mit den projizierten Punkten
+    let maxDeviation = 0;
+    for (let i = 0; i < points.length; i++) {
+      const deviation = calculateDistance(points[i], projectedPoints[i]);
+      maxDeviation = Math.max(maxDeviation, deviation);
+    }
+    
+    // Wenn die maximale Abweichung zu groß ist, ist das Polygon nicht ausreichend planar
+    if (maxDeviation > 0.5) {  // 0.5 Meter Toleranz
+      return { 
+        valid: true,  // Immer noch gültig, aber mit Warnung
+        message: 'Warnung: Die Punkte liegen nicht auf einer Ebene. Die Flächenberechnung könnte ungenau sein.' 
+      };
+    }
+  }
+  
+  return { valid: true };
 };
