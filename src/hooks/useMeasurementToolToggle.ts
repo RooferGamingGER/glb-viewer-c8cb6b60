@@ -34,7 +34,13 @@ export const useMeasurementToolToggle = (
     }
   }, [activeMode, clearCurrentPoints, setActiveMode, setEditMeasurementId, setEditingPointIndex, setMeasurements]);
 
+  // Check if a specific mode is active
+  const isModeActive = useCallback((mode: MeasurementMode) => {
+    return activeMode === mode;
+  }, [activeMode]);
+
   return {
-    toggleMeasurementTool
+    toggleMeasurementTool,
+    isModeActive
   };
 };

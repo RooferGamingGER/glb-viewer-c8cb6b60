@@ -31,11 +31,18 @@ export const useMeasurementVisibility = (
     
     // Update visibility of all visual elements for this measurement
     
-    // Update geometry visibility
+    // Update geometry visibility (including markers)
     if (refs.measurementsRef.current) {
       refs.measurementsRef.current.children.forEach(obj => {
         if (obj.userData && obj.userData.measurementId === id) {
           obj.visible = isVisible;
+          
+          // Wenn es sich um eine Gruppe handelt, aktualisiere auch alle Kinder
+          if (obj instanceof THREE.Group) {
+            obj.children.forEach(child => {
+              child.visible = isVisible;
+            });
+          }
         }
       });
     }
