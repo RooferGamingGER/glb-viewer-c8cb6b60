@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -153,9 +152,14 @@ export const useMeasurementCore = () => {
         toast.warning(validation.message);
       }
       
+      // Berechnung der Fläche mit verbesserter 3D-Methode
       const value = calculateArea(points);
       const label = formatMeasurement(value, 'area');
       const segments = generateSegments(points);
+      
+      toast.success(
+        `3D-Fläche berechnet: ${label} (Potree-Methode)`
+      );
       
       setMeasurements(prev => [
         ...prev,

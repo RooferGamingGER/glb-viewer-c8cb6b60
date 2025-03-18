@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
@@ -24,7 +23,8 @@ export const calculateHeight = (point1: Point, point2: Point): number => {
 };
 
 /**
- * Calculate area of polygon defined by points
+ * Calculate area of polygon defined by points using 3D triangulation
+ * Based on approach used in Potree for accurate 3D surface area measurement
  */
 export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
@@ -37,35 +37,25 @@ export const calculateArea = (points: Point[]): number => {
   
   let totalArea = 0;
   
-  // Fläche der einzelnen Dreiecke berechnen und summieren
+  // Fläche berechnen mit der Kreuzprodukt-Methode (wie in Potree)
+  // Diese Methode ist genauer als die Heronsche Formel für 3D-Flächen
   for (const triangle of triangles) {
-    const p0 = projectedPoints[triangle[0]];
-    const p1 = projectedPoints[triangle[1]];
-    const p2 = projectedPoints[triangle[2]];
+    const p0 = new THREE.Vector3(points[triangle[0]].x, points[triangle[0]].y, points[triangle[0]].z);
+    const p1 = new THREE.Vector3(points[triangle[1]].x, points[triangle[1]].y, points[triangle[1]].z);
+    const p2 = new THREE.Vector3(points[triangle[2]].x, points[triangle[2]].y, points[triangle[2]].z);
     
-    // 3D-Vektoren für präzise Berechnung erstellen
-    const v0 = new THREE.Vector3(p0.x, p0.y, p0.z);
-    const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
-    const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+    // Vektoren zwischen den Punkten berechnen
+    const v1 = new THREE.Vector3().subVectors(p1, p0);
+    const v2 = new THREE.Vector3().subVectors(p2, p0);
     
-    // Dreiecksseiten berechnen
-    const a = v0.distanceTo(v1);
-    const b = v1.distanceTo(v2);
-    const c = v2.distanceTo(v0);
+    // Kreuzprodukt der Vektoren berechnen
+    const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
     
-    // Halbumfang berechnen
-    const s = (a + b + c) / 2;
-    
-    // Dreiecksfläche mit der Formel von Heron berechnen
-    const triangleArea = Math.sqrt(Math.max(0, s * (s - a) * (s - b) * (s - c)));
+    // Die Länge des Kreuzprodukts ist doppelt so groß wie die Fläche
+    const triangleArea = crossProduct.length() * 0.5;
     
     totalArea += triangleArea;
   }
-  
-  // Korrektur für geneigte Flächen
-  // Wichtig: Da wir bereits die tatsächliche 3D-Fläche berechnet haben,
-  // müssen wir hier KEINE Korrektur für die Neigung anwenden.
-  // Die Heronsche Formel gibt bereits die korrekte Dreiecksfläche im 3D-Raum.
   
   return totalArea;
 };
