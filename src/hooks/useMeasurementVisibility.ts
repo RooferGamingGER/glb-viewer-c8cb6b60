@@ -101,7 +101,7 @@ export const useMeasurementVisibility = (
     if (refs.labelsRef.current) {
       refs.labelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = areLabelsVisible && (measurement.visible !== false);
+          label.visible = measurement.visible !== false && areLabelsVisible;
         }
       });
     }
@@ -110,20 +110,19 @@ export const useMeasurementVisibility = (
     if (refs.segmentLabelsRef.current) {
       refs.segmentLabelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id) {
-          label.visible = areLabelsVisible && (measurement.visible !== false);
+          label.visible = measurement.visible !== false && areLabelsVisible;
         }
       });
     }
   }, [measurements, toggleLabelVisibility, refs]);
 
-  // Function to toggle all labels visibility
+  // Function to update all labels visibility
   const updateAllLabelsVisibility = useCallback((visible: boolean) => {
     if (!refs.labelsRef.current || !refs.segmentLabelsRef.current) return;
     
-    // Update main labels
+    // Update all main labels
     refs.labelsRef.current.children.forEach(label => {
       if (label.userData && !label.userData.isPreview) {
-        // Only affect visible measurements
         const measurementId = label.userData.measurementId;
         if (measurementId) {
           const measurement = measurements.find(m => m.id === measurementId);
@@ -134,10 +133,9 @@ export const useMeasurementVisibility = (
       }
     });
     
-    // Update segment labels
+    // Update all segment labels
     refs.segmentLabelsRef.current.children.forEach(label => {
       if (label.userData) {
-        // Only affect visible measurements
         const measurementId = label.userData.measurementId;
         if (measurementId) {
           const measurement = measurements.find(m => m.id === measurementId);
@@ -149,24 +147,28 @@ export const useMeasurementVisibility = (
     });
   }, [measurements, refs]);
 
-  // Helper function to update measurement markers
-  const updateMeasurementMarkers = useCallback((showMarkers: boolean) => {
+  // Function to update measurement markers
+  const updateMeasurementMarkers = useCallback(() => {
     if (!refs.measurementsRef.current) return;
     
-    // Find all marker groups and set their visibility
+    // Update visibility of all markers
     refs.measurementsRef.current.children.forEach(obj => {
-      if (obj.userData && obj.userData.isMarker) {
-        obj.visible = showMarkers;
-        
-        // For groups, update all children as well
-        if (obj instanceof THREE.Group) {
-          obj.children.forEach(child => {
-            child.visible = showMarkers;
-          });
+      if (obj.userData && obj.userData.measurementId) {
+        const measurementId = obj.userData.measurementId;
+        const measurement = measurements.find(m => m.id === measurementId);
+        if (measurement) {
+          obj.visible = measurement.visible !== false;
+          
+          // For groups, update all children as well
+          if (obj instanceof THREE.Group) {
+            obj.children.forEach(child => {
+              child.visible = measurement.visible !== false;
+            });
+          }
         }
       }
     });
-  }, [refs]);
+  }, [measurements, refs]);
 
   return {
     handleToggleMeasurementVisibility,

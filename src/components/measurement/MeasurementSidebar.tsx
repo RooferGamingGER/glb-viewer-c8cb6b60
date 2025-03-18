@@ -87,7 +87,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 pt-2 pb-1">
+      <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <h2 className="text-md font-semibold">Messungen</h2>
         <div className="flex space-x-1">
           <Button 
@@ -95,15 +95,16 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             size="sm"
             onClick={toggleAllLabelsVisibility}
             title={allLabelsVisible ? "Alle Labels ausblenden" : "Alle Labels einblenden"}
+            className="h-7 w-7 p-0"
           >
-            {allLabelsVisible ? <BookmarkX className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+            {allLabelsVisible ? <BookmarkX className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
           </Button>
           
           {measurements.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="h-4 w-4 mr-1" />
+                <Button variant="destructive" size="sm" className="h-7 text-xs">
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
                   Alle löschen
                 </Button>
               </AlertDialogTrigger>
@@ -126,9 +127,9 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
         </div>
       </div>
       
-      <div className="px-4 pb-2">
+      <div className="px-3 pb-2">
         <Tabs defaultValue="standard" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 w-full">
+          <TabsList className="grid grid-cols-3 w-full text-xs h-8">
             <TabsTrigger value="standard">Standard</TabsTrigger>
             <TabsTrigger value="roofElements">Dachelemente</TabsTrigger>
             <TabsTrigger value="penetrations">Einbauten</TabsTrigger>

@@ -348,7 +348,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
-          className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          className={`absolute top-0 right-0 h-full w-72 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
           {/* Fixed Header - Tools Section */}
           <div className="flex-shrink-0 border-b border-border/50">

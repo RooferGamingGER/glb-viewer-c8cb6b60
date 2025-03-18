@@ -175,6 +175,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
     const height = measurement.dimensions.height;
     
     if (width !== undefined && height !== undefined) {
+      // Format: "X.XX m² (H.HH×W.WW m)"
       return `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'} (${height.toFixed(2)}×${width.toFixed(2)} m)`;
     }
   }
