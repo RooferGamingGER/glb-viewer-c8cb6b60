@@ -121,7 +121,7 @@ export const groupMeasurementsByType = (measurements: Measurement[]) => {
  */
 export const getPenetrationCount = (measurements: Measurement[]): number => {
   return measurements.filter(m => m.type === 'vent' || m.type === 'hook' || m.type === 'other')
-    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
+    .reduce((sum, m) => sum + (m.count || 1), 0);
 };
 
 /**
@@ -138,17 +138,15 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
   
-  // Ensure vents are counted as at least 1 each
+  // Updated: Count each penetration as 1 by default
   const vents = measurements.filter(m => m.type === 'vent')
-    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
+    .reduce((sum, m) => sum + (m.count || 1), 0);
   
-  // Ensure hooks are counted as at least 1 each
   const hooks = measurements.filter(m => m.type === 'hook')
-    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
+    .reduce((sum, m) => sum + (m.count || 1), 0);
   
-  // Ensure other penetrations are counted as at least 1 each
   const otherPenetrations = measurements.filter(m => m.type === 'other')
-    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
+    .reduce((sum, m) => sum + (m.count || 1), 0);
   
   // Calculate total solar area
   const solarArea = measurements
@@ -180,14 +178,18 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
     }
   }
   
+  // Special formatting for penetration types (vent, hook, other)
+  if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
+    const count = measurement.count || 1;
+    return `${count} ${measurement.unit || 'Stk'}`;
+  }
+  
   // Standard formatting for other measurement types
   let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || (measurement.type === 'area' ? 'm²' : 'm')}`;
   
-  // Add count information if available
-  if ((measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') && measurement.count) {
-    const count = measurement.count > 1 ? measurement.count : 1;
-    valueText += ` (${count} Stück)`;
-  } else if (measurement.count && measurement.count > 1) {
+  // Add count information for other items if needed
+  if (measurement.count && measurement.count > 1 && 
+      !['vent', 'hook', 'other'].includes(measurement.type)) {
     valueText += ` (${measurement.count} Stück)`;
   }
   

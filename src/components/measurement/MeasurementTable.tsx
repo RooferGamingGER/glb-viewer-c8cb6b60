@@ -38,7 +38,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
     );
   }
 
-  // Group measurements by type
   const lengthMeasurements = measurements.filter(m => m.type === 'length');
   const heightMeasurements = measurements.filter(m => m.type === 'height');
   const areaMeasurements = measurements.filter(m => m.type === 'area');
@@ -49,7 +48,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Length measurements */}
       {lengthMeasurements.length > 0 && (
         <div>
           {showTableHeaders && <h3 className="text-base font-medium mb-2">Längenmessungen</h3>}
@@ -127,7 +125,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
         </div>
       )}
 
-      {/* Height measurements */}
       {heightMeasurements.length > 0 && (
         <div>
           {showTableHeaders && <h3 className="text-base font-medium mb-2">Höhenmessungen</h3>}
@@ -199,7 +196,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
         </div>
       )}
 
-      {/* Skylight measurements */}
       {skylightMeasurements.length > 0 && (
         <div>
           {showTableHeaders && <h3 className="text-base font-medium mb-2">Dachfenster</h3>}
@@ -271,7 +267,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
         </div>
       )}
 
-      {/* Area measurements */}
       {areaMeasurements.length > 0 && (
         <div>
           {showTableHeaders && <h3 className="text-base font-medium mb-2">Flächenmessungen</h3>}
@@ -341,7 +336,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
             </TableBody>
           </Table>
 
-          {/* Segments for area measurements */}
           {areaMeasurements.map((measurement, mIndex) => (
             measurement.segments && measurement.segments.length > 0 && (
               <div key={`${measurement.id}-segments`} className="ml-6 mt-2 mb-6">
@@ -370,7 +364,6 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
         </div>
       )}
 
-      {/* Other measurements (chimney, vents, etc.) */}
       {otherMeasurements.length > 0 && (
         <div>
           {showTableHeaders && <h3 className="text-base font-medium mb-2">Dacheinbauten</h3>}
@@ -379,7 +372,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
               <TableRow>
                 <TableHead>Nr.</TableHead>
                 <TableHead>Typ</TableHead>
-                <TableHead>Wert</TableHead>
+                <TableHead>Anzahl</TableHead>
                 <TableHead>Beschreibung</TableHead>
                 {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
                   <TableHead className="w-24">Aktionen</TableHead>

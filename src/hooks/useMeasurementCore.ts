@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -224,7 +225,7 @@ export const useMeasurementCore = () => {
     penetrationType: 'vent' | 'hook' | 'other';
   } => {
     return {
-      value: 0,
+      value: 1, // Changed from 0 to 1 to properly count penetrations
       position: point,
       penetrationType: type
     };
@@ -303,7 +304,7 @@ export const useMeasurementCore = () => {
           'other': 'Sonstige Einbauten'
         };
         measurementData = {
-          value: 0,
+          value: 1, // Changed from 0 to 1 to properly count penetrations
           label: labels[type as 'vent' | 'hook' | 'other'],
           position: pointData.position,
           count: 1,
