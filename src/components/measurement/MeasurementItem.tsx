@@ -88,18 +88,20 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       'skylight': 'Dachfenster',
       'solar': 'Solaranlage',
       'gutter': 'Dachrinne',
-      'vent': 'Lüfter'
+      'vent': 'Lüfter',
+      'hook': 'Dachhaken',
+      'other': 'Sonstige Einbauten'
     };
     
     return typeNames[type] || type;
   };
 
   const isRoofElement = [
-    'dormer', 'chimney', 'skylight', 'solar', 
+    'chimney', 'skylight', 'solar', 
     'gutter', 'vent'
   ].includes(measurement.type);
 
-  const isPenetration = ['skylight', 'chimney', 'vent'].includes(measurement.type);
+  const isPenetration = ['skylight', 'chimney', 'vent', 'hook', 'other'].includes(measurement.type);
 
   return (
     <div 
@@ -258,7 +260,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       )}
       
-      {(measurement.type === 'area' || measurement.type === 'solar' || measurement.type === 'dormer') && 
+      {(measurement.type === 'area' || measurement.type === 'solar') && 
         measurement.segments && (
         <SegmentList 
           measurementId={measurement.id}

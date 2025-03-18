@@ -9,12 +9,13 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'length': 'Länge',
     'height': 'Höhe',
     'area': 'Fläche',
-    'dormer': 'Gaube',
     'chimney': 'Kamin',
     'skylight': 'Dachfenster',
     'solar': 'Solaranlage',
     'gutter': 'Dachrinne',
-    'vent': 'Lüfter'
+    'vent': 'Lüfter',
+    'hook': 'Dachhaken',
+    'other': 'Sonstige Einbauten'
   };
   
   return typeMapping[type] || type;
@@ -114,23 +115,25 @@ export const groupMeasurementsByType = (measurements: Measurement[]) => {
  * Get count of penetrations (vents)
  */
 export const getPenetrationCount = (measurements: Measurement[]): number => {
-  return measurements.filter(m => m.type === 'vent').reduce((sum, m) => sum + (m.count || 1), 0);
+  return measurements.filter(m => m.type === 'vent' || m.type === 'hook' || m.type === 'other').reduce((sum, m) => sum + (m.count || 1), 0);
 };
 
 /**
  * Get summary data for roof elements and installations
  */
 export const getRoofElementsSummary = (measurements: Measurement[]): {
-  dormers: number;
   chimneys: number;
   skylights: number;
   vents: number;
+  hooks: number;
+  otherPenetrations: number;
   solarArea: number;
 } => {
-  const dormers = measurements.filter(m => m.type === 'dormer').length;
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
-  const vents = getPenetrationCount(measurements);
+  const vents = measurements.filter(m => m.type === 'vent').reduce((sum, m) => sum + (m.count || 1), 0);
+  const hooks = measurements.filter(m => m.type === 'hook').reduce((sum, m) => sum + (m.count || 1), 0);
+  const otherPenetrations = measurements.filter(m => m.type === 'other').reduce((sum, m) => sum + (m.count || 1), 0);
   
   // Calculate total solar area
   const solarArea = measurements
@@ -138,10 +141,11 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
     .reduce((sum, m) => sum + m.value, 0);
   
   return {
-    dormers,
     chimneys,
     skylights,
     vents,
+    hooks,
+    otherPenetrations,
     solarArea
   };
 };
