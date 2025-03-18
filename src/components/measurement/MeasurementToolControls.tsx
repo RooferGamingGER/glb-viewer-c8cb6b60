@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -9,7 +10,10 @@ import {
   Download,
   LayoutGrid,
   Sun,
-  Minus
+  Minus,
+  SplitSquareVertical,
+  Cylinder,
+  Wind
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -46,9 +50,10 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       <div className="text-lg font-medium mb-2">Messwerkzeuge</div>
       
       <Tabs defaultValue="standard" className="w-full">
-        <TabsList className="grid grid-cols-2 mb-2">
+        <TabsList className="grid grid-cols-3 mb-2">
           <TabsTrigger value="standard">Standard</TabsTrigger>
           <TabsTrigger value="roof-elements">Dachelemente</TabsTrigger>
+          <TabsTrigger value="penetrations">Einbauten</TabsTrigger>
         </TabsList>
         
         <TabsContent value="standard">
@@ -94,14 +99,14 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         <TabsContent value="roof-elements">
           <div className="grid grid-cols-3 gap-1">
             <Button
-              variant={['dormer', 'chimney', 'skylight'].includes(activeMode) ? "default" : "outline"} 
+              variant={['verge', 'valley', 'ridge'].includes(activeMode) ? "default" : "outline"} 
               size="sm"
               className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'dormer' ? 'none' : 'dormer')}
+              onClick={() => toggleMeasurementTool(activeMode === 'verge' ? 'none' : 'verge')}
               disabled={!!editMeasurementId}
             >
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              <span className="text-xs">Einbauten</span>
+              <Minus className="h-4 w-4 mr-1" />
+              <span className="text-xs">Kanten</span>
             </Button>
             
             <Button
@@ -116,14 +121,51 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </Button>
             
             <Button
-              variant={['verge', 'valley', 'ridge'].includes(activeMode) ? "default" : "outline"} 
+              variant={activeMode === 'dormer' ? "default" : "outline"} 
               size="sm"
               className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'verge' ? 'none' : 'verge')}
+              onClick={() => toggleMeasurementTool(activeMode === 'dormer' ? 'none' : 'dormer')}
               disabled={!!editMeasurementId}
             >
-              <Minus className="h-4 w-4 mr-1" />
-              <span className="text-xs">Kanten</span>
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              <span className="text-xs">Gauben</span>
+            </Button>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="penetrations">
+          <div className="grid grid-cols-3 gap-1">
+            <Button
+              variant={activeMode === 'skylight' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'skylight' ? 'none' : 'skylight')}
+              disabled={!!editMeasurementId}
+            >
+              <SplitSquareVertical className="h-4 w-4 mr-1" />
+              <span className="text-xs">Dachfenster</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'chimney' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'chimney' ? 'none' : 'chimney')}
+              disabled={!!editMeasurementId}
+            >
+              <Cylinder className="h-4 w-4 mr-1" />
+              <span className="text-xs">Kamine</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'vent' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'vent' ? 'none' : 'vent')}
+              disabled={!!editMeasurementId}
+            >
+              <Wind className="h-4 w-4 mr-1" />
+              <span className="text-xs">Lüfter</span>
             </Button>
           </div>
         </TabsContent>

@@ -106,10 +106,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     'gutter', 'verge', 'valley', 'ridge', 'vent'
   ].includes(measurement.type);
 
+  const isPenetration = ['skylight', 'chimney', 'vent'].includes(measurement.type);
+
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
         measurement.editMode ? 'border-primary bg-secondary/20' : 
+        isPenetration ? 'border-orange-300/50 bg-orange-50/10' :  
         isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 'border-border'
       }`}
     >
@@ -118,9 +121,21 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           {getTypeIcon(measurement.type)}
           {getTypeName(measurement.type)}
           
+          {measurement.type === 'vent' && (
+            <Badge variant="outline" className="ml-2 text-xs bg-orange-50/30">
+              Durchdringung
+            </Badge>
+          )}
+          
           {measurement.subType && (
             <Badge variant="outline" className="ml-2 text-xs">
               {measurement.subType}
+            </Badge>
+          )}
+          
+          {measurement.count && measurement.count > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {measurement.count}
             </Badge>
           )}
         </div>
@@ -163,7 +178,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       </div>
       
       <div className="text-sm mb-1">
-        <strong>Wert:</strong> {measurement.label}
+        {measurement.type !== 'vent' && (
+          <strong>Wert:</strong>
+        )} 
+        {measurement.label}
         
         {/* Abmessungen für Dachelemente */}
         {measurement.dimensions && (

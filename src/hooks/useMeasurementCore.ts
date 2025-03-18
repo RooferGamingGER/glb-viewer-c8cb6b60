@@ -16,8 +16,9 @@ import {
   validatePolygon,
   calculateAverageInclination,
   calculateRectangleDimensions,
-  createDormerMeasurement,
-  createChimneyMeasurement
+  calculateDiameter,
+  calculateBoundingBox,
+  calculateCentroid
 } from '@/utils/measurementCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -187,6 +188,69 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
   }, []);
 
+  const createDormerMeasurement = (points: Point[]): {
+    value: number;
+    area: number;
+    width?: number;
+    length?: number;
+    height?: number;
+  } => {
+    const area = calculateArea(points.slice(0, points.length > 3 ? points.length - 1 : 3));
+    
+    const boundingBox = calculateBoundingBox(points.slice(0, points.length > 3 ? points.length - 1 : 3));
+    const width = boundingBox.max.x - boundingBox.min.x;
+    const length = boundingBox.max.z - boundingBox.min.z;
+    
+    let height: number | undefined;
+    if (points.length > 3) {
+      const baseCenter = calculateCentroid(points.slice(0, 3));
+      height = calculateHeight(baseCenter, points[3]);
+    }
+    
+    return {
+      value: area,
+      area,
+      width,
+      length,
+      height
+    };
+  };
+
+  const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'vent'): {
+    value: number;
+    diameter?: number;
+    height?: number;
+    position: Point;
+  } => {
+    if (type === 'vent' || points.length === 1) {
+      return {
+        value: 0,
+        position: points[0]
+      };
+    }
+    
+    if (points.length >= 2) {
+      const diameter = calculateDiameter(points[0], points[1]);
+      let height: number | undefined;
+      
+      if (points.length >= 3) {
+        height = calculateHeight(points[0], points[2]);
+      }
+      
+      return {
+        value: diameter,
+        diameter,
+        height,
+        position: points[0]
+      };
+    }
+    
+    return {
+      value: 0,
+      position: points[0]
+    };
+  };
+
   const createRoofElementMeasurement = useCallback((type: MeasurementMode, points: Point[]) => {
     if (points.length === 0) return;
     
@@ -197,6 +261,8 @@ export const useMeasurementCore = () => {
     let dimensions: any = {};
     let inclination: number | undefined;
     let subType: string | undefined;
+    let count: number | undefined;
+    let penetrationType: 'vent' | 'other' | undefined;
     
     switch(type) {
       case 'dormer': {
@@ -301,8 +367,13 @@ export const useMeasurementCore = () => {
       }
       
       case 'vent': {
-        label = 'Lüfter';
+        label = 'Lüfter/Durchdringung';
         value = 0;
+        
+        const existingVents = measurements.filter(m => m.type === 'vent').length + 1;
+        count = 1;
+        
+        penetrationType = 'vent';
         break;
       }
       
@@ -324,7 +395,9 @@ export const useMeasurementCore = () => {
         segments,
         inclination,
         subType,
-        dimensions
+        dimensions,
+        count,
+        penetrationType
       }
     ]);
     
@@ -332,7 +405,7 @@ export const useMeasurementCore = () => {
     currentPointsRef.current = [];
     
     setActiveMode('none');
-  }, [setMeasurements, setCurrentPoints, setActiveMode]);
+  }, [measurements]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -433,7 +506,9 @@ export const useMeasurementCore = () => {
     
     if (currentMode === 'vent' && updatedPoints.length === 1) {
       createRoofElementMeasurement('vent', updatedPoints);
-      toast.success('Lüfter markiert - Messwerkzeug deaktiviert');
+      toast.success('Lüfter/Durchdringung markiert - Messwerkzeug bleibt aktiviert');
+      setActiveMode('vent');
+      return;
     }
     
     if (['skylight', 'verge', 'valley', 'ridge'].includes(currentMode) && updatedPoints.length === 2) {

@@ -29,7 +29,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
 }) => {
   if (activeMode === 'none') return null;
   
-  // For roof elements, use the specialized roof element controls
+  // For roof elements and penetrations, use the specialized roof element controls
   if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
     return (
       <RoofElementControls

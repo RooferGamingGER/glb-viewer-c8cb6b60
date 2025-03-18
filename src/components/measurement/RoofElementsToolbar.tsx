@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   House, 
@@ -57,7 +58,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
   
   return (
     <SidebarGroup className="mt-0">
-      <Accordion type="single" collapsible defaultValue="roof-elements">
+      <Accordion type="multiple" defaultValue={["roof-elements", "roof-penetrations"]}>
         <AccordionItem value="roof-elements" className="border-0">
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Dachelemente</SidebarGroupLabel>
@@ -65,11 +66,11 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
           <AccordionContent>
             <SidebarGroupContent>
               <div className="text-xs text-muted-foreground mb-2">
-                Wählen Sie ein Werkzeug, um Dachelemente zu messen und zu markieren.
+                Wählen Sie ein Werkzeug für Dachkanten und Strukturen.
               </div>
               
               <SidebarMenu>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 gap-1">
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       isActive={activeMode === 'dormer'}
@@ -79,30 +80,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                     >
                       <House className="h-4 w-4" />
                       <span className="text-xs">Gaube</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'chimney'}
-                      onClick={() => selectTool('chimney')}
-                      tooltip="Kamin messen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <Cylinder className="h-4 w-4" />
-                      <span className="text-xs">Kamin</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'skylight'}
-                      onClick={() => selectTool('skylight')}
-                      tooltip="Dachfenster messen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <SplitSquareVertical className="h-4 w-4" />
-                      <span className="text-xs">Fenster</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
@@ -165,6 +142,47 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                       <span className="text-xs">Grat</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                </div>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </AccordionContent>
+        </AccordionItem>
+        
+        <AccordionItem value="roof-penetrations" className="border-0">
+          <AccordionTrigger className="py-2 px-1">
+            <SidebarGroupLabel className="!m-0">Dacheinbauten</SidebarGroupLabel>
+          </AccordionTrigger>
+          <AccordionContent>
+            <SidebarGroupContent>
+              <div className="text-xs text-muted-foreground mb-2">
+                Markieren Sie Einbauten und Durchdringungen auf dem Dach.
+              </div>
+              
+              <SidebarMenu>
+                <div className="grid grid-cols-2 gap-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'skylight'}
+                      onClick={() => selectTool('skylight')}
+                      tooltip="Dachfenster messen"
+                      disabled={!!editMeasurementId}
+                    >
+                      <SplitSquareVertical className="h-4 w-4" />
+                      <span className="text-xs">Dachfenster</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'chimney'}
+                      onClick={() => selectTool('chimney')}
+                      tooltip="Kamin messen"
+                      disabled={!!editMeasurementId}
+                    >
+                      <Cylinder className="h-4 w-4" />
+                      <span className="text-xs">Kamin</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -181,7 +199,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
               </SidebarMenu>
               
               <div className="text-xs text-muted-foreground mt-3">
-                Tipp: Markieren Sie zuerst ein Element und fügen Sie dann bei Bedarf eine Beschreibung hinzu.
+                <strong>Tipp:</strong> Verwenden Sie das Lüfter-Tool, um einfach alle Durchdringungen zu markieren und zu zählen.
               </div>
             </SidebarGroupContent>
           </AccordionContent>
