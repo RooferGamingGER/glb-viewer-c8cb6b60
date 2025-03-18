@@ -27,8 +27,36 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'skylight': 'Dachfenster',
     'solar': 'Solaranlage',
     'gutter': 'Dachrinne',
-    'vent': 'Lüfter'
+    'vent': 'Lüfter',
+    'hook': 'Dachhaken',
+    'other': 'Sonstiges'
   };
   
   return typeMapping[type] || type;
+};
+
+// Format measurement label based on measurement type
+export const formatMeasurementLabel = (
+  value: number, 
+  type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'vent' | 'hook' | 'other' | string,
+  inclination?: number
+): string => {
+  // For area-based measurements (including specialized roof elements)
+  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney') {
+    // Format area measurements
+    if (value < 0.01) {
+      return `${(value * 10000).toFixed(2)} cm²`;
+    }
+    return `${value.toFixed(2)} m²`;
+  }
+  
+  // For length-based measurements (including specialized lines)
+  const baseLabel = `${value.toFixed(2)} m`;
+  
+  // Add inclination if provided and significant - always use absolute value
+  if (inclination !== undefined && Math.abs(inclination) > 1.0) {
+    return `${baseLabel} | ${Math.abs(inclination).toFixed(1)}°`;
+  }
+  
+  return baseLabel;
 };

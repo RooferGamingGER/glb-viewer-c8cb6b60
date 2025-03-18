@@ -37,7 +37,7 @@ export const useMeasurementVisibility = (
         if (obj.userData && obj.userData.measurementId === id) {
           obj.visible = isVisible;
           
-          // Wenn es sich um eine Gruppe handelt, aktualisiere auch alle Kinder
+          // For groups, update all children as well
           if (obj instanceof THREE.Group) {
             obj.children.forEach(child => {
               child.visible = isVisible;
@@ -84,7 +84,27 @@ export const useMeasurementVisibility = (
     }
   }, [measurements, toggleMeasurementVisibility, refs]);
 
+  // Helper function to update measurement markers
+  const updateMeasurementMarkers = useCallback((showMarkers: boolean) => {
+    if (!refs.measurementsRef.current) return;
+    
+    // Find all marker groups and set their visibility
+    refs.measurementsRef.current.children.forEach(obj => {
+      if (obj.userData && obj.userData.isMarker) {
+        obj.visible = showMarkers;
+        
+        // For groups, update all children as well
+        if (obj instanceof THREE.Group) {
+          obj.children.forEach(child => {
+            child.visible = showMarkers;
+          });
+        }
+      }
+    });
+  }, [refs]);
+
   return {
-    handleToggleMeasurementVisibility
+    handleToggleMeasurementVisibility,
+    updateMeasurementMarkers
   };
 };

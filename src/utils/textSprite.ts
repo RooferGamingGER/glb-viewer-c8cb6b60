@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface SpriteConfig {
@@ -296,10 +297,10 @@ export function updateLabelScale(
  */
 export function formatMeasurementLabel(
   value: number, 
-  type: 'length' | 'height' | 'area',
+  type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'vent' | 'hook' | 'other' | string,
   inclination?: number
 ): string {
-  if (type === 'area') {
+  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney') {
     // Format area measurements
     if (value < 0.01) {
       return `${(value * 10000).toFixed(2)} cm²`;
