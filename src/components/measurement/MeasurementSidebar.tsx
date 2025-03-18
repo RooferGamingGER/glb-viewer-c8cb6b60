@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Measurement } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
@@ -118,7 +117,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               key={measurement.id}
               measurement={measurement}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
-              handleStartPointEdit={handleStartPointEdit}
+              handleStartPointEdit={(id) => handleStartPointEdit(id, 0)}
               handleDeleteMeasurement={handleDeleteMeasurement}
               updateMeasurement={updateMeasurement}
               isSegmentOpen={segmentsOpen[measurement.id] || false}
@@ -128,6 +127,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               handleDeletePoint={handleDeletePoint}
               onEditRectangle={startRectangleEdit}
               editingRectangleId={editingRectangleId}
+              editMeasurementId={editMeasurementId}
             />
           ))}
         </div>

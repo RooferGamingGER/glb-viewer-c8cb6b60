@@ -29,6 +29,15 @@ const MeasurementSegments: React.FC<MeasurementSegmentsProps> = ({
                 <span className="ml-1 opacity-75">({Math.abs(segment.inclination).toFixed(1)}°)</span>
               )}
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={() => onEditSegment(segment.id)}
+              title="Segment bearbeiten"
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
           </div>
         ))}
       </div>
