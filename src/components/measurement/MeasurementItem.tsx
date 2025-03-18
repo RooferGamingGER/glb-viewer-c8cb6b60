@@ -17,8 +17,6 @@ import {
   Wind,
   Square,
   Anchor,
-  EyeIcon,
-  BookmarkX,
   MoveUp,
   MoveDown
 } from 'lucide-react';
@@ -32,7 +30,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility?: (id: string) => void;
+  toggleLabelVisibility?: (id: string) => void; // Keep for backward compatibility but we won't use it
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -49,7 +47,6 @@ interface MeasurementItemProps {
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
   measurement,
   toggleMeasurementVisibility,
-  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -86,7 +83,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       case 'area': return <Square className="h-4 w-4 mr-1" />;
       case 'vent': return <Wind className="h-4 w-4 mr-1" />;
       case 'hook': return <Anchor className="h-4 w-4 mr-1" />;
-      case 'other': return <BookmarkX className="h-4 w-4 mr-1" />;
+      case 'other': return <X className="h-4 w-4 mr-1" />;
       default: return null;
     }
   };
@@ -169,31 +166,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          
-          {toggleLabelVisibility && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    onClick={() => toggleLabelVisibility(measurement.id)}
-                    title={measurement.labelVisible === false ? "Label einblenden" : "Label ausblenden"}
-                  >
-                    {measurement.labelVisible === false ? (
-                      <EyeIcon className="h-3 w-3" />
-                    ) : (
-                      <BookmarkX className="h-3 w-3" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {measurement.labelVisible === false ? "Label einblenden" : "Label ausblenden"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           
           <Button 
             variant="ghost" 

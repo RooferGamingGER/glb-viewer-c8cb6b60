@@ -11,35 +11,53 @@ export const useMeasurementVisibilityToggle = (
   allMeasurementsVisible: boolean,
   setAllMeasurementsVisible: React.Dispatch<React.SetStateAction<boolean>>,
   allLabelsVisible: boolean,
-  setAllLabelsVisible: React.Dispatch<React.SetStateAction<boolean>>
+  setAllLabelsVisible: React.Dispatch<React.SetStateAction<boolean>>,
+  updateVisualState?: (measurements: Measurement[], allLabelsVisible: boolean) => void
 ) => {
   // Toggle visibility for a single measurement
   const toggleMeasurementVisibility = useCallback((id: string) => {
-    setMeasurements(prev => prev.map(m => 
-      m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
-    ));
-  }, [setMeasurements]);
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => 
+        m.id === id ? { ...m, visible: m.visible === false ? true : false } : m
+      );
+      
+      // Update visual state if the callback is provided
+      if (updateVisualState) {
+        updateVisualState(updatedMeasurements, allLabelsVisible);
+      }
+      
+      return updatedMeasurements;
+    });
+  }, [setMeasurements, allLabelsVisible, updateVisualState]);
 
-  // Toggle label visibility for a single measurement
+  // Toggle label visibility for a single measurement (kept for backward compatibility)
   const toggleLabelVisibility = useCallback((id: string) => {
-    setMeasurements(prev => prev.map(m => 
-      m.id === id ? { ...m, labelVisible: m.labelVisible === false ? true : false } : m
-    ));
-  }, [setMeasurements]);
+    // This function is now a no-op since we always show labels
+    console.log('Label visibility toggle is deprecated - labels are always visible');
+  }, []);
 
   // Toggle visibility for all measurements
   const toggleAllMeasurementsVisibility = useCallback(() => {
     const newVisibility = !allMeasurementsVisible;
     setAllMeasurementsVisible(newVisibility);
-    setMeasurements(prev => prev.map(m => ({ ...m, visible: newVisibility })));
-  }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements]);
+    
+    setMeasurements(prev => {
+      const updatedMeasurements = prev.map(m => ({ ...m, visible: newVisibility }));
+      
+      // Update visual state if the callback is provided
+      if (updateVisualState) {
+        updateVisualState(updatedMeasurements, allLabelsVisible);
+      }
+      
+      return updatedMeasurements;
+    });
+  }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements, allLabelsVisible, updateVisualState]);
 
-  // Toggle visibility for all labels - fixed to correctly toggle state
+  // Toggle visibility for all labels (kept for backward compatibility)
   const toggleAllLabelsVisibility = useCallback(() => {
-    const newLabelVisibility = !allLabelsVisible;
-    setAllLabelsVisible(newLabelVisibility);
-    setMeasurements(prev => prev.map(m => ({ ...m, labelVisible: newLabelVisibility })));
-  }, [allLabelsVisible, setAllLabelsVisible, setMeasurements]);
+    // This function is now a no-op since we always show labels
+    console.log('All labels visibility toggle is deprecated - labels are always visible');
+  }, []);
 
   // Move a measurement up in the list within its type category
   const moveMeasurementUp = useCallback((id: string) => {
@@ -105,9 +123,9 @@ export const useMeasurementVisibilityToggle = (
 
   return {
     toggleMeasurementVisibility,
-    toggleLabelVisibility,
+    toggleLabelVisibility, // Keep for backward compatibility
     toggleAllMeasurementsVisibility,
-    toggleAllLabelsVisibility,
+    toggleAllLabelsVisibility, // Keep for backward compatibility
     moveMeasurementUp,
     moveMeasurementDown
   };

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -148,7 +147,7 @@ export const useMeasurementCore = () => {
         value: distance,
         label,
         visible: true,
-        labelVisible: true,
+        labelVisible: allLabelsVisible,
         unit: 'm',
         description: '',
         inclination
@@ -159,7 +158,7 @@ export const useMeasurementCore = () => {
     currentPointsRef.current = [];
     
     setActiveMode('none');
-  }, []);
+  }, [allLabelsVisible]);
 
   const createHeightMeasurement = useCallback((points: Point[]) => {
     if (points.length < 2) return;
@@ -179,7 +178,7 @@ export const useMeasurementCore = () => {
         value: height,
         label,
         visible: true,
-        labelVisible: true,
+        labelVisible: allLabelsVisible,
         unit: 'm',
         description: ''
       }
@@ -189,7 +188,7 @@ export const useMeasurementCore = () => {
     currentPointsRef.current = [];
     
     setActiveMode('none');
-  }, []);
+  }, [allLabelsVisible]);
 
   const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
     value: number;
@@ -225,7 +224,7 @@ export const useMeasurementCore = () => {
     penetrationType: 'vent' | 'hook' | 'other';
   } => {
     return {
-      value: 1, // Changed from 0 to 1 to properly count penetrations
+      value: 1,
       position: point,
       penetrationType: type
     };
@@ -239,7 +238,7 @@ export const useMeasurementCore = () => {
       label: '0 m',
       description: '',
       dimensions: {},
-      labelVisible: true
+      labelVisible: allLabelsVisible
     };
     
     switch (type) {
@@ -257,7 +256,8 @@ export const useMeasurementCore = () => {
               length: dimensions.length,
               area: area,
               perimeter: dimensions.perimeter
-            }
+            },
+            labelVisible: allLabelsVisible
           };
         }
         break;
@@ -275,7 +275,8 @@ export const useMeasurementCore = () => {
               length: dimensions.length,
               area: area,
               perimeter: dimensions.perimeter
-            }
+            },
+            labelVisible: allLabelsVisible
           };
         }
         break;
@@ -290,7 +291,8 @@ export const useMeasurementCore = () => {
           segments,
           dimensions: {
             area
-          }
+          },
+          labelVisible: allLabelsVisible
         };
         break;
         
@@ -304,11 +306,12 @@ export const useMeasurementCore = () => {
           'other': 'Sonstige Einbauten'
         };
         measurementData = {
-          value: 1, // Changed from 0 to 1 to properly count penetrations
+          value: 1,
           label: labels[type as 'vent' | 'hook' | 'other'],
           position: pointData.position,
           count: 1,
-          penetrationType: pointData.penetrationType
+          penetrationType: pointData.penetrationType,
+          labelVisible: allLabelsVisible
         };
         break;
     }
@@ -320,7 +323,7 @@ export const useMeasurementCore = () => {
         type,
         points: [...points],
         visible: true,
-        labelVisible: true,
+        labelVisible: allLabelsVisible,
         unit: type === 'solar' ? 'm²' : 
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
@@ -335,7 +338,7 @@ export const useMeasurementCore = () => {
     } else {
       setActiveMode('none');
     }
-  }, [setMeasurements, setActiveMode, setCurrentPoints]);
+  }, [allLabelsVisible]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
@@ -426,7 +429,7 @@ export const useMeasurementCore = () => {
           value,
           label,
           visible: true,
-          labelVisible: true,
+          labelVisible: allLabelsVisible,
           unit: 'm²',
           description: '',
           segments
@@ -481,7 +484,7 @@ export const useMeasurementCore = () => {
         }
       }
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement]);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, allLabelsVisible]);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {

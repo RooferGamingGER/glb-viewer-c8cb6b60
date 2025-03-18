@@ -1,9 +1,8 @@
+
 import * as THREE from 'three';
 
 export interface SpriteConfig {
   text: string;
-  width?: number;
-  height?: number;
   fontSize?: number;
   fontFamily?: string;
   backgroundColor?: {
@@ -14,17 +13,17 @@ export interface SpriteConfig {
   borderColor?: string;
   glowColor?: string;
   isPreview?: boolean;
+  isPointLabel?: boolean; // Identifies point labels (P1, P2, etc.)
 }
 
 /**
- * Creates a text sprite for 3D labels
+ * Creates a text sprite for 3D labels with optimal sizing
  */
 export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   const {
     text,
-    width = 512,
-    height = 128,
-    fontSize = 48,
+    isPointLabel = false,
+    fontSize = isPointLabel ? 24 : 48, // Smaller font for point labels
     fontFamily = 'Inter, Arial, sans-serif',
     backgroundColor = {
       start: 'rgba(41, 50, 65, 0.95)',
@@ -35,6 +34,18 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
     glowColor = 'rgba(45, 125, 255, 0.5)',
     isPreview = false
   } = config;
+
+  // Calculate dynamic dimensions based on text content
+  const basePadding = isPointLabel ? 10 : 24;
+  const minWidth = isPointLabel ? 40 : 120; // Minimum width for any label
+  const charWidth = isPointLabel ? 12 : 20; // Approximate width per character
+  
+  // Calculate width based on text length with min/max constraints
+  const calculatedWidth = Math.max(minWidth, text.length * charWidth + (basePadding * 2));
+  const width = isPointLabel ? Math.min(calculatedWidth, 80) : Math.min(calculatedWidth, 512);
+  
+  // Calculate height - smaller for point labels
+  const height = isPointLabel ? 40 : 128; 
 
   // Create canvas and get context
   const canvas = document.createElement('canvas');
@@ -57,7 +68,7 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   bgGradient.addColorStop(1, backgroundColor.end);
   
   // Create a rounded rectangle for the background
-  const cornerRadius = 12;
+  const cornerRadius = isPointLabel ? 6 : 12; // Smaller corner radius for point labels
   
   // Clear the canvas
   context.clearRect(0, 0, width, height);
@@ -81,11 +92,11 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   
   // Add a subtle border
   context.strokeStyle = borderColor;
-  context.lineWidth = 2;
+  context.lineWidth = isPointLabel ? 1 : 2; // Thinner border for point labels
   context.stroke();
   
-  // Add inner glow effect
-  const glowWidth = 6;
+  // Add inner glow effect - reduced for point labels
+  const glowWidth = isPointLabel ? 2 : 6;
   context.shadowBlur = glowWidth;
   context.shadowColor = isPreview ? 'rgba(180, 100, 255, 0.6)' : glowColor;
   
@@ -122,10 +133,14 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   
   // Set sprite scale based on aspect ratio
   const aspectRatio = width / height;
-  sprite.scale.set(aspectRatio * 0.5, 0.5, 1);
+  const baseScale = isPointLabel ? 0.3 : 0.5;
+  sprite.scale.set(aspectRatio * baseScale, baseScale, 1);
   
   // Ensure labels are rendered on top
   sprite.renderOrder = 100;
+  
+  // Store if this is a point label in userData
+  sprite.userData.isPointLabel = isPointLabel;
   
   return sprite;
 }
@@ -139,6 +154,21 @@ export function updateTextSprite(sprite: THREE.Sprite, newText: string): void {
     return;
   }
   
+  // Get if this is a point label from user data to determine sizing
+  const isPointLabel = sprite.userData?.isPointLabel || false;
+  
+  // Calculate dynamic dimensions based on text content
+  const basePadding = isPointLabel ? 10 : 24;
+  const minWidth = isPointLabel ? 40 : 120;
+  const charWidth = isPointLabel ? 12 : 20;
+  
+  // Calculate width based on text length with min/max constraints
+  const calculatedWidth = Math.max(minWidth, newText.length * charWidth + (basePadding * 2));
+  const width = isPointLabel ? Math.min(calculatedWidth, 80) : Math.min(calculatedWidth, 512);
+  
+  // Calculate height - smaller for point labels
+  const height = isPointLabel ? 40 : 128;
+  
   // Get the original texture
   const texture = sprite.material.map;
   
@@ -146,9 +176,11 @@ export function updateTextSprite(sprite: THREE.Sprite, newText: string): void {
   let canvas = texture.image as HTMLCanvasElement;
   if (!canvas) {
     canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
   }
+  
+  // Update canvas dimensions
+  canvas.width = width;
+  canvas.height = height;
   
   const context = canvas.getContext('2d');
   if (!context) {
@@ -168,7 +200,7 @@ export function updateTextSprite(sprite: THREE.Sprite, newText: string): void {
   bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.95)');
   
   // Create a rounded rectangle for the background
-  const cornerRadius = 12;
+  const cornerRadius = isPointLabel ? 6 : 12;
   
   // Draw the background with rounded corners
   context.beginPath();
@@ -189,16 +221,17 @@ export function updateTextSprite(sprite: THREE.Sprite, newText: string): void {
   
   // Add a subtle border
   context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-  context.lineWidth = 2;
+  context.lineWidth = isPointLabel ? 1 : 2;
   context.stroke();
   
   // Add inner glow effect
-  const glowWidth = 6;
+  const glowWidth = isPointLabel ? 2 : 6;
   context.shadowBlur = glowWidth;
   context.shadowColor = isPreview ? 'rgba(180, 100, 255, 0.6)' : 'rgba(45, 125, 255, 0.5)';
   
   // Set text style
-  context.font = `bold 48px Inter, Arial, sans-serif`;
+  const fontSize = isPointLabel ? 24 : 48;
+  context.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
@@ -214,12 +247,10 @@ export function updateTextSprite(sprite: THREE.Sprite, newText: string): void {
   // Update the texture
   texture.needsUpdate = true;
   
-  // Set sprite opacity to ensure visibility
-  sprite.material.opacity = 1.0;
-  sprite.material.transparent = true;
-  sprite.material.depthTest = false;
-  sprite.material.depthWrite = false;
-  sprite.renderOrder = 100;
+  // Update the sprite scale based on new dimensions
+  const aspectRatio = width / height;
+  const baseScale = isPointLabel ? 0.3 : 0.5;
+  sprite.scale.set(aspectRatio * baseScale, baseScale, 1);
 }
 
 /**
@@ -232,6 +263,10 @@ export function updateLabelScale(
   baseScale = 0.5
 ): void {
   if (!sprite || !camera) return;
+  
+  // Get if this is a point label from user data to adjust scaling
+  const isPointLabel = sprite.userData?.isPointLabel || false;
+  const adjustedBaseScale = isPointLabel ? baseScale * 0.6 : baseScale;
   
   // Get distance from camera to sprite
   const position = new THREE.Vector3();
@@ -247,8 +282,8 @@ export function updateLabelScale(
   
   // Calculate logarithmic scale factor with min/max bounds
   // This gives better scaling across a wide range of distances
-  const minScaleFactor = 0.3;  // Lower minimum for distant labels
-  const maxScaleFactor = 2.0;  // Higher maximum for close-up labels
+  const minScaleFactor = isPointLabel ? 0.4 : 0.3;  // Smaller minimum for point labels
+  const maxScaleFactor = isPointLabel ? 1.5 : 2.0;  // Lower maximum for point labels
   const logBase = 4;           // Higher log base for more aggressive scaling
   const scaleFactor = Math.min(
     maxScaleFactor,
@@ -265,7 +300,7 @@ export function updateLabelScale(
   const aspectRatio = sprite.scale.x / sprite.scale.y;
   
   // Calculate final scale values
-  const finalScale = baseScale * scaleFactor / fovCompensation;
+  const finalScale = adjustedBaseScale * scaleFactor / fovCompensation;
   
   // Apply scale
   sprite.scale.set(
@@ -275,7 +310,7 @@ export function updateLabelScale(
   );
   
   // Apply a minimum size for text to remain readable at far distances
-  const minSize = 0.08;  // Smaller minimum size for better readability
+  const minSize = isPointLabel ? 0.04 : 0.08;
   if (sprite.scale.y < minSize) {
     const adjustedAspectRatio = sprite.scale.x / sprite.scale.y;
     sprite.scale.set(
@@ -330,7 +365,8 @@ export function createMeasurementLabel(
   text: string,
   position: THREE.Vector3,
   isPreview: boolean = false,
-  type?: string
+  type?: string,
+  isPointLabel: boolean = false
 ): THREE.Sprite {
   // For penetration elements, we might want to create a symbol-only label
   if (type === 'vent' || type === 'hook' || type === 'other') {
@@ -340,17 +376,15 @@ export function createMeasurementLabel(
     
     const sprite = createTextSprite({
       text: iconText,
-      width: 96,
-      height: 96,
-      fontSize: 60,
-      isPreview
+      isPreview,
+      isPointLabel
     });
     
     // Position the sprite
     sprite.position.copy(position);
     
-    // Add slight Y offset to avoid z-fighting with geometry
-    sprite.position.y += 0.05;
+    // Add larger Y offset to float higher above the model
+    sprite.position.y += 0.2; // Increased from 0.05 to 0.2
     
     return sprite;
   }
@@ -358,14 +392,15 @@ export function createMeasurementLabel(
   // Create the sprite with custom text for other measurement types
   const sprite = createTextSprite({
     text,
-    isPreview
+    isPreview,
+    isPointLabel
   });
   
   // Position the sprite
   sprite.position.copy(position);
   
-  // Add slight Y offset to avoid z-fighting with geometry
-  sprite.position.y += 0.05;
+  // Add larger Y offset to float higher above the model
+  sprite.position.y += 0.2; // Increased from 0.05 to 0.2
   
   return sprite;
 }
@@ -376,7 +411,7 @@ export function createMeasurementLabel(
 export function calculateMidpoint(point1: THREE.Vector3, point2: THREE.Vector3): THREE.Vector3 {
   return new THREE.Vector3(
     (point1.x + point2.x) / 2,
-    (point1.y + point2.y) / 2 + 0.1, // Add offset for visibility
+    (point1.y + point2.y) / 2 + 0.3, // Increased from 0.1 to 0.3
     (point1.z + point2.z) / 2
   );
 }
@@ -393,7 +428,7 @@ export function calculateCentroid(points: THREE.Vector3[]): THREE.Vector3 {
   });
   
   centroid.divideScalar(points.length);
-  centroid.y += 0.1; // Add offset for visibility
+  centroid.y += 0.3; // Increased from 0.1 to 0.3
   
   return centroid;
 }

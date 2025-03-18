@@ -5,6 +5,7 @@ import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
 import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
+import { useCallback, useRef } from 'react';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
@@ -34,6 +35,19 @@ export const useMeasurements = () => {
     undoLastPoint
   } = useMeasurementCore();
   
+  // Use a ref to store the visual update function so it can be replaced
+  const visualStateUpdaterRef = useRef<(updatedMeasurements: Measurement[], labelVisibility: boolean) => void>(
+    (updatedMeasurements, labelVisibility) => {
+      // Default implementation is a no-op
+      // This will be replaced by the actual implementation in MeasurementTools
+    }
+  );
+  
+  // Wrapper function that calls the current ref value
+  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisibility: boolean) => {
+    visualStateUpdaterRef.current(updatedMeasurements, labelVisibility);
+  }, []);
+  
   // Editing functionality
   const {
     toggleEditMode,
@@ -50,7 +64,7 @@ export const useMeasurements = () => {
     setEditingPointIndex
   );
   
-  // Visibility toggling
+  // Visibility toggling with visual update callback
   const {
     toggleMeasurementVisibility,
     toggleLabelVisibility,
@@ -64,7 +78,8 @@ export const useMeasurements = () => {
     allMeasurementsVisible,
     setAllMeasurementsVisible,
     allLabelsVisible,
-    setAllLabelsVisible
+    setAllLabelsVisible,
+    updateVisualState
   );
   
   // Tool toggling
@@ -111,6 +126,11 @@ export const useMeasurements = () => {
     cancelEditing,
     moveMeasurementUp,
     moveMeasurementDown,
+    
+    // Visual state update function - expose this so it can be replaced
+    setUpdateVisualState: (fn: typeof updateVisualState) => {
+      visualStateUpdaterRef.current = fn;
+    },
     
     // Utilities
     getNearestPointIndex,
