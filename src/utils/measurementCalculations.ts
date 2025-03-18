@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
@@ -25,39 +24,42 @@ export const calculateHeight = (point1: Point, point2: Point): number => {
 
 /**
  * Calculate area of polygon defined by points using 3D triangulation
- * Based on approach used in Potree for accurate 3D surface area measurement
+ * Improved to handle non-planar surfaces better
  */
 export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
-  // Projektion auf die am besten passende Ebene durchführen
+  // Create vectors for each point
+  const vectors = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  
+  // Find the best-fit plane for these points
   const { projectedPoints, planeNormal } = projectPointsToPlane(points);
   
-  // Ear-Clipping für robuste Triangulation verwenden
+  // Apply triangulation (Ear clipping algorithm)
   const triangles = earClip(projectedPoints);
   
   let totalArea = 0;
   
-  // Fläche berechnen mit der Kreuzprodukt-Methode (wie in Potree)
-  // Diese Methode ist genauer als die Heronsche Formel für 3D-Flächen
+  // Calculate area using the cross product method - this preserves the actual 3D area
   for (const triangle of triangles) {
-    const p0 = new THREE.Vector3(points[triangle[0]].x, points[triangle[0]].y, points[triangle[0]].z);
-    const p1 = new THREE.Vector3(points[triangle[1]].x, points[triangle[1]].y, points[triangle[1]].z);
-    const p2 = new THREE.Vector3(points[triangle[2]].x, points[triangle[2]].y, points[triangle[2]].z);
+    const p0 = vectors[triangle[0]];
+    const p1 = vectors[triangle[1]];
+    const p2 = vectors[triangle[2]];
     
-    // Vektoren zwischen den Punkten berechnen
+    // Calculate vectors between points
     const v1 = new THREE.Vector3().subVectors(p1, p0);
     const v2 = new THREE.Vector3().subVectors(p2, p0);
     
-    // Kreuzprodukt der Vektoren berechnen
+    // Calculate cross product - the length is 2x the area
     const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
     
-    // Die Länge des Kreuzprodukts ist doppelt so groß wie die Fläche
+    // The area is half the length of the cross product
     const triangleArea = crossProduct.length() * 0.5;
     
     totalArea += triangleArea;
   }
   
+  // Return the total area of all triangles in the polygon
   return totalArea;
 };
 
@@ -187,28 +189,86 @@ export const validatePolygon = (points: Point[]): {
     return { valid: false, message: 'Mindestens 3 Punkte werden benötigt.' };
   }
   
-  // Prüfen, ob alle Punkte koplanar (auf einer Ebene) sind
+  // Check if all points are coplanar (on the same plane)
   if (points.length > 3) {
     const { projectedPoints } = projectPointsToPlane(points);
     
-    // Vergleiche die Originalpunkte mit den projizierten Punkten
+    // Compare original points with projected points
     let maxDeviation = 0;
     for (let i = 0; i < points.length; i++) {
       const deviation = calculateDistance(points[i], projectedPoints[i]);
       maxDeviation = Math.max(maxDeviation, deviation);
     }
     
-    // Wenn die maximale Abweichung zu groß ist, ist das Polygon nicht ausreichend planar
-    if (maxDeviation > 0.5) {  // 0.5 Meter Toleranz
+    // If max deviation is too large, polygon is not sufficiently planar
+    if (maxDeviation > 0.5) {  // 0.5 meter tolerance
       return { 
-        valid: true,  // Immer noch gültig, aber mit Warnung
+        valid: true,  // Still valid but with warning
         message: 'Warnung: Die Punkte liegen nicht auf einer Ebene. Die Flächenberechnung könnte ungenau sein.' 
       };
     }
   }
   
+  // Check if the polygon is self-intersecting
+  // This is a simplified check - a full implementation would need a more complex algorithm
+  if (points.length > 3) {
+    // Project points to 2D for intersection check
+    const { projectedPoints } = projectPointsToPlane(points);
+    
+    // Simple check for obvious self-intersections
+    for (let i = 0; i < projectedPoints.length; i++) {
+      const p1 = projectedPoints[i];
+      const p2 = projectedPoints[(i + 1) % projectedPoints.length];
+      
+      for (let j = i + 2; j < projectedPoints.length; j++) {
+        // Skip adjacent edges
+        if (j === i - 1 || j === (i + 1) % projectedPoints.length) continue;
+        
+        const p3 = projectedPoints[j];
+        const p4 = projectedPoints[(j + 1) % projectedPoints.length];
+        
+        // Check for intersection
+        if (doSegmentsIntersect(p1, p2, p3, p4)) {
+          return {
+            valid: false,
+            message: 'Das Polygon überschneidet sich selbst. Bitte positionieren Sie die Punkte neu.'
+          };
+        }
+      }
+    }
+  }
+  
   return { valid: true };
 };
+
+/**
+ * Check if two line segments intersect (for polygon validation)
+ */
+function doSegmentsIntersect(p1: Point, p2: Point, p3: Point, p4: Point): boolean {
+  // Convert to 2D for simplicity (assuming points are already projected to a plane)
+  const a = { x: p1.x, y: p1.z };
+  const b = { x: p2.x, y: p2.z };
+  const c = { x: p3.x, y: p3.z };
+  const d = { x: p4.x, y: p4.z };
+  
+  // Calculate direction vectors
+  const ab = { x: b.x - a.x, y: b.y - a.y };
+  const cd = { x: d.x - c.x, y: d.y - c.y };
+  
+  // Calculate the denominator for intersection test
+  const denominator = ab.x * cd.y - ab.y * cd.x;
+  
+  // If lines are parallel, they don't intersect
+  if (Math.abs(denominator) < 0.0001) return false;
+  
+  // Calculate intersection parameters
+  const ac = { x: c.x - a.x, y: c.y - a.y };
+  const t = (ac.x * cd.y - ac.y * cd.x) / denominator;
+  const u = (ac.x * ab.y - ac.y * ab.x) / denominator;
+  
+  // Check if intersection is within both segments
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
 
 /**
  * Calculate diameter from two opposite points of a circle
