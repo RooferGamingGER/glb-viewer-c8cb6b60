@@ -8,11 +8,11 @@ import {
   Square, 
   Table, 
   Download,
-  LayoutGrid,
   Sun,
   SplitSquareVertical,
   Cylinder,
-  Wind
+  Wind,
+  Anchor
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -96,32 +96,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </TabsContent>
         
         <TabsContent value="roof-elements">
-          <div className="grid grid-cols-2 gap-1">
-            <Button
-              variant={activeMode === 'dormer' ? "default" : "outline"} 
-              size="sm"
-              className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'dormer' ? 'none' : 'dormer')}
-              disabled={!!editMeasurementId}
-            >
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              <span className="text-xs">Gauben</span>
-            </Button>
-            
-            <Button
-              variant={activeMode === 'solar' ? "default" : "outline"} 
-              size="sm"
-              className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'solar' ? 'none' : 'solar')}
-              disabled={!!editMeasurementId}
-            >
-              <Sun className="h-4 w-4 mr-1" />
-              <span className="text-xs">Solaranlagen</span>
-            </Button>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="penetrations">
           <div className="grid grid-cols-3 gap-1">
             <Button
               variant={activeMode === 'skylight' ? "default" : "outline"} 
@@ -146,6 +120,21 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </Button>
             
             <Button
+              variant={activeMode === 'solar' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'solar' ? 'none' : 'solar')}
+              disabled={!!editMeasurementId}
+            >
+              <Sun className="h-4 w-4 mr-1" />
+              <span className="text-xs">Solaranlagen</span>
+            </Button>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="penetrations">
+          <div className="grid grid-cols-3 gap-1">
+            <Button
               variant={activeMode === 'vent' ? "default" : "outline"} 
               size="sm"
               className="w-full"
@@ -154,6 +143,28 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             >
               <Wind className="h-4 w-4 mr-1" />
               <span className="text-xs">Lüfter</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'hook' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'hook' ? 'none' : 'hook')}
+              disabled={!!editMeasurementId}
+            >
+              <Anchor className="h-4 w-4 mr-1" />
+              <span className="text-xs">Dachhaken</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'other' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'other' ? 'none' : 'other')}
+              disabled={!!editMeasurementId}
+            >
+              <X className="h-4 w-4 mr-1" />
+              <span className="text-xs">Sonstiges</span>
             </Button>
           </div>
         </TabsContent>

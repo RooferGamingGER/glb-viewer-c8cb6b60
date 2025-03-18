@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -5,12 +6,13 @@ export type MeasurementMode =
   | 'height' 
   | 'area' 
   | 'none' 
-  | 'dormer'    // Gaube
   | 'chimney'   // Kamin
   | 'skylight'  // Dachfenster
   | 'solar'     // Solaranlage
   | 'gutter'    // Dachrinne
-  | 'vent';     // Lüfter (nur Markierung)
+  | 'vent'      // Lüfter (nur Markierung)
+  | 'hook'      // Dachhaken
+  | 'other';    // Sonstige Einbauten
 
 export interface Point {
   x: number;
@@ -61,5 +63,5 @@ export interface Measurement {
   };
   count?: number;        // For elements that need counting (e.g., vents)
   relatedMeasurements?: string[]; // IDs of related measurements
-  penetrationType?: 'vent' | 'other'; // Type of penetration
+  penetrationType?: 'vent' | 'hook' | 'other'; // Type of penetration
 }

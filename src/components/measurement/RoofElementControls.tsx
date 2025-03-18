@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -35,7 +36,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   
   const getRequiredPoints = (mode: MeasurementMode): number => {
     switch(mode) {
-      case 'dormer': 
       case 'solar': 
         return 3; // Flächenmessung
       case 'skylight': 
@@ -45,6 +45,8 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'gutter':
         return 2; // Lineare Messungen
       case 'vent': 
+      case 'hook': 
+      case 'other': 
         return 1; // Positionsmarkierung
       default: 
         return 2;
@@ -56,13 +58,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
     const remainingPoints = Math.max(0, requiredPoints - currentPoints.length);
     
     switch(mode) {
-      case 'dormer':
-        if (currentPoints.length < 3) {
-          return `Markieren Sie die Grundfläche der Gaube. Noch ${remainingPoints} Punkt(e) benötigt.`;
-        } else {
-          return "Messen Sie abschließend die Höhe der Gaube oder schließen Sie die Messung ab.";
-        }
-      
       case 'chimney':
         if (currentPoints.length === 0) {
           return "Markieren Sie die erste Ecke des Kaminausschnitts im Dach.";
@@ -93,6 +88,12 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       
       case 'vent':
         return "Markieren Sie die Position des Lüfters.";
+        
+      case 'hook':
+        return "Markieren Sie die Position des Dachhakens.";
+        
+      case 'other':
+        return "Markieren Sie die Position der sonstigen Einbauten.";
       
       default:
         return "Platzieren Sie die erforderlichen Messpunkte.";
@@ -105,12 +106,13 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
 
   const getElementTitle = (mode: MeasurementMode): string => {
     switch(mode) {
-      case 'dormer': return "Gaube";
       case 'chimney': return "Kaminausschnitt";
       case 'skylight': return "Dachfenster";
       case 'solar': return "Solaranlage";
       case 'gutter': return "Dachrinne";
       case 'vent': return "Lüfter";
+      case 'hook': return "Dachhaken";
+      case 'other': return "Sonstige Einbauten";
       default: return "Element";
     }
   };

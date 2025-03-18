@@ -349,6 +349,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               />
             )}
             
+            {isRoofElementMode && (
+              <RoofElementControls
+                activeMode={activeMode}
+                currentPoints={currentPoints}
+                handleFinalizeMeasurement={handleFinalizeMeasurement}
+                handleUndoLastPoint={handleUndoLastPoint}
+                clearCurrentPoints={clearCurrentPoints}
+              />
+            )}
+            
             {(editMeasurementId || editingSegmentId || movingPointInfo) && (
               <div className="p-3 pb-0">
                 <EditingAlert 
@@ -358,8 +368,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   handleCancelEditing={handleCancelEditingWithCleanup}
                   editingAreaMeasurement={editMeasurementId ? 
                     measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
-                    measurements.find(m => m.id === editMeasurementId)?.type === 'solar' || 
-                    measurements.find(m => m.id === editMeasurementId)?.type === 'dormer' 
+                    measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
                     : false}
                 />
               </div>

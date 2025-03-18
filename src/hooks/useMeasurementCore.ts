@@ -16,8 +16,6 @@ import {
   validatePolygon,
   calculateAverageInclination,
   calculateQuadrilateralDimensions,
-  createChimneyMeasurement,
-  createDormerMeasurement,
   calculateBoundingBox,
   calculateCentroid
 } from '@/utils/measurementCalculations';
@@ -189,34 +187,6 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
   }, []);
 
-  const createDormerMeasurement = (points: Point[]): {
-    value: number;
-    area: number;
-    width?: number;
-    length?: number;
-    height?: number;
-  } => {
-    const area = calculateArea(points.slice(0, points.length > 3 ? points.length - 1 : 3));
-    
-    const boundingBox = calculateBoundingBox(points.slice(0, points.length > 3 ? points.length - 1 : 3));
-    const width = boundingBox.max.x - boundingBox.min.x;
-    const length = boundingBox.max.z - boundingBox.min.z;
-    
-    let height: number | undefined;
-    if (points.length > 3) {
-      const baseCenter = calculateCentroid(points.slice(0, 3));
-      height = calculateHeight(baseCenter, points[3]);
-    }
-    
-    return {
-      value: area,
-      area,
-      width,
-      length,
-      height
-    };
-  };
-
   const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
     value: number;
     width: number;
@@ -245,13 +215,15 @@ export const useMeasurementCore = () => {
     };
   };
 
-  const createVentMeasurement = (point: Point): {
+  const createPointMeasurement = (point: Point, type: 'vent' | 'hook' | 'other'): {
     value: number;
     position: Point;
+    penetrationType: 'vent' | 'hook' | 'other';
   } => {
     return {
       value: 0,
-      position: point
+      position: point,
+      penetrationType: type
     };
   };
 
@@ -266,20 +238,6 @@ export const useMeasurementCore = () => {
     };
     
     switch (type) {
-      case 'dormer':
-        const dormerData = createDormerMeasurement(points);
-        measurementData = {
-          value: dormerData.area,
-          label: formatMeasurement(dormerData.area, 'area'),
-          dimensions: {
-            area: dormerData.area,
-            width: dormerData.width,
-            length: dormerData.length,
-            height: dormerData.height
-          }
-        };
-        break;
-        
       case 'chimney':
         const chimneyData = createChimneyOrSkylightMeasurement(points, 'chimney');
         measurementData = {
@@ -342,13 +300,20 @@ export const useMeasurementCore = () => {
         break;
         
       case 'vent':
-        const ventData = createVentMeasurement(points[0]);
+      case 'hook':
+      case 'other':
+        const pointData = createPointMeasurement(points[0], type as 'vent' | 'hook' | 'other');
+        const labels = {
+          'vent': 'Lüfter',
+          'hook': 'Dachhaken',
+          'other': 'Sonstige Einbauten'
+        };
         measurementData = {
           value: 0,
-          label: 'Lüfter',
-          position: ventData.position,
+          label: labels[type as 'vent' | 'hook' | 'other'],
+          position: pointData.position,
           count: 1,
-          penetrationType: 'vent'
+          penetrationType: pointData.penetrationType
         };
         break;
     }
@@ -360,9 +325,9 @@ export const useMeasurementCore = () => {
         type,
         points: [...points],
         visible: true,
-        unit: type === 'solar' || type === 'dormer' ? 'm²' : 
+        unit: type === 'solar' ? 'm²' : 
               type === 'gutter' ? 'm' : 
-              type === 'vent' ? 'Stk' : 'm',
+              type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
       }
     ]);
@@ -370,7 +335,9 @@ export const useMeasurementCore = () => {
     setCurrentPoints([]);
     currentPointsRef.current = [];
     
-    if (type !== 'vent') {
+    if (type === 'vent' || type === 'hook' || type === 'other') {
+      setActiveMode(type);
+    } else {
       setActiveMode('none');
     }
   }, [setMeasurements, setActiveMode, setCurrentPoints]);
@@ -399,10 +366,15 @@ export const useMeasurementCore = () => {
       }
     }
     
-    if (currentMode === 'vent' && updatedPoints.length === 1) {
-      createRoofElementMeasurement('vent', updatedPoints);
-      toast.success('Lüfter/Durchdringung markiert - Messwerkzeug bleibt aktiviert');
-      setActiveMode('vent');
+    if ((currentMode === 'vent' || currentMode === 'hook' || currentMode === 'other') && updatedPoints.length === 1) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      const labels = {
+        'vent': 'Lüfter/Durchdringung',
+        'hook': 'Dachhaken',
+        'other': 'Sonstige Einbauten'
+      };
+      toast.success(`${labels[currentMode]} markiert - Messwerkzeug bleibt aktiviert`);
+      setActiveMode(currentMode);
       return;
     }
     
@@ -470,12 +442,13 @@ export const useMeasurementCore = () => {
     }
     else if (!['length', 'height', 'area', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
-        'dormer': 3,
         'chimney': 4,
         'skylight': 4,
         'solar': 3,
         'gutter': 2,
         'vent': 1,
+        'hook': 1,
+        'other': 1,
         'length': 2,
         'height': 2,
         'area': 3,
@@ -484,7 +457,18 @@ export const useMeasurementCore = () => {
       
       if (points.length >= (requiredPoints[activeMode] || 0)) {
         createRoofElementMeasurement(activeMode, points);
-        toast.success(`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)}-Messung abgeschlossen`);
+        
+        const typeName = {
+          'chimney': 'Kamin',
+          'skylight': 'Dachfenster',
+          'solar': 'Solaranlage',
+          'gutter': 'Dachrinne',
+          'vent': 'Lüfter',
+          'hook': 'Dachhaken',
+          'other': 'Sonstige Einbauten'
+        }[activeMode] || activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
+        
+        toast.success(`${typeName}-Messung abgeschlossen`);
       } else {
         toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
         
@@ -545,4 +529,3 @@ export const useMeasurementCore = () => {
     createRoofElementMeasurement
   };
 };
-
