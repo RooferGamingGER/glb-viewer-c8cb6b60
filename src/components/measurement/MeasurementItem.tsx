@@ -13,8 +13,8 @@ import {
   SplitSquareVertical,
   Sun,
   Droplet,
-  LineHorizontal2 as LineHorizontal,
-  LineVertical2 as LineVertical,
+  Minus,
+  ArrowDown,
   Wind,
   Square
 } from 'lucide-react';
@@ -71,12 +71,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       case 'skylight': return <SplitSquareVertical className="h-4 w-4 mr-1" />;
       case 'solar': return <Sun className="h-4 w-4 mr-1" />;
       case 'gutter': return <Droplet className="h-4 w-4 mr-1" />;
-      case 'verge': return <LineHorizontal className="h-4 w-4 mr-1" />;
-      case 'valley': return <LineVertical className="h-4 w-4 mr-1" />;
-      case 'ridge': return <LineVertical className="h-4 w-4 rotate-45 mr-1" />;
+      case 'verge': return <Minus className="h-4 w-4 mr-1" />;
+      case 'valley': return <ArrowDown className="h-4 w-4 rotate-45 mr-1" />;
+      case 'ridge': return <ArrowDown className="h-4 w-4 rotate-135 mr-1" />;
       case 'vent': return <Wind className="h-4 w-4 mr-1" />;
-      case 'length': return <LineHorizontal className="h-4 w-4 mr-1" />;
-      case 'height': return <LineVertical className="h-4 w-4 mr-1" />;
+      case 'length': return <Minus className="h-4 w-4 mr-1" />;
+      case 'height': return <ArrowDown className="h-4 w-4 mr-1" />;
       case 'area': return <Square className="h-4 w-4 mr-1" />;
       default: return null;
     }

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   House, 
@@ -6,8 +5,8 @@ import {
   SplitSquareVertical,
   Sun, 
   Droplet,
-  LineHorizontal2 as LineHorizontal,
-  LineVertical2 as LineVertical,
+  Minus,
+  ArrowDown,
   Wind
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
@@ -40,7 +39,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
     if (activeMode === mode) {
       toast.info(`Dachelementwerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
-      // Show appropriate tool selection messages
       const toolMessages: Record<string, string> = {
         'dormer': 'Gauben-Messung ausgewählt - Definieren Sie die Fläche und Höhe',
         'chimney': 'Kamin-Messung ausgewählt - Messen Sie Durchmesser und Höhe',
@@ -139,7 +137,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                       tooltip="Ortgang/Traufe messen"
                       disabled={!!editMeasurementId}
                     >
-                      <LineHorizontal className="h-4 w-4" />
+                      <Minus className="h-4 w-4" />
                       <span className="text-xs">Ortgang</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -151,7 +149,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                       tooltip="Kehle messen"
                       disabled={!!editMeasurementId}
                     >
-                      <LineVertical className="h-4 w-4" />
+                      <ArrowDown className="h-4 w-4 rotate-45" />
                       <span className="text-xs">Kehle</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -163,7 +161,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                       tooltip="Grat messen"
                       disabled={!!editMeasurementId}
                     >
-                      <LineVertical className="h-4 w-4 rotate-45" />
+                      <ArrowDown className="h-4 w-4 rotate-135" />
                       <span className="text-xs">Grat</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

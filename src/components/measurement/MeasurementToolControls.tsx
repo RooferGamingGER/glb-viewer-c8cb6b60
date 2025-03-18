@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -10,7 +9,7 @@ import {
   Download,
   LayoutGrid,
   Sun,
-  LineHorizontal2 as LineHorizontal
+  Minus
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -123,7 +122,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               onClick={() => toggleMeasurementTool(activeMode === 'verge' ? 'none' : 'verge')}
               disabled={!!editMeasurementId}
             >
-              <LineHorizontal className="h-4 w-4 mr-1" />
+              <Minus className="h-4 w-4 mr-1" />
               <span className="text-xs">Kanten</span>
             </Button>
           </div>
