@@ -595,8 +595,3 @@ export const useMeasurementCore = () => {
     createRoofElementMeasurement
   };
 };
-
-/**
- * External import for the new rectangle function
- */
-import { createRectangleFromDiagonalPoints } from '@/utils/measurementCalculations';

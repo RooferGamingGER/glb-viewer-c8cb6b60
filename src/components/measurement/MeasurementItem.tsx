@@ -24,11 +24,12 @@ interface MeasurementItemProps {
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
   segmentsOpen: Record<string, boolean>;
-  toggleSegments: (id: string) => void;
+  toggleSegment: (id: string) => void;
   onEditSegment: (segmentId: string | null) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   onEditRectangle?: (id: string) => void;
   editingRectangleId?: string | null;
+  isSegmentOpen?: boolean; // Add this to handle both naming styles
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -40,18 +41,23 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   updateMeasurement,
   editMeasurementId,
   segmentsOpen,
-  toggleSegments,
+  toggleSegment,
   onEditSegment,
   movingPointInfo,
   onEditRectangle,
-  editingRectangleId
+  editingRectangleId,
+  isSegmentOpen
 }) => {
   // Check if this is a rectangle-based measurement
   const isRectangleElement = measurement.isRectangleMode;
   const isRectangleEditing = editingRectangleId === measurement.id;
   
+  // Use isSegmentOpen if provided, otherwise check segmentsOpen object
+  const segmentIsOpen = isSegmentOpen !== undefined 
+    ? isSegmentOpen 
+    : segmentsOpen?.[measurement.id];
+  
   const hasSegments = measurement.segments && measurement.segments.length > 0;
-  const isSegmentOpen = segmentsOpen[measurement.id];
   
   return (
     <div className={`border border-border/50 rounded-md mb-2 overflow-hidden ${
@@ -143,10 +149,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={() => toggleSegments(measurement.id)}
-            title={isSegmentOpen ? "Segmente ausblenden" : "Segmente einblenden"}
+            onClick={() => toggleSegment(measurement.id)}
+            title={segmentIsOpen ? "Segmente ausblenden" : "Segmente einblenden"}
           >
-            {isSegmentOpen ? (
+            {segmentIsOpen ? (
               <ChevronUp className="h-3.5 w-3.5" />
             ) : (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -155,7 +161,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         )}
       </div>
       
-      {isSegmentOpen && hasSegments && (
+      {segmentIsOpen && hasSegments && (
         <MeasurementSegments 
           measurement={measurement}
           onEditSegment={onEditSegment}
