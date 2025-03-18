@@ -313,7 +313,6 @@ export const useMeasurementCore = () => {
         visible: true,
         labelVisible: true,
         unit: type === 'solar' ? 'm²' : 
-              type === 'gutter' ? 'm' : 
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
       }
@@ -433,7 +432,6 @@ export const useMeasurementCore = () => {
         'chimney': 4,
         'skylight': 4,
         'solar': 3,
-        'gutter': 2,
         'vent': 1,
         'hook': 1,
         'other': 1,
@@ -450,7 +448,6 @@ export const useMeasurementCore = () => {
           'chimney': 'Kamin',
           'skylight': 'Dachfenster',
           'solar': 'Solaranlage',
-          'gutter': 'Dachrinne',
           'vent': 'Lüfter',
           'hook': 'Dachhaken',
           'other': 'Sonstige Einbauten'

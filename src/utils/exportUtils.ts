@@ -12,7 +12,6 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'chimney': 'Kamin',
     'skylight': 'Dachfenster',
     'solar': 'Solaranlage',
-    'gutter': 'Dachrinne',
     'vent': 'Lüfter',
     'hook': 'Dachhaken',
     'other': 'Sonstige Einbauten'
@@ -56,6 +55,12 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
     const area = m.dimensions?.area !== undefined ? m.dimensions.area.toFixed(2) : '';
     const perimeter = m.dimensions?.perimeter !== undefined ? m.dimensions.perimeter.toFixed(2) : '';
     
+    // Ensure penetration types always have at least 1 piece
+    let count = m.count || '';
+    if (m.type === 'vent' || m.type === 'hook' || m.type === 'other') {
+      count = m.count && m.count > 1 ? m.count : 1;
+    }
+    
     return [
       m.id,
       type,
@@ -70,7 +75,7 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
       diameter,
       area,
       perimeter,
-      m.count || ''
+      count
     ];
   });
   
@@ -115,7 +120,8 @@ export const groupMeasurementsByType = (measurements: Measurement[]) => {
  * Get count of penetrations (vents)
  */
 export const getPenetrationCount = (measurements: Measurement[]): number => {
-  return measurements.filter(m => m.type === 'vent' || m.type === 'hook' || m.type === 'other').reduce((sum, m) => sum + (m.count || 1), 0);
+  return measurements.filter(m => m.type === 'vent' || m.type === 'hook' || m.type === 'other')
+    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
 };
 
 /**
@@ -131,9 +137,18 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
 } => {
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
-  const vents = measurements.filter(m => m.type === 'vent').reduce((sum, m) => sum + (m.count || 1), 0);
-  const hooks = measurements.filter(m => m.type === 'hook').reduce((sum, m) => sum + (m.count || 1), 0);
-  const otherPenetrations = measurements.filter(m => m.type === 'other').reduce((sum, m) => sum + (m.count || 1), 0);
+  
+  // Ensure vents are counted as at least 1 each
+  const vents = measurements.filter(m => m.type === 'vent')
+    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
+  
+  // Ensure hooks are counted as at least 1 each
+  const hooks = measurements.filter(m => m.type === 'hook')
+    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
+  
+  // Ensure other penetrations are counted as at least 1 each
+  const otherPenetrations = measurements.filter(m => m.type === 'other')
+    .reduce((sum, m) => sum + (m.count && m.count > 1 ? m.count : 1), 0);
   
   // Calculate total solar area
   const solarArea = measurements

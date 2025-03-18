@@ -580,7 +580,10 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
       valueText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
     }
     // Add count information to value cell if available
-    if (measurement.count && measurement.count > 1) {
+    if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
+      const count = measurement.count && measurement.count > 1 ? measurement.count : 1;
+      valueText += ` (${count} Stück)`;
+    } else if (measurement.count && measurement.count > 1) {
       valueText += ` (${measurement.count} Stück)`;
     }
     valueCell.textContent = valueText;
@@ -745,10 +748,15 @@ const createMeasurementTable = (
     // Value column (now including count if available)
     const valueCell = document.createElement('td');
     let valueText = `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}`;
-    // Add count information to value cell if available
-    if (measurement.count && measurement.count > 1) {
+    
+    // Always show at least 1 piece for vent, hook, or other penetration types
+    if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
+      const count = measurement.count && measurement.count > 1 ? measurement.count : 1;
+      valueText += ` (${count} Stück)`;
+    } else if (measurement.count && measurement.count > 1) {
       valueText += ` (${measurement.count} Stück)`;
     }
+    
     valueCell.textContent = valueText;
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
