@@ -14,6 +14,7 @@ export interface SpriteConfig {
   borderColor?: string;
   glowColor?: string;
   isPreview?: boolean;
+  isPointLabel?: boolean; // New prop to identify point labels
 }
 
 /**
@@ -22,9 +23,10 @@ export interface SpriteConfig {
 export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   const {
     text,
-    width = 512,
-    height = 128,
-    fontSize = 48,
+    isPointLabel = false, // Check if it's a point label (P1, P2, etc.)
+    width = isPointLabel ? 64 : 512, // Smaller width for point labels
+    height = isPointLabel ? 64 : 128, // Smaller height for point labels
+    fontSize = isPointLabel ? 32 : 48, // Smaller font for point labels
     fontFamily = 'Inter, Arial, sans-serif',
     backgroundColor = {
       start: 'rgba(41, 50, 65, 0.95)',
@@ -57,7 +59,7 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   bgGradient.addColorStop(1, backgroundColor.end);
   
   // Create a rounded rectangle for the background
-  const cornerRadius = 12;
+  const cornerRadius = isPointLabel ? 8 : 12; // Smaller corner radius for point labels
   
   // Clear the canvas
   context.clearRect(0, 0, width, height);
@@ -81,11 +83,11 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   
   // Add a subtle border
   context.strokeStyle = borderColor;
-  context.lineWidth = 2;
+  context.lineWidth = isPointLabel ? 1 : 2; // Thinner border for point labels
   context.stroke();
   
-  // Add inner glow effect
-  const glowWidth = 6;
+  // Add inner glow effect - reduced for point labels
+  const glowWidth = isPointLabel ? 3 : 6;
   context.shadowBlur = glowWidth;
   context.shadowColor = isPreview ? 'rgba(180, 100, 255, 0.6)' : glowColor;
   
@@ -124,8 +126,16 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   const aspectRatio = width / height;
   sprite.scale.set(aspectRatio * 0.5, 0.5, 1);
   
+  // For point labels, use a smaller scale
+  if (isPointLabel) {
+    sprite.scale.multiplyScalar(0.6);
+  }
+  
   // Ensure labels are rendered on top
   sprite.renderOrder = 100;
+  
+  // Store if this is a point label in userData
+  sprite.userData.isPointLabel = isPointLabel;
   
   return sprite;
 }
@@ -330,7 +340,8 @@ export function createMeasurementLabel(
   text: string,
   position: THREE.Vector3,
   isPreview: boolean = false,
-  type?: string
+  type?: string,
+  isPointLabel: boolean = false // New parameter to identify point labels
 ): THREE.Sprite {
   // For penetration elements, we might want to create a symbol-only label
   if (type === 'vent' || type === 'hook' || type === 'other') {
@@ -358,7 +369,8 @@ export function createMeasurementLabel(
   // Create the sprite with custom text for other measurement types
   const sprite = createTextSprite({
     text,
-    isPreview
+    isPreview,
+    isPointLabel // Pass the point label flag
   });
   
   // Position the sprite

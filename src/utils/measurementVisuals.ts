@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -377,11 +376,8 @@ export function renderEditPoints(
       // Position the label slightly above the point
       const labelPosition = new THREE.Vector3(point.x, point.y + 0.08, point.z);
       
-      // Create point label (P1, P2, etc.)
-      const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition, true);
-      
-      // Make the label smaller than regular measurement labels
-      pointLabel.scale.multiplyScalar(0.7);
+      // Create point label (P1, P2, etc.) - mark as point label
+      const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition, true, undefined, true);
       
       // Store info in userData
       pointLabel.userData = {
