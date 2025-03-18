@@ -19,11 +19,11 @@ import {
 } from '@/utils/measurementVisuals';
 
 // Import components
-import MeasurementSidebar from './measurement/MeasurementSidebar';
-import MeasurementToolControls from './measurement/MeasurementToolControls';
-import MeasurementControls from './measurement/MeasurementControls';
-import EditingAlert from './measurement/EditingAlert';
-import RoofElementControls from './measurement/RoofElementControls';
+import MeasurementSidebar from './MeasurementSidebar';
+import MeasurementToolControls from './MeasurementToolControls';
+import MeasurementControls from './MeasurementControls';
+import EditingAlert from './EditingAlert';
+import RoofElementControls from './RoofElementControls';
 
 interface MeasurementToolsProps {
   enabled: boolean;
