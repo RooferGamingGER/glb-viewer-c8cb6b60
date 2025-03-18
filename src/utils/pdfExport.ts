@@ -893,10 +893,6 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   summaryStats.appendChild(createStatBox(areaMeasurements.length, 'Flächenmessungen'));
   
   // Add roof elements stats if any exist
-  if (roofElements.dormers > 0) {
-    summaryStats.appendChild(createStatBox(roofElements.dormers, 'Gauben'));
-  }
-  
   if (roofElements.chimneys > 0) {
     summaryStats.appendChild(createStatBox(roofElements.chimneys, 'Kamine'));
   }
@@ -909,6 +905,14 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
     summaryStats.appendChild(createStatBox(roofElements.vents, 'Lüfter'));
   }
   
+  if (roofElements.hooks > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.hooks, 'Dachhaken'));
+  }
+  
+  if (roofElements.otherPenetrations > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.otherPenetrations, 'Sonstige Einbauten'));
+  }
+  
   if (roofElements.solarArea > 0) {
     summaryStats.appendChild(createStatBox(roofElements.solarArea.toFixed(2) + ' m²', 'Solaranlagen'));
   }
@@ -918,3 +922,4 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   
   return summarySection;
 };
+
