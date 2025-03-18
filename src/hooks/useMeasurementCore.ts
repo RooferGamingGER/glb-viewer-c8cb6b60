@@ -160,7 +160,7 @@ export const useMeasurementCore = () => {
       setCurrentPoints([]);
       currentPointsRef.current = [];
     }
-  }, [activeMode, calculateArea, createLengthMeasurement, createHeightMeasurement]);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
@@ -228,7 +228,7 @@ export const useMeasurementCore = () => {
           ...m,
           points: newPoints,
           value: newValue,
-          label: formatMeasurement(newValue, m.type),
+          label: formatMeasurement(newValue, m.type as 'length' | 'height' | 'area'),
           inclination: newInclination
         };
       });
