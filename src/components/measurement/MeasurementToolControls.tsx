@@ -10,7 +10,6 @@ import {
   Download,
   LayoutGrid,
   Sun,
-  Minus,
   SplitSquareVertical,
   Cylinder,
   Wind
@@ -97,29 +96,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </TabsContent>
         
         <TabsContent value="roof-elements">
-          <div className="grid grid-cols-3 gap-1">
-            <Button
-              variant={['verge', 'valley', 'ridge'].includes(activeMode) ? "default" : "outline"} 
-              size="sm"
-              className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'verge' ? 'none' : 'verge')}
-              disabled={!!editMeasurementId}
-            >
-              <Minus className="h-4 w-4 mr-1" />
-              <span className="text-xs">Kanten</span>
-            </Button>
-            
-            <Button
-              variant={['solar', 'gutter'].includes(activeMode) ? "default" : "outline"} 
-              size="sm"
-              className="w-full"
-              onClick={() => toggleMeasurementTool(activeMode === 'solar' ? 'none' : 'solar')}
-              disabled={!!editMeasurementId}
-            >
-              <Sun className="h-4 w-4 mr-1" />
-              <span className="text-xs">Anlagen</span>
-            </Button>
-            
+          <div className="grid grid-cols-2 gap-1">
             <Button
               variant={activeMode === 'dormer' ? "default" : "outline"} 
               size="sm"
@@ -129,6 +106,17 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             >
               <LayoutGrid className="h-4 w-4 mr-1" />
               <span className="text-xs">Gauben</span>
+            </Button>
+            
+            <Button
+              variant={activeMode === 'solar' ? "default" : "outline"} 
+              size="sm"
+              className="w-full"
+              onClick={() => toggleMeasurementTool(activeMode === 'solar' ? 'none' : 'solar')}
+              disabled={!!editMeasurementId}
+            >
+              <Sun className="h-4 w-4 mr-1" />
+              <span className="text-xs">Solaranlagen</span>
             </Button>
           </div>
         </TabsContent>
