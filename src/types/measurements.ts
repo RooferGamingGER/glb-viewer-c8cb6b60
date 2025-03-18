@@ -64,4 +64,5 @@ export interface Measurement {
   count?: number;        // For elements that need counting (e.g., vents)
   relatedMeasurements?: string[]; // IDs of related measurements
   penetrationType?: 'vent' | 'hook' | 'other'; // Type of penetration
+  notes?: string;        // Additional notes for the measurement
 }
