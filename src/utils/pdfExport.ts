@@ -965,7 +965,7 @@ const appendRoofElementsSection = (
   const tableHead = document.createElement('thead');
   const headerRow = document.createElement('tr');
   
-  ['Nr.', 'Element', 'Beschreibung', 'Wert'].forEach(column => {
+  ['Nr.', 'Beschreibung', 'Element', 'Wert'].forEach(column => {
     const th = document.createElement('th');
     th.textContent = column;
     headerRow.appendChild(th);
@@ -988,15 +988,15 @@ const appendRoofElementsSection = (
     numCell.textContent = (index + 1).toString();
     row.appendChild(numCell);
     
-    // Element type
-    const typeCell = document.createElement('td');
-    typeCell.textContent = getMeasurementTypeDisplayName(element.type);
-    row.appendChild(typeCell);
-    
     // Description
     const descCell = document.createElement('td');
     descCell.textContent = element.description || '–';
     row.appendChild(descCell);
+    
+    // Element type
+    const typeCell = document.createElement('td');
+    typeCell.textContent = getMeasurementTypeDisplayName(element.type);
+    row.appendChild(typeCell);
     
     // Value
     const valueCell = document.createElement('td');
@@ -1060,7 +1060,7 @@ const appendInstallationsSection = (
   const tableHead = document.createElement('thead');
   const headerRow = document.createElement('tr');
   
-  ['Nr.', 'Element', 'Beschreibung', 'Anzahl'].forEach(column => {
+  ['Nr.', 'Beschreibung', 'Element', 'Anzahl'].forEach(column => {
     const th = document.createElement('th');
     th.textContent = column;
     headerRow.appendChild(th);
@@ -1083,15 +1083,15 @@ const appendInstallationsSection = (
     numCell.textContent = (index + 1).toString();
     row.appendChild(numCell);
     
-    // Element type
-    const typeCell = document.createElement('td');
-    typeCell.textContent = getMeasurementTypeDisplayName(installation.type);
-    row.appendChild(typeCell);
-    
     // Description
     const descCell = document.createElement('td');
     descCell.textContent = installation.description || '–';
     row.appendChild(descCell);
+    
+    // Element type
+    const typeCell = document.createElement('td');
+    typeCell.textContent = getMeasurementTypeDisplayName(installation.type);
+    row.appendChild(typeCell);
     
     // Count
     const countCell = document.createElement('td');
