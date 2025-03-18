@@ -167,14 +167,14 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
  * Format the value display for a measurement based on its type
  */
 export const formatMeasurementValue = (measurement: Measurement): string => {
-  // For skylights, include dimensions if available
+  // For skylights, prioritize dimensions in format "L.LL m × B.BB m" if available
   if (measurement.type === 'skylight' && measurement.dimensions) {
     const width = measurement.dimensions.width;
     const height = measurement.dimensions.height;
     
     if (width !== undefined && height !== undefined) {
-      // Format: "X.XX m² (H.HH×W.WW m)"
-      return `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'} (${height.toFixed(2)}×${width.toFixed(2)} m)`;
+      // Format: "H.HH m × W.WW m (X.XX m²)"
+      return `${height.toFixed(2)} m × ${width.toFixed(2)} m (${measurement.value.toFixed(2)} ${measurement.unit || 'm²'})`;
     }
   }
   
