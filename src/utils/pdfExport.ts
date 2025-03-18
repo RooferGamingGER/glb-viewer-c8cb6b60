@@ -1,5 +1,13 @@
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
+import { getMeasurementTypeDisplayName } from '@/constants/measurements';
+import { 
+  getRoofElementsSummary, 
+  getPenetrationCount, 
+  formatMeasurementValue,
+  sortMeasurementsForExport,
+  consolidatePenetrations
+} from './exportUtils';
 
 export interface CoverPageData {
   title: string;
@@ -40,6 +48,10 @@ export const exportMeasurementsToPdf = async (
   coverData: CoverPageData
 ): Promise<boolean> => {
   try {
+    // Sort and consolidate measurements for export
+    const sortedMeasurements = sortMeasurementsForExport(measurements);
+    const consolidatedMeasurements = consolidatePenetrations(sortedMeasurements);
+    
     // Create a container for the PDF content
     const container = document.createElement('div');
     container.className = 'pdf-container';
@@ -252,10 +264,16 @@ export const exportMeasurementsToPdf = async (
     coverPage.appendChild(createCoverPage(coverData));
     contentWrapper.appendChild(coverPage);
     
-    // Filter measurements by type
-    const lengthMeasurements = measurements.filter(m => m.type === 'length');
-    const areaMeasurements = measurements.filter(m => m.type === 'area');
-    const heightMeasurements = measurements.filter(m => m.type === 'height');
+    // Filter measurements by type using the consolidated measurements
+    const lengthMeasurements = consolidatedMeasurements.filter(m => m.type === 'length');
+    const areaMeasurements = consolidatedMeasurements.filter(m => m.type === 'area');
+    const heightMeasurements = consolidatedMeasurements.filter(m => m.type === 'height');
+    const skylightMeasurements = consolidatedMeasurements.filter(m => m.type === 'skylight');
+    const chimneyMeasurements = consolidatedMeasurements.filter(m => m.type === 'chimney');
+    const solarMeasurements = consolidatedMeasurements.filter(m => m.type === 'solar');
+    const ventMeasurements = consolidatedMeasurements.filter(m => m.type === 'vent');
+    const hookMeasurements = consolidatedMeasurements.filter(m => m.type === 'hook');
+    const otherMeasurements = consolidatedMeasurements.filter(m => m.type === 'other');
     
     // Measurement summary - should start on a new page
     if (measurements.length > 0) {
@@ -278,7 +296,7 @@ export const exportMeasurementsToPdf = async (
       // Add summary card in its own keep-together block
       const summaryCardContainer = document.createElement('div');
       summaryCardContainer.className = 'keep-together';
-      summaryCardContainer.appendChild(createSummaryCard(measurements, lengthMeasurements, heightMeasurements, areaMeasurements));
+      summaryCardContainer.appendChild(createSummaryCard(consolidatedMeasurements, lengthMeasurements, heightMeasurements, areaMeasurements));
       summaryContent.appendChild(summaryCardContainer);
       
       // Create detailed summary table in its own keep-together block
@@ -290,13 +308,14 @@ export const exportMeasurementsToPdf = async (
       detailsTitle.textContent = 'Detaillierte Übersicht';
       tableContainer.appendChild(detailsTitle);
       
-      tableContainer.appendChild(createSummaryTable(measurements));
+      tableContainer.appendChild(createSummaryTable(consolidatedMeasurements));
       summaryContent.appendChild(tableContainer);
       
       contentWrapper.appendChild(summaryContent);
     }
     
-    // Add measurement type sections only if they have measurements
+    // Using the category-specific measurements for each section
+    // Standard measurements
     if (lengthMeasurements.length > 0) {
       appendMeasurementTypeSection(contentWrapper, 'length', lengthMeasurements, coverData.title);
     }
@@ -307,6 +326,18 @@ export const exportMeasurementsToPdf = async (
     
     if (heightMeasurements.length > 0) {
       appendMeasurementTypeSection(contentWrapper, 'height', heightMeasurements, coverData.title);
+    }
+    
+    // Roof elements (skylight, chimney, solar)
+    const roofElements = [...skylightMeasurements, ...chimneyMeasurements, ...solarMeasurements];
+    if (roofElements.length > 0) {
+      appendRoofElementsSection(contentWrapper, roofElements, coverData.title);
+    }
+    
+    // Installations (vent, hook, other)
+    const installations = [...ventMeasurements, ...hookMeasurements, ...otherMeasurements];
+    if (installations.length > 0) {
+      appendInstallationsSection(contentWrapper, installations, coverData.title);
     }
     
     // Configure html2pdf options with improved page break handling
@@ -481,7 +512,6 @@ const createHeader = (title: string): HTMLElement => {
   return header;
 };
 
-// Create a summary card with statistics
 const createSummaryCard = (
   measurements: Measurement[],
   lengthMeasurements: Measurement[],
@@ -530,7 +560,6 @@ const createSummaryCard = (
   return summaryCard;
 };
 
-// Create summary table for all measurements
 const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   const summaryTable = document.createElement('table');
   summaryTable.className = 'measurement-table';
@@ -551,36 +580,31 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   // Table body
   const tableBody = document.createElement('tbody');
   
-  measurements.forEach((measurement, index) => {
+  // Use the sorted measurements for the summary table
+  const sortedMeasurements = sortMeasurementsForExport(measurements);
+  const consolidatedMeasurements = consolidatePenetrations(sortedMeasurements);
+  
+  consolidatedMeasurements.forEach((measurement, index) => {
     const row = document.createElement('tr');
     
-    // Nr column
     const numCell = document.createElement('td');
     numCell.textContent = (index + 1).toString();
     row.appendChild(numCell);
     
-    // Description column
     const descCell = document.createElement('td');
     descCell.textContent = measurement.description || '–';
     row.appendChild(descCell);
     
-    // Type column
     const typeCell = document.createElement('td');
-    typeCell.textContent = measurement.type === 'length' ? 'Länge' : 
-                        measurement.type === 'height' ? 'Höhe' : 
-                        measurement.type === 'area' ? 'Fläche' : '–';
+    const typeDisplayName = getMeasurementTypeDisplayName(measurement.type);
+    typeCell.textContent = typeDisplayName || '–';
     row.appendChild(typeCell);
     
-    // Value column
     const valueCell = document.createElement('td');
-    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
-    if (measurement.type === 'area') {
-      valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
-    }
+    valueCell.textContent = formatMeasurementValue(measurement);
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
-    // Inclination column
     const inclinationCell = document.createElement('td');
     if (measurement.type === 'length' && measurement.inclination !== undefined) {
       inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
@@ -596,7 +620,6 @@ const createSummaryTable = (measurements: Measurement[]): HTMLElement => {
   return summaryTable;
 };
 
-// Helper function to add a measurement type section to the content wrapper
 const appendMeasurementTypeSection = (
   contentWrapper: HTMLElement, 
   type: string, 
@@ -636,7 +659,7 @@ const appendMeasurementTypeSection = (
   tableContainer.className = 'keep-together table-container';
   tableContainer.style.marginTop = '30px'; // Added extra spacing
   
-  // Create columns based on measurement type
+  // Create columns based on measurement type (removed 'Subtyp' and 'Anzahl')
   let columns: string[];
   if (type === 'length') {
     columns = ['Nr.', 'Beschreibung', 'Länge (m)', 'Neigung'];
@@ -651,7 +674,6 @@ const appendMeasurementTypeSection = (
   contentWrapper.appendChild(sectionContent);
 };
 
-// Helper function to add area measurements section to the content wrapper
 const appendAreaMeasurementSection = (
   contentWrapper: HTMLElement, 
   areaMeasurements: Measurement[], 
@@ -697,7 +719,6 @@ const appendAreaMeasurementSection = (
   contentWrapper.appendChild(areaContent);
 };
 
-// Helper function to create a generic measurement table
 const createMeasurementTable = (
   measurements: Measurement[], 
   columns: string[], 
@@ -735,9 +756,9 @@ const createMeasurementTable = (
     descCell.textContent = measurement.description || '–';
     row.appendChild(descCell);
     
-    // Value column
+    // Value column using the formatted value
     const valueCell = document.createElement('td');
-    valueCell.textContent = `${measurement.value.toFixed(2)} ${measurement.unit || (type === 'area' ? 'm²' : 'm')}`;
+    valueCell.textContent = formatMeasurementValue(measurement);
     valueCell.style.fontWeight = 'bold';
     row.appendChild(valueCell);
     
@@ -759,13 +780,11 @@ const createMeasurementTable = (
   return table;
 };
 
-// Helper function to create area measurement table without segments
 const createAreaMeasurementsTable = (measurements: Measurement[]): HTMLElement => {
   const columns = ['Nr.', 'Beschreibung', 'Fläche (m²)'];
   return createMeasurementTable(measurements, columns, 'area');
 };
 
-// Helper function to create segment tables for area measurements
 const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLElement => {
   const container = document.createElement('div');
   container.style.marginTop = '30px'; // Added extra spacing
@@ -817,7 +836,6 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
   return container;
 };
 
-// Helper function for creating measurement summary (moved to separate function)
 const createMeasurementSummary = (measurements: Measurement[], title: string): HTMLElement => {
   const summarySection = document.createElement('div');
   summarySection.className = 'measurement-section';
@@ -836,26 +854,257 @@ const createMeasurementSummary = (measurements: Measurement[], title: string): H
   const heightMeasurements = measurements.filter(m => m.type === 'height');
   const areaMeasurements = measurements.filter(m => m.type === 'area');
   
+  // Get roof elements stats
+  const roofElements = getRoofElementsSummary(measurements);
+  
   // Create summary card
-  const summaryCard = createSummaryCard(
-    measurements, 
-    lengthMeasurements, 
-    heightMeasurements, 
-    areaMeasurements
-  );
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'summary-card';
+  
+  // Summary text
+  const summaryText = document.createElement('p');
+  summaryText.style.margin = '0 0 15px 0';
+  summaryText.textContent = `Dieser Bericht enthält insgesamt ${measurements.length} Messungen.`;
+  summaryCard.appendChild(summaryText);
+  
+  // Create summary stats
+  const summaryStats = document.createElement('div');
+  summaryStats.className = 'summary-stats';
+  
+  // Helper function to create a stat box
+  const createStatBox = (value: number | string, label: string) => {
+    const statBox = document.createElement('div');
+    statBox.className = 'summary-stat';
+    
+    const statValue = document.createElement('div');
+    statValue.className = 'summary-stat-value';
+    statValue.textContent = value.toString();
+    statBox.appendChild(statValue);
+    
+    const statLabel = document.createElement('div');
+    statLabel.className = 'summary-stat-label';
+    statLabel.textContent = label;
+    statBox.appendChild(statLabel);
+    
+    return statBox;
+  };
+  
+  // Add stats
+  summaryStats.appendChild(createStatBox(measurements.length, 'Messungen gesamt'));
+  summaryStats.appendChild(createStatBox(lengthMeasurements.length, 'Längenmessungen'));
+  summaryStats.appendChild(createStatBox(heightMeasurements.length, 'Höhenmessungen'));
+  summaryStats.appendChild(createStatBox(areaMeasurements.length, 'Flächenmessungen'));
+  
+  // Add roof elements stats if any exist
+  if (roofElements.chimneys > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.chimneys, 'Kamine'));
+  }
+  
+  if (roofElements.skylights > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.skylights, 'Dachfenster'));
+  }
+  
+  const penetrations = getPenetrationCount(measurements);
+  if (penetrations > 0) {
+    summaryStats.appendChild(createStatBox(penetrations, 'Durchdringungen'));
+  }
+  
+  if (roofElements.solarArea > 0) {
+    summaryStats.appendChild(createStatBox(roofElements.solarArea.toFixed(2) + ' m²', 'Solarfläche'));
+  }
+  
+  summaryCard.appendChild(summaryStats);
   summarySection.appendChild(summaryCard);
   
-  // Create detailed summary table
-  const tableContainer = document.createElement('div');
-  tableContainer.className = 'keep-together section-content';
-  
-  const detailsTitle = document.createElement('h3');
-  detailsTitle.textContent = 'Detaillierte Übersicht';
-  tableContainer.appendChild(detailsTitle);
-  
-  // Create the summary table
-  tableContainer.appendChild(createSummaryTable(measurements));
-  summarySection.appendChild(tableContainer);
-  
   return summarySection;
+};
+
+/**
+ * Add section for roof elements (skylights, chimneys, solar)
+ */
+const appendRoofElementsSection = (
+  contentWrapper: HTMLElement, 
+  roofElements: Measurement[], 
+  title: string
+) => {
+  if (roofElements.length === 0) return;
+  
+  const sectionContent = document.createElement('div');
+  sectionContent.className = 'pdf-section force-page-break';
+  
+  // Create section with header that stays with content
+  const section = document.createElement('div');
+  section.className = 'section-with-header';
+  
+  // Add header
+  section.appendChild(createHeader(title));
+  
+  // Create title
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Dachelemente';
+  sectionTitle.style.marginTop = '20px';
+  sectionTitle.style.marginBottom = '30px';
+  section.appendChild(sectionTitle);
+  
+  // Create description
+  const description = document.createElement('p');
+  description.textContent = `Dieser Abschnitt enthält ${roofElements.length} Dachelemente.`;
+  section.appendChild(description);
+  
+  sectionContent.appendChild(section);
+  
+  // Create table for roof elements
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'keep-together table-container';
+  tableContainer.style.marginTop = '30px';
+  
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Nr.', 'Beschreibung', 'Element', 'Wert'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  // Sort roof elements by type (skylight, chimney, solar)
+  const sortedRoofElements = sortMeasurementsForExport(roofElements);
+  
+  sortedRoofElements.forEach((element, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description
+    const descCell = document.createElement('td');
+    descCell.textContent = element.description || '–';
+    row.appendChild(descCell);
+    
+    // Element type
+    const typeCell = document.createElement('td');
+    typeCell.textContent = getMeasurementTypeDisplayName(element.type);
+    row.appendChild(typeCell);
+    
+    // Value
+    const valueCell = document.createElement('td');
+    valueCell.textContent = formatMeasurementValue(element);
+    valueCell.style.fontWeight = 'bold';
+    row.appendChild(valueCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  tableContainer.appendChild(table);
+  sectionContent.appendChild(tableContainer);
+  
+  contentWrapper.appendChild(sectionContent);
+};
+
+/**
+ * Add section for installations (vents, hooks, other)
+ */
+const appendInstallationsSection = (
+  contentWrapper: HTMLElement, 
+  installations: Measurement[], 
+  title: string
+) => {
+  if (installations.length === 0) return;
+  
+  const sectionContent = document.createElement('div');
+  sectionContent.className = 'pdf-section force-page-break';
+  
+  // Create section with header that stays with content
+  const section = document.createElement('div');
+  section.className = 'section-with-header';
+  
+  // Add header
+  section.appendChild(createHeader(title));
+  
+  // Create title
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Einbauten und Durchdringungen';
+  sectionTitle.style.marginTop = '20px';
+  sectionTitle.style.marginBottom = '30px';
+  section.appendChild(sectionTitle);
+  
+  // Create description
+  const description = document.createElement('p');
+  description.textContent = `Dieser Abschnitt enthält ${installations.length} Einbauten und Durchdringungen.`;
+  section.appendChild(description);
+  
+  sectionContent.appendChild(section);
+  
+  // Create table for installations
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'keep-together table-container';
+  tableContainer.style.marginTop = '30px';
+  
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Nr.', 'Beschreibung', 'Element', 'Anzahl'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  // Sort installations by type (vent, hook, other)
+  const sortedInstallations = sortMeasurementsForExport(installations);
+  
+  sortedInstallations.forEach((installation, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description
+    const descCell = document.createElement('td');
+    descCell.textContent = installation.description || '–';
+    row.appendChild(descCell);
+    
+    // Element type
+    const typeCell = document.createElement('td');
+    typeCell.textContent = getMeasurementTypeDisplayName(installation.type);
+    row.appendChild(typeCell);
+    
+    // Count
+    const countCell = document.createElement('td');
+    countCell.textContent = `${installation.count || 1} Stück`;
+    countCell.style.fontWeight = 'bold';
+    row.appendChild(countCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  tableContainer.appendChild(table);
+  sectionContent.appendChild(tableContainer);
+  
+  contentWrapper.appendChild(sectionContent);
 };

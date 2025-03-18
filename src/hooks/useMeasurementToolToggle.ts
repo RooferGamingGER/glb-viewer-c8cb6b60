@@ -34,7 +34,31 @@ export const useMeasurementToolToggle = (
     }
   }, [activeMode, clearCurrentPoints, setActiveMode, setEditMeasurementId, setEditingPointIndex, setMeasurements]);
 
+  // Check if a specific mode is active
+  const isModeActive = useCallback((mode: MeasurementMode) => {
+    return activeMode === mode;
+  }, [activeMode]);
+
+  // Check if the active mode is an area-type mode
+  const isAreaMode = useCallback(() => {
+    return ['area', 'solar', 'skylight', 'chimney'].includes(activeMode);
+  }, [activeMode]);
+
+  // Check if the active mode is a point-type mode
+  const isPointMode = useCallback(() => {
+    return ['vent', 'hook', 'other'].includes(activeMode);
+  }, [activeMode]);
+
+  // Check if the active mode is a line-type mode
+  const isLineMode = useCallback(() => {
+    return ['length', 'height'].includes(activeMode);
+  }, [activeMode]);
+
   return {
-    toggleMeasurementTool
+    toggleMeasurementTool,
+    isModeActive,
+    isAreaMode,
+    isPointMode,
+    isLineMode
   };
 };

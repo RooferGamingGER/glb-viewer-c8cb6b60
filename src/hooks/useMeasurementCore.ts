@@ -1,10 +1,12 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
 import { 
   MeasurementMode, 
   Point, 
-  Measurement 
+  Measurement,
+  Segment
 } from '@/types/measurements';
 import { 
   calculateDistance, 
@@ -12,9 +14,13 @@ import {
   calculateArea,
   generateSegments,
   calculateInclination,
-  validatePolygon
+  validatePolygon,
+  calculateAverageInclination,
+  calculateQuadrilateralDimensions,
+  calculateBoundingBox,
+  calculateCentroid
 } from '@/utils/measurementCalculations';
-import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
+import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
 
 /**
@@ -25,10 +31,65 @@ export const useMeasurementCore = () => {
   const [activeMode, setActiveMode] = useState<MeasurementMode>('none');
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
+  const [allLabelsVisible, setAllLabelsVisible] = useState<boolean>(true);
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
   const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
   
   const currentPointsRef = useRef<Point[]>([]);
+
+  const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
+    setMeasurements(prev => {
+      return prev.map(m => {
+        if (m.id !== measurementId) return m;
+        
+        const newPoints = [...m.points];
+        newPoints[pointIndex] = newPoint;
+        
+        let newValue: number;
+        let newInclination: number | undefined;
+        
+        if (m.type === 'length') {
+          newValue = calculateDistance(newPoints[0], newPoints[1]);
+          
+          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
+          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
+          const calculatedInclination = calculateInclination(p1, p2);
+          
+          newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
+          
+        } else if (m.type === 'height') {
+          newValue = calculateHeight(newPoints[0], newPoints[1]);
+        } else if (m.type === 'area') {
+          const validation = validatePolygon(newPoints);
+          if (!validation.valid) {
+            toast.error(validation.message || 'Ungültiges Polygon');
+            return m;
+          }
+          
+          const label = formatMeasurement(calculateArea(newPoints), m.type);
+          const newSegments = generateSegments(newPoints);
+          
+          return {
+            ...m,
+            points: newPoints,
+            value: calculateArea(newPoints),
+            label,
+            segments: newSegments
+          };
+        } else {
+          newValue = m.value;
+        }
+        
+        return {
+          ...m,
+          points: newPoints,
+          value: newValue,
+          label: formatMeasurement(newValue, m.type as 'length' | 'height' | 'area'),
+          inclination: newInclination
+        };
+      });
+    });
+  }, []);
 
   useEffect(() => {
     currentPointsRef.current = currentPoints;
@@ -87,6 +148,7 @@ export const useMeasurementCore = () => {
         value: distance,
         label,
         visible: true,
+        labelVisible: true,
         unit: 'm',
         description: '',
         inclination
@@ -117,6 +179,7 @@ export const useMeasurementCore = () => {
         value: height,
         label,
         visible: true,
+        labelVisible: true,
         unit: 'm',
         description: ''
       }
@@ -128,57 +191,151 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
   }, []);
 
-  const finalizeMeasurement = useCallback(() => {
-    const points = [...currentPointsRef.current];
+  const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
+    value: number;
+    width: number;
+    length: number;
+    area: number;
+    perimeter: number;
+  } => {
+    if (points.length >= 4) {
+      const dimensions = calculateQuadrilateralDimensions(points);
+      
+      return {
+        value: dimensions.area,
+        width: dimensions.width,
+        length: dimensions.length,
+        area: dimensions.area,
+        perimeter: dimensions.perimeter
+      };
+    }
     
+    return {
+      value: 0,
+      width: 0,
+      length: 0,
+      area: 0,
+      perimeter: 0
+    };
+  };
+
+  const createPointMeasurement = (point: Point, type: 'vent' | 'hook' | 'other'): {
+    value: number;
+    position: Point;
+    penetrationType: 'vent' | 'hook' | 'other';
+  } => {
+    return {
+      value: 1, // Changed from 0 to 1 to properly count penetrations
+      position: point,
+      penetrationType: type
+    };
+  };
+
+  const createRoofElementMeasurement = useCallback((type: MeasurementMode, points: Point[]) => {
     if (points.length === 0) return;
     
-    if (activeMode === 'length' && points.length >= 2) {
-      createLengthMeasurement([points[0], points[1]]);
-    } 
-    else if (activeMode === 'height' && points.length >= 2) {
-      createHeightMeasurement([points[0], points[1]]);
-    }
-    else if (activeMode === 'area' && points.length >= 3) {
-      // Polygon auf Gültigkeit prüfen
-      const validation = validatePolygon(points);
-      if (!validation.valid) {
-        toast.error(validation.message || 'Ungültiges Polygon');
-        return;
-      }
-      
-      // Warnung anzeigen, falls vorhanden
-      if (validation.message) {
-        toast.warning(validation.message);
-      }
-      
-      // Berechnung der Fläche mit verbesserter 3D-Methode
-      const value = calculateArea(points);
-      const label = formatMeasurement(value, 'area');
-      const segments = generateSegments(points);
-      
-      toast.success(
-        `3D-Fläche berechnet: ${label} (Potree-Methode)`
-      );
-      
-      setMeasurements(prev => [
-        ...prev,
-        {
-          id: nanoid(),
-          type: 'area',
-          points: [...points],
-          value,
-          label,
-          visible: true,
-          unit: 'm²',
-          description: '',
-          segments
+    let measurementData: any = {
+      value: 0,
+      label: '0 m',
+      description: '',
+      dimensions: {},
+      labelVisible: true
+    };
+    
+    switch (type) {
+      case 'chimney':
+        if (points.length >= 4) {
+          const area = calculateArea(points);
+          const dimensions = calculateQuadrilateralDimensions(points);
+          
+          measurementData = {
+            value: area,
+            label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
+            subType: 'Kaminausschnitt',
+            dimensions: {
+              width: dimensions.width,
+              length: dimensions.length,
+              area: area,
+              perimeter: dimensions.perimeter
+            }
+          };
         }
-      ]);
-      setCurrentPoints([]);
-      currentPointsRef.current = [];
+        break;
+        
+      case 'skylight':
+        if (points.length >= 4) {
+          const area = calculateArea(points);
+          const dimensions = calculateQuadrilateralDimensions(points);
+          
+          measurementData = {
+            value: area,
+            label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
+            dimensions: {
+              width: dimensions.width,
+              length: dimensions.length,
+              area: area,
+              perimeter: dimensions.perimeter
+            }
+          };
+        }
+        break;
+        
+      case 'solar':
+        const area = calculateArea(points);
+        const segments = generateSegments(points);
+        
+        measurementData = {
+          value: area,
+          label: formatMeasurement(area, 'area'),
+          segments,
+          dimensions: {
+            area
+          }
+        };
+        break;
+        
+      case 'vent':
+      case 'hook':
+      case 'other':
+        const pointData = createPointMeasurement(points[0], type as 'vent' | 'hook' | 'other');
+        const labels = {
+          'vent': 'Lüfter',
+          'hook': 'Dachhaken',
+          'other': 'Sonstige Einbauten'
+        };
+        measurementData = {
+          value: 1, // Changed from 0 to 1 to properly count penetrations
+          label: labels[type as 'vent' | 'hook' | 'other'],
+          position: pointData.position,
+          count: 1,
+          penetrationType: pointData.penetrationType
+        };
+        break;
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement]);
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type,
+        points: [...points],
+        visible: true,
+        labelVisible: true,
+        unit: type === 'solar' ? 'm²' : 
+              type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
+        ...measurementData
+      }
+    ]);
+    
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    if (type === 'vent' || type === 'hook' || type === 'other') {
+      setActiveMode(type);
+    } else {
+      setActiveMode('none');
+    }
+  }, [setMeasurements, setActiveMode, setCurrentPoints]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
@@ -203,67 +360,128 @@ export const useMeasurementCore = () => {
         toast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
       }
     }
-  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement]);
+    
+    if ((currentMode === 'vent' || currentMode === 'hook' || currentMode === 'other') && updatedPoints.length === 1) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      const labels = {
+        'vent': 'Lüfter/Durchdringung',
+        'hook': 'Dachhaken',
+        'other': 'Sonstige Einbauten'
+      };
+      toast.success(`${labels[currentMode]} markiert - Messwerkzeug bleibt aktiviert`);
+      return;
+    }
+    
+    if (currentMode === 'skylight' && updatedPoints.length === 4) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      toast.success(`Dachfenster-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'skylight' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für Dachfenster platziert`);
+    }
+    
+    if (currentMode === 'chimney' && updatedPoints.length === 4) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      toast.success(`Kamin-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'chimney' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
+    }
+  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
-  const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
-    setMeasurements(prev => {
-      return prev.map(m => {
-        if (m.id !== measurementId) return m;
-        
-        const newPoints = [...m.points];
-        newPoints[pointIndex] = newPoint;
-        
-        let newValue: number;
-        let newInclination: number | undefined;
-        
-        if (m.type === 'length') {
-          newValue = calculateDistance(newPoints[0], newPoints[1]);
-          
-          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
-          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
-          const calculatedInclination = calculateInclination(p1, p2);
-          
-          newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
-          
-        } else if (m.type === 'height') {
-          newValue = calculateHeight(newPoints[0], newPoints[1]);
-        } else if (m.type === 'area') {
-          // Polygon auf Gültigkeit prüfen
-          const validation = validatePolygon(newPoints);
-          if (!validation.valid) {
-            toast.error(validation.message || 'Ungültiges Polygon');
-            return m; // Original-Messung beibehalten, wenn die Änderung ungültig ist
-          }
-          
-          // Warnung anzeigen, falls vorhanden
-          if (validation.message) {
-            toast.warning(validation.message);
-          }
-          
-          newValue = calculateArea(newPoints);
-          const newSegments = generateSegments(newPoints);
-          
-          return {
-            ...m,
-            points: newPoints,
-            value: newValue,
-            label: formatMeasurement(newValue, m.type),
-            segments: newSegments
-          };
-        } else {
-          newValue = m.value;
+  const finalizeMeasurement = useCallback(() => {
+    const points = [...currentPointsRef.current];
+    
+    if (points.length === 0) return;
+    
+    if (activeMode === 'length' && points.length >= 2) {
+      createLengthMeasurement([points[0], points[1]]);
+    } 
+    else if (activeMode === 'height' && points.length >= 2) {
+      createHeightMeasurement([points[0], points[1]]);
+    }
+    else if (activeMode === 'area' && points.length >= 3) {
+      const validation = validatePolygon(points);
+      if (!validation.valid) {
+        toast.error(validation.message || 'Ungültiges Polygon');
+        return;
+      }
+      
+      if (validation.message) {
+        toast.warning(validation.message);
+      }
+      
+      const value = calculateArea(points);
+      const label = formatMeasurement(value, 'area');
+      const segments = generateSegments(points);
+      
+      toast.success(
+        `3D-Fläche berechnet: ${label} (Potree-Methode)`
+      );
+      
+      setMeasurements(prev => [
+        ...prev,
+        {
+          id: nanoid(),
+          type: 'area',
+          points: [...points],
+          value,
+          label,
+          visible: true,
+          labelVisible: true,
+          unit: 'm²',
+          description: '',
+          segments
         }
+      ]);
+      setCurrentPoints([]);
+      currentPointsRef.current = [];
+      setActiveMode('none');
+    }
+    else if (activeMode === 'solar' && points.length >= 3) {
+      const validation = validatePolygon(points);
+      if (!validation.valid) {
+        toast.error(validation.message || 'Ungültiges Polygon');
+        return;
+      }
+      
+      createRoofElementMeasurement(activeMode, points);
+      toast.success(`Solaranlage-Messung abgeschlossen`);
+    }
+    else if (!['length', 'height', 'area', 'solar', 'none'].includes(activeMode)) {
+      const requiredPoints: Record<MeasurementMode, number> = {
+        'chimney': 4,
+        'skylight': 4,
+        'solar': 3,
+        'vent': 1,
+        'hook': 1,
+        'other': 1,
+        'length': 2,
+        'height': 2,
+        'area': 3,
+        'none': 0
+      };
+      
+      if (points.length >= (requiredPoints[activeMode] || 0)) {
+        createRoofElementMeasurement(activeMode, points);
         
-        return {
-          ...m,
-          points: newPoints,
-          value: newValue,
-          label: formatMeasurement(newValue, m.type as 'length' | 'height' | 'area'),
-          inclination: newInclination
-        };
-      });
-    });
-  }, []);
+        const typeName = {
+          'chimney': 'Kamin',
+          'skylight': 'Dachfenster',
+          'solar': 'Solaranlage',
+          'vent': 'Lüfter',
+          'hook': 'Dachhaken',
+          'other': 'Sonstige Einbauten'
+        }[activeMode] || activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
+        
+        toast.success(`${typeName}-Messung abgeschlossen`);
+      } else {
+        toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
+        
+        if (activeMode === 'skylight' || activeMode === 'chimney') {
+          toast.error(`Für ${activeMode === 'skylight' ? 'Dachfenster' : 'Kamin'} werden genau 4 Punkte benötigt.`);
+        }
+      }
+    }
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement]);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {
@@ -300,6 +518,8 @@ export const useMeasurementCore = () => {
     setActiveMode,
     allMeasurementsVisible,
     setAllMeasurementsVisible,
+    allLabelsVisible,
+    setAllLabelsVisible,
     editMeasurementId, 
     setEditMeasurementId,
     editingPointIndex,
@@ -311,6 +531,7 @@ export const useMeasurementCore = () => {
     updateMeasurementPoint,
     undoLastPoint,
     createLengthMeasurement,
-    createHeightMeasurement
+    createHeightMeasurement,
+    createRoofElementMeasurement
   };
 };

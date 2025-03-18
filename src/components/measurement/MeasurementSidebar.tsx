@@ -1,15 +1,27 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from 'lucide-react';
-import { Measurement, Point } from '@/hooks/useMeasurements';
+import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
+import { Button } from '@/components/ui/button';
+import { BookmarkX, EyeIcon, EyeOff, Trash2 } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
+  toggleLabelVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -18,17 +30,20 @@ interface MeasurementSidebarProps {
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
   onEditSegment: (id: string | null) => void;
-  movingPointInfo: { measurementId: string; pointIndex: number } | null;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   showTable: boolean;
   handleClearMeasurements: () => void;
+  toggleAllLabelsVisibility: () => void;
+  allLabelsVisible: boolean;
+  activeMode?: string;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
-/**
- * Component for displaying measurements in a sidebar
- */
-const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
+const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({ 
   measurements,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -39,39 +54,84 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   onEditSegment,
   movingPointInfo,
   showTable,
-  handleClearMeasurements
+  handleClearMeasurements,
+  toggleAllLabelsVisibility,
+  allLabelsVisible,
+  activeMode,
+  handleMoveMeasurementUp,
+  handleMoveMeasurementDown
 }) => {
+  const [activeTab, setActiveTab] = useState<string>("standard");
+  
+  // Sync the active tab with the current measurement tool when appropriate
+  useEffect(() => {
+    if (!activeMode || activeMode === 'none') return;
+    
+    if (['length', 'height', 'area'].includes(activeMode)) {
+      setActiveTab("standard");
+    } else if (['solar', 'chimney', 'skylight'].includes(activeMode)) {
+      setActiveTab("roofElements");
+    } else if (['vent', 'hook', 'other'].includes(activeMode)) {
+      setActiveTab("penetrations");
+    }
+  }, [activeMode]);
+  
   return (
-    <>
-      {/* Fixed title bar for measurements */}
-      <div className="flex-shrink-0 p-3 border-t border-b border-border/50 flex justify-between items-center">
-        <div className="text-base font-medium">
-          {showTable ? "Messungen (Tabelle)" : "Messungen"}
-        </div>
-        
-        {measurements.length > 0 && (
-          <Button
-            variant="outline"
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-3 pt-2 pb-1">
+        <h2 className="text-md font-semibold">Messungen</h2>
+        <div className="flex space-x-1">
+          <Button 
+            variant="outline" 
             size="sm"
-            className="h-7 px-2"
-            onClick={handleClearMeasurements}
-            disabled={!!editMeasurementId}
+            onClick={toggleAllLabelsVisibility}
+            title={allLabelsVisible ? "Alle Labels ausblenden" : "Alle Labels einblenden"}
+            className="h-7 w-7 p-0"
           >
-            <Trash2 className="h-3 w-3 mr-1" />
-            Alle löschen
+            {allLabelsVisible ? <BookmarkX className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
           </Button>
-        )}
+          
+          {measurements.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="h-7 text-xs">
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Alle löschen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Diese Aktion kann nicht rückgängig gemacht werden. Alle Messungen werden dauerhaft gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearMeasurements}>
+                    Alle löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
       
-      {/* Scrollable content area */}
-      <ScrollArea className="flex-1 overflow-auto">
-        <div className="p-3">
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full pr-2">
           {showTable ? (
-            <MeasurementTable measurements={measurements} />
+            <MeasurementTable 
+              measurements={measurements} 
+              toggleMeasurementVisibility={toggleMeasurementVisibility} 
+              toggleLabelVisibility={toggleLabelVisibility}
+              handleDeleteMeasurement={handleDeleteMeasurement}
+            />
           ) : (
             <MeasurementList 
               measurements={measurements}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
+              toggleLabelVisibility={toggleLabelVisibility}
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
               handleDeletePoint={handleDeletePoint}
@@ -81,17 +141,13 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               toggleSegments={toggleSegments}
               onEditSegment={onEditSegment}
               movingPointInfo={movingPointInfo}
+              handleMoveMeasurementUp={handleMoveMeasurementUp}
+              handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
           )}
-          
-          {measurements.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              Keine Messungen vorhanden
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </>
+        </ScrollArea>
+      </div>
+    </div>
   );
 };
 

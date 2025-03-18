@@ -296,10 +296,15 @@ export function updateLabelScale(
  */
 export function formatMeasurementLabel(
   value: number, 
-  type: 'length' | 'height' | 'area',
+  type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'vent' | 'hook' | 'other' | string,
   inclination?: number
 ): string {
-  if (type === 'area') {
+  // For penetration elements, we only show icons, not text
+  if (type === 'vent' || type === 'hook' || type === 'other') {
+    return '';
+  }
+  
+  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney') {
     // Format area measurements
     if (value < 0.01) {
       return `${(value * 10000).toFixed(2)} cm²`;
@@ -324,9 +329,33 @@ export function formatMeasurementLabel(
 export function createMeasurementLabel(
   text: string,
   position: THREE.Vector3,
-  isPreview: boolean = false
+  isPreview: boolean = false,
+  type?: string
 ): THREE.Sprite {
-  // Create the sprite with custom text
+  // For penetration elements, we might want to create a symbol-only label
+  if (type === 'vent' || type === 'hook' || type === 'other') {
+    // Create the sprite with a special icon format
+    const iconText = type === 'vent' ? '⚪' : 
+                     type === 'hook' ? '⚓' : '✖';
+    
+    const sprite = createTextSprite({
+      text: iconText,
+      width: 96,
+      height: 96,
+      fontSize: 60,
+      isPreview
+    });
+    
+    // Position the sprite
+    sprite.position.copy(position);
+    
+    // Add slight Y offset to avoid z-fighting with geometry
+    sprite.position.y += 0.05;
+    
+    return sprite;
+  }
+  
+  // Create the sprite with custom text for other measurement types
   const sprite = createTextSprite({
     text,
     isPreview

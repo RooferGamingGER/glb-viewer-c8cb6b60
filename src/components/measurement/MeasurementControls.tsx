@@ -7,6 +7,7 @@ import {
   X 
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/hooks/useMeasurements';
+import RoofElementControls from './RoofElementControls';
 
 interface MeasurementControlsProps {
   activeMode: MeasurementMode;
@@ -26,8 +27,16 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
+  // Exit early if no measurement tool is active
   if (activeMode === 'none') return null;
   
+  // For roof elements and penetrations, don't render anything here
+  // This prevents duplicate UI for roof elements like 'solar'
+  if (!['length', 'height', 'area'].includes(activeMode)) {
+    return null;
+  }
+  
+  // Standard measurement controls for length, height, area
   return (
     <div className="p-3 pb-0">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">

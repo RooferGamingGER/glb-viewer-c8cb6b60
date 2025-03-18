@@ -1,15 +1,38 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Pencil, Trash2, Save, X } from 'lucide-react';
+import { 
+  Eye, 
+  EyeOff, 
+  Pencil, 
+  Trash2, 
+  Save, 
+  X,
+  House,
+  Cylinder,
+  SplitSquareVertical,
+  Sun,
+  Minus,
+  ArrowDown,
+  Wind,
+  Square,
+  Anchor,
+  EyeIcon,
+  BookmarkX,
+  MoveUp,
+  MoveDown
+} from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
+  toggleLabelVisibility?: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -19,11 +42,14 @@ interface MeasurementItemProps {
   toggleSegments: (id: string) => void;
   onEditSegment: (segmentId: string) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
   measurement,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -32,7 +58,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   segmentsOpen,
   toggleSegments,
   onEditSegment,
-  movingPointInfo
+  movingPointInfo,
+  handleMoveMeasurementUp,
+  handleMoveMeasurementDown
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -47,32 +75,125 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     setEditingId(null);
   };
 
+  const getTypeIcon = (type: string) => {
+    switch(type) {
+      case 'dormer': return <House className="h-4 w-4 mr-1" />;
+      case 'chimney': return <Cylinder className="h-4 w-4 mr-1" />;
+      case 'skylight': return <SplitSquareVertical className="h-4 w-4 mr-1" />;
+      case 'solar': return <Sun className="h-4 w-4 mr-1" />;
+      case 'length': return <Minus className="h-4 w-4 mr-1" />;
+      case 'height': return <ArrowDown className="h-4 w-4 mr-1" />;
+      case 'area': return <Square className="h-4 w-4 mr-1" />;
+      case 'vent': return <Wind className="h-4 w-4 mr-1" />;
+      case 'hook': return <Anchor className="h-4 w-4 mr-1" />;
+      case 'other': return <BookmarkX className="h-4 w-4 mr-1" />;
+      default: return null;
+    }
+  };
+
+  const getTypeName = (type: string): string => {
+    const typeNames: Record<string, string> = {
+      'length': 'Länge',
+      'height': 'Höhe',
+      'area': 'Fläche',
+      'dormer': 'Gaube',
+      'chimney': 'Kamin',
+      'skylight': 'Dachfenster',
+      'solar': 'Solaranlage',
+      'vent': 'Lüfter',
+      'hook': 'Dachhaken',
+      'other': 'Sonstige Einbauten'
+    };
+    
+    return typeNames[type] || type;
+  };
+
+  const isRoofElement = [
+    'chimney', 'skylight', 'solar'
+  ].includes(measurement.type);
+
+  const isPenetration = ['vent', 'hook', 'other'].includes(measurement.type);
+
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
-        measurement.editMode ? 'border-primary bg-secondary/20' : 'border-border'
+        measurement.editMode ? 'border-primary bg-secondary/20' : 
+        isPenetration ? 'border-orange-300/50 bg-orange-50/10' :  
+        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 'border-border'
       }`}
     >
       <div className="flex justify-between items-center mb-1">
-        <div className="font-medium">
-          {measurement.type === 'length' && "Länge"}
-          {measurement.type === 'height' && "Höhe"}
-          {measurement.type === 'area' && "Fläche"}
+        <div className="font-medium flex items-center">
+          {getTypeIcon(measurement.type)}
+          {getTypeName(measurement.type)}
+          
+          {isPenetration && (
+            <Badge variant="outline" className="ml-2 text-xs bg-orange-50/30">
+              Durchdringung
+            </Badge>
+          )}
+          
+          {measurement.subType && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              {measurement.subType}
+            </Badge>
+          )}
+          
+          {measurement.count && measurement.count > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {measurement.count}
+            </Badge>
+          )}
         </div>
+        
         <div className="flex space-x-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6" 
-            onClick={() => toggleMeasurementVisibility(measurement.id)}
-            title={measurement.visible === false ? "Einblenden" : "Ausblenden"}
-          >
-            {measurement.visible === false ? (
-              <Eye className="h-3 w-3" />
-            ) : (
-              <EyeOff className="h-3 w-3" />
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={() => toggleMeasurementVisibility(measurement.id)}
+                  title={measurement.visible === false ? "Einblenden" : "Ausblenden"}
+                >
+                  {measurement.visible === false ? (
+                    <Eye className="h-3 w-3" />
+                  ) : (
+                    <EyeOff className="h-3 w-3" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {measurement.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {toggleLabelVisibility && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    onClick={() => toggleLabelVisibility(measurement.id)}
+                    title={measurement.labelVisible === false ? "Label einblenden" : "Label ausblenden"}
+                  >
+                    {measurement.labelVisible === false ? (
+                      <EyeIcon className="h-3 w-3" />
+                    ) : (
+                      <BookmarkX className="h-3 w-3" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {measurement.labelVisible === false ? "Label einblenden" : "Label ausblenden"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           
           <Button 
             variant="ghost" 
@@ -97,14 +218,78 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       </div>
       
       <div className="text-sm mb-1">
-        <strong>Wert:</strong> {measurement.label}
+        {!isPenetration && (
+          <>
+            <strong>Wert:</strong> {measurement.label}
+          </>
+        )}
+        
+        {/* Abmessungen für Dachelemente */}
+        {measurement.dimensions && (
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
+            {measurement.dimensions.length !== undefined && (
+              <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.width !== undefined && (
+              <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.height !== undefined && (
+              <div><strong>Höhe:</strong> {measurement.dimensions.height.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.diameter !== undefined && (
+              <div><strong>Durchmesser:</strong> {measurement.dimensions.diameter.toFixed(2)} m</div>
+            )}
+            {measurement.dimensions.area !== undefined && (
+              <div><strong>Fläche:</strong> {measurement.dimensions.area.toFixed(2)} m²</div>
+            )}
+          </div>
+        )}
+        
         {/* Nur für Längenmessungen die Neigung anzeigen */}
-        {measurement.type === 'length' && measurement.inclination !== undefined && (
+        {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
+         measurement.inclination !== undefined && (
           <span className="ml-2">
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
           </span>
         )}
       </div>
+      
+      {/* Move up/down buttons for roof elements and penetrations */}
+      {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
+        <div className="flex justify-end space-x-1 mt-1 mb-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleMoveMeasurementUp(measurement.id)}
+                >
+                  <MoveUp className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Nach oben verschieben</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleMoveMeasurementDown(measurement.id)}
+                >
+                  <MoveDown className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Nach unten verschieben</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
       
       {editingId === measurement.id ? (
         <div className="flex flex-col space-y-2 mt-2">
@@ -158,7 +343,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       )}
       
-      {measurement.type === 'area' && measurement.segments && (
+      {(measurement.type === 'area' || measurement.type === 'solar') && 
+        measurement.segments && (
         <SegmentList 
           measurementId={measurement.id}
           segments={measurement.segments}

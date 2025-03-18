@@ -9,6 +9,7 @@ import { Measurement } from '@/types/measurements';
 export const useMeasurementVisibility = (
   measurements: Measurement[],
   toggleMeasurementVisibility: (id: string) => void,
+  toggleLabelVisibility: (id: string) => void,
   refs: {
     pointsRef: React.RefObject<THREE.Group>,
     linesRef: React.RefObject<THREE.Group>,
@@ -26,16 +27,23 @@ export const useMeasurementVisibility = (
     const measurement = measurements.find(m => m.id === id);
     if (!measurement) return;
     
-    // Determine the new visibility state
-    const isVisible = measurement.visible !== false;
+    // Determine the new visibility state (inverse of current)
+    const newVisibility = measurement.visible === false;
     
     // Update visibility of all visual elements for this measurement
     
-    // Update geometry visibility
+    // Update geometry visibility (including markers)
     if (refs.measurementsRef.current) {
       refs.measurementsRef.current.children.forEach(obj => {
         if (obj.userData && obj.userData.measurementId === id) {
-          obj.visible = isVisible;
+          obj.visible = newVisibility;
+          
+          // For groups, update all children as well
+          if (obj instanceof THREE.Group) {
+            obj.children.forEach(child => {
+              child.visible = newVisibility;
+            });
+          }
         }
       });
     }
@@ -44,7 +52,7 @@ export const useMeasurementVisibility = (
     if (refs.labelsRef.current) {
       refs.labelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
-          label.visible = isVisible;
+          label.visible = newVisibility && (measurement.labelVisible !== false);
         }
       });
     }
@@ -53,7 +61,7 @@ export const useMeasurementVisibility = (
     if (refs.segmentLabelsRef.current) {
       refs.segmentLabelsRef.current.children.forEach(label => {
         if (label.userData && label.userData.measurementId === id) {
-          label.visible = isVisible;
+          label.visible = newVisibility && (measurement.labelVisible !== false);
         }
       });
     }
@@ -62,7 +70,7 @@ export const useMeasurementVisibility = (
     if (refs.pointsRef.current) {
       refs.pointsRef.current.children.forEach(point => {
         if (point.userData && point.userData.measurementId === id) {
-          point.visible = isVisible;
+          point.visible = newVisibility;
         }
       });
     }
@@ -71,13 +79,101 @@ export const useMeasurementVisibility = (
     if (refs.linesRef.current) {
       refs.linesRef.current.children.forEach(line => {
         if (line.userData && line.userData.measurementId === id) {
-          line.visible = isVisible;
+          line.visible = newVisibility;
         }
       });
     }
   }, [measurements, toggleMeasurementVisibility, refs]);
 
+  // Function to toggle label visibility
+  const handleToggleLabelVisibility = useCallback((id: string) => {
+    // First update the state
+    toggleLabelVisibility(id);
+    
+    // Get the measurement to determine its new label visibility state
+    const measurement = measurements.find(m => m.id === id);
+    if (!measurement) return;
+    
+    // Determine the new label visibility state (inverse of current)
+    const newLabelVisibility = measurement.labelVisible === false;
+    
+    // Update main label visibility
+    if (refs.labelsRef.current) {
+      refs.labelsRef.current.children.forEach(label => {
+        if (label.userData && label.userData.measurementId === id && !label.userData.isPreview) {
+          label.visible = measurement.visible !== false && newLabelVisibility;
+        }
+      });
+    }
+    
+    // Update segment label visibility
+    if (refs.segmentLabelsRef.current) {
+      refs.segmentLabelsRef.current.children.forEach(label => {
+        if (label.userData && label.userData.measurementId === id) {
+          label.visible = measurement.visible !== false && newLabelVisibility;
+        }
+      });
+    }
+  }, [measurements, toggleLabelVisibility, refs]);
+
+  // Function to update all labels visibility
+  const updateAllLabelsVisibility = useCallback((visible: boolean) => {
+    if (!refs.labelsRef.current || !refs.segmentLabelsRef.current) return;
+    
+    // Update all main labels
+    refs.labelsRef.current.children.forEach(label => {
+      if (label.userData && !label.userData.isPreview) {
+        const measurementId = label.userData.measurementId;
+        if (measurementId) {
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement && measurement.visible !== false) {
+            label.visible = visible;
+          }
+        }
+      }
+    });
+    
+    // Update all segment labels
+    refs.segmentLabelsRef.current.children.forEach(label => {
+      if (label.userData) {
+        const measurementId = label.userData.measurementId;
+        if (measurementId) {
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement && measurement.visible !== false) {
+            label.visible = visible;
+          }
+        }
+      }
+    });
+  }, [measurements, refs]);
+
+  // Function to update measurement markers
+  const updateMeasurementMarkers = useCallback(() => {
+    if (!refs.measurementsRef.current) return;
+    
+    // Update visibility of all markers
+    refs.measurementsRef.current.children.forEach(obj => {
+      if (obj.userData && obj.userData.measurementId) {
+        const measurementId = obj.userData.measurementId;
+        const measurement = measurements.find(m => m.id === measurementId);
+        if (measurement) {
+          obj.visible = measurement.visible !== false;
+          
+          // For groups, update all children as well
+          if (obj instanceof THREE.Group) {
+            obj.children.forEach(child => {
+              child.visible = measurement.visible !== false;
+            });
+          }
+        }
+      }
+    });
+  }, [measurements, refs]);
+
   return {
-    handleToggleMeasurementVisibility
+    handleToggleMeasurementVisibility,
+    handleToggleLabelVisibility,
+    updateAllLabelsVisibility,
+    updateMeasurementMarkers
   };
 };

@@ -19,11 +19,11 @@ import {
 } from '@/utils/measurementVisuals';
 
 // Import components
-import MeasurementSidebar from './measurement/MeasurementSidebar';
-import MeasurementToolControls from './measurement/MeasurementToolControls';
-import MeasurementControls from './measurement/MeasurementControls';
-import EditingAlert from './measurement/EditingAlert';
-import RoofElementControls from './measurement/RoofElementControls';
+import MeasurementSidebar from './MeasurementSidebar';
+import MeasurementToolControls from './MeasurementToolControls';
+import MeasurementControls from './MeasurementControls';
+import EditingAlert from './EditingAlert';
+import RoofElementControls from './RoofElementControls';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -62,9 +62,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     startPointEdit,
     cancelEditing,
     updateMeasurementPoint,
-    allLabelsVisible,
-    moveMeasurementUp,
-    moveMeasurementDown
+    allLabelsVisible
   } = useMeasurements();
 
   // Three.js object references
@@ -150,9 +148,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handleCancelEditing,
     handleStartPointEdit,
     handleDeleteMeasurement,
-    handleDeletePoint,
-    handleMoveMeasurementUp,
-    handleMoveMeasurementDown
+    handleDeletePoint
   } = useMeasurementState(
     measurements,
     currentPoints,
@@ -169,9 +165,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       clearCurrentPoints,
       clearMeasurements,
       cancelEditing,
-      toggleMeasurementTool,
-      moveMeasurementUp,
-      moveMeasurementDown
+      toggleMeasurementTool
     }
   );
 
@@ -423,8 +417,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
             allLabelsVisible={allLabelsVisible}
             activeMode={activeMode}
-            handleMoveMeasurementUp={handleMoveMeasurementUp}
-            handleMoveMeasurementDown={handleMoveMeasurementDown}
           />
         </div>
       </div>

@@ -5,6 +5,7 @@ import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
+import { consolidatePenetrations } from '@/utils/exportUtils';
 import {
   Dialog,
   DialogContent,
@@ -88,9 +89,13 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     }
   };
 
+  // Count measurements by type
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
+  
+  // For preview, we'll use the consolidated measurements
+  const previewMeasurements = consolidatePenetrations(measurements);
 
   return (
     <Dialog>
@@ -310,7 +315,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             <Card>
               <CardContent className="pt-4">
                 <h3 className="text-sm font-medium mb-4">Vorschau der Messdaten</h3>
-                <MeasurementTable measurements={measurements} />
+                <MeasurementTable measurements={previewMeasurements} />
               </CardContent>
             </Card>
           </TabsContent>
