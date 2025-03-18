@@ -375,10 +375,8 @@ export function createMeasurementLabel(
     
     const sprite = createTextSprite({
       text: iconText,
-      width: 96,
-      height: 96,
-      fontSize: 60,
-      isPreview
+      isPreview,
+      isPointLabel
     });
     
     // Position the sprite

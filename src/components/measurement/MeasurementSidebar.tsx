@@ -120,6 +120,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             <MeasurementList 
               measurements={measurements}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
+              toggleLabelVisibility={toggleLabelVisibility || (() => {})} // Provide an empty function as fallback
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
               handleDeletePoint={handleDeletePoint}
