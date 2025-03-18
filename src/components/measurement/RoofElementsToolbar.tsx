@@ -6,11 +6,11 @@ import {
   SplitSquareVertical,
   Sun, 
   Droplet,
-  LineHorizontal,
-  LineVertical,
+  LineHorizontal2 as LineHorizontal,
+  LineVertical2 as LineVertical,
   Wind
 } from 'lucide-react';
-import { MeasurementMode, Measurement } from '@/types/measurements';
+import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,

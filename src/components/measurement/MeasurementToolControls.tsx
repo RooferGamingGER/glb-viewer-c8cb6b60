@@ -8,9 +8,11 @@ import {
   Square, 
   Table, 
   Download,
-  LayoutGrid 
+  LayoutGrid,
+  Sun,
+  LineHorizontal2 as LineHorizontal
 } from 'lucide-react';
-import { MeasurementMode } from '@/hooks/useMeasurements';
+import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
 import { exportMeasurementsToCSV } from '@/utils/exportUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

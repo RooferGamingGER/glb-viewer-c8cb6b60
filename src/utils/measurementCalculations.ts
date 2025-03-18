@@ -363,3 +363,10 @@ export const calculateBoundingBox = (points: Point[]): { min: Point; max: Point 
   
   return { min, max };
 };
+
+/**
+ * Calculate diameter from two opposite points of a circle
+ */
+export const calculateDiameter = (point1: Point, point2: Point): number => {
+  return calculateDistance(point1, point2);
+};

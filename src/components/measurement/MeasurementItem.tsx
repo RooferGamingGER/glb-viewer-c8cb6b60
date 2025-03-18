@@ -13,9 +13,10 @@ import {
   SplitSquareVertical,
   Sun,
   Droplet,
-  LineHorizontal,
-  LineVertical,
-  Wind
+  LineHorizontal2 as LineHorizontal,
+  LineVertical2 as LineVertical,
+  Wind,
+  Square
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";

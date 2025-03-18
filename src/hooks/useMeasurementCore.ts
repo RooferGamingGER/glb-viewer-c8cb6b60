@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { 
   MeasurementMode, 
   Point, 
-  Measurement 
+  Measurement,
+  Segment
 } from '@/types/measurements';
 import { 
   calculateDistance, 
@@ -12,7 +13,11 @@ import {
   calculateArea,
   generateSegments,
   calculateInclination,
-  validatePolygon
+  validatePolygon,
+  calculateAverageInclination,
+  calculateRectangleDimensions,
+  createDormerMeasurement,
+  createChimneyMeasurement
 } from '@/utils/measurementCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -29,6 +34,60 @@ export const useMeasurementCore = () => {
   const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
   
   const currentPointsRef = useRef<Point[]>([]);
+
+  const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
+    setMeasurements(prev => {
+      return prev.map(m => {
+        if (m.id !== measurementId) return m;
+        
+        const newPoints = [...m.points];
+        newPoints[pointIndex] = newPoint;
+        
+        let newValue: number;
+        let newInclination: number | undefined;
+        
+        if (m.type === 'length') {
+          newValue = calculateDistance(newPoints[0], newPoints[1]);
+          
+          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
+          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
+          const calculatedInclination = calculateInclination(p1, p2);
+          
+          newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
+          
+        } else if (m.type === 'height') {
+          newValue = calculateHeight(newPoints[0], newPoints[1]);
+        } else if (m.type === 'area') {
+          const validation = validatePolygon(newPoints);
+          if (!validation.valid) {
+            toast.error(validation.message || 'Ungültiges Polygon');
+            return m;
+          }
+          
+          const label = formatMeasurement(calculateArea(newPoints), m.type);
+          const newSegments = generateSegments(newPoints);
+          
+          return {
+            ...m,
+            points: newPoints,
+            value: calculateArea(newPoints),
+            label,
+            segments: newSegments
+          };
+        } else {
+          newValue = m.value;
+        }
+        
+        return {
+          ...m,
+          points: newPoints,
+          value: newValue,
+          label: formatMeasurement(newValue, m.type as 'length' | 'height' | 'area'),
+          inclination: newInclination
+        };
+      });
+    });
+  }, []);
 
   useEffect(() => {
     currentPointsRef.current = currentPoints;
@@ -382,60 +441,6 @@ export const useMeasurementCore = () => {
       toast.success(`${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}-Messung abgeschlossen - Messwerkzeug deaktiviert`);
     }
   }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
-
-  const updateMeasurementPoint = useCallback((measurementId: string, pointIndex: number, newPoint: Point) => {
-    setMeasurements(prev => {
-      return prev.map(m => {
-        if (m.id !== measurementId) return m;
-        
-        const newPoints = [...m.points];
-        newPoints[pointIndex] = newPoint;
-        
-        let newValue: number;
-        let newInclination: number | undefined;
-        
-        if (m.type === 'length') {
-          newValue = calculateDistance(newPoints[0], newPoints[1]);
-          
-          const p1 = new THREE.Vector3(newPoints[0].x, newPoints[0].y, newPoints[0].z);
-          const p2 = new THREE.Vector3(newPoints[1].x, newPoints[1].y, newPoints[1].z);
-          const calculatedInclination = calculateInclination(p1, p2);
-          
-          newInclination = Math.abs(calculatedInclination) >= MIN_INCLINATION_THRESHOLD ? calculatedInclination : undefined;
-          
-        } else if (m.type === 'height') {
-          newValue = calculateHeight(newPoints[0], newPoints[1]);
-        } else if (m.type === 'area') {
-          const validation = validatePolygon(newPoints);
-          if (!validation.valid) {
-            toast.error(validation.message || 'Ungültiges Polygon');
-            return m;
-          }
-          
-          const label = formatMeasurement(calculateArea(newPoints), m.type);
-          const newSegments = generateSegments(newPoints);
-          
-          return {
-            ...m,
-            points: newPoints,
-            value: calculateArea(newPoints),
-            label,
-            segments: newSegments
-          };
-        } else {
-          newValue = m.value;
-        }
-        
-        return {
-          ...m,
-          points: newPoints,
-          value: newValue,
-          label: formatMeasurement(newValue, m.type as 'length' | 'height' | 'area'),
-          inclination: newInclination
-        };
-      });
-    });
-  }, []);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {
