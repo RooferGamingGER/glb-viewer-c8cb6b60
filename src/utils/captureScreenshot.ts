@@ -37,7 +37,8 @@ export const captureAreaMeasurement = async (
     // Store original renderer settings
     const originalClearColor = renderer.getClearColor(new THREE.Color());
     const originalClearAlpha = renderer.getClearAlpha();
-    const originalOutputEncoding = renderer.outputEncoding;
+    // In newer Three.js versions, outputEncoding is replaced by outputColorSpace
+    const originalColorSpace = renderer.outputColorSpace;
     const originalToneMapping = renderer.toneMapping;
     const originalToneMappingExposure = renderer.toneMappingExposure;
     
@@ -130,7 +131,8 @@ export const captureAreaMeasurement = async (
     
     // Enhance renderer settings for better quality screenshot
     renderer.setClearColor(0xffffff, 1); // White background
-    renderer.outputEncoding = THREE.sRGBEncoding; // Better color encoding
+    // Use modern THREE.js properties
+    renderer.outputColorSpace = THREE.SRGBColorSpace; // Better color encoding
     renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better tone mapping
     renderer.toneMappingExposure = 1.2; // Slightly brighter
     
@@ -171,7 +173,7 @@ export const captureAreaMeasurement = async (
     
     // Restore original renderer settings
     renderer.setClearColor(originalClearColor, originalClearAlpha);
-    renderer.outputEncoding = originalOutputEncoding;
+    renderer.outputColorSpace = originalColorSpace;
     renderer.toneMapping = originalToneMapping;
     renderer.toneMappingExposure = originalToneMappingExposure;
     
