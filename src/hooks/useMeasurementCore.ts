@@ -501,7 +501,11 @@ export const useMeasurementCore = () => {
   const clearCurrentPoints = useCallback(() => {
     setCurrentPoints([]);
     currentPointsRef.current = [];
-  }, []);
+    
+    if (['vent', 'hook', 'other'].includes(activeMode)) {
+      setActiveMode('none');
+    }
+  }, [activeMode]);
 
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);

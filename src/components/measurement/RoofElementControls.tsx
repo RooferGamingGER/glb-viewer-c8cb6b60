@@ -107,6 +107,9 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
     }
   };
 
+  // Flag um festzustellen, ob wir in einem Penetrationsmodus sind
+  const isPenetrationMode = ['vent', 'hook', 'other'].includes(activeMode);
+
   return (
     <div className="p-3 pb-0">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
@@ -147,7 +150,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
             size="sm"
             className="w-9"
             onClick={clearCurrentPoints}
-            title="Abbrechen"
+            title={isPenetrationMode ? "Abbrechen und Werkzeug deaktivieren" : "Abbrechen"}
           >
             <X className="h-3 w-3" />
           </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -30,7 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility?: (id: string) => void; // Keep for backward compatibility but we won't use it
+  toggleLabelVisibility?: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -196,7 +195,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           </>
         )}
         
-        {/* Abmessungen für Dachelemente */}
         {measurement.dimensions && (
           <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
             {measurement.dimensions.length !== undefined && (
@@ -217,7 +215,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           </div>
         )}
         
-        {/* Nur für Längenmessungen die Neigung anzeigen */}
         {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
          measurement.inclination !== undefined && (
           <span className="ml-2">
@@ -226,7 +223,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         )}
       </div>
       
-      {/* Move up/down buttons for roof elements and penetrations */}
       {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
         <div className="flex justify-end space-x-1 mt-1 mb-2">
           <TooltipProvider>
