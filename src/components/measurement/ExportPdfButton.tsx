@@ -6,6 +6,9 @@ import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import { consolidatePenetrations } from '@/utils/exportUtils';
+import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
+import { captureAreaMeasurement } from '@/utils/captureScreenshot';
+import * as THREE from 'three';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import MeasurementTable from './MeasurementTable';
+import { Switch } from "@/components/ui/switch";
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -37,7 +41,9 @@ interface ExportPdfButtonProps {
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [use2DRendering, setUse2DRendering] = useState(true);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
+  const { scene, camera, renderer, canvas } = useThreeContext();
   
   const form = useForm<CoverPageData>({
     defaultValues: {
@@ -61,17 +67,92 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     setIsExporting(true);
     setExportProgress(10);
     
-    setTimeout(() => setExportProgress(30), 300);
-    setTimeout(() => setExportProgress(60), 600);
-    
     try {
+      const areaMeasurements = measurements.filter(m => m.type === 'area');
+      const solarMeasurements = measurements.filter(m => m.type === 'solar');
+      const measurementsWithVisuals = [...measurements];
+      
+      const perspCamera = asPerspectiveCamera(camera);
+      setExportProgress(20);
+      
+      // Process each area measurement
+      for (let i = 0; i < areaMeasurements.length; i++) {
+        const measurement = areaMeasurements[i];
+        
+        if (use2DRendering) {
+          // Generate 2D polygon rendering
+          const polygon2D = generatePolygon2D(measurement);
+          
+          if (polygon2D) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                polygon2D,
+                screenshot: polygon2D // Use polygon as screenshot for backward compatibility
+              };
+            }
+          }
+        } else if (scene && perspCamera && renderer && canvas) {
+          // Fall back to 3D screenshot if 2D rendering is disabled
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
+          
+          if (screenshot) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                screenshot
+              };
+            }
+          }
+        }
+        
+        setExportProgress(20 + Math.floor((i / areaMeasurements.length) * 30));
+      }
+
+      // Process each solar measurement
+      for (let i = 0; i < solarMeasurements.length; i++) {
+        const measurement = solarMeasurements[i];
+        
+        if (use2DRendering) {
+          // Generate 2D polygon rendering
+          const polygon2D = generatePolygon2D(measurement);
+          
+          if (polygon2D) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                polygon2D,
+                screenshot: polygon2D // Use polygon as screenshot for backward compatibility
+              };
+            }
+          }
+        } else if (scene && perspCamera && renderer && canvas) {
+          // Fall back to 3D screenshot
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
+          
+          if (screenshot) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                screenshot
+              };
+            }
+          }
+        }
+      }
+      
+      setExportProgress(50);
+      
       const coverData = form.getValues();
-      const success = await exportMeasurementsToPdf(measurements, coverData);
+      const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
       setExportProgress(100);
       
       if (success) {
         toast.success('PDF wurde erfolgreich erstellt');
-        // Auto-close dialog after successful export
         setTimeout(() => {
           dialogCloseRef.current?.click();
         }, 1000);
@@ -89,12 +170,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     }
   };
 
-  // Count measurements by type
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
   
-  // For preview, we'll use the consolidated measurements
   const previewMeasurements = consolidatePenetrations(measurements);
 
   return (
@@ -137,11 +216,22 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                       <li>Deckblatt mit Ihren Projektinformationen</li>
                       <li>Messungsübersicht mit Statistiken</li>
                       <li>Längenmessungen auf eigener Seite</li>
-                      <li>Flächenmessungen auf eigener Seite</li>
+                      <li>Flächenmessungen mit 2D-Vorschau auf eigener Seite</li>
                       <li>Höhenmessungen auf eigener Seite</li>
                     </ul>
                   </CardContent>
                 </Card>
+              </div>
+              
+              <div className="flex items-center space-x-2 mb-4">
+                <Switch
+                  id="use-2d"
+                  checked={use2DRendering}
+                  onCheckedChange={setUse2DRendering}
+                />
+                <label htmlFor="use-2d" className="text-sm cursor-pointer">
+                  2D-Ansicht für Flächenmessungen (verbesserte Lesbarkeit)
+                </label>
               </div>
             
               <div className="grid grid-cols-2 gap-4">
@@ -182,6 +272,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                     <li className="text-sm">Detaillierte Messungstabellen</li>
                     <li className="text-sm">Statistiken zu Ihren Messungen</li>
                     <li className="text-sm">Aufschlüsselung nach Messtypen</li>
+                    {areaCount > 0 && (
+                      <li className="text-sm">{use2DRendering ? '2D-Ansichten' : '3D-Vorschau'} der Flächenmessungen mit Maßlinien</li>
+                    )}
                     {areaCount > 0 && (
                       <li className="text-sm">Detailansicht der Flächenmessungen mit Teilmessungen</li>
                     )}
