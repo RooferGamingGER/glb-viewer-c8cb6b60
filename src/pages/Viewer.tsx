@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ModelViewer from '@/components/ModelViewer';
+import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
 import { useRequiredURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";

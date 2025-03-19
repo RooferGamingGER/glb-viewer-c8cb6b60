@@ -67,15 +67,35 @@ function Model({
     </group>;
 }
 
+// New export for the ThreeContext
+export interface ThreeContextProps {
+  scene: THREE.Scene | null;
+  camera: THREE.Camera | null;
+  renderer: THREE.WebGLRenderer | null;
+  canvas: HTMLCanvasElement | null;
+}
+
+// Create a React context to expose Three.js objects
+export const ThreeContext = React.createContext<ThreeContextProps>({
+  scene: null,
+  camera: null,
+  renderer: null,
+  canvas: null
+});
+
 function SceneSetup({
   onSceneReady
 }: {
-  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
+  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
 }) {
-  const { scene, camera } = useThree();
+  const { scene, camera, gl, get } = useThree();
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    if (scene && camera) {
+    // Get the canvas element
+    canvasRef.current = gl.domElement;
+    
+    if (scene && camera && gl && canvasRef.current) {
       // Name the groups for easier debugging and filtering
       scene.traverse(obj => {
         if (obj instanceof THREE.Group) {
@@ -85,9 +105,9 @@ function SceneSetup({
         }
       });
       
-      onSceneReady(scene, camera);
+      onSceneReady(scene, camera, gl, canvasRef.current);
     }
-  }, [scene, camera, onSceneReady]);
+  }, [scene, camera, gl, onSceneReady]);
 
   return null;
 }
@@ -98,7 +118,7 @@ const ModelCanvas = ({
   canvasRef
 }: {
   fileUrl: string;
-  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera) => void;
+  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
   return <Canvas shadows style={{
@@ -131,8 +151,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
   fileName
 }) => {
-  const [scene, setScene] = useState<THREE.Scene | null>(null);
-  const [camera, setCamera] = useState<THREE.Camera | null>(null);
+  const [threeContext, setThreeContext] = useState<ThreeContextProps>({
+    scene: null,
+    camera: null,
+    renderer: null,
+    canvas: null
+  });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // Always enable measurements
@@ -149,30 +173,41 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     };
   }, [fileUrl]);
 
-  const handleSceneReady = (newScene: THREE.Scene, newCamera: THREE.Camera) => {
-    setScene(newScene);
-    setCamera(newCamera);
+  const handleSceneReady = (
+    newScene: THREE.Scene, 
+    newCamera: THREE.Camera, 
+    newRenderer: THREE.WebGLRenderer, 
+    canvas: HTMLCanvasElement
+  ) => {
+    setThreeContext({
+      scene: newScene,
+      camera: newCamera,
+      renderer: newRenderer,
+      canvas: canvas
+    });
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <div className="absolute inset-0">
-        <ModelCanvas 
-          fileUrl={fileUrl} 
-          onSceneReady={handleSceneReady} 
-          canvasRef={canvasRef} 
-        />
+    <ThreeContext.Provider value={threeContext}>
+      <div className="relative w-full h-full overflow-hidden">
+        <div className="absolute inset-0">
+          <ModelCanvas 
+            fileUrl={fileUrl} 
+            onSceneReady={handleSceneReady} 
+            canvasRef={canvasRef} 
+          />
+        </div>
+        
+        {threeContext.scene && threeContext.camera && (
+          <MeasurementTools 
+            enabled={measurementsEnabled} 
+            scene={threeContext.scene} 
+            camera={threeContext.camera} 
+            autoOpenSidebar={measurementToolsEverEnabled} 
+          />
+        )}
       </div>
-      
-      {scene && camera && (
-        <MeasurementTools 
-          enabled={measurementsEnabled} 
-          scene={scene} 
-          camera={camera} 
-          autoOpenSidebar={measurementToolsEverEnabled} 
-        />
-      )}
-    </div>
+    </ThreeContext.Provider>
   );
 };
 

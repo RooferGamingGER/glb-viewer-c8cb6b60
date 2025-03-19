@@ -247,6 +247,24 @@ export const exportMeasurementsToPdf = async (
         break-inside: avoid;
         margin-top: 30px;
       }
+      .area-screenshot {
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 20px 0 30px 0;
+        border: 1px solid #eee;
+      }
+      .screenshot-container {
+        text-align: center;
+        margin: 20px 0;
+        page-break-inside: avoid;
+      }
+      .screenshot-caption {
+        font-size: 14px;
+        color: #666;
+        margin-top: 10px;
+        text-align: center;
+      }
     `;
     document.head.appendChild(styleElement);
     
@@ -698,6 +716,40 @@ const appendAreaMeasurementSection = (
   areaSection.appendChild(description);
   
   areaContent.appendChild(areaSection);
+  
+  // Add screenshots for area measurements if available
+  const measurementsWithScreenshots = areaMeasurements.filter(m => m.screenshot);
+  
+  if (measurementsWithScreenshots.length > 0) {
+    const screenshotsTitle = document.createElement('h3');
+    screenshotsTitle.textContent = 'Visualisierung der Flächenmessungen';
+    screenshotsTitle.style.marginTop = '30px';
+    areaContent.appendChild(screenshotsTitle);
+    
+    const screenshotsDescription = document.createElement('p');
+    screenshotsDescription.textContent = 'Die folgenden Visualisierungen zeigen die erfassten Flächen mit Messpunkten und Maßen.';
+    areaContent.appendChild(screenshotsDescription);
+    
+    // Add each screenshot in its own container to avoid page breaks
+    measurementsWithScreenshots.forEach((measurement, index) => {
+      const screenshotContainer = document.createElement('div');
+      screenshotContainer.className = 'screenshot-container keep-together';
+      
+      const screenshot = document.createElement('img');
+      screenshot.src = measurement.screenshot;
+      screenshot.className = 'area-screenshot';
+      screenshot.style.maxWidth = '100%';
+      screenshot.alt = `Flächenmessung ${index + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+      
+      const caption = document.createElement('div');
+      caption.className = 'screenshot-caption';
+      caption.textContent = `Fläche ${index + 1}${measurement.description ? `: ${measurement.description}` : ''} - ${formatMeasurementValue(measurement)}`;
+      
+      screenshotContainer.appendChild(screenshot);
+      screenshotContainer.appendChild(caption);
+      areaContent.appendChild(screenshotContainer);
+    });
+  }
   
   // Create main area measurements table in its own container
   const mainTableContainer = document.createElement('div');
