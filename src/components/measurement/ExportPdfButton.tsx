@@ -5,8 +5,9 @@ import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import { consolidatePenetrations } from '@/utils/exportUtils';
-import { useThreeContext } from '@/hooks/useThreeContext';
+import { useThreeContext, asPerspectiveCamera } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
+import * as THREE from 'three';
 import {
   Dialog,
   DialogContent,
@@ -64,21 +65,20 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     setExportProgress(10);
     
     try {
-      // Prepare screenshots for area measurements
       const areaMeasurements = measurements.filter(m => m.type === 'area');
       const solarMeasurements = measurements.filter(m => m.type === 'solar');
       const measurementsWithScreenshots = [...measurements];
       
-      if ((areaMeasurements.length > 0 || solarMeasurements.length > 0) && scene && camera && renderer && canvas) {
+      const perspCamera = asPerspectiveCamera(camera);
+      
+      if ((areaMeasurements.length > 0 || solarMeasurements.length > 0) && scene && perspCamera && renderer && canvas) {
         setExportProgress(20);
         
-        // Capture screenshots for area measurements
         for (let i = 0; i < areaMeasurements.length; i++) {
           const measurement = areaMeasurements[i];
-          const screenshot = await captureAreaMeasurement(scene, camera, renderer, measurement, canvas);
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas);
           
           if (screenshot) {
-            // Find the measurement in the array and add the screenshot
             const index = measurementsWithScreenshots.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
               measurementsWithScreenshots[index] = {
@@ -88,17 +88,14 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             }
           }
           
-          // Update progress for each screenshot capture
           setExportProgress(20 + Math.floor((i / areaMeasurements.length) * 30));
         }
 
-        // Capture screenshots for solar measurements
         for (let i = 0; i < solarMeasurements.length; i++) {
           const measurement = solarMeasurements[i];
-          const screenshot = await captureAreaMeasurement(scene, camera, renderer, measurement, canvas);
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas);
           
           if (screenshot) {
-            // Find the measurement in the array and add the screenshot
             const index = measurementsWithScreenshots.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
               measurementsWithScreenshots[index] = {
@@ -118,7 +115,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       
       if (success) {
         toast.success('PDF wurde erfolgreich erstellt');
-        // Auto-close dialog after successful export
         setTimeout(() => {
           dialogCloseRef.current?.click();
         }, 1000);
@@ -136,12 +132,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     }
   };
 
-  // Count measurements by type
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
   
-  // For preview, we'll use the consolidated measurements
   const previewMeasurements = consolidatePenetrations(measurements);
 
   return (
