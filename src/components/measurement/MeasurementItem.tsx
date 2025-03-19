@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -17,7 +18,9 @@ import {
   Square,
   Anchor,
   MoveUp,
-  MoveDown
+  MoveDown,
+  Camera,
+  Image
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -25,6 +28,13 @@ import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import CaptureScreenshotButton from './CaptureScreenshotButton';
+import ScreenshotGallery from './ScreenshotGallery';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface MeasurementItemProps {
   measurement: Measurement;
@@ -60,6 +70,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [screenshotsOpen, setScreenshotsOpen] = useState(false);
 
   const handleEditStart = (id: string, description: string = '') => {
     setEditingId(id);
@@ -69,6 +80,50 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const handleEditSave = (id: string) => {
     updateMeasurement(id, { description: editValue });
     setEditingId(null);
+  };
+
+  const handleScreenshotCaptured = (measurementId: string, screenshot: string) => {
+    const currentScreenshots = measurement.customScreenshots || [];
+    updateMeasurement(measurementId, {
+      customScreenshots: [...currentScreenshots, screenshot]
+    });
+  };
+
+  const handleDeleteScreenshot = (index: number) => {
+    if (!measurement.customScreenshots) return;
+    
+    const newScreenshots = [...measurement.customScreenshots];
+    newScreenshots.splice(index, 1);
+    
+    updateMeasurement(measurement.id, {
+      customScreenshots: newScreenshots
+    });
+  };
+
+  const handleMoveScreenshotUp = (index: number) => {
+    if (!measurement.customScreenshots || index <= 0) return;
+    
+    const newScreenshots = [...measurement.customScreenshots];
+    const temp = newScreenshots[index];
+    newScreenshots[index] = newScreenshots[index - 1];
+    newScreenshots[index - 1] = temp;
+    
+    updateMeasurement(measurement.id, {
+      customScreenshots: newScreenshots
+    });
+  };
+
+  const handleMoveScreenshotDown = (index: number) => {
+    if (!measurement.customScreenshots || index >= measurement.customScreenshots.length - 1) return;
+    
+    const newScreenshots = [...measurement.customScreenshots];
+    const temp = newScreenshots[index];
+    newScreenshots[index] = newScreenshots[index + 1];
+    newScreenshots[index + 1] = temp;
+    
+    updateMeasurement(measurement.id, {
+      customScreenshots: newScreenshots
+    });
   };
 
   const getTypeIcon = (type: string) => {
@@ -110,6 +165,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 
   const isPenetration = ['vent', 'hook', 'other'].includes(measurement.type);
 
+  const hasCustomScreenshots = measurement.customScreenshots && measurement.customScreenshots.length > 0;
+
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
@@ -138,6 +195,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           {measurement.count && measurement.count > 0 && (
             <Badge variant="secondary" className="ml-2">
               {measurement.count}
+            </Badge>
+          )}
+          
+          {hasCustomScreenshots && (
+            <Badge variant="outline" className="ml-2 text-xs bg-blue-50/30">
+              <Image className="h-3 w-3 mr-1" />
+              {measurement.customScreenshots!.length}
             </Badge>
           )}
         </div>
@@ -301,6 +365,42 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             }
           </Button>
         </div>
+      )}
+      
+      {/* Screenshot capture button */}
+      <div className="mt-2">
+        <CaptureScreenshotButton 
+          measurementId={measurement.id}
+          onScreenshotCaptured={handleScreenshotCaptured}
+        />
+      </div>
+      
+      {/* Screenshots gallery */}
+      {hasCustomScreenshots && (
+        <Collapsible
+          open={screenshotsOpen}
+          onOpenChange={setScreenshotsOpen}
+          className="mt-2"
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full flex justify-between items-center"
+            >
+              <span>Screenshots ({measurement.customScreenshots!.length})</span>
+              <span>{screenshotsOpen ? '▲' : '▼'}</span>
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <ScreenshotGallery
+              screenshots={measurement.customScreenshots!}
+              onDelete={handleDeleteScreenshot}
+              onMoveUp={handleMoveScreenshotUp}
+              onMoveDown={handleMoveScreenshotDown}
+            />
+          </CollapsibleContent>
+        </Collapsible>
       )}
       
       {measurement.editMode && handleDeletePoint && (

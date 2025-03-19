@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown } from 'lucide-react';
+import { FileDown, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -57,6 +58,11 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       notes: ''
     }
   });
+
+  // Check if any measurements have custom screenshots
+  const hasCustomScreenshots = measurements.some(m => 
+    m.customScreenshots && m.customScreenshots.length > 0
+  );
 
   const handleExport = async () => {
     if (measurements.length === 0) {
@@ -175,231 +181,167 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const areaCount = measurements.filter(m => m.type === 'area').length;
   
   const previewMeasurements = consolidatePenetrations(measurements);
+  const screenshotCount = measurements.reduce((total, m) => 
+    total + (m.customScreenshots?.length || 0), 0
+  );
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full"
-          title="Als PDF exportieren"
-          disabled={measurements.length === 0}
-        >
-          <FileDown className="h-4 w-4 mr-1" />
-          PDF
+        <Button className="w-full flex items-center gap-2">
+          <FileDown className="h-4 w-4" />
+          <span>Als PDF exportieren</span>
         </Button>
       </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Vermessungsbericht exportieren</DialogTitle>
           <DialogDescription>
-            Erstellen Sie einen professionellen Vermessungsbericht als PDF
+            Bitte fülle die folgenden Informationen aus, um den Bericht zu erstellen.
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="overview" className="mt-2">
+        <Tabs defaultValue="info">
           <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="overview">Übersicht</TabsTrigger>
-            <TabsTrigger value="project">Projektdaten</TabsTrigger>
-            <TabsTrigger value="preview">Datenvorschau</TabsTrigger>
+            <TabsTrigger value="info">Berichtsinfos</TabsTrigger>
+            <TabsTrigger value="preview">
+              Messungen ({measurements.length})
+            </TabsTrigger>
+            {hasCustomScreenshots && (
+              <TabsTrigger value="screenshots">
+                Screenshots ({screenshotCount})
+              </TabsTrigger>
+            )}
           </TabsList>
           
-          <TabsContent value="overview">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 mb-4">
-                <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                  <CardContent className="pt-4">
-                    <h3 className="text-base font-medium mb-2">PDF-Struktur</h3>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                      <li>Deckblatt mit Ihren Projektinformationen</li>
-                      <li>Messungsübersicht mit Statistiken</li>
-                      <li>Längenmessungen auf eigener Seite</li>
-                      <li>Flächenmessungen mit 2D-Vorschau auf eigener Seite</li>
-                      <li>Höhenmessungen auf eigener Seite</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <div className="flex items-center space-x-2 mb-4">
-                <Switch
-                  id="use-2d"
-                  checked={use2DRendering}
-                  onCheckedChange={setUse2DRendering}
-                />
-                <label htmlFor="use-2d" className="text-sm cursor-pointer">
-                  2D-Ansicht für Flächenmessungen (verbesserte Lesbarkeit)
-                </label>
-              </div>
-            
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4 flex flex-col items-center justify-center h-full">
-                    <h3 className="text-lg font-semibold mb-2">Messungen</h3>
-                    <div className="text-3xl font-bold">{measurements.length}</div>
-                    <div className="text-muted-foreground text-sm mt-2">Messungen gesamt</div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="pt-4">
-                    <h3 className="text-lg font-semibold mb-2">Messtypen</h3>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="p-2 rounded-md bg-blue-50 dark:bg-blue-900/20">
-                        <div className="text-xl font-bold">{lengthCount}</div>
-                        <div className="text-xs">Längen</div>
-                      </div>
-                      <div className="p-2 rounded-md bg-green-50 dark:bg-green-900/20">
-                        <div className="text-xl font-bold">{heightCount}</div>
-                        <div className="text-xs">Höhen</div>
-                      </div>
-                      <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-900/20">
-                        <div className="text-xl font-bold">{areaCount}</div>
-                        <div className="text-xs">Flächen</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <Card>
-                <CardContent className="pt-4">
-                  <h3 className="text-sm font-medium mb-2">Berichtsinhalt</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li className="text-sm">Deckblatt mit Projektinformationen und DrohnenGLB Branding</li>
-                    <li className="text-sm">Detaillierte Messungstabellen</li>
-                    <li className="text-sm">Statistiken zu Ihren Messungen</li>
-                    <li className="text-sm">Aufschlüsselung nach Messtypen</li>
-                    {areaCount > 0 && (
-                      <li className="text-sm">{use2DRendering ? '2D-Ansichten' : '3D-Vorschau'} der Flächenmessungen mit Maßlinien</li>
-                    )}
-                    {areaCount > 0 && (
-                      <li className="text-sm">Detailansicht der Flächenmessungen mit Teilmessungen</li>
-                    )}
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="project">
+          <TabsContent value="info">
             <Form {...form}>
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="pt-4 grid gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Berichtstitel</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Vermessungsbericht" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="projectNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Projektnummer</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="z.B. PRJ-2023-001" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <FormField
-                      control={form.control}
-                      name="projectAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Objektadresse</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Musterstraße 123, 12345 Musterstadt" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="clientName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Auftraggeber</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Musterfirma GmbH" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ausführender Betrieb</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="DrohnenGLB by RooferGaming" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="contactPerson"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ansprechpartner</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Max Mustermann" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="creationDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Erstellungsdatum</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bemerkungen (optional)</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Zusätzliche Informationen oder Notizen" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
+              <div className="grid gap-4 py-2">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Berichtstitel</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Vermessungsbericht" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="projectNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Projektnummer</FormLabel>
+                        <FormControl>
+                          <Input placeholder="z.B. P2023-001" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="creationDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Erstellungsdatum</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="projectAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Objektadresse</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Straße, PLZ Ort" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="clientName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Auftraggeber</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Name des Auftraggebers" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="contactPerson"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ansprechpartner</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Name des Ansprechpartners" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ausführender Betrieb</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Name des Betriebs" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bemerkungen</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Zusätzliche Informationen zum Projekt..." 
+                          className="resize-none h-20"
+                          {...field} 
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="use-2d-rendering"
+                    checked={use2DRendering}
+                    onCheckedChange={setUse2DRendering}
+                  />
+                  <label
+                    htmlFor="use-2d-rendering"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    2D-Rendering für Flächendarstellung verwenden
+                  </label>
+                </div>
               </div>
             </Form>
           </TabsContent>
@@ -407,34 +349,91 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           <TabsContent value="preview">
             <Card>
               <CardContent className="pt-4">
-                <h3 className="text-sm font-medium mb-4">Vorschau der Messdaten</h3>
-                <MeasurementTable measurements={previewMeasurements} />
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-secondary/40 p-3 rounded-md text-center">
+                    <div className="text-lg font-semibold">{lengthCount}</div>
+                    <div className="text-xs">Längenmessungen</div>
+                  </div>
+                  <div className="bg-secondary/40 p-3 rounded-md text-center">
+                    <div className="text-lg font-semibold">{heightCount}</div>
+                    <div className="text-xs">Höhenmessungen</div>
+                  </div>
+                  <div className="bg-secondary/40 p-3 rounded-md text-center">
+                    <div className="text-lg font-semibold">{areaCount}</div>
+                    <div className="text-xs">Flächenmessungen</div>
+                  </div>
+                </div>
+                
+                <ScrollArea className="h-[300px]">
+                  <MeasurementTable measurements={previewMeasurements} />
+                </ScrollArea>
               </CardContent>
             </Card>
           </TabsContent>
+          
+          {hasCustomScreenshots && (
+            <TabsContent value="screenshots">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium mb-2">Benutzerdefinierte Screenshots</h3>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Die folgenden Screenshots werden im PDF-Bericht als zusätzliche Visualisierungen angezeigt.
+                    </p>
+                    
+                    <ScrollArea className="h-[300px] border rounded-md p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {measurements.map((measurement) => {
+                          if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
+                            return null;
+                          }
+                          
+                          return (
+                            <div key={measurement.id} className="space-y-2">
+                              <h4 className="text-xs font-medium">
+                                {measurement.description || `Messung ${measurement.id.substring(0, 5)}`}
+                              </h4>
+                              <div className="grid grid-cols-1 gap-2">
+                                {measurement.customScreenshots.map((screenshot, index) => (
+                                  <div key={index} className="border rounded-md overflow-hidden">
+                                    <img 
+                                      src={screenshot} 
+                                      alt={`Screenshot ${index + 1}`} 
+                                      className="w-full h-32 object-cover"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
-
+        
         {isExporting && (
-          <div className="mb-2">
-            <Progress value={exportProgress} className="w-full" />
-            <p className="text-xs text-center mt-1 text-muted-foreground">
-              PDF wird erstellt{exportProgress < 100 ? '...' : ' - Fertig!'}
-            </p>
+          <div className="mb-4">
+            <div className="flex justify-between text-xs mb-1">
+              <span>Exportiere PDF...</span>
+              <span>{exportProgress}%</span>
+            </div>
+            <Progress value={exportProgress} className="h-2" />
           </div>
         )}
-
-        <DialogFooter className="sm:justify-between mt-4">
-          <DialogClose ref={dialogCloseRef} asChild>
-            <Button type="button" variant="secondary">
+        
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isExporting} ref={dialogCloseRef}>
               Abbrechen
             </Button>
           </DialogClose>
-          <Button 
-            type="button" 
-            onClick={handleExport}
-            disabled={isExporting || measurements.length === 0}
-          >
-            {isExporting ? 'Wird exportiert...' : 'PDF exportieren'}
+          <Button disabled={isExporting} onClick={handleExport}>
+            {isExporting ? 'Exportiere...' : 'Exportieren'}
           </Button>
         </DialogFooter>
       </DialogContent>
