@@ -1,3 +1,4 @@
+
 import { Measurement } from '@/types/measurements';
 
 /**
@@ -20,70 +21,121 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
 };
 
 /**
- * Exportiert Messungen als CSV-Datei
+ * Exportiert Messungen als CSV-Datei, gruppiert nach Messetyp wie in der Tabelle
  */
 export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
-  // Header für die CSV-Datei
-  const header = [
-    'ID', 
-    'Typ', 
-    'Subtyp',
-    'Wert', 
-    'Einheit', 
-    'Beschreibung', 
-    'Neigung', 
-    'Länge', 
-    'Breite', 
-    'Höhe', 
-    'Durchmesser', 
-    'Fläche',
-    'Umfang',
-    'Anzahl'
-  ];
+  const sortedMeasurements = sortMeasurementsForExport(measurements);
+  const consolidatedMeasurements = consolidatePenetrations(sortedMeasurements);
   
-  // Daten für die CSV-Datei
-  const csvData = measurements.map(m => {
-    const type = getMeasurementTypeDisplayName(m.type);
-    const unit = m.unit || (m.type === 'area' ? 'm²' : 'm');
-    
-    // Get dimensions if available
-    const length = m.dimensions?.length !== undefined ? m.dimensions.length.toFixed(2) : '';
-    const width = m.dimensions?.width !== undefined ? m.dimensions.width.toFixed(2) : '';
-    const height = m.dimensions?.height !== undefined ? m.dimensions.height.toFixed(2) : '';
-    const diameter = m.dimensions?.diameter !== undefined ? m.dimensions.diameter.toFixed(2) : '';
-    const area = m.dimensions?.area !== undefined ? m.dimensions.area.toFixed(2) : '';
-    const perimeter = m.dimensions?.perimeter !== undefined ? m.dimensions.perimeter.toFixed(2) : '';
-    
-    // Ensure penetration types always have at least 1 piece
-    let count = m.count || '';
-    if (m.type === 'vent' || m.type === 'hook' || m.type === 'other') {
-      count = m.count && m.count > 1 ? m.count : 1;
-    }
-    
-    return [
-      m.id,
-      type,
-      m.subType || '',
-      m.value.toFixed(2),
-      unit,
-      m.description || '',
-      m.inclination ? `${m.inclination.toFixed(1)}°` : '',
-      length,
-      width,
-      height,
-      diameter,
-      area,
-      perimeter,
-      count
-    ];
-  });
+  // Gruppiere die Messungen nach Typ
+  const lengthMeasurements = consolidatedMeasurements.filter(m => m.type === 'length');
+  const heightMeasurements = consolidatedMeasurements.filter(m => m.type === 'height');
+  const areaMeasurements = consolidatedMeasurements.filter(m => m.type === 'area');
+  const skylightMeasurements = consolidatedMeasurements.filter(m => m.type === 'skylight');
+  const otherMeasurements = consolidatedMeasurements.filter(m => 
+    !['length', 'height', 'area', 'skylight'].includes(m.type)
+  );
   
-  // CSV-Inhalt erstellen
-  const csvContent = [
-    header.join(','),
-    ...csvData.map(row => row.join(','))
-  ].join('\n');
+  // CSV-Inhalte vorbereiten
+  let csvContent = '';
   
+  // Längenmessungen
+  if (lengthMeasurements.length > 0) {
+    csvContent += 'Längenmessungen;\n';
+    csvContent += 'Nr.;Wert;Neigung;Beschreibung;\n';
+    
+    lengthMeasurements.forEach((m, index) => {
+      const value = m.label || `${m.value.toFixed(2)} ${m.unit || 'm'}`;
+      const inclination = m.inclination !== undefined ? `${Math.abs(m.inclination).toFixed(1)}°` : '–';
+      const description = m.description || '–';
+      
+      csvContent += `${index + 1};${value};${inclination};${description};\n`;
+    });
+    
+    csvContent += '\n';
+  }
+  
+  // Höhenmessungen
+  if (heightMeasurements.length > 0) {
+    csvContent += 'Höhenmessungen;\n';
+    csvContent += 'Nr.;Wert;Beschreibung;\n';
+    
+    heightMeasurements.forEach((m, index) => {
+      const value = m.label || `${m.value.toFixed(2)} ${m.unit || 'm'}`;
+      const description = m.description || '–';
+      
+      csvContent += `${index + 1};${value};${description};\n`;
+    });
+    
+    csvContent += '\n';
+  }
+  
+  // Dachfenster
+  if (skylightMeasurements.length > 0) {
+    csvContent += 'Dachfenster;\n';
+    csvContent += 'Nr.;Wert;Beschreibung;\n';
+    
+    skylightMeasurements.forEach((m, index) => {
+      const value = formatMeasurementValue(m);
+      const description = m.description || '–';
+      
+      csvContent += `${index + 1};${value};${description};\n`;
+    });
+    
+    csvContent += '\n';
+  }
+  
+  // Flächenmessungen
+  if (areaMeasurements.length > 0) {
+    csvContent += 'Flächenmessungen;\n';
+    csvContent += 'Nr.;Wert;Beschreibung;\n';
+    
+    areaMeasurements.forEach((m, index) => {
+      const value = m.label || `${m.value.toFixed(2)} ${m.unit || 'm²'}`;
+      const description = m.description || '–';
+      
+      csvContent += `${index + 1};${value};${description};\n`;
+      
+      // Füge Teilmessungen hinzu, falls vorhanden
+      if (m.segments && m.segments.length > 0) {
+        csvContent += `;Teilmessungen für Fläche ${index + 1};\n`;
+        csvContent += `;Teilmessung;Länge;\n`;
+        
+        m.segments.forEach((segment, sIndex) => {
+          csvContent += `;;${sIndex + 1};${segment.length.toFixed(2)} m;\n`;
+        });
+        
+        csvContent += '\n';
+      }
+    });
+    
+    csvContent += '\n';
+  }
+  
+  // Dacheinbauten und sonstige Messungen
+  if (otherMeasurements.length > 0) {
+    csvContent += 'Dacheinbauten;\n';
+    csvContent += 'Nr.;Typ;Anzahl;Beschreibung;\n';
+    
+    otherMeasurements.forEach((m, index) => {
+      let typeName;
+      switch(m.type) {
+        case 'chimney': typeName = 'Kamin'; break;
+        case 'vent': typeName = 'Lüfter'; break;
+        case 'hook': typeName = 'Dachhaken'; break;
+        case 'solar': typeName = 'Solaranlage'; break;
+        case 'other': typeName = 'Sonstiges'; break;
+        default: typeName = m.type;
+      }
+      
+      const value = formatMeasurementValue(m);
+      const description = m.description || '–';
+      
+      csvContent += `${index + 1};${typeName};${value};${description};\n`;
+    });
+  }
+  
+  // Verwende Semikolon als Trennzeichen für deutsche Excel-Kompatibilität
   // Datei herunterladen
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
