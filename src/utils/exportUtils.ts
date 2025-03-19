@@ -36,20 +36,37 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
     !['length', 'height', 'area', 'skylight'].includes(m.type)
   );
   
-  // CSV-Inhalte vorbereiten
-  let csvContent = '';
+  // CSV-Inhalte vorbereiten mit UTF-8 BOM für korrekte Zeichenkodierung
+  let csvContent = '\ufeff'; // UTF-8 BOM für korrekte Darstellung von Umlauten
+  
+  // Übersichtstabelle
+  csvContent += 'Messungen - Übersicht;\n';
+  csvContent += 'Nr.;Beschreibung;Typ;Wert;Neigung;\n';
+  
+  consolidatedMeasurements.forEach((m, index) => {
+    const typeDisplayName = getMeasurementTypeDisplayName(m.type);
+    const value = formatMeasurementValue(m);
+    const inclination = m.type === 'length' && m.inclination !== undefined 
+      ? `${Math.abs(m.inclination).toFixed(1)}°` 
+      : '';
+    const description = m.description || '';
+    
+    csvContent += `${index + 1};${description};${typeDisplayName};${value};${inclination};\n`;
+  });
+  
+  csvContent += '\n';
   
   // Längenmessungen
   if (lengthMeasurements.length > 0) {
     csvContent += 'Längenmessungen;\n';
-    csvContent += 'Nr.;Wert;Neigung;Beschreibung;\n';
+    csvContent += 'Nr.;Beschreibung;Länge (m);Neigung;\n';
     
     lengthMeasurements.forEach((m, index) => {
-      const value = m.label || `${m.value.toFixed(2)} ${m.unit || 'm'}`;
-      const inclination = m.inclination !== undefined ? `${Math.abs(m.inclination).toFixed(1)}°` : '–';
-      const description = m.description || '–';
+      const value = m.label || `${m.value.toFixed(2)}`;
+      const inclination = m.inclination !== undefined ? `${Math.abs(m.inclination).toFixed(1)}°` : '';
+      const description = m.description || '';
       
-      csvContent += `${index + 1};${value};${inclination};${description};\n`;
+      csvContent += `${index + 1};${description};${value};${inclination};\n`;
     });
     
     csvContent += '\n';
@@ -58,28 +75,13 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
   // Höhenmessungen
   if (heightMeasurements.length > 0) {
     csvContent += 'Höhenmessungen;\n';
-    csvContent += 'Nr.;Wert;Beschreibung;\n';
+    csvContent += 'Nr.;Beschreibung;Höhe (m);\n';
     
     heightMeasurements.forEach((m, index) => {
-      const value = m.label || `${m.value.toFixed(2)} ${m.unit || 'm'}`;
-      const description = m.description || '–';
+      const value = m.label || `${m.value.toFixed(2)}`;
+      const description = m.description || '';
       
-      csvContent += `${index + 1};${value};${description};\n`;
-    });
-    
-    csvContent += '\n';
-  }
-  
-  // Dachfenster
-  if (skylightMeasurements.length > 0) {
-    csvContent += 'Dachfenster;\n';
-    csvContent += 'Nr.;Wert;Beschreibung;\n';
-    
-    skylightMeasurements.forEach((m, index) => {
-      const value = formatMeasurementValue(m);
-      const description = m.description || '–';
-      
-      csvContent += `${index + 1};${value};${description};\n`;
+      csvContent += `${index + 1};${description};${value};\n`;
     });
     
     csvContent += '\n';
@@ -88,21 +90,22 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
   // Flächenmessungen
   if (areaMeasurements.length > 0) {
     csvContent += 'Flächenmessungen;\n';
-    csvContent += 'Nr.;Wert;Beschreibung;\n';
+    csvContent += 'Nr.;Beschreibung;Fläche (m²);\n';
     
     areaMeasurements.forEach((m, index) => {
-      const value = m.label || `${m.value.toFixed(2)} ${m.unit || 'm²'}`;
-      const description = m.description || '–';
+      const value = m.label || `${m.value.toFixed(2)}`;
+      const description = m.description || '';
       
-      csvContent += `${index + 1};${value};${description};\n`;
+      csvContent += `${index + 1};${description};${value};\n`;
       
       // Füge Teilmessungen hinzu, falls vorhanden
       if (m.segments && m.segments.length > 0) {
+        csvContent += '\n';
         csvContent += `;Teilmessungen für Fläche ${index + 1};\n`;
-        csvContent += `;Teilmessung;Länge;\n`;
+        csvContent += `;Teilmessung;Länge (m);\n`;
         
         m.segments.forEach((segment, sIndex) => {
-          csvContent += `;;${sIndex + 1};${segment.length.toFixed(2)} m;\n`;
+          csvContent += `;${sIndex + 1};${segment.length.toFixed(2)};\n`;
         });
         
         csvContent += '\n';
@@ -112,30 +115,35 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
     csvContent += '\n';
   }
   
+  // Dachfenster
+  if (skylightMeasurements.length > 0) {
+    csvContent += 'Dachfenster;\n';
+    csvContent += 'Nr.;Beschreibung;Wert;\n';
+    
+    skylightMeasurements.forEach((m, index) => {
+      const value = formatMeasurementValue(m);
+      const description = m.description || '';
+      
+      csvContent += `${index + 1};${description};${value};\n`;
+    });
+    
+    csvContent += '\n';
+  }
+  
   // Dacheinbauten und sonstige Messungen
   if (otherMeasurements.length > 0) {
     csvContent += 'Dacheinbauten;\n';
-    csvContent += 'Nr.;Typ;Anzahl;Beschreibung;\n';
+    csvContent += 'Nr.;Element;Anzahl;Beschreibung;\n';
     
     otherMeasurements.forEach((m, index) => {
-      let typeName;
-      switch(m.type) {
-        case 'chimney': typeName = 'Kamin'; break;
-        case 'vent': typeName = 'Lüfter'; break;
-        case 'hook': typeName = 'Dachhaken'; break;
-        case 'solar': typeName = 'Solaranlage'; break;
-        case 'other': typeName = 'Sonstiges'; break;
-        default: typeName = m.type;
-      }
+      const typeName = getMeasurementTypeDisplayName(m.type);
+      const count = m.count || 1;
+      const description = m.description || '';
       
-      const value = formatMeasurementValue(m);
-      const description = m.description || '–';
-      
-      csvContent += `${index + 1};${typeName};${value};${description};\n`;
+      csvContent += `${index + 1};${typeName};${count};${description};\n`;
     });
   }
   
-  // Verwende Semikolon als Trennzeichen für deutsche Excel-Kompatibilität
   // Datei herunterladen
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -223,6 +231,16 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
       measurement.type === 'hook' || measurement.type === 'other') {
     const count = measurement.count || 1;
     return `${count} ${measurement.unit || 'Stk'}`;
+  }
+  
+  // Format for solar measurements
+  if (measurement.type === 'solar') {
+    return `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
+  }
+  
+  // Format for chimney measurements
+  if (measurement.type === 'chimney') {
+    return measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
   }
   
   // Standard formatting for other measurement types
