@@ -65,4 +65,5 @@ export interface Measurement {
   relatedMeasurements?: string[]; // IDs of related measurements
   penetrationType?: 'vent' | 'hook' | 'other'; // Type of penetration
   notes?: string;        // Additional notes for the measurement
+  screenshot?: string;   // Base64 data URL of measurement screenshot for PDF export
 }

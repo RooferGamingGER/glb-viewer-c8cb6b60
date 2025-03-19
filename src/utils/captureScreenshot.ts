@@ -7,7 +7,7 @@ import html2canvas from 'html2canvas';
  */
 export const captureAreaMeasurement = async (
   scene: THREE.Scene,
-  camera: THREE.Camera, 
+  camera: THREE.PerspectiveCamera, // Changed from THREE.Camera to THREE.PerspectiveCamera
   renderer: THREE.WebGLRenderer,
   measurement: any,
   canvas: HTMLCanvasElement,
@@ -50,7 +50,7 @@ export const captureAreaMeasurement = async (
     
     // Position camera to look at the area from above
     const maxDim = Math.max(size.x, size.z) * 1.2; // Give some padding
-    const distance = maxDim / Math.tan((camera as THREE.PerspectiveCamera).fov * Math.PI / 360);
+    const distance = maxDim / Math.tan(camera.fov * Math.PI / 360);
     
     // Position camera above the center of the area
     camera.position.set(center.x, center.y + distance, center.z);
