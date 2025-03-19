@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -190,13 +189,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       </div>
       
       <div className="text-sm mb-1">
-        {!isPenetration && (
+        {!['vent', 'hook', 'other'].includes(measurement.type) && (
           <>
             <strong>Wert:</strong> {measurement.label}
           </>
         )}
         
-        {/* Abmessungen für Dachelemente */}
         {measurement.dimensions && (
           <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
             {measurement.dimensions.length !== undefined && (
@@ -217,7 +215,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           </div>
         )}
         
-        {/* Nur für Längenmessungen die Neigung anzeigen */}
         {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
          measurement.inclination !== undefined && (
           <span className="ml-2">
@@ -226,7 +223,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         )}
       </div>
       
-      {/* Move up/down buttons for roof elements and penetrations */}
       {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
         <div className="flex justify-end space-x-1 mt-1 mb-2">
           <TooltipProvider>

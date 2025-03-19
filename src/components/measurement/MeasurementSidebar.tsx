@@ -63,9 +63,14 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
   
-  // Sync the active tab with the current measurement tool when appropriate
+  // Nur Tab wechseln, wenn sich der activeMode ändert, aber nicht wenn er auf 'none' zurückfällt
+  // Das verhindert das Tab-Switching nach Abschluss einer Messung
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
+    
+    // Nur reagieren, wenn ein spezifisches Werkzeug aktiviert wird
+    const lastActiveMode = localStorage.getItem('lastActiveMode');
+    if (lastActiveMode === activeMode) return;
     
     if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
@@ -74,6 +79,9 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
     } else if (['vent', 'hook', 'other'].includes(activeMode)) {
       setActiveTab("penetrations");
     }
+    
+    // Speichern des aktuellen Modus, um doppelte Reaktionen zu vermeiden
+    localStorage.setItem('lastActiveMode', activeMode);
   }, [activeMode]);
   
   return (
