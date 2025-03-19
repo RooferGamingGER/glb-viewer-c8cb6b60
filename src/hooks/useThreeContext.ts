@@ -30,3 +30,33 @@ export const generatePolygon2D = (measurement: Measurement): string | null => {
     return null;
   }
 };
+
+// Helper to calculate optimal camera position for viewing a measurement
+export const calculateOptimalCameraPosition = (
+  measurement: Measurement,
+  distanceMultiplier: number = 2.0
+): { position: THREE.Vector3; target: THREE.Vector3 } | null => {
+  if (!measurement || !measurement.points || measurement.points.length < 3) {
+    return null;
+  }
+
+  try {
+    // Calculate the center point
+    const center = new THREE.Vector3();
+    measurement.points.forEach(point => {
+      center.add(new THREE.Vector3(point.x, point.y, point.z));
+    });
+    center.divideScalar(measurement.points.length);
+
+    // Calculate a good camera position (above the center)
+    const cameraPosition = center.clone().add(new THREE.Vector3(0, distanceMultiplier, 0));
+    
+    return {
+      position: cameraPosition,
+      target: center
+    };
+  } catch (error) {
+    console.error('Error calculating optimal camera position:', error);
+    return null;
+  }
+};

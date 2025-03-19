@@ -31,6 +31,15 @@ export const captureAreaMeasurement = async (
     const originalPosition = camera.position.clone();
     const originalQuaternion = camera.quaternion.clone();
     const originalFov = camera.fov;
+    const originalNear = camera.near;
+    const originalFar = camera.far;
+    
+    // Store original renderer settings
+    const originalClearColor = renderer.getClearColor(new THREE.Color());
+    const originalClearAlpha = renderer.getClearAlpha();
+    const originalOutputEncoding = renderer.outputEncoding;
+    const originalToneMapping = renderer.toneMapping;
+    const originalToneMappingExposure = renderer.toneMappingExposure;
     
     // Calculate the center of the measurement
     const points = measurement.points || [];
@@ -78,48 +87,73 @@ export const captureAreaMeasurement = async (
     const size = boundingBox.getSize(new THREE.Vector3());
     
     // Find the max dimension of the area
-    const maxDim = Math.max(size.x, size.y, size.z) * 1.2; // Add padding
+    const maxDim = Math.max(size.x, size.y, size.z) * 1.5; // Increased padding for better view
     
     // Calculate distance needed to fit the area in the camera's field of view
     // Adjust for the camera's field of view
-    const fovRadians = (camera.fov * Math.PI) / 180;
-    const distance = maxDim / (2 * Math.tan(fovRadians / 2)) * 1.5; // Extra multiplier for better framing
-    
-    // Set up camera position perpendicular to the surface
-    // Position the camera along the normal at the calculated distance
-    const cameraPosition = new THREE.Vector3()
-      .copy(center)
-      .add(normal.clone().multiplyScalar(distance));
-    
-    // Set the camera position
-    camera.position.copy(cameraPosition);
+    const fovRadians = (45 * Math.PI) / 180; // Use a fixed 45 degree FOV for consistency
+    const distance = maxDim / (1.7 * Math.tan(fovRadians / 2)); // Adjusted for better framing
     
     // Determine up vector for camera orientation
-    // We want the camera to be oriented with a sensible "up" direction
-    // If the normal is mostly pointing up or down, we use a different up vector
-    let upVector = new THREE.Vector3(0, 1, 0); // Default up is world up
+    // Default up is world up
+    let upVector = new THREE.Vector3(0, 1, 0);
     
-    // If the normal is too close to the up vector, use a different up vector
+    // If the normal is mostly horizontal, we need a different up vector
     if (Math.abs(normal.dot(upVector)) > 0.9) {
-      upVector = new THREE.Vector3(0, 0, 1); // Use forward direction as up
+      upVector = new THREE.Vector3(1, 0, 0); // Use right direction as up
     }
     
-    // Create a camera orientation looking at the center from our new position
+    // Position the camera above the area, looking down at it
+    // We want more of a top-down view for roof measurements
+    // Calculate position based on normal, but bias towards top-down view
+    const topDownBias = 0.7; // 70% bias towards top-down view
+    const cameraPosition = new THREE.Vector3();
+    
+    // Blend between pure normal direction and world-up direction
+    const blendedDirection = new THREE.Vector3()
+      .copy(normal)
+      .multiplyScalar(1 - topDownBias)
+      .add(new THREE.Vector3(0, 1, 0).multiplyScalar(topDownBias))
+      .normalize();
+    
+    cameraPosition.copy(center).add(blendedDirection.multiplyScalar(distance));
+    
+    // Set the camera properties
+    camera.position.copy(cameraPosition);
+    camera.fov = 45; // Consistent FOV
+    camera.near = 0.1; // Closer near plane
+    camera.far = distance * 4; // Ensure far plane encompasses the scene
+    camera.updateProjectionMatrix();
+    
+    // Create a camera orientation looking at the center
     camera.lookAt(center);
     
-    // Make sure we have the right orientation (prevent upside-down views)
-    // Cross the normal with our up vector to get a perpendicular vector
-    const right = new THREE.Vector3().crossVectors(normal, upVector).normalize();
-    // Now cross the normal with the right vector to get the true up vector for this orientation
-    const trueUp = new THREE.Vector3().crossVectors(right, normal).normalize();
+    // Enhance renderer settings for better quality screenshot
+    renderer.setClearColor(0xffffff, 1); // White background
+    renderer.outputEncoding = THREE.sRGBEncoding; // Better color encoding
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better tone mapping
+    renderer.toneMappingExposure = 1.2; // Slightly brighter
     
-    // Set the camera orientation using lookAt, but with our calculated up vector
-    const lookAtMatrix = new THREE.Matrix4().lookAt(cameraPosition, center, trueUp);
-    camera.quaternion.setFromRotationMatrix(lookAtMatrix);
-    
-    // Temporarily adjust FOV to ensure we see everything
-    camera.fov = Math.min(90, Math.max(30, camera.fov * 1.1)); // Slightly wider FOV for clearer view
-    camera.updateProjectionMatrix();
+    // Make sure all materials are properly visible
+    scene.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.material) {
+        // Check if material is an array
+        if (Array.isArray(object.material)) {
+          object.material.forEach(mat => {
+            if (mat.opacity !== undefined) mat.opacity = 1.0;
+            if (mat.transparent !== undefined) mat.transparent = false;
+            if (mat.depthTest !== undefined) mat.depthTest = true;
+            mat.needsUpdate = true;
+          });
+        } else {
+          // Single material
+          if (object.material.opacity !== undefined) object.material.opacity = 1.0;
+          if (object.material.transparent !== undefined) object.material.transparent = false;
+          if (object.material.depthTest !== undefined) object.material.depthTest = true;
+          object.material.needsUpdate = true;
+        }
+      }
+    });
     
     // Render the scene to capture the screenshot
     renderer.render(scene, camera);
@@ -131,7 +165,15 @@ export const captureAreaMeasurement = async (
     camera.position.copy(originalPosition);
     camera.quaternion.copy(originalQuaternion);
     camera.fov = originalFov;
+    camera.near = originalNear;
+    camera.far = originalFar;
     camera.updateProjectionMatrix();
+    
+    // Restore original renderer settings
+    renderer.setClearColor(originalClearColor, originalClearAlpha);
+    renderer.outputEncoding = originalOutputEncoding;
+    renderer.toneMapping = originalToneMapping;
+    renderer.toneMappingExposure = originalToneMappingExposure;
     
     // Re-render the scene with the original camera settings
     renderer.render(scene, camera);
