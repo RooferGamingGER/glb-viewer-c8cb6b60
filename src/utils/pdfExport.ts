@@ -265,6 +265,34 @@ export const exportMeasurementsToPdf = async (
         margin-top: 10px;
         text-align: center;
       }
+      .custom-screenshots-section {
+        margin-top: 30px;
+        page-break-before: always;
+      }
+      .screenshots-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .screenshot-item {
+        break-inside: avoid;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+      .custom-screenshot {
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #eee;
+        margin-bottom: 10px;
+      }
+      .screenshot-title {
+        font-size: 14px;
+        color: #555;
+        margin-top: 8px;
+        text-align: center;
+      }
     `;
     document.head.appendChild(styleElement);
     
@@ -356,6 +384,16 @@ export const exportMeasurementsToPdf = async (
     const installations = [...ventMeasurements, ...hookMeasurements, ...otherMeasurements];
     if (installations.length > 0) {
       appendInstallationsSection(contentWrapper, installations, coverData.title);
+    }
+    
+    // Check if there are any custom screenshots to include
+    const measurementsWithCustomScreenshots = measurements.filter(
+      m => m.customScreenshots && m.customScreenshots.length > 0
+    );
+    
+    if (measurementsWithCustomScreenshots.length > 0) {
+      // Add custom screenshots section
+      appendCustomScreenshotsSection(contentWrapper, measurementsWithCustomScreenshots, coverData.title);
     }
     
     // Configure html2pdf options with improved page break handling
@@ -1157,6 +1195,88 @@ const appendInstallationsSection = (
   table.appendChild(tableBody);
   tableContainer.appendChild(table);
   sectionContent.appendChild(tableContainer);
+  
+  contentWrapper.appendChild(sectionContent);
+};
+
+/**
+ * Add section for custom screenshots
+ */
+const appendCustomScreenshotsSection = (
+  contentWrapper: HTMLElement, 
+  measurementsWithScreenshots: Measurement[], 
+  title: string
+) => {
+  if (measurementsWithScreenshots.length === 0) return;
+  
+  const sectionContent = document.createElement('div');
+  sectionContent.className = 'pdf-section custom-screenshots-section';
+  
+  // Create section with header that stays with content
+  const section = document.createElement('div');
+  section.className = 'section-with-header';
+  
+  // Add header
+  section.appendChild(createHeader(title));
+  
+  // Create title
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Zusätzliche Aufnahmen';
+  sectionTitle.style.marginTop = '20px';
+  sectionTitle.style.marginBottom = '30px';
+  section.appendChild(sectionTitle);
+  
+  // Create description
+  const totalScreenshots = measurementsWithScreenshots.reduce(
+    (total, m) => total + (m.customScreenshots?.length || 0), 0
+  );
+  
+  const description = document.createElement('p');
+  description.textContent = `Dieser Abschnitt enthält ${totalScreenshots} zusätzliche Aufnahmen.`;
+  section.appendChild(description);
+  
+  sectionContent.appendChild(section);
+  
+  // Add screenshots
+  measurementsWithScreenshots.forEach((measurement) => {
+    if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
+      return;
+    }
+    
+    const measurementTitle = document.createElement('h3');
+    measurementTitle.style.marginTop = '30px';
+    measurementTitle.style.marginBottom = '15px';
+    measurementTitle.style.pageBreakAfter = 'avoid';
+    
+    const typeName = getMeasurementTypeDisplayName(measurement.type);
+    measurementTitle.textContent = measurement.description || typeName || 'Messung';
+    
+    sectionContent.appendChild(measurementTitle);
+    
+    // Add screenshots grid
+    const screenshotsGrid = document.createElement('div');
+    screenshotsGrid.className = 'screenshots-grid';
+    
+    measurement.customScreenshots.forEach((screenshot, index) => {
+      const screenshotItem = document.createElement('div');
+      screenshotItem.className = 'screenshot-item';
+      
+      const img = document.createElement('img');
+      img.src = screenshot;
+      img.alt = `Aufnahme ${index + 1}`;
+      img.className = 'custom-screenshot';
+      
+      const caption = document.createElement('div');
+      caption.className = 'screenshot-title';
+      caption.textContent = `Aufnahme ${index + 1} - ${measurement.description || typeName || 'Messung'}`;
+      
+      screenshotItem.appendChild(img);
+      screenshotItem.appendChild(caption);
+      screenshotsGrid.appendChild(screenshotItem);
+    });
+    
+    sectionContent.appendChild(screenshotsGrid);
+  });
   
   contentWrapper.appendChild(sectionContent);
 };
