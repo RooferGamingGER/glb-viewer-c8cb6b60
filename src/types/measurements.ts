@@ -32,6 +32,11 @@ export interface Segment {
   inclination?: number;
 }
 
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
 export interface Measurement {
   id: string;
   type: MeasurementMode;
@@ -66,4 +71,5 @@ export interface Measurement {
   penetrationType?: 'vent' | 'hook' | 'other'; // Type of penetration
   notes?: string;        // Additional notes for the measurement
   screenshot?: string;   // Base64 data URL of measurement screenshot for PDF export
+  polygon2D?: string;    // Base64 data URL of 2D polygon rendering for PDF export
 }

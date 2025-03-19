@@ -1,6 +1,8 @@
 
 import * as THREE from 'three';
 import html2canvas from 'html2canvas';
+import { renderPolygon2D } from './renderPolygon2D';
+import { Measurement } from '../types/measurements';
 
 /**
  * Captures a screenshot of a specific area measurement in the 3D scene
@@ -10,12 +12,18 @@ export const captureAreaMeasurement = async (
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   renderer: THREE.WebGLRenderer,
-  measurement: any,
+  measurement: Measurement,
   canvas: HTMLCanvasElement,
+  use2DRendering: boolean = true
 ): Promise<string | null> => {
   if (!measurement || !scene || !camera || !renderer || !canvas) {
     console.error('Missing required parameters for screenshot capture');
     return null;
+  }
+
+  // If 2D rendering is enabled, use that instead of 3D screenshot
+  if (use2DRendering) {
+    return renderPolygon2D(measurement);
   }
 
   try {

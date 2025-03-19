@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown } from 'lucide-react';
@@ -5,7 +6,7 @@ import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import { consolidatePenetrations } from '@/utils/exportUtils';
-import { useThreeContext, asPerspectiveCamera } from '@/hooks/useThreeContext';
+import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
 import * as THREE from 'three';
 import {
@@ -31,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import MeasurementTable from './MeasurementTable';
+import { Switch } from "@/components/ui/switch";
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -39,6 +41,7 @@ interface ExportPdfButtonProps {
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [use2DRendering, setUse2DRendering] = useState(true);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const { scene, camera, renderer, canvas } = useThreeContext();
   
@@ -67,39 +70,74 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     try {
       const areaMeasurements = measurements.filter(m => m.type === 'area');
       const solarMeasurements = measurements.filter(m => m.type === 'solar');
-      const measurementsWithScreenshots = [...measurements];
+      const measurementsWithVisuals = [...measurements];
       
       const perspCamera = asPerspectiveCamera(camera);
+      setExportProgress(20);
       
-      if ((areaMeasurements.length > 0 || solarMeasurements.length > 0) && scene && perspCamera && renderer && canvas) {
-        setExportProgress(20);
+      // Process each area measurement
+      for (let i = 0; i < areaMeasurements.length; i++) {
+        const measurement = areaMeasurements[i];
         
-        for (let i = 0; i < areaMeasurements.length; i++) {
-          const measurement = areaMeasurements[i];
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas);
+        if (use2DRendering) {
+          // Generate 2D polygon rendering
+          const polygon2D = generatePolygon2D(measurement);
+          
+          if (polygon2D) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                polygon2D,
+                screenshot: polygon2D // Use polygon as screenshot for backward compatibility
+              };
+            }
+          }
+        } else if (scene && perspCamera && renderer && canvas) {
+          // Fall back to 3D screenshot if 2D rendering is disabled
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
           
           if (screenshot) {
-            const index = measurementsWithScreenshots.findIndex(m => m.id === measurement.id);
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
-              measurementsWithScreenshots[index] = {
-                ...measurementsWithScreenshots[index],
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
                 screenshot
               };
             }
           }
-          
-          setExportProgress(20 + Math.floor((i / areaMeasurements.length) * 30));
         }
+        
+        setExportProgress(20 + Math.floor((i / areaMeasurements.length) * 30));
+      }
 
-        for (let i = 0; i < solarMeasurements.length; i++) {
-          const measurement = solarMeasurements[i];
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas);
+      // Process each solar measurement
+      for (let i = 0; i < solarMeasurements.length; i++) {
+        const measurement = solarMeasurements[i];
+        
+        if (use2DRendering) {
+          // Generate 2D polygon rendering
+          const polygon2D = generatePolygon2D(measurement);
+          
+          if (polygon2D) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                polygon2D,
+                screenshot: polygon2D // Use polygon as screenshot for backward compatibility
+              };
+            }
+          }
+        } else if (scene && perspCamera && renderer && canvas) {
+          // Fall back to 3D screenshot
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
           
           if (screenshot) {
-            const index = measurementsWithScreenshots.findIndex(m => m.id === measurement.id);
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
-              measurementsWithScreenshots[index] = {
-                ...measurementsWithScreenshots[index],
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
                 screenshot
               };
             }
@@ -110,7 +148,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       setExportProgress(50);
       
       const coverData = form.getValues();
-      const success = await exportMeasurementsToPdf(measurementsWithScreenshots, coverData);
+      const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
       setExportProgress(100);
       
       if (success) {
@@ -178,11 +216,22 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                       <li>Deckblatt mit Ihren Projektinformationen</li>
                       <li>Messungsübersicht mit Statistiken</li>
                       <li>Längenmessungen auf eigener Seite</li>
-                      <li>Flächenmessungen mit 3D-Vorschau auf eigener Seite</li>
+                      <li>Flächenmessungen mit 2D-Vorschau auf eigener Seite</li>
                       <li>Höhenmessungen auf eigener Seite</li>
                     </ul>
                   </CardContent>
                 </Card>
+              </div>
+              
+              <div className="flex items-center space-x-2 mb-4">
+                <Switch
+                  id="use-2d"
+                  checked={use2DRendering}
+                  onCheckedChange={setUse2DRendering}
+                />
+                <label htmlFor="use-2d" className="text-sm cursor-pointer">
+                  2D-Ansicht für Flächenmessungen (verbesserte Lesbarkeit)
+                </label>
               </div>
             
               <div className="grid grid-cols-2 gap-4">
@@ -224,7 +273,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                     <li className="text-sm">Statistiken zu Ihren Messungen</li>
                     <li className="text-sm">Aufschlüsselung nach Messtypen</li>
                     {areaCount > 0 && (
-                      <li className="text-sm">3D-Vorschau der Flächenmessungen mit Maßlinien</li>
+                      <li className="text-sm">{use2DRendering ? '2D-Ansichten' : '3D-Vorschau'} der Flächenmessungen mit Maßlinien</li>
                     )}
                     {areaCount > 0 && (
                       <li className="text-sm">Detailansicht der Flächenmessungen mit Teilmessungen</li>
