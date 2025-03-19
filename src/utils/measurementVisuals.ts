@@ -20,6 +20,11 @@ const pointsToVector3Array = (points: Point[]): THREE.Vector3[] => {
   return points.map(pointToVector3);
 };
 
+// Constants for visualization
+const POINT_Y_OFFSET = 0.01; // Reduced from 0.1 to place points closer to the model
+const LINE_Y_OFFSET = 0.025; // Slightly higher than points to ensure visibility
+const LABEL_Y_OFFSET = 0.15; // Maintained higher for readability
+
 /**
  * Safely disposes of Three.js object's geometry and material
  */
@@ -150,7 +155,7 @@ export function renderCurrentPoints(
     }
   });
 
-  // Add current points as spheres with elevated Y position
+  // Add current points as spheres with minimal Y position offset
   currentPoints.forEach((point, index) => {
     const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
@@ -164,16 +169,18 @@ export function renderCurrentPoints(
              0xffaa00 
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    // Add a small Y offset to raise points slightly
-    sphere.position.set(point.x, point.y + 0.1, point.z);
+    // Add a smaller Y offset to place points closer to the surface
+    sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
+    // Set higher renderOrder to ensure points are visible
+    sphere.renderOrder = 1;
     pointsRef.add(sphere);
 
-    // Add connecting lines between points - also raised
+    // Add connecting lines between points with slightly higher Y offset
     if (index > 0) {
       const prevPoint = currentPoints[index - 1];
       // Add Y offset to both points when creating the line
-      const p1 = new THREE.Vector3(prevPoint.x, prevPoint.y + 0.1, prevPoint.z);
-      const p2 = new THREE.Vector3(point.x, point.y + 0.1, point.z);
+      const p1 = new THREE.Vector3(prevPoint.x, prevPoint.y + LINE_Y_OFFSET, prevPoint.z);
+      const p2 = new THREE.Vector3(point.x, point.y + LINE_Y_OFFSET, point.z);
       
       const points = [p1, p2];
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -186,9 +193,13 @@ export function renderCurrentPoints(
                activeMode === 'vent' ? 0x00ffff :
                activeMode === 'hook' ? 0xff00ff :
                0xffaa00,
-        linewidth: 2
+        linewidth: 3, // Increased from 2 for better visibility
+        opacity: 0.9, // Higher opacity
+        transparent: true
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
+      // Set high renderOrder to ensure lines appear above the model
+      line.renderOrder = 2;
       linesRef.add(line);
     }
   });
@@ -197,18 +208,20 @@ export function renderCurrentPoints(
   if ((activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') && currentPoints.length >= 3) {
     const firstPoint = currentPoints[0];
     const lastPoint = currentPoints[currentPoints.length - 1];
-    const p1 = new THREE.Vector3(lastPoint.x, lastPoint.y + 0.1, lastPoint.z);
-    const p2 = new THREE.Vector3(firstPoint.x, firstPoint.y + 0.1, firstPoint.z);
+    const p1 = new THREE.Vector3(lastPoint.x, lastPoint.y + LINE_Y_OFFSET, lastPoint.z);
+    const p2 = new THREE.Vector3(firstPoint.x, firstPoint.y + LINE_Y_OFFSET, firstPoint.z);
     
     const closingPoints = [p1, p2];
     const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
-    // Use a dashed line material
+    // Use a dashed line material with improved visibility
     const closingMaterial = new THREE.LineDashedMaterial({ 
       color: activeMode === 'solar' ? 0xffaa00 :
              activeMode === 'skylight' ? 0xff8800 :
              activeMode === 'chimney' ? 0xff0000 :
              0xffaa00,
-      linewidth: 2,
+      linewidth: 3, // Increased from 2 for better visibility
+      opacity: 0.9, // Higher opacity
+      transparent: true,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
@@ -216,6 +229,8 @@ export function renderCurrentPoints(
     const closingLine = new THREE.Line(closingGeometry, closingMaterial);
     // Must call computeLineDistances for the dashed line to work
     closingLine.computeLineDistances();
+    // Set high renderOrder to ensure visibility
+    closingLine.renderOrder = 2;
     linesRef.add(closingLine);
   }
   
@@ -344,7 +359,7 @@ export function renderEditPoints(
   const measurement = measurements.find(m => m.id === editMeasurementId);
   if (!measurement || measurement.visible === false) return;
   
-  // Add editable points with a different appearance and raised Y position
+  // Add editable points with a different appearance and minimal Y position offset
   measurement.points.forEach((point, index) => {
     const isSelected = index === editingPointIndex;
     
@@ -361,8 +376,10 @@ export function renderEditPoints(
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    // Add Y offset to raise edit points
-    sphere.position.set(point.x, point.y + 0.1, point.z);
+    // Add reduced Y offset to place edit points closer to the surface
+    sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
+    // Set high renderOrder for visibility
+    sphere.renderOrder = 10;
     
     // Add user data to the sphere for identification when clicking
     sphere.userData = {
@@ -377,7 +394,7 @@ export function renderEditPoints(
     if (measurement.type === 'area' || measurement.type === 'solar' || 
         measurement.type === 'skylight' || measurement.type === 'chimney') {
       // Position the label slightly above the point
-      const labelPosition = new THREE.Vector3(point.x, point.y + 0.08, point.z);
+      const labelPosition = new THREE.Vector3(point.x, point.y + LABEL_Y_OFFSET, point.z);
       
       // Create point label (P1, P2, etc.) - mark as point label
       const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition, true, undefined, true);
@@ -785,27 +802,35 @@ function renderLengthMeasurement(
 ) {
   const [p1, p2] = measurement.points;
   
-  // Convert to THREE.Vector3 and add Y offset
-  const point1 = new THREE.Vector3(p1.x, p1.y + 0.1, p1.z);
-  const point2 = new THREE.Vector3(p2.x, p2.y + 0.1, p2.z);
+  // Convert to THREE.Vector3 with minimal Y offset
+  const point1 = new THREE.Vector3(p1.x, p1.y + LINE_Y_OFFSET, p1.z);
+  const point2 = new THREE.Vector3(p2.x, p2.y + LINE_Y_OFFSET, p2.z);
   
   // Draw the line
   const linePoints = [point1, point2];
   const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: 0x00ff00,
-    linewidth: 3
+    linewidth: 3, // Increased from 2
+    opacity: 0.9,
+    transparent: true
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
+  line.renderOrder = 2; // Ensure line renders above model
   measurementsRef.add(line);
   
-  // Add small spheres at endpoints with Y offset
+  // Add small spheres at endpoints with minimal Y offset
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-  const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  const sphereMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0x00ff00,
+    opacity: 0.9,
+    transparent: true
+  });
   
   measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.set(point.x, point.y + 0.1, point.z);
+    sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
+    sphere.renderOrder = 3; // Higher than line
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -824,6 +849,9 @@ function renderLengthMeasurement(
     
     // Add text label at midpoint
     const midpoint = calculateMidpoint(point1, point2);
+    // Raise label position slightly higher for visibility
+    midpoint.y += LABEL_Y_OFFSET;
+    
     const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
     const label = createMeasurementLabel(labelText, midpoint, true);
     
@@ -846,9 +874,9 @@ function renderHeightMeasurement(
 ) {
   const [p1, p2] = measurement.points;
   
-  // Convert to THREE.Vector3 with Y offset
-  const point1 = new THREE.Vector3(p1.x, p1.y + 0.1, p1.z);
-  const point2 = new THREE.Vector3(p2.x, p2.y + 0.1, p2.z);
+  // Convert to THREE.Vector3 with minimal Y offset
+  const point1 = new THREE.Vector3(p1.x, p1.y + POINT_Y_OFFSET, p1.z);
+  const point2 = new THREE.Vector3(p2.x, p2.y + POINT_Y_OFFSET, p2.z);
   
   // Determine which point is higher
   const higherPoint = point1.y > point2.y ? point1 : point2;
@@ -861,39 +889,53 @@ function renderHeightMeasurement(
     higherPoint.z
   );
   
-  // Skip the original line between points (simplified visualization)
-  // Only draw vertical and horizontal lines
-  
   // Draw the vertical line
-  const verticalLinePoints = [higherPoint, verticalPoint];
+  const verticalLinePoints = [
+    new THREE.Vector3(higherPoint.x, higherPoint.y + LINE_Y_OFFSET, higherPoint.z),
+    new THREE.Vector3(verticalPoint.x, verticalPoint.y + LINE_Y_OFFSET, verticalPoint.z)
+  ];
   const verticalLineGeometry = new THREE.BufferGeometry().setFromPoints(verticalLinePoints);
   const verticalLineMaterial = new THREE.LineBasicMaterial({ 
     color: 0x0000ff,
-    linewidth: 3
+    linewidth: 3, // Increased from 2
+    opacity: 0.9,
+    transparent: true
   });
   const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
+  verticalLine.renderOrder = 2; // Ensure line renders above model
   measurementsRef.add(verticalLine);
   
   // Draw horizontal reference line
-  const horizontalLinePoints = [verticalPoint, lowerPoint];
+  const horizontalLinePoints = [
+    new THREE.Vector3(verticalPoint.x, verticalPoint.y + LINE_Y_OFFSET, verticalPoint.z),
+    new THREE.Vector3(lowerPoint.x, lowerPoint.y + LINE_Y_OFFSET, lowerPoint.z)
+  ];
   const horizontalLineGeometry = new THREE.BufferGeometry().setFromPoints(horizontalLinePoints);
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
     color: 0x0000ff,
-    linewidth: 2,
+    linewidth: 3, // Increased from 2
+    opacity: 0.9,
+    transparent: true,
     dashSize: 0.1,
     gapSize: 0.05,
   });
   const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
   horizontalLine.computeLineDistances();
+  horizontalLine.renderOrder = 2;
   measurementsRef.add(horizontalLine);
   
   // Add small spheres at all points
   const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-  const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+  const sphereMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0x0000ff,
+    opacity: 0.9,
+    transparent: true
+  });
   
   [point1, point2].forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.copy(point);
+    sphere.renderOrder = 3;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -910,7 +952,7 @@ function renderHeightMeasurement(
     // Add text label at midpoint of vertical line
     const labelPos = new THREE.Vector3(
       verticalPoint.x + 0.2, // Slightly offset from vertical line
-      (higherPoint.y + verticalPoint.y) / 2,
+      (higherPoint.y + verticalPoint.y) / 2 + LINE_Y_OFFSET,
       verticalPoint.z
     );
     
@@ -936,8 +978,8 @@ function renderAreaMeasurement(
   shouldCreateLabel: boolean,
   shouldCreateSegmentLabels: boolean
 ) {
-  // Convert points to THREE.Vector3 with Y offset
-  const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + 0.1, p.z));
+  // Convert points to THREE.Vector3 with minimal Y offset
+  const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
   
   // Create outline from points
   for (let i = 0; i < points3D.length; i++) {
@@ -949,18 +991,29 @@ function renderAreaMeasurement(
     const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurement.type === 'solar' ? 0xffaa00 : 0xffaa00,
-      linewidth: 3
+      linewidth: 3, // Increased from 2
+      opacity: 0.9,
+      transparent: true
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.renderOrder = 2;
     measurementsRef.add(line);
     
-    // Add small sphere at each vertex
+    // Add small sphere at each vertex with minimal Y offset
     const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: measurement.type === 'solar' ? 0xffaa00 : 0xffaa00 
+      color: measurement.type === 'solar' ? 0xffaa00 : 0xffaa00,
+      opacity: 0.9,
+      transparent: true
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.copy(p1);
+    // Adjust position to use original point data with minimal offset
+    sphere.position.set(
+      measurement.points[i].x, 
+      measurement.points[i].y + POINT_Y_OFFSET, 
+      measurement.points[i].z
+    );
+    sphere.renderOrder = 3;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -978,7 +1031,7 @@ function renderAreaMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       
       // Offset midpoint slightly to avoid overlap with lines
-      midpoint.y += 0.05;
+      midpoint.y += LABEL_Y_OFFSET;
       
       // Create label with smaller size
       const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint, true);
@@ -1021,6 +1074,9 @@ function renderAreaMeasurement(
   if (shouldCreateLabel) {
     // Calculate centroid for label placement
     const centroid = calculateCentroid(points3D);
+    
+    // Raise label position for visibility
+    centroid.y += LABEL_Y_OFFSET;
     
     // Create label text (without inclination for area measurements)
     const labelText = formatMeasurementLabel(measurement.value, measurement.type);
@@ -1075,9 +1131,19 @@ function renderRoofElementMeasurement(
     
     // Add small sphere at the point for interaction
     const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-    const sphereMaterial = new THREE.MeshBasicMaterial({ color: elementColor });
+    const sphereMaterial = new THREE.MeshBasicMaterial({ 
+      color: elementColor,
+      opacity: 0.9,
+      transparent: true
+    });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.copy(point);
+    // Place point closer to model surface
+    sphere.position.set(
+      measurement.points[0].x, 
+      measurement.points[0].y + POINT_Y_OFFSET, 
+      measurement.points[0].z
+    );
+    sphere.renderOrder = 3;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1091,7 +1157,7 @@ function renderRoofElementMeasurement(
     // Create label if needed
     if (shouldCreateLabel) {
       // Position label slightly above the point
-      const labelPos = new THREE.Vector3(point.x, point.y + 0.2, point.z);
+      const labelPos = new THREE.Vector3(point.x, point.y + LABEL_Y_OFFSET, point.z);
       
       // Create label text
       const labelText = measurement.label || measurement.type;
@@ -1114,21 +1180,37 @@ function renderRoofElementMeasurement(
       const p1 = points3D[i];
       const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
       
-      // Draw the line segment
-      const linePoints = [p1, p2];
+      // Draw the line segment with slightly raised Y position
+      const linePoints = [
+        new THREE.Vector3(p1.x, p1.y + LINE_Y_OFFSET, p1.z),
+        new THREE.Vector3(p2.x, p2.y + LINE_Y_OFFSET, p2.z)
+      ];
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
-        linewidth: 3
+        linewidth: 3,
+        opacity: 0.9,
+        transparent: true
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
+      line.renderOrder = 2;
       measurementsRef.add(line);
       
-      // Add small sphere at each vertex
+      // Add small sphere at each vertex with minimal Y offset
       const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-      const sphereMaterial = new THREE.MeshBasicMaterial({ color: elementColor });
+      const sphereMaterial = new THREE.MeshBasicMaterial({ 
+        color: elementColor,
+        opacity: 0.9,
+        transparent: true
+      });
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      sphere.position.copy(p1);
+      // Place points closer to model surface
+      sphere.position.set(
+        measurement.points[i].x, 
+        measurement.points[i].y + POINT_Y_OFFSET, 
+        measurement.points[i].z
+      );
+      sphere.renderOrder = 3;
       
       // Add userData for interactive selection
       sphere.userData = {
