@@ -29,7 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility?: (id: string) => void; // Keep for backward compatibility but we won't use it
+  toggleLabelVisibility?: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -189,7 +189,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       </div>
       
       <div className="text-sm mb-1">
-        {!['vent', 'hook', 'other'].includes(measurement.type) && (
+        {!isPenetration && (
           <>
             <strong>Wert:</strong> {measurement.label}
           </>
