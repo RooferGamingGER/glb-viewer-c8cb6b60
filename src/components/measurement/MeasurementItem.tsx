@@ -402,33 +402,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                       });
                     }
                   }}
-                  onChange={(moduleSpec) => {
-                    if (measurement.pvModuleInfo) {
-                      const updatedInfo = {
-                        ...measurement.pvModuleInfo,
-                        moduleWidth: moduleSpec.width,
-                        moduleHeight: moduleSpec.height,
-                        pvModuleSpec: moduleSpec
-                      };
-                      
-                      const recalculatedInfo = calculatePVModulePlacement(
-                        measurement.points,
-                        moduleSpec.width,
-                        moduleSpec.height,
-                        updatedInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
-                        updatedInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
-                        updatedInfo.manualDimensions ? {
-                          width: updatedInfo.userDefinedWidth || 0,
-                          length: updatedInfo.userDefinedLength || 0
-                        } : undefined
-                      );
-                      
-                      updateMeasurement(measurement.id, { 
-                        pvModuleInfo: recalculatedInfo,
-                        pvModuleSpec: moduleSpec
-                      });
-                    }
-                  }}
                   currentModule={measurement.pvModuleSpec || PV_MODULE_TEMPLATES[0]}
                   onDimensionsChange={handlePVDimensionsChange}
                   pvModuleInfo={measurement.pvModuleInfo}

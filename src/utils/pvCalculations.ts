@@ -301,17 +301,16 @@ const findParallelSides = (points: Point[]): {
 };
 
 /**
- * Erweiterte Funktion zur Berechnung der optimalen Platzierung von PV-Modulen auf einer Dachfläche
- * mit Berücksichtigung der Dachausrichtung und -neigung für Ertragsoptimierung
+ * Calculates the optimal placement of PV modules on a roof area
  * 
- * @param points - Die 3D-Punkte, die das Dachflächenpolygon definieren
- * @param moduleWidth - Breite eines einzelnen PV-Moduls in Metern (Standard: 1.041m)
- * @param moduleHeight - Höhe eines einzelnen PV-Moduls in Metern (Standard: 1.767m)
- * @param edgeDistance - Abstand vom Dachrand in Metern (Standard: 0.1m)
- * @param moduleSpacing - Abstand zwischen Modulen in Metern (Standard: 0.05m)
- * @param userDimensions - Optionale benutzerdefinierte Abmessungen für nicht-rechteckige Flächen
- * @param roofEdgeInfo - Optionale Dachkantenmessungen von First, Traufe, Ortgang
- * @returns Informationen zur PV-Modulplatzierung inkl. Orientierungsdaten
+ * @param points - The 3D points defining the roof area polygon
+ * @param moduleWidth - Width of a single PV module in meters (default: 1.041m)
+ * @param moduleHeight - Height of a single PV module in meters (default: 1.767m)
+ * @param edgeDistance - Distance from the roof edge in meters (default: 0.1m)
+ * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
+ * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
+ * @param roofEdgeInfo - Optional roof edge measurements from ridge, eave, verge
+ * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
   points: Point[], 
@@ -365,9 +364,6 @@ export const calculatePVModulePlacement = (
 
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
-  
-  // Berechne die Dachausrichtung aus den 3D-Punkten
-  const orientationInfo = calculateRoofOrientation(points);
   
   // Initialize dimensions variables
   let availableWidth: number;
@@ -508,7 +504,7 @@ export const calculatePVModulePlacement = (
   const landscapeModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));  // Modules across length (parallel to verge)
   
   // Total modules in landscape orientation
-  const landscapeCount = landscapeModulesX * landscapeModulesY;
+  const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
   
   // Portrait orientation calculations (Hochformat)
   // In portrait, the longer side of the module (height) is parallel to verge (Ortgang)
@@ -517,7 +513,7 @@ export const calculatePVModulePlacement = (
   const portraitModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing)); // Modules across length (parallel to verge)
   
   // Total modules in portrait orientation
-  const portraitCount = portraitModulesX * portraitModulesY;
+  const portraitModuleCount = portraitModulesX * portraitModulesY;
   
   // DEBUG: Log the module counts with clear orientation descriptions
   console.log("PV Module Counts:", {
@@ -525,7 +521,7 @@ export const calculatePVModulePlacement = (
       description: "Hochformat: Module LONGER side (height) parallel to verge (Ortgang), shorter side parallel to eave (Traufe)",
       modulesAcrossWidth: portraitModulesX,
       modulesAcrossLength: portraitModulesY,
-      totalModules: portraitCount,
+      totalModules: portraitModuleCount,
       formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesX}`,
       formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesY}`
     },
@@ -533,35 +529,17 @@ export const calculatePVModulePlacement = (
       description: "Querformat: Module LONGER side (height) parallel to eave (Traufe), shorter side parallel to verge (Ortgang)",
       modulesAcrossWidth: landscapeModulesX,
       modulesAcrossLength: landscapeModulesY,
-      totalModules: landscapeCount,
+      totalModules: landscapeModuleCount,
       formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesX}`,
       formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesY}`
     }
   });
   
-  // Bei der Entscheidung über die Ausrichtung berücksichtigen wir nun auch die Dachausrichtung
-  // Für ein nach Süden ausgerichtetes Dach (Azimut nahe 180°) ist die Ausrichtung weniger wichtig
-  // Bei Ost- oder Westdächern (Azimut um 90° oder 270°) beeinflusst die Modulausrichtung den Ertrag stärker
-  
-  // Bei Ost- oder Westdächern ist in der Regel die Querformat-Ausrichtung effizienter
-  // (Module entlang der Ost-West-Achse angeordnet)
-  let azimuthFactor = 1.0;
-  const azimuthDiff = Math.abs((orientationInfo.azimuth ?? 180) - 180);
-  
-  if (azimuthDiff > 45) {
-    // Für Dächer, die nicht nach Süden ausgerichtet sind, 
-    // leicht die Querformatausrichtung bevorzugen
-    azimuthFactor = 1.05;
-  }
-  
-  // Angepasste Berechnung mit Azimuthfaktor
-  const weightedLandscapeCount = landscapeCount * azimuthFactor;
-  
-  // Entscheide über die Ausrichtung, die mehr Module ermöglicht
-  const usePortrait = portraitCount > weightedLandscapeCount;
+  // Choose the orientation that fits more modules
+  const usePortrait = portraitModuleCount >= landscapeModuleCount;
   
   // Final module count, rows, and columns
-  const moduleCount = usePortrait ? portraitCount : landscapeCount;
+  const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;
   const columns = usePortrait ? portraitModulesX : landscapeModulesX;
   const rows = usePortrait ? portraitModulesY : landscapeModulesY;
   
@@ -574,12 +552,6 @@ export const calculatePVModulePlacement = (
   // Calculate start positions (where the grid begins after edge distance)
   const startX = minX + edgeDistance;
   const startZ = minZ + edgeDistance;
-  
-  // Berechne den Ertragsfaktor basierend auf der Dachausrichtung und -neigung
-  const yieldFactor = calculateYieldFactorFromOrientation(
-    orientationInfo.azimuth, 
-    orientationInfo.inclination
-  );
   
   return {
     moduleWidth,
@@ -614,11 +586,7 @@ export const calculatePVModulePlacement = (
       height: moduleHeight,
       power: 425, // Default power value
       efficiency: 21.0 // Default efficiency value
-    },
-    roofAzimuth: orientationInfo.azimuth,
-    roofDirection: orientationInfo.direction,
-    roofInclination: orientationInfo.inclination,
-    yieldFactor: yieldFactor
+    }
   };
 };
 
