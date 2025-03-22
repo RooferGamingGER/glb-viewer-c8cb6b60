@@ -23,15 +23,15 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
 /**
  * Extract roof edge measurements from the measurements array
  * @param measurements - Array of all measurements
- * @returns Object with average dimensions for each edge type
+ * @returns Object with minimum dimensions for each edge type
  */
 export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
   ridgeLength?: number;   // First (ridge) length
   eaveLength?: number;    // Traufe (eave) length
   vergeWidth1?: number;   // Ortgang (verge) length 1
   vergeWidth2?: number;   // Ortgang (verge) length 2
-  averageWidth?: number;  // Average of verge lengths
-  averageLength?: number; // Average of ridge and eave lengths
+  minVergeWidth?: number; // Minimum of verge lengths (for boundingHeight)
+  minLength?: number;     // Minimum of ridge and eave lengths (for boundingLength)
   hasAllEdges: boolean;   // Whether all edge measurements are available
   isValid: boolean;       // Whether the measurements are valid/consistent
   validationMessage?: string; // Optional message about validation issues
@@ -47,8 +47,8 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     eaveLength?: number;
     vergeWidth1?: number;
     vergeWidth2?: number;
-    averageWidth?: number;
-    averageLength?: number;
+    minVergeWidth?: number;
+    minLength?: number;
     hasAllEdges: boolean;
     isValid: boolean;
     validationMessage?: string;
@@ -76,9 +76,10 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     result.vergeWidth2 = vergeMeasurements[1].value;
   }
   
-  // Calculate average dimensions if we have the necessary measurements
+  // Calculate minimum dimensions (instead of averages) for boundary calculation
   if (result.ridgeLength !== undefined && result.eaveLength !== undefined) {
-    result.averageLength = (result.ridgeLength + result.eaveLength) / 2;
+    // Use the shorter of ridge and eave lengths
+    result.minLength = Math.min(result.ridgeLength, result.eaveLength);
     
     // Validate consistency between ridge and eave
     const lengthDifference = Math.abs(result.ridgeLength - result.eaveLength);
@@ -89,10 +90,15 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
       result.validationMessage = "Die Werte für First und Traufe weichen stark voneinander ab.";
       result.isValid = false;
     }
+  } else if (result.ridgeLength !== undefined) {
+    result.minLength = result.ridgeLength;
+  } else if (result.eaveLength !== undefined) {
+    result.minLength = result.eaveLength;
   }
   
   if (result.vergeWidth1 !== undefined && result.vergeWidth2 !== undefined) {
-    result.averageWidth = (result.vergeWidth1 + result.vergeWidth2) / 2;
+    // Use the shorter of the two verge widths
+    result.minVergeWidth = Math.min(result.vergeWidth1, result.vergeWidth2);
     
     // Validate consistency between verges
     const widthDifference = Math.abs(result.vergeWidth1 - result.vergeWidth2);
@@ -106,13 +112,13 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
       result.isValid = false;
     }
   } else if (result.vergeWidth1 !== undefined) {
-    result.averageWidth = result.vergeWidth1;
+    result.minVergeWidth = result.vergeWidth1;
   } else if (result.vergeWidth2 !== undefined) {
-    result.averageWidth = result.vergeWidth2;
+    result.minVergeWidth = result.vergeWidth2;
   }
   
   // Check if we have all edges
-  result.hasAllEdges = result.averageWidth !== undefined && result.averageLength !== undefined;
+  result.hasAllEdges = result.minVergeWidth !== undefined && result.minLength !== undefined;
   
   // Validate against roof area measurement
   const roofAreaMeasurements = measurements.filter(m => m.type === 'area');
@@ -121,7 +127,7 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     const roofArea = roofAreaMeasurements[roofAreaMeasurements.length - 1];
     
     // Calculate expected area from edge measurements
-    const expectedArea = result.averageWidth! * result.averageLength!;
+    const expectedArea = result.minVergeWidth! * result.minLength!;
     const actualArea = roofArea.value;
     
     // Calculate the area difference percentage
@@ -210,8 +216,8 @@ export const calculatePVModulePlacement = (
   moduleSpacing: number = DEFAULT_MODULE_SPACING,
   userDimensions?: {width: number, length: number},
   roofEdgeInfo?: {
-    averageWidth?: number;
-    averageLength?: number;
+    minVergeWidth?: number;
+    minLength?: number;
     hasAllEdges: boolean;
     isValid?: boolean;
     validationMessage?: string;
@@ -258,7 +264,7 @@ export const calculatePVModulePlacement = (
   // Initialize dimensions variables
   let availableWidth: number;
   let availableLength: number;
-  let boundingWidth: number;
+  let boundingHeight: number; // Changed from boundingWidth
   let boundingLength: number;
   let manualDimensions = false;
   
@@ -278,27 +284,27 @@ export const calculatePVModulePlacement = (
     manualDimensions = true;
     
     // Adjust bounding dimensions to match user values plus edge distance
-    boundingWidth = availableWidth + (2 * edgeDistance);
+    boundingHeight = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
     
     console.log("Using user-defined dimensions:", {
       availableWidth,
       availableLength,
-      boundingWidth,
+      boundingHeight,
       boundingLength
     });
   } 
   // Use roof edge measurements if available, valid, and complete (second priority)
   else if (roofEdgeInfo && roofEdgeInfo.hasAllEdges && (roofEdgeInfo.isValid !== false)) {
-    boundingWidth = roofEdgeInfo.averageWidth!;
-    boundingLength = roofEdgeInfo.averageLength!;
+    boundingHeight = roofEdgeInfo.minVergeWidth!; // Changed from averageWidth to minVergeWidth
+    boundingLength = roofEdgeInfo.minLength!; // Changed from averageLength to minLength
     
     // Derive the available area by accounting for edge distances
-    availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
+    availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
     availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
     
     console.log("Using roof edge measurements for dimensions:", {
-      boundingWidth,
+      boundingHeight,
       boundingLength,
       availableWidth,
       availableLength
@@ -320,27 +326,27 @@ export const calculatePVModulePlacement = (
       
       // Assign width and length (width should be shorter than length by convention)
       if (width1 < width2) {
-        boundingWidth = width1;
+        boundingHeight = width1;
         boundingLength = width2;
       } else {
-        boundingWidth = width2;
+        boundingHeight = width2;
         boundingLength = width1;
       }
       
-      console.log("Calculated from parallel sides:", { boundingWidth, boundingLength });
+      console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
     } catch (error) {
       console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
       
       // Fallback to the quadrilateral dimensions calculation
       const dimensions = calculateQuadrilateralDimensions(quadPoints);
-      boundingWidth = dimensions.width;
+      boundingHeight = dimensions.width;
       boundingLength = dimensions.length;
       
       console.log("Fallback dimensions:", dimensions);
     }
     
     // Derive the available area by accounting for edge distances
-    availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
+    availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
     availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
     
     // Sanity check: make sure our available area is reasonable given the total area
@@ -354,14 +360,14 @@ export const calculatePVModulePlacement = (
       availableLength *= scaleFactor;
       
       // Update bounding dimensions
-      boundingWidth = availableWidth + (2 * edgeDistance);
+      boundingHeight = availableWidth + (2 * edgeDistance);
       boundingLength = availableLength + (2 * edgeDistance);
       
       console.log("Dimensions adjusted after area sanity check:", {
         scaleFactor,
         availableWidth,
         availableLength,
-        boundingWidth, 
+        boundingHeight, 
         boundingLength
       });
     }
@@ -370,7 +376,7 @@ export const calculatePVModulePlacement = (
   // DEBUG: Log calculation values
   console.log("PV Calculation Debug:", {
     area,
-    boundingWidth,
+    boundingHeight,
     boundingLength,
     availableWidth,
     availableLength,
@@ -438,8 +444,9 @@ export const calculatePVModulePlacement = (
     orientation: usePortrait ? 'portrait' : 'landscape',
     columns, // Number of columns (modules across width)
     rows,    // Number of rows (modules across length)
-    boundingWidth,
+    boundingWidth: boundingHeight, // Keep property name for compatibility
     boundingLength,
+    boundingHeight, // Add new correctly named property
     availableWidth,
     availableLength,
     startX,   // Added start X position for visualization

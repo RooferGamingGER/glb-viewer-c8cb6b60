@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
@@ -315,9 +316,10 @@ export const calculateQuadrilateralDimensions = (points: Point[]): {
   const side3 = calculateDistance(points[2], points[3]);
   const side4 = calculateDistance(points[3], points[0]);
   
-  // Assume it's a rectangle-like quadrilateral, so take average of opposite sides
-  const width = (side1 + side3) / 2;
-  const length = (side2 + side4) / 2;
+  // Instead of taking average of opposite sides, take minimum for width (height)
+  // and minimum for length to be more conservative in estimates
+  const width = Math.min(side1, side3);
+  const length = Math.min(side2, side4);
   
   // Calculate area (approximation for non-rectangles)
   const area = width * length;

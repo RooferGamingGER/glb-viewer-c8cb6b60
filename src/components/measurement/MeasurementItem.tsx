@@ -430,9 +430,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                 
                 {measurement.pvModuleInfo && (
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div><strong>Begrenzung Breite:</strong> {measurement.pvModuleInfo.boundingWidth.toFixed(3)}m</div>
-                    <div><strong>Begrenzung Länge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingWidth * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
+                    <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3) || measurement.pvModuleInfo.boundingWidth.toFixed(3)}m</div>
+                    <div><strong>Begrenzungslänge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength || measurement.pvModuleInfo.boundingWidth * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
                     
                     <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
                     <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
@@ -673,3 +673,4 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 };
 
 export default MeasurementItem;
+
