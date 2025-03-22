@@ -1,5 +1,5 @@
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
-import { calculatePolygonArea } from './measurementCalculations';
+import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
 // Default PV module dimensions in meters
 export const DEFAULT_MODULE_WIDTH = 1.041;
@@ -63,10 +63,15 @@ export const calculatePVModulePlacement = (
   // Calculate the area of the polygon
   const area = calculatePolygonArea(points);
   
-  // Calculate the minimum and maximum X and Z coordinates (not Y, because Y is height)
-  // This ensures we get the actual roof surface dimensions
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  // Initialize dimensions variables
+  let availableWidth: number;
+  let availableLength: number;
+  let boundingWidth: number;
+  let boundingLength: number;
+  let manualDimensions = false;
   
+  // Calculate minimum and maximum coordinates for visualization
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   points.forEach(point => {
     minX = Math.min(minX, point.x);
     maxX = Math.max(maxX, point.x);
@@ -74,15 +79,7 @@ export const calculatePVModulePlacement = (
     maxZ = Math.max(maxZ, point.z);
   });
   
-  // Calculate approximate dimensions of the bounding rectangle
-  let boundingWidth = maxX - minX;
-  let boundingLength = maxZ - minZ;
-  
   // Use user-defined dimensions if provided
-  let availableWidth: number;
-  let availableLength: number;
-  let manualDimensions = false;
-  
   if (userDimensions && userDimensions.width > 0 && userDimensions.length > 0) {
     availableWidth = userDimensions.width;
     availableLength = userDimensions.length;
@@ -92,6 +89,25 @@ export const calculatePVModulePlacement = (
     boundingWidth = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
   } else {
+    // Use more accurate dimension calculation methods based on the shape
+    if (points.length === 4) {
+      // For quadrilaterals, use dedicated function
+      const dimensions = calculateQuadrilateralDimensions(points);
+      boundingWidth = dimensions.width;
+      boundingLength = dimensions.length;
+    } else {
+      // For other polygons, use segment analysis to find dimensions
+      const segments = generateSegments(points);
+      
+      // Sort segments by length (descending)
+      segments.sort((a, b) => b.length - a.length);
+      
+      // Use the two longest segments as dimensions
+      // This is more accurate than simple min/max coordinates
+      boundingWidth = segments[0].length;
+      boundingLength = segments.length > 1 ? segments[1].length : segments[0].length;
+    }
+    
     // Calculate the available area after applying edge distance
     availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
     availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
@@ -180,7 +196,13 @@ export const calculatePVModulePlacement = (
     actualArea: area, // The actual polygon area (not just bounding box)
     manualDimensions,
     userDefinedWidth: manualDimensions ? availableWidth : undefined,
-    userDefinedLength: manualDimensions ? availableLength : undefined
+    userDefinedLength: manualDimensions ? availableLength : undefined,
+    pvModuleSpec: {
+      width: moduleWidth,
+      height: moduleHeight,
+      power: 380, // Default power value
+      efficiency: 19.5 // Default efficiency value
+    }
   };
 };
 
