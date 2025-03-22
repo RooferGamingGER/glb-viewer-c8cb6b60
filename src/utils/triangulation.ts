@@ -1,6 +1,7 @@
 
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
+import earcut from 'earcut';
 
 /**
  * Check if a point is concave in the polygon
@@ -22,118 +23,21 @@ export function isPointConcave(points: Point[], index: number): boolean {
 }
 
 /**
- * Ear clipping algorithm for robust triangulation
- * Converts a polygon into triangles
+ * Triangulate a polygon using earcut
+ * @param points - Array of 3D points defining the polygon
+ * @returns Array of triangle indices
  */
-export function earClip(points: Point[]): number[][] {
+export function triangulatePolygon(points: Point[]): number[] {
   if (points.length < 3) return [];
   
-  // Use indices to manipulate points without modifying the original array
-  const indices: number[] = Array.from({ length: points.length }, (_, i) => i);
-  const triangles: number[][] = [];
-
-  let remainingPoints = points.length;
-  let iteration = 0;
-  const maxIterations = points.length * 2; // Safety to prevent infinite loops
-  
-  // Process until only 3 points remain
-  while (remainingPoints > 3 && iteration < maxIterations) {
-    iteration++;
-    let earFound = false;
-    
-    // Try to find an ear in the current polygon
-    for (let i = 0; i < remainingPoints; i++) {
-      if (isEar(points, indices, remainingPoints, i)) {
-        // Found an ear, add the triangle
-        const prevIndex = (i - 1 + remainingPoints) % remainingPoints;
-        const nextIndex = (i + 1) % remainingPoints;
-        
-        triangles.push([
-          indices[prevIndex],
-          indices[i],
-          indices[nextIndex]
-        ]);
-        
-        // Remove the current point (ear tip)
-        indices.splice(i, 1);
-        remainingPoints--;
-        earFound = true;
-        break;
-      }
-    }
-    
-    // If no ear was found and we still have more than 3 points,
-    // continue with a less strict ear test to handle complex polygons
-    if (!earFound && remainingPoints > 3 && iteration >= points.length) {
-      // Fallback: just make a triangle with consecutive points
-      // This helps with difficult shapes
-      triangles.push([indices[0], indices[1], indices[2]]);
-      indices.splice(1, 1);
-      remainingPoints--;
-    }
+  // Prepare data for earcut (flatten coordinates)
+  const vertices: number[] = [];
+  for (const point of points) {
+    vertices.push(point.x, point.z); // Use x and z for 2D projection
   }
   
-  // Add the final triangle
-  if (remainingPoints === 3) {
-    triangles.push([indices[0], indices[1], indices[2]]);
-  }
-  
-  return triangles;
-}
-
-/**
- * Test if a point forms an ear in the polygon
- */
-function isEar(points: Point[], indices: number[], numPoints: number, currentIndex: number): boolean {
-  const prevIndex = (currentIndex - 1 + numPoints) % numPoints;
-  const nextIndex = (currentIndex + 1) % numPoints;
-  
-  const p0 = points[indices[prevIndex]];
-  const p1 = points[indices[currentIndex]];
-  const p2 = points[indices[nextIndex]];
-  
-  // Concave points cannot be ears
-  if (isTriangleClockwise(p0, p1, p2)) {
-    return false;
-  }
-  
-  // Check if any other point is inside the triangle
-  for (let i = 0; i < numPoints; i++) {
-    // Skip the three points that form the triangle
-    if (i === prevIndex || i === currentIndex || i === nextIndex) continue;
-    
-    const p = points[indices[i]];
-    if (isPointInTriangle(p, p0, p1, p2)) {
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-/**
- * Check if a triangle is clockwise oriented
- */
-function isTriangleClockwise(p0: Point, p1: Point, p2: Point): boolean {
-  return (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y) < 0;
-}
-
-/**
- * Check if a point is inside a triangle
- */
-function isPointInTriangle(p: Point, p0: Point, p1: Point, p2: Point): boolean {
-  // Use barycentric coordinates for the test
-  const area = 0.5 * Math.abs(
-    (p0.x * (p1.y - p2.y) + p1.x * (p2.y - p0.y) + p2.x * (p0.y - p1.y))
-  );
-  
-  const s = 1 / (2 * area) * (p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * p.x + (p0.x - p2.x) * p.y);
-  const t = 1 / (2 * area) * (p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * p.x + (p1.x - p0.x) * p.y);
-  const u = 1 - s - t;
-  
-  // Point is inside the triangle if all coordinates are positive (with a small epsilon for floating point precision)
-  const epsilon = 0.0001;
-  return s >= -epsilon && t >= -epsilon && u >= -epsilon;
+  // Perform triangulation
+  return earcut(vertices, undefined, 2);
 }
 
 /**

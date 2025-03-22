@@ -412,32 +412,37 @@ export const useMeasurementCore = () => {
         toast.warning(validation.message);
       }
       
-      const value = calculateArea(points);
-      const label = formatMeasurement(value, 'area');
-      const segments = generateSegments(points);
-      
-      toast.success(
-        `3D-Fläche berechnet: ${label} (Potree-Methode)`
-      );
-      
-      setMeasurements(prev => [
-        ...prev,
-        {
-          id: nanoid(),
-          type: 'area',
-          points: [...points],
-          value,
-          label,
-          visible: true,
-          labelVisible: allLabelsVisible,
-          unit: 'm²',
-          description: '',
-          segments
-        }
-      ]);
-      setCurrentPoints([]);
-      currentPointsRef.current = [];
-      setActiveMode('none');
+      try {
+        const value = calculateArea(points);
+        const label = formatMeasurement(value, 'area');
+        const segments = generateSegments(points);
+        
+        toast.success(
+          `3D-Fläche berechnet: ${label}`
+        );
+        
+        setMeasurements(prev => [
+          ...prev,
+          {
+            id: nanoid(),
+            type: 'area',
+            points: [...points],
+            value,
+            label,
+            visible: true,
+            labelVisible: allLabelsVisible,
+            unit: 'm²',
+            description: '',
+            segments
+          }
+        ]);
+        setCurrentPoints([]);
+        currentPointsRef.current = [];
+        setActiveMode('none');
+      } catch (error) {
+        console.error("Error finalizing area measurement:", error);
+        toast.error("Fehler bei der Flächenberechnung. Bitte versuchen Sie es mit anderen Punkten.");
+      }
     }
     else if (activeMode === 'solar' && points.length >= 3) {
       const validation = validatePolygon(points);
@@ -494,7 +499,7 @@ export const useMeasurementCore = () => {
         }
       }
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, allLabelsVisible]);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, allLabelsVisible, setMeasurements, setCurrentPoints, setActiveMode]);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {

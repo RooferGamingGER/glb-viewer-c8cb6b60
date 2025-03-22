@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
 import earcut from 'earcut';
+import { triangulatePolygon, projectPointsToPlane } from './triangulation';
 
 /**
  * Calculate the distance between two 3D points
@@ -67,16 +68,16 @@ export const calculateAverageInclination = (segments: Segment[]): number => {
 export const generateSegments = (points: Point[]): Segment[] => {
   const segments: Segment[] = [];
   
-  for (let i = 0; i < points.length - 1; i++) {
+  for (let i = 0; i < points.length; i++) {
     const p1 = new THREE.Vector3(points[i].x, points[i].y, points[i].z);
-    const p2 = new THREE.Vector3(points[i + 1].x, points[i + 1].y, points[i + 1].z);
+    const p2 = new THREE.Vector3(points[(i + 1) % points.length].x, points[(i + 1) % points.length].y, points[(i + 1) % points.length].z);
     
-    const length = calculateDistance(points[i], points[i + 1]);
+    const length = calculateDistance(points[i], points[(i + 1) % points.length]);
     const inclination = calculateInclination(p1, p2);
     
     segments.push({
       id: nanoid(),
-      points: [points[i], points[i + 1]],
+      points: [points[i], points[(i + 1) % points.length]],
       length,
       inclination
     });
@@ -93,37 +94,66 @@ export const generateSegments = (points: Point[]): Segment[] => {
 export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
-  // Convert 3D points to 2D coordinates for triangulation
-  const vertices2D: number[] = [];
-  for (const point of points) {
-    vertices2D.push(point.x, point.z); // Use x and z coordinates for 2D projection
-  }
-  
-  // Triangulate the 2D polygon using earcut
-  const triangles = earcut(vertices2D, [], 2);
-  
-  // Calculate the area of each triangle and sum them up
-  let totalArea = 0;
-  for (let i = 0; i < triangles.length; i += 3) {
-    const a = triangles[i] * 2;
-    const b = triangles[i + 1] * 2;
-    const c = triangles[i + 2] * 2;
+  try {
+    // First project points to best-fit plane for more accurate results
+    const { projectedPoints } = projectPointsToPlane(points);
     
-    const p1 = { x: vertices2D[a], z: vertices2D[a + 1] };
-    const p2 = { x: vertices2D[b], z: vertices2D[b + 1] };
-    const p3 = { x: vertices2D[c], z: vertices2D[c + 1] };
+    // Convert 3D points to 2D coordinates for triangulation
+    const vertices: number[] = [];
+    for (const point of projectedPoints) {
+      vertices.push(point.x, point.z); // Use x and z coordinates for 2D projection
+    }
     
-    const area = 0.5 * Math.abs(
-      (p2.x - p1.x) * (p3.z - p1.z) - (p3.x - p1.x) * (p2.z - p1.z)
-    );
-    totalArea += area;
+    // Triangulate with earcut
+    const triangleIndices = earcut(vertices, undefined, 2);
+    
+    // Calculate the area of each triangle and sum them up
+    let totalArea = 0;
+    for (let i = 0; i < triangleIndices.length; i += 3) {
+      const p1 = {
+        x: vertices[triangleIndices[i] * 2],
+        y: 0,
+        z: vertices[triangleIndices[i] * 2 + 1]
+      };
+      
+      const p2 = {
+        x: vertices[triangleIndices[i + 1] * 2],
+        y: 0,
+        z: vertices[triangleIndices[i + 1] * 2 + 1]
+      };
+      
+      const p3 = {
+        x: vertices[triangleIndices[i + 2] * 2],
+        y: 0,
+        z: vertices[triangleIndices[i + 2] * 2 + 1]
+      };
+      
+      // Calculate the area of this triangle using the cross product
+      const v1 = new THREE.Vector3(p2.x - p1.x, 0, p2.z - p1.z);
+      const v2 = new THREE.Vector3(p3.x - p1.x, 0, p3.z - p1.z);
+      const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
+      
+      // The length of the cross product is twice the area
+      totalArea += crossProduct.length() / 2;
+    }
+    
+    return totalArea;
+  } catch (error) {
+    console.error("Error in area calculation:", error);
+    
+    // Fallback to simpler but less accurate calculation
+    // Simple shoelace formula for XZ plane
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const j = (i + 1) % points.length;
+      area += (points[i].x * points[j].z) - (points[j].x * points[i].z);
+    }
+    return Math.abs(area) / 2;
   }
-  
-  return totalArea;
 };
 
 /**
- * Validate if the polygon is valid (has at least 3 points)
+ * Validate if the polygon is valid (has at least 3 points and is not self-intersecting)
  * @param points - Array of 3D points defining the polygon
  * @returns Object with validity status and message
  */
@@ -135,12 +165,15 @@ export const validatePolygon = (points: Point[]): { valid: boolean; message?: st
     };
   }
   
-  // Check if the polygon is self-intersecting (very basic check)
+  // Check if the polygon is self-intersecting
   for (let i = 0; i < points.length; i++) {
     const p1 = points[i];
     const p2 = points[(i + 1) % points.length];
     
     for (let j = i + 2; j < points.length; j++) {
+      // Skip adjacent edges
+      if ((j + 1) % points.length === i) continue;
+      
       const p3 = points[j];
       const p4 = points[(j + 1) % points.length];
       
@@ -334,66 +367,11 @@ export const calculateCentroid = (points: Point[]): { x: number; y: number; z: n
 };
 
 /**
- * Calculate the area of a polygon defined by 3D points
+ * Calculate the area of a polygon defined by 3D points using projection
+ * This is kept for compatibility with existing code
  * @param points - Array of 3D points defining the polygon
  * @returns Area in square meters
  */
 export const calculatePolygonArea = (points: Point[]): number => {
-  if (points.length < 3) return 0;
-  
-  // Project points onto their best-fitting plane
-  const positions = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
-  const centroid = new THREE.Vector3();
-  
-  // Calculate centroid
-  for (const pos of positions) {
-    centroid.add(pos);
-  }
-  centroid.divideScalar(positions.length);
-  
-  // Calculate normal using the first three non-collinear points
-  const normal = new THREE.Vector3();
-  const tempVec1 = new THREE.Vector3();
-  const tempVec2 = new THREE.Vector3();
-  
-  for (let i = 0; i < positions.length - 2; i++) {
-    tempVec1.subVectors(positions[i+1], positions[i]);
-    tempVec2.subVectors(positions[i+2], positions[i]);
-    normal.crossVectors(tempVec1, tempVec2);
-    
-    if (normal.lengthSq() > 0.001) break; // Found non-collinear points
-  }
-  
-  normal.normalize();
-  
-  // Create a coordinate system on the plane
-  const xAxis = new THREE.Vector3(1, 0, 0);
-  if (Math.abs(normal.dot(xAxis)) > 0.9) {
-    xAxis.set(0, 1, 0); // Use Y axis if normal is close to X
-  }
-  
-  const yAxis = new THREE.Vector3();
-  yAxis.crossVectors(normal, xAxis).normalize();
-  xAxis.crossVectors(yAxis, normal).normalize();
-  
-  // Project the points onto the plane
-  const projectedPoints: [number, number][] = [];
-  
-  for (const pos of positions) {
-    const relPos = pos.clone().sub(centroid);
-    const x = relPos.dot(xAxis);
-    const y = relPos.dot(yAxis);
-    projectedPoints.push([x, y]);
-  }
-  
-  // Calculate the area using the shoelace formula
-  let area = 0;
-  for (let i = 0; i < projectedPoints.length; i++) {
-    const j = (i + 1) % projectedPoints.length;
-    area += projectedPoints[i][0] * projectedPoints[j][1];
-    area -= projectedPoints[j][0] * projectedPoints[i][1];
-  }
-  
-  area = Math.abs(area) / 2;
-  return area;
+  return calculateArea(points); // Now we just redirect to our main implementation
 };
