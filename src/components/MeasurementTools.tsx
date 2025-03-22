@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -64,7 +65,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint,
     allLabelsVisible,
     moveMeasurementUp,
-    moveMeasurementDown
+    moveMeasurementDown,
+    togglePVModulesVisibility
   } = useMeasurements();
 
   // Three.js object references
@@ -160,7 +162,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editMeasurementId,
     {
       toggleMeasurementVisibility,
-      toggleEditMode,
+      toggleEditMode: (id: string) => toggleEditMode(id, true),
       deleteMeasurement,
       deletePoint,
       updateMeasurement,
@@ -345,7 +347,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Handle label visibility toggling
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
-    updateAllLabelsVisibility(!allLabelsVisible);
   };
 
   // Break up the component into logical sections
@@ -425,6 +426,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             activeMode={activeMode}
             handleMoveMeasurementUp={handleMoveMeasurementUp}
             handleMoveMeasurementDown={handleMoveMeasurementDown}
+            togglePVModulesVisibility={togglePVModulesVisibility}
           />
         </div>
       </div>

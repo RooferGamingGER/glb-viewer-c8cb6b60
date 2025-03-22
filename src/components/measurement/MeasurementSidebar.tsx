@@ -3,10 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, Trash2, Tag, LayoutList, SunMedium } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
-import MeasurementListItem from './MeasurementListItem';
-import NoMeasurements from './NoMeasurements';
-import MeasurementDetail from './MeasurementDetail';
-import MeasurementTable from './MeasurementTable';
+import SolarModuleControls from './SolarModuleControls';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -74,6 +71,56 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const roofStructureMeasurements = measurements.filter(m => 
     m.type === 'ridge' || m.type === 'eave' || m.type === 'verge' || 
     m.type === 'valley' || m.type === 'hip'
+  );
+  
+  // Simplified placeholder for MeasurementDetail (since we haven't implemented it yet)
+  const MeasurementDetail = ({ measurement, ...props }) => {
+    if (measurement.type === 'solar') {
+      return (
+        <div className="mb-2">
+          <div className="bg-secondary/20 p-2 rounded">
+            <div className="text-sm font-medium">{measurement.label}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {measurement.value.toFixed(2)} m²
+            </div>
+          </div>
+          <SolarModuleControls 
+            measurement={measurement} 
+            togglePVModulesVisibility={togglePVModulesVisibility} 
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="mb-2">
+        <div className="bg-secondary/20 p-2 rounded">
+          <div className="text-sm font-medium">{measurement.label}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Typ: {measurement.type}, Wert: {measurement.value.toFixed(2)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // Simplified placeholder for MeasurementTable (since we haven't implemented it yet)
+  const MeasurementTable = ({ measurements, toggleMeasurementVisibility, handleDeleteMeasurement, toggleLabelVisibility }) => (
+    <div className="mt-2">
+      <p className="text-sm font-medium">Messwerte als Tabelle</p>
+      <div className="mt-2 text-xs text-muted-foreground">
+        (Noch nicht implementiert)
+      </div>
+    </div>
+  );
+  
+  // Simplified placeholder for NoMeasurements (since we haven't implemented it yet)
+  const NoMeasurements = ({ activeMode }) => (
+    <div className="flex flex-col items-center justify-center h-full p-4">
+      <p className="text-sm text-center text-muted-foreground">
+        Keine Messungen vorhanden. Verwende die Werkzeuge, um eine neue Messung zu erstellen.
+      </p>
+    </div>
   );
   
   return (

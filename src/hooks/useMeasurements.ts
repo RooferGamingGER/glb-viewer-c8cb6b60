@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
 
 // Types
@@ -77,6 +77,17 @@ export interface Measurement {
   description?: string;
   inclination?: number;
   pvModuleInfo?: PVModuleInfo;
+  screenshot?: string;
+  polygon2D?: string;
+  customScreenshots?: string[];
+  dimensions?: {
+    width?: number;
+    length?: number;
+    height?: number;
+    diameter?: number;
+    area?: number;
+    perimeter?: number;
+  };
 }
 
 // Helper functions
@@ -143,7 +154,7 @@ export const calculateSegments = (points: Point[]): Segment[] => {
     
     // Create segment
     segments.push({
-      id: uuidv4(),
+      id: nanoid(), // use nanoid instead of uuid
       points: [p1, p2],
       length: length,
       label: `${length.toFixed(2)} m`
@@ -245,7 +256,7 @@ export const useMeasurements = (): MeasurementsHookResult => {
     if (activeMode === 'length') {
       const value = calculateDistance(currentPoints[0], currentPoints[1]);
       newMeasurement = {
-        id: uuidv4(),
+        id: nanoid(),
         type: activeMode,
         points: currentPoints,
         value,
@@ -256,7 +267,7 @@ export const useMeasurements = (): MeasurementsHookResult => {
       // Height is specifically the Y-axis difference
       const value = Math.abs(currentPoints[1].y - currentPoints[0].y);
       newMeasurement = {
-        id: uuidv4(),
+        id: nanoid(),
         type: activeMode,
         points: currentPoints,
         value,
@@ -274,7 +285,7 @@ export const useMeasurements = (): MeasurementsHookResult => {
       const inclination = currentPoints.length >= 3 ? calculateInclination(currentPoints) : undefined;
       
       newMeasurement = {
-        id: uuidv4(),
+        id: nanoid(),
         type: activeMode,
         points: currentPoints,
         value: area,
@@ -311,17 +322,12 @@ export const useMeasurements = (): MeasurementsHookResult => {
       const elementType = activeMode === 'skylight' ? 'Dachfenster' : 'Kamin';
       
       newMeasurement = {
-        id: uuidv4(),
+        id: nanoid(),
         type: activeMode,
         points: currentPoints,
         value: area,
         segments,
         label: customLabel || `${elementType}: ${area.toFixed(2)} m²`,
-        dimensions: {
-          width,
-          length,
-          area
-        }
       };
     }
     else if (activeMode === 'vent' || activeMode === 'hook' || activeMode === 'other') {
@@ -333,7 +339,7 @@ export const useMeasurements = (): MeasurementsHookResult => {
       };
       
       newMeasurement = {
-        id: uuidv4(),
+        id: nanoid(),
         type: activeMode,
         points: currentPoints,
         value: 1, // Count or quantity
@@ -343,8 +349,8 @@ export const useMeasurements = (): MeasurementsHookResult => {
     else {
       // Default case (should never happen with current UI)
       newMeasurement = {
-        id: uuidv4(),
-        type: activeMode,
+        id: nanoid(),
+        type: activeMode as 'length' | 'height' | 'area' | 'solar' | 'chimney' | 'skylight' | 'vent' | 'hook' | 'other' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'valley' | 'hip',
         points: currentPoints,
         value: 0,
         label: customLabel || 'Messung'

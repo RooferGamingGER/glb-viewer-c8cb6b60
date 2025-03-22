@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   X
 } from 'lucide-react';
-import { Point, MeasurementMode } from '@/hooks/useMeasurements';
+import { Point } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 
 interface ActiveMeasurementProps {
-  activeMode: MeasurementMode;
+  activeMode: string; // Using string instead of MeasurementMode to avoid import issues
   currentPoints: Point[];
   handleFinalizeMeasurement: () => void;
   handleUndoLastPoint: () => void;
