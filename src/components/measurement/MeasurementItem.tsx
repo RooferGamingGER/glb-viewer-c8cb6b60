@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -20,7 +21,8 @@ import {
   MoveDown,
   Camera,
   Image,
-  Zap
+  Zap,
+  Settings
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CaptureScreenshotButton from './CaptureScreenshotButton';
 import ScreenshotGallery from './ScreenshotGallery';
+import PVModuleSettings from './PVModuleSettings';
 import {
   Collapsible,
   CollapsibleContent,
@@ -78,6 +81,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
+  const [pvSettingsOpen, setPvSettingsOpen] = useState(false);
 
   const handleEditStart = (id: string, description: string = '') => {
     setEditingId(id);
@@ -136,8 +140,32 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const handleCalculatePV = () => {
     if (measurement.type !== 'area') return;
     
+    // Use default parameters for standard calculation
     const pvModuleInfo = calculatePVModulePlacement(measurement.points);
     updateMeasurement(measurement.id, { pvModuleInfo });
+  };
+  
+  const handleCalculatePVWithParameters = (
+    measurementId: string, 
+    moduleWidth: number, 
+    moduleHeight: number, 
+    edgeDistance: number, 
+    moduleSpacing: number
+  ) => {
+    if (measurement.type !== 'area') return;
+    
+    // Use custom parameters for calculation
+    const pvModuleInfo = calculatePVModulePlacement(
+      measurement.points,
+      moduleWidth,
+      moduleHeight,
+      edgeDistance,
+      moduleSpacing
+    );
+    
+    updateMeasurement(measurementId, { pvModuleInfo });
+    // Close settings panel after calculation
+    setPvSettingsOpen(false);
   };
 
   const getTypeIcon = (type: string) => {
@@ -338,15 +366,34 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       </div>
       
       {isAreaMeasurement && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="mt-2 w-full"
-          onClick={handleCalculatePV}
-        >
-          <Zap className="h-4 w-4 mr-2" />
-          {hasPVInfo ? "PV-Module neu berechnen" : "PV-Module berechnen"}
-        </Button>
+        <div className="mt-2 flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={handleCalculatePV}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {hasPVInfo ? "Standard-PV" : "PV berechnen"}
+          </Button>
+          
+          <Button 
+            variant={pvSettingsOpen ? "default" : "outline"}
+            size="sm" 
+            className="flex-1"
+            onClick={() => setPvSettingsOpen(!pvSettingsOpen)}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Einstellungen
+          </Button>
+        </div>
+      )}
+      
+      {isAreaMeasurement && pvSettingsOpen && (
+        <PVModuleSettings 
+          measurement={measurement}
+          onCalculate={handleCalculatePVWithParameters}
+        />
       )}
       
       {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
