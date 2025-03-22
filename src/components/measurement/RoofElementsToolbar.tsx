@@ -6,8 +6,7 @@ import {
   Sun, 
   Wind,
   Anchor,
-  X,
-  PanelLeft
+  X
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { 
@@ -43,7 +42,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
         'chimney': 'Kamin-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'solar': 'Solaranlagen-Messung ausgewählt - Definieren Sie die Fläche',
-        'pvmodule': 'PV-Modul-Zeichnung ausgewählt - Platzieren Sie die 4 Ecken des Moduls',
         'vent': 'Lüfter-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'hook': 'Dachhaken-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'other': 'Sonstige Einbauten-Markierung ausgewählt - Platzieren Sie einen Punkt'
@@ -101,18 +99,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                     >
                       <Sun className="h-4 w-4" />
                       <span className="text-xs">Solar</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'pvmodule'}
-                      onClick={() => selectTool('pvmodule')}
-                      tooltip="PV-Modul zeichnen"
-                      disabled={!!editMeasurementId}
-                    >
-                      <PanelLeft className="h-4 w-4" />
-                      <span className="text-xs">PV-Modul</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </div>

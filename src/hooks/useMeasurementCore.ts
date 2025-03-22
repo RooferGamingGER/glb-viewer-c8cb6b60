@@ -22,7 +22,7 @@ import {
 } from '@/utils/measurementCalculations';
 import {
   PV_MODULE_TEMPLATES,
-  calculatePVModuleDimensions
+  calculatePVModulePlacement
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -82,15 +82,20 @@ export const useMeasurementCore = () => {
           };
         } else if (m.type === 'pvmodule') {
           const area = calculateArea(newPoints);
-          const { powerOutput } = calculatePVModuleDimensions(newPoints, m.pvModuleSpec || PV_MODULE_TEMPLATES[0]);
-          const moduleSpec = m.pvModuleSpec || PV_MODULE_TEMPLATES[0];
+          const moduleInfo = calculatePVModulePlacement(newPoints);
+          const moduleSpec = PV_MODULE_TEMPLATES[0];
+          
+          const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+          const label = `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`;
           
           return {
             ...m,
             points: newPoints,
             value: area,
-            powerOutput,
-            label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`
+            label,
+            pvModuleInfo: moduleInfo,
+            pvModuleSpec: moduleSpec,
+            powerOutput: moduleInfo.moduleCount * moduleSpec.power
           };
         } else {
           newValue = m.value;
@@ -210,9 +215,12 @@ export const useMeasurementCore = () => {
   const createPVModuleMeasurement = useCallback((points: Point[]) => {
     if (points.length < 4) return;
     
+    const area = calculateArea(points);
+    const moduleInfo = calculatePVModulePlacement(points);
     const moduleSpec = PV_MODULE_TEMPLATES[0];
     
-    const { area, powerOutput } = calculatePVModuleDimensions(points, moduleSpec);
+    const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+    const label = `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`;
     
     setMeasurements(prev => [
       ...prev,
@@ -221,13 +229,14 @@ export const useMeasurementCore = () => {
         type: 'pvmodule',
         points: [...points],
         value: area,
-        label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
+        label,
         visible: true,
         labelVisible: allLabelsVisible,
-        unit: 'W',
+        unit: 'kWp',
         description: '',
+        pvModuleInfo: moduleInfo,
         pvModuleSpec: moduleSpec,
-        powerOutput
+        powerOutput: moduleInfo.moduleCount * moduleSpec.power
       }
     ]);
     
@@ -236,7 +245,7 @@ export const useMeasurementCore = () => {
     
     setActiveMode('none');
     
-    toast.success(`PV-Modul platziert (${moduleSpec.power}W)`);
+    toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
   }, [allLabelsVisible]);
 
   const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
@@ -390,7 +399,7 @@ export const useMeasurementCore = () => {
         visible: true,
         labelVisible: allLabelsVisible,
         unit: type === 'solar' ? 'm²' : 
-              type === 'pvmodule' ? 'W' :
+              type === 'pvmodule' ? 'kWp' :
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
       }
@@ -638,3 +647,4 @@ export const useMeasurementCore = () => {
     createPVModuleMeasurement
   };
 };
+

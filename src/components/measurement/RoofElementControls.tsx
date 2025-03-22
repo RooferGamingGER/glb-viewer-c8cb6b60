@@ -6,7 +6,8 @@ import {
   Undo2, 
   X,
   Info,
-  Sun
+  Sun,
+  PanelLeft
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
 import { 
@@ -79,11 +80,11 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       
       case 'pvmodule':
         if (currentPoints.length === 0) {
-          return "Markieren Sie die erste Ecke des PV-Moduls.";
+          return "Markieren Sie die erste Ecke der PV-Modulfläche.";
         } else if (currentPoints.length < 4) {
-          return `Markieren Sie die weiteren Ecken des PV-Moduls. Noch ${remainingPoints} Punkt(e) benötigt.`;
+          return `Markieren Sie die weiteren Ecken der PV-Modulfläche. Noch ${remainingPoints} Punkt(e) benötigt.`;
         } else {
-          return "PV-Modul vollständig definiert. Schließen Sie die Messung ab.";
+          return "PV-Modulfläche vollständig definiert. Berechnung wird nach Abschluss durchgeführt.";
         }
       
       case 'solar':
@@ -112,7 +113,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'chimney': return "Kaminausschnitt";
       case 'skylight': return "Dachfenster";
       case 'solar': return "Solaranlage";
-      case 'pvmodule': return "PV-Modul";
+      case 'pvmodule': return "PV-Modul Fläche";
       case 'vent': return "Lüfter";
       case 'hook': return "Dachhaken";
       case 'other': return "Sonstige Einbauten";

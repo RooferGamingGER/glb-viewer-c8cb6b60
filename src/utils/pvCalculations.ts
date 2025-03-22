@@ -197,4 +197,3 @@ export const calculatePVModuleDimensions = (
     powerOutput: moduleSpec.power
   };
 };
-

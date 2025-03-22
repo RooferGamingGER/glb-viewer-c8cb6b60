@@ -14,7 +14,7 @@ import {
   Wind,
   Anchor,
   Droplet,
-  PanelLeft  // Using this icon for PV modules
+  PanelLeft
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -62,9 +62,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   useEffect(() => {
     if (activeMode === 'none') return;
     
-    if (['length', 'height', 'area'].includes(activeMode)) {
+    if (['length', 'height', 'area', 'pvmodule'].includes(activeMode)) {
       setActiveTab("standard");
-    } else if (['solar', 'pvmodule'].includes(activeMode)) {
+    } else if (['solar'].includes(activeMode)) {
       setActiveTab("roof-elements");
     } else if (['skylight', 'chimney', 'vent', 'hook', 'other'].includes(activeMode)) {
       setActiveTab("penetrations");
@@ -83,7 +83,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </TabsList>
         
         <TabsContent value="standard">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 mb-2">
             <Button
               variant={activeMode === 'length' ? "default" : "outline"} 
               size="sm"
@@ -120,6 +120,17 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               Fläche
             </Button>
           </div>
+          
+          <Button
+            variant={activeMode === 'pvmodule' ? "default" : "outline"} 
+            size="sm"
+            className="w-full"
+            onClick={() => toggleMeasurementTool(activeMode === 'pvmodule' ? 'none' : 'pvmodule')}
+            disabled={!!editMeasurementId}
+          >
+            <PanelLeft className="h-4 w-4 mr-1" />
+            <span>PV-Modul Fläche berechnen</span>
+          </Button>
         </TabsContent>
         
         <TabsContent value="roof-elements">
@@ -155,17 +166,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             >
               <Sun className="h-4 w-4 mr-1" />
               <span className="text-xs">Solarfläche</span>
-            </Button>
-
-            <Button
-              variant={activeMode === 'pvmodule' ? "default" : "outline"} 
-              size="sm"
-              className="w-full col-span-3 mt-1"
-              onClick={() => toggleMeasurementTool(activeMode === 'pvmodule' ? 'none' : 'pvmodule')}
-              disabled={!!editMeasurementId}
-            >
-              <PanelLeft className="h-4 w-4 mr-1" />
-              <span className="text-xs">PV-Modul zeichnen</span>
             </Button>
           </div>
         </TabsContent>
