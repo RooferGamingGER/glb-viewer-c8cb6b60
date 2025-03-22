@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
@@ -415,40 +414,4 @@ export const calculatePolygonArea = (points: Point[]): number => {
       return 0; // Return 0 if all calculations fail
     }
   }
-};
-
-/**
- * Calculate the center point of a polygon
- * @param points - Array of points defining the polygon
- * @returns The center point
- */
-export const calculatePolygonCenter = (points: THREE.Vector3[]): THREE.Vector3 => {
-  if (points.length === 0) {
-    return new THREE.Vector3(0, 0, 0);
-  }
-  
-  const center = new THREE.Vector3();
-  for (const point of points) {
-    center.add(point);
-  }
-  
-  center.divideScalar(points.length);
-  return center;
-};
-
-/**
- * Calculate lengths of all segments in a measurement
- * @param points - Array of points defining the measurement
- * @returns Array of segment lengths
- */
-export const measureSegmentLengths = (points: THREE.Vector3[]): number[] => {
-  const lengths: number[] = [];
-  
-  for (let i = 0; i < points.length; i++) {
-    const start = points[i];
-    const end = points[(i + 1) % points.length];
-    lengths.push(start.distanceTo(end));
-  }
-  
-  return lengths;
 };
