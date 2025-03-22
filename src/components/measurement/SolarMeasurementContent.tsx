@@ -8,12 +8,15 @@ import {
   formatPVModuleInfo, 
   calculatePVModulePlacement, 
   calculatePVPower, 
-  calculateAnnualYield 
+  calculateAnnualYield,
+  calculateRoofOrientation,
+  calculateAnnualYieldWithOrientation,
+  updatePVModuleInfoWithOrientation
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 import PVMaterialsList from './PVMaterialsList';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { Zap, ListTodo, PackageIcon, Loader2 } from 'lucide-react';
+import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SolarMeasurementContentProps {
@@ -35,6 +38,30 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     }
   }, [measurement.pvModuleInfo?.pvMaterials, activeTab]);
   
+  // Effect to detect roof orientation if not already calculated
+  useEffect(() => {
+    if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
+      // Check if orientation has not been calculated yet
+      if (measurement.pvModuleInfo.roofAzimuth === undefined) {
+        console.log("Detecting roof orientation from 3D points");
+        
+        // Update PV module info with orientation data
+        const updatedPVInfo = updatePVModuleInfoWithOrientation(
+          measurement.pvModuleInfo,
+          measurement.points
+        );
+        
+        // Update the measurement with orientation data
+        updateMeasurement(measurement.id, {
+          pvModuleInfo: updatedPVInfo
+        });
+        
+        // Notify user
+        toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection}`);
+      }
+    }
+  }, [measurement.id, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
+  
   // Debug log when measurement or PV info changes
   useEffect(() => {
     console.log("SolarMeasurementContent: Measurement updated", {
@@ -43,6 +70,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       hasPvMaterials: !!measurement.pvModuleInfo?.pvMaterials,
       pvModuleSpec: measurement.pvModuleInfo?.pvModuleSpec ? 
         `${measurement.pvModuleInfo.pvModuleSpec.name} (${measurement.pvModuleInfo.pvModuleSpec.power}W)` : 'None',
+      orientation: measurement.pvModuleInfo?.roofDirection || 'Unknown',
+      inclination: measurement.pvModuleInfo?.roofInclination || 'Unknown',
     });
   }, [measurement]);
   
@@ -93,7 +122,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       userDefinedWidth: dimensions.width,
       userDefinedLength: dimensions.length,
       pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
-      pvMaterials: measurement.pvModuleInfo.pvMaterials
+      pvMaterials: measurement.pvModuleInfo.pvMaterials,
+      // Preserve orientation data
+      roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
+      roofDirection: measurement.pvModuleInfo.roofDirection,
+      roofInclination: measurement.pvModuleInfo.roofInclination,
+      yieldFactor: measurement.pvModuleInfo.yieldFactor
     };
     
     // Update the measurement
@@ -136,7 +170,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       userDefinedWidth: measurement.pvModuleInfo.userDefinedWidth,
       userDefinedLength: measurement.pvModuleInfo.userDefinedLength,
       pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
-      pvMaterials: measurement.pvModuleInfo.pvMaterials
+      pvMaterials: measurement.pvModuleInfo.pvMaterials,
+      // Preserve orientation data
+      roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
+      roofDirection: measurement.pvModuleInfo.roofDirection,
+      roofInclination: measurement.pvModuleInfo.roofInclination,
+      yieldFactor: measurement.pvModuleInfo.yieldFactor
     };
     
     // Update the measurement
@@ -178,6 +217,23 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       </div>
     );
   }
+  
+  // Calculate annual yield based on orientation if available
+  const annualYield = measurement.pvModuleInfo.roofAzimuth && measurement.pvModuleInfo.roofInclination
+    ? calculateAnnualYieldWithOrientation(
+        calculatePVPower(
+          measurement.pvModuleInfo.moduleCount, 
+          measurement.pvModuleInfo.pvModuleSpec?.power || 425
+        ),
+        measurement.pvModuleInfo
+      )
+    : calculateAnnualYield(
+        calculatePVPower(
+          measurement.pvModuleInfo.moduleCount, 
+          measurement.pvModuleInfo.pvModuleSpec?.power || 425
+        ),
+        measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
+      );
   
   return (
     <div className="pt-2">
@@ -240,15 +296,26 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   (measurement.pvModuleInfo.pvModuleSpec?.power || 425)) / 1000).toFixed(1)} kWp
               </div>
               
+              <div className="text-muted-foreground">Ausrichtung:</div>
+              <div className="flex items-center">
+                {measurement.pvModuleInfo.roofDirection || "Süd"} 
+                {measurement.pvModuleInfo.roofAzimuth && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({Math.round(measurement.pvModuleInfo.roofAzimuth)}°)
+                  </span>
+                )}
+              </div>
+              
+              <div className="text-muted-foreground">Dachneigung:</div>
+              <div>
+                {measurement.pvModuleInfo.roofInclination 
+                  ? `${Math.round(measurement.pvModuleInfo.roofInclination)}°` 
+                  : "30°"}
+              </div>
+              
               <div className="text-muted-foreground">Jahresertrag:</div>
               <div>
-                {calculateAnnualYield(
-                  calculatePVPower(
-                    measurement.pvModuleInfo.moduleCount, 
-                    measurement.pvModuleInfo.pvModuleSpec?.power || 425
-                  ),
-                  measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
-                ).toFixed(0)} kWh/Jahr
+                {annualYield.toFixed(0)} kWh/Jahr
               </div>
             </div>
             
@@ -299,6 +366,31 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               
               <div className="text-muted-foreground">Verfügbare Länge:</div>
               <div>{measurement.pvModuleInfo.availableLength?.toFixed(2) || "?"} m</div>
+              
+              <div className="text-muted-foreground">Dachausrichtung:</div>
+              <div className="flex items-center">
+                {measurement.pvModuleInfo.roofDirection || "Süd"}
+                <Compass className="h-3 w-3 ml-1 text-muted-foreground" />
+              </div>
+              
+              <div className="text-muted-foreground">Azimut:</div>
+              <div>
+                {measurement.pvModuleInfo.roofAzimuth 
+                  ? `${Math.round(measurement.pvModuleInfo.roofAzimuth)}°` 
+                  : "180° (Süd)"}
+              </div>
+              
+              <div className="text-muted-foreground">Dachneigung:</div>
+              <div>
+                {measurement.pvModuleInfo.roofInclination 
+                  ? `${Math.round(measurement.pvModuleInfo.roofInclination)}°` 
+                  : "30°"}
+              </div>
+              
+              <div className="text-muted-foreground">Ertragsfaktor:</div>
+              <div>
+                {measurement.pvModuleInfo.yieldFactor || 950} kWh/kWp
+              </div>
             </div>
           </div>
         </TabsContent>

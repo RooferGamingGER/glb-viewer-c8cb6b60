@@ -964,3 +964,201 @@ export const calculateAnnualYield = (
   // Calculate and return the annual yield
   return totalPower * yieldFactor * locationFactor;
 };
+
+/**
+ * Calculate the roof orientation (azimuth) from 3D points
+ * @param points - Array of 3D points defining the roof surface
+ * @returns Roof orientation in degrees (0 = North, 90 = East, 180 = South, 270 = West)
+ */
+export const calculateRoofOrientation = (points: Point[]): {
+  azimuth: number;  // Azimuth in degrees (0=North, 90=East, 180=South, 270=West)
+  direction: string; // Cardinal direction (N, NE, E, SE, S, SW, W, NW)
+  inclination: number; // Roof inclination in degrees
+} => {
+  if (points.length < 3) {
+    return { azimuth: 180, direction: 'S', inclination: 30 }; // Default to South if not enough points
+  }
+  
+  try {
+    // Calculate the normal vector of the roof plane
+    // We need at least 3 points to define a plane
+    const p1 = points[0];
+    const p2 = points[1];
+    const p3 = points[2];
+    
+    // Create vectors for two edges of the triangle
+    const v1 = { 
+      x: p2.x - p1.x,
+      y: p2.y - p1.y,
+      z: p2.z - p1.z
+    };
+    
+    const v2 = {
+      x: p3.x - p1.x,
+      y: p3.y - p1.y,
+      z: p3.z - p1.z
+    };
+    
+    // Calculate the cross product to get the normal vector
+    const normal = {
+      x: v1.y * v2.z - v1.z * v2.y,
+      y: v1.z * v2.x - v1.x * v2.z,
+      z: v1.x * v2.y - v1.y * v2.x
+    };
+    
+    // Normalize the normal vector
+    const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+    normal.x /= length;
+    normal.y /= length;
+    normal.z /= length;
+    
+    // Calculate inclination (roof pitch)
+    // Angle between normal vector and vertical (Y) axis
+    const inclination = Math.acos(Math.abs(normal.y)) * (180 / Math.PI);
+    
+    // Project the normal vector onto the XZ plane for azimuth calculation
+    const projectedNormal = {
+      x: normal.x,
+      z: normal.z
+    };
+    
+    // Calculate azimuth (roof orientation)
+    // Azimuth is the angle between the projection of the normal vector on XZ plane and the north direction
+    // In our coordinate system, Z axis might be aligned with North, and X with East (check your system)
+    // We'll assume Z is South and X is East for this calculation
+    
+    let azimuth = Math.atan2(projectedNormal.x, -projectedNormal.z) * (180 / Math.PI);
+    
+    // Make sure azimuth is between 0 and 360 degrees
+    if (azimuth < 0) {
+      azimuth += 360;
+    }
+    
+    // Determine cardinal direction
+    const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"];
+    const index = Math.round(azimuth / 45);
+    const direction = directions[index];
+    
+    console.log("Roof orientation calculated:", {
+      azimuth,
+      direction,
+      inclination,
+      normalVector: normal
+    });
+    
+    return { 
+      azimuth, 
+      direction,
+      inclination
+    };
+  } catch (error) {
+    console.error("Error calculating roof orientation:", error);
+    // Default to South facing if calculation fails
+    return { azimuth: 180, direction: 'S', inclination: 30 };
+  }
+};
+
+/**
+ * Calculate the yield factor based on roof orientation and inclination
+ * @param azimuth - Roof azimuth in degrees (0=North, 90=East, 180=South, 270=West)
+ * @param inclination - Roof inclination in degrees
+ * @returns Yield factor in kWh/kWp per year
+ */
+export const calculateYieldFactorFromOrientation = (
+  azimuth: number, 
+  inclination: number
+): number => {
+  // Optimal orientation is South (180°) with inclination around 30-40°
+  
+  // Base yield factor for Germany (optimal conditions)
+  let baseFactor = 1000; // kWh/kWp for optimal conditions
+  
+  // Penalty for non-optimal azimuth
+  // South is optimal (180°), reduce yield as we move away from south
+  const azimuthDiff = Math.abs(azimuth - 180);
+  let azimuthFactor = 1;
+  
+  if (azimuthDiff <= 45) {
+    // Within 45° of south (SE to SW): small reduction
+    azimuthFactor = 1 - (azimuthDiff / 180);
+  } else if (azimuthDiff <= 90) {
+    // East or West: moderate reduction
+    azimuthFactor = 0.8 - ((azimuthDiff - 45) / 450);
+  } else {
+    // Facing north: significant reduction
+    azimuthFactor = 0.7 - ((azimuthDiff - 90) / 900);
+  }
+  
+  // Penalty for non-optimal inclination
+  // 30-40° is optimal, reduce yield as we move away
+  let inclinationFactor = 1;
+  
+  if (inclination < 10) {
+    // Almost flat: moderate reduction
+    inclinationFactor = 0.9;
+  } else if (inclination >= 10 && inclination <= 40) {
+    // Optimal range: little to no reduction
+    inclinationFactor = 0.95 + ((inclination - 10) / 300);
+  } else {
+    // Too steep: progressive reduction
+    inclinationFactor = 1 - ((inclination - 40) / 100);
+  }
+  
+  // Combined yield factor
+  const yieldFactor = baseFactor * azimuthFactor * inclinationFactor;
+  
+  console.log("Yield calculation:", {
+    azimuth,
+    azimuthDiff,
+    azimuthFactor,
+    inclination,
+    inclinationFactor,
+    yieldFactor
+  });
+  
+  return Math.round(yieldFactor);
+};
+
+/**
+ * Update an existing PVModuleInfo with orientation data from the 3D points
+ */
+export const updatePVModuleInfoWithOrientation = (
+  pvInfo: PVModuleInfo,
+  points: Point[]
+): PVModuleInfo => {
+  // Calculate the roof orientation
+  const { azimuth, direction, inclination } = calculateRoofOrientation(points);
+  
+  // Calculate the yield factor based on orientation
+  const yieldFactor = calculateYieldFactorFromOrientation(azimuth, inclination);
+  
+  // Create updated PV info with orientation data
+  return {
+    ...pvInfo,
+    roofAzimuth: azimuth,
+    roofDirection: direction,
+    roofInclination: inclination,
+    yieldFactor: yieldFactor
+  };
+};
+
+/**
+ * Calculate the estimated annual yield for a PV system with orientation data
+ * 
+ * @param totalPower - Total installed power in kWp
+ * @param pvInfo - PV module information with orientation data
+ * @returns Estimated annual yield in kWh
+ */
+export const calculateAnnualYieldWithOrientation = (
+  totalPower: number,
+  pvInfo: PVModuleInfo
+): number => {
+  // Use either the calculated yield factor or fall back to the default
+  const yieldFactor = pvInfo.yieldFactor || 
+                     (pvInfo.roofAzimuth && pvInfo.roofInclination 
+                      ? calculateYieldFactorFromOrientation(pvInfo.roofAzimuth, pvInfo.roofInclination) 
+                      : ANNUAL_YIELD_FACTOR_DEFAULT);
+  
+  // Calculate and return the annual yield
+  return totalPower * yieldFactor;
+};
