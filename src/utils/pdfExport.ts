@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
@@ -975,10 +974,10 @@ const createAreaSegmentsTable = (measurement: Measurement, measurementIndex: num
       numCell.textContent = `Segment ${index + 1}`;
       row.appendChild(numCell);
       
-      // Area column
+      // Area column - use dimensions.area if present
       const areaCell = document.createElement('td');
-      if (segment.area !== undefined) {
-        areaCell.textContent = `${segment.area.toFixed(2)} m²`;
+      if (segment.dimensions?.area !== undefined) {
+        areaCell.textContent = `${segment.dimensions.area.toFixed(2)} m²`;
         areaCell.style.fontWeight = 'bold';
       } else {
         areaCell.textContent = '–';
@@ -1198,7 +1197,7 @@ const appendPVMaterialsSection = (
 ) => {
   // Check if we actually have PV materials to show
   const measurementsWithMaterials = solarMeasurements.filter(m => 
-    m.pvModuleInfo?.pvMaterials && m.type === 'solar' && m.area && m.area > 0
+    m.pvModuleInfo?.pvMaterials && m.type === 'solar' && m.dimensions?.area && m.dimensions.area > 0
   );
   
   if (measurementsWithMaterials.length === 0) return;
@@ -1263,11 +1262,13 @@ const appendPVMaterialsSection = (
     moduleList.style.padding = '0';
     moduleList.style.margin = '0';
     
+    const pvModuleSpec = measurement.pvModuleInfo.pvModuleSpec || { name: "-", width: 0, height: 0, power: 0 };
+    
     const moduleData = [
-      { label: 'Modultyp', value: measurement.pvModuleInfo.moduleName || '–' },
-      { label: 'Modulfläche', value: `${measurement.pvModuleInfo.moduleArea?.toFixed(2) || '–'} m²` },
-      { label: 'Leistung', value: `${measurement.pvModuleInfo.modulePower || '–'} Wp` },
-      { label: 'Anzahl', value: measurement.pvModuleInfo.pvMaterials?.moduleCount.toString() || '–' },
+      { label: 'Modultyp', value: pvModuleSpec.name || '–' },
+      { label: 'Modulfläche', value: `${(pvModuleSpec.width * pvModuleSpec.height).toFixed(2) || '–'} m²` },
+      { label: 'Leistung', value: `${pvModuleSpec.power || '–'} Wp` },
+      { label: 'Anzahl', value: measurement.pvModuleInfo.pvMaterials?.totalModuleCount.toString() || '–' },
       { label: 'Gesamtleistung', value: `${(measurement.pvModuleInfo.pvMaterials?.totalPower || 0).toFixed(1)} kWp` }
     ];
     
@@ -1316,10 +1317,10 @@ const appendPVMaterialsSection = (
     const formatNumber = (value: number) => value.toLocaleString('de-DE');
     
     const installData = [
-      { label: 'Dachfläche', value: `${measurement.area?.toFixed(2) || '–'} m²` },
+      { label: 'Dachfläche', value: `${measurement.dimensions?.area?.toFixed(2) || '–'} m²` },
       { label: 'Dachneigung', value: measurement.segments && measurement.segments[0]?.inclination !== undefined ? `${Math.abs(measurement.segments[0].inclination).toFixed(1)}°` : '–' },
-      { label: 'Ausrichtung', value: measurement.orientation || '–' },
-      { label: 'Belegungsgrad', value: measurement.pvModuleInfo.pvMaterials?.coverage ? `${(measurement.pvModuleInfo.pvMaterials.coverage * 100).toFixed(0)}%` : '–' }
+      { label: 'Ausrichtung', value: measurement.notes || '–' },
+      { label: 'Belegungsgrad', value: '–' }
     ];
     
     installData.forEach(item => {
@@ -1349,7 +1350,7 @@ const appendPVMaterialsSection = (
     const pvMaterials = measurement.pvModuleInfo.pvMaterials;
     
     // Create mounting materials table
-    if (pvMaterials.mounting && Object.keys(pvMaterials.mounting).length > 0) {
+    if (pvMaterials.mountingSystem && Object.keys(pvMaterials.mountingSystem).length > 0) {
       const mountingTitle = document.createElement('h4');
       mountingTitle.textContent = 'Befestigungsmaterial';
       mountingTitle.style.marginTop = '25px';
@@ -1378,7 +1379,17 @@ const appendPVMaterialsSection = (
       // Format the mounting materials for display
       const formattedMounting = formatPVMaterials(pvMaterials);
       
-      formattedMounting.mounting.forEach(item => {
+      // Add rows for mounting system elements
+      const ms = pvMaterials.mountingSystem;
+      const mountingItems = [
+        { name: 'Montageschienenanzahl', value: `${ms.railLength.toFixed(1)} m` },
+        { name: 'Dachhaken', value: `${ms.roofHookCount} Stück` },
+        { name: 'Mittelklemmen', value: `${ms.middleClampCount} Stück` },
+        { name: 'Endklemmen', value: `${ms.endClampCount} Stück` },
+        { name: 'Schienenverbinder', value: `${ms.railConnectorCount} Stück` }
+      ];
+      
+      mountingItems.forEach(item => {
         const row = document.createElement('tr');
         
         // Material name column
@@ -1400,7 +1411,7 @@ const appendPVMaterialsSection = (
     }
     
     // Create electrical materials table
-    if (pvMaterials.electrical && Object.keys(pvMaterials.electrical).length > 0) {
+    if (pvMaterials.electricalSystem && Object.keys(pvMaterials.electricalSystem).length > 0) {
       const electricalTitle = document.createElement('h4');
       electricalTitle.textContent = 'Elektromaterial';
       electricalTitle.style.marginTop = '25px';
@@ -1426,10 +1437,18 @@ const appendPVMaterialsSection = (
       // Table body
       const electricalTableBody = document.createElement('tbody');
       
-      // Format the electrical materials for display
-      const formattedElectrical = formatPVMaterials(pvMaterials);
+      // Add rows for electrical system elements
+      const es = pvMaterials.electricalSystem;
+      const electricalItems = [
+        { name: 'String-Kabel', value: `${es.stringCableLength.toFixed(1)} m` },
+        { name: 'Hauptleitung DC', value: `${es.mainCableLength.toFixed(1)} m` },
+        { name: 'AC-Kabel', value: `${es.acCableLength.toFixed(1)} m` },
+        { name: 'MC4-Steckverbinder', value: `${es.connectorPairCount} Paare` },
+        { name: 'Wechselrichter', value: `${es.inverterCount} x ${es.inverterPower.toFixed(1)} kW` },
+        { name: 'Strings', value: `${es.stringCount} (${es.modulesPerString} Module/String)` }
+      ];
       
-      formattedElectrical.electrical.forEach(item => {
+      electricalItems.forEach(item => {
         const row = document.createElement('tr');
         
         // Material name column
@@ -1490,13 +1509,15 @@ const appendCustomScreenshotsSection = (
       screenshotItem.className = 'screenshot-item keep-together';
       
       const img = document.createElement('img');
-      img.src = screenshot.dataUrl;
+      img.src = typeof screenshot === 'object' && 'dataUrl' in screenshot ? screenshot.dataUrl as string : screenshot as string;
       img.className = 'custom-screenshot';
-      img.alt = screenshot.title || `Screenshot ${screenIndex + 1}`;
+      img.alt = typeof screenshot === 'object' && 'title' in screenshot ? screenshot.title as string : `Screenshot ${screenIndex + 1}`;
       
       const title = document.createElement('div');
       title.className = 'screenshot-title';
-      title.textContent = screenshot.title || `Bild ${screenIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+      title.textContent = typeof screenshot === 'object' && 'title' in screenshot 
+        ? screenshot.title as string 
+        : `Bild ${screenIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
       
       screenshotItem.appendChild(img);
       screenshotItem.appendChild(title);
