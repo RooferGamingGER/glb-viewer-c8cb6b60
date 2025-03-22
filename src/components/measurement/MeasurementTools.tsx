@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useThreeObjects } from '@/hooks/useThreeObjects';
 import { useLabelScaling } from '@/hooks/useLabelScaling';
 import { useMeasurementInteraction } from '@/hooks/useMeasurementInteraction';
-import { useMeasurements, Measurement } from '@/hooks/useMeasurements';
+import { useMeasurements } from '@/hooks/useMeasurements';
 import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
@@ -24,6 +24,7 @@ import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
 import EditingAlert from './EditingAlert';
 import RoofElementControls from './RoofElementControls';
+import { Measurement } from '@/types/measurements';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -65,8 +66,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     allLabelsVisible,
     moveMeasurementUp,
     moveMeasurementDown,
-    setUpdateVisualState,
-    togglePVModulesVisibility
+    setUpdateVisualState
   } = useMeasurements();
 
   // Three.js object references
@@ -205,18 +205,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       moveMeasurementDown
     }
   );
-
-  // Wrapper for updateMeasurement to match required types
-  const handleUpdateMeasurement = (measurement: Measurement) => {
-    updateMeasurement(measurement);
-  };
-
-  // Create a function to handle toggling segment info that returns the required type
-  const handleToggleSegments = (id: string): Record<string, boolean> => {
-    toggleSegments(id);
-    // Return the expected record type
-    return { [id]: true };
-  };
 
   // Update visibility when allLabelsVisible changes
   useEffect(() => {
@@ -451,14 +439,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
             toggleLabelVisibility={handleToggleLabelVisibility}
-            togglePVModulesVisibility={togglePVModulesVisibility}
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
-            updateMeasurement={handleUpdateMeasurement}
+            updateMeasurement={updateMeasurement}
             editMeasurementId={editMeasurementId}
             segmentsOpen={segmentsOpen}
-            toggleSegments={handleToggleSegments}
+            toggleSegments={toggleSegments}
             onEditSegment={setEditingSegmentId}
             movingPointInfo={movingPointInfo}
             showTable={showTable}

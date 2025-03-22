@@ -99,26 +99,6 @@ export const useMeasurements = () => {
     return extractRoofEdgeMeasurements(measurements);
   }, [measurements]);
 
-  // Toggle PV modules visibility for a specific measurement
-  const togglePVModulesVisibility = useCallback((measurementId: string) => {
-    setMeasurements(prevMeasurements => {
-      const newMeasurements = prevMeasurements.map(m => {
-        if (m.id === measurementId && m.type === 'solar') {
-          return {
-            ...m,
-            pvModulesVisible: m.pvModulesVisible === undefined ? false : !m.pvModulesVisible
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state
-      updateVisualState(newMeasurements, allLabelsVisible);
-      
-      return newMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
-
   // Export all functionality and state from the composed hooks
   return {
     // State
@@ -152,7 +132,6 @@ export const useMeasurements = () => {
     moveMeasurementUp,
     moveMeasurementDown,
     getRoofEdgeInfo,
-    togglePVModulesVisibility,
     
     // Visual state update function - expose this so it can be replaced
     setUpdateVisualState: (fn: typeof updateVisualState) => {
