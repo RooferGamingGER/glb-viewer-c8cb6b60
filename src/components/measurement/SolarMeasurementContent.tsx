@@ -4,7 +4,12 @@ import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatPVModuleInfo, calculatePVModulePlacement } from '@/utils/pvCalculations';
+import { 
+  formatPVModuleInfo, 
+  calculatePVModulePlacement, 
+  calculatePVPower, 
+  calculateAnnualYield 
+} from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 import PVMaterialsList from './PVMaterialsList';
 import { useMeasurements } from '@/hooks/useMeasurements';
@@ -233,6 +238,17 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               <div>
                 {((measurement.pvModuleInfo.moduleCount * 
                   (measurement.pvModuleInfo.pvModuleSpec?.power || 425)) / 1000).toFixed(1)} kWp
+              </div>
+              
+              <div className="text-muted-foreground">Jahresertrag:</div>
+              <div>
+                {calculateAnnualYield(
+                  calculatePVPower(
+                    measurement.pvModuleInfo.moduleCount, 
+                    measurement.pvModuleInfo.pvModuleSpec?.power || 425
+                  ),
+                  measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
+                ).toFixed(0)} kWh/Jahr
               </div>
             </div>
             

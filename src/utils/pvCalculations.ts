@@ -31,6 +31,14 @@ const RAIL_LENGTH_PER_MODULE = 0.35; // meters of rail per module (approximation
 const RAIL_STANDARD_LENGTH = 3.0; // Standard rail length in meters
 const END_CLAMPS_PER_ARRAY = 4; // 4 end clamps per array (one at each corner)
 
+// Constants for yield calculation
+const ANNUAL_YIELD_FACTOR_DEFAULT = 950; // kWh/kWp (estimated annual yield per kWp in Germany)
+const YIELD_FACTORS: Record<string, number> = {
+  'hochformat': 950, // Portrait orientation
+  'querformat': 970, // Landscape orientation
+  'default': 950
+};
+
 /**
  * Berechnet den Durchschnitt der Y-Koordinaten für eine Reihe von Punkten
  * @param points - Array von Punkten
@@ -929,5 +937,30 @@ export const formatPVMaterials = (materials: PVMaterials): string => {
   return `${materials.totalModuleCount} Module (${materials.totalPower.toFixed(1)} kWp), ${materials.mountingSystem.railLength.toFixed(1)}m Schienen`;
 };
 
-
-
+/**
+ * Calculate the estimated annual yield for a PV system
+ * 
+ * @param totalPower - Total installed power in kWp
+ * @param orientation - Module orientation ('hochformat' or 'querformat')
+ * @param location - Optional location factor (default is Germany)
+ * @returns Estimated annual yield in kWh
+ */
+export const calculateAnnualYield = (
+  totalPower: number,
+  orientation: string = 'default',
+  location: string = 'germany'
+): number => {
+  // Get the yield factor based on orientation
+  const yieldFactor = YIELD_FACTORS[orientation] || ANNUAL_YIELD_FACTOR_DEFAULT;
+  
+  // Apply location adjustment if needed
+  let locationFactor = 1.0;
+  if (location === 'southern_germany') {
+    locationFactor = 1.05; // 5% more in southern Germany
+  } else if (location === 'northern_germany') {
+    locationFactor = 0.95; // 5% less in northern Germany
+  }
+  
+  // Calculate and return the annual yield
+  return totalPower * yieldFactor * locationFactor;
+};

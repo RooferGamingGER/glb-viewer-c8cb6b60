@@ -43,7 +43,8 @@ import {
   formatPVModuleInfo,
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
-  PV_MODULE_TEMPLATES
+  PV_MODULE_TEMPLATES,
+  calculateAnnualYield
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 
@@ -413,10 +414,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
-                ? 'Hochformat (Längere Seite parallel zum Ortgang)' 
-                : 'Querformat (Längere Seite parallel zur Traufe)'} </div>
+                ? 'Hochformat' 
+                : 'Querformat'}</div>
               <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
-              <div><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
+              <div className="col-span-2"><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
               {measurement.pvModuleInfo!.edgeDistance !== undefined && (
                 <div><strong>Randabstand:</strong> {measurement.pvModuleInfo!.edgeDistance.toFixed(2)}m</div>
@@ -424,6 +425,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               {measurement.pvModuleInfo!.moduleSpacing !== undefined && (
                 <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing.toFixed(2)}m</div>
               )}
+              <div className="col-span-2"><strong>Geschätzter Jahresertrag:</strong> {calculateAnnualYield(
+                calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425),
+                measurement.pvModuleInfo!.orientation === 'portrait' ? 'hochformat' : 'querformat'
+              ).toFixed(0)} kWh/Jahr</div>
             </div>
             
             {showPVDetails && (
