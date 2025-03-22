@@ -357,7 +357,8 @@ export const useMeasurementCore = () => {
       case 'pvmodule':
         if (points.length >= 4) {
           const moduleSpec = PV_MODULE_TEMPLATES[0];
-          const { area, powerOutput } = calculatePVModuleDimensions(points, moduleSpec);
+          const area = calculatePolygonArea(points);
+          const powerOutput = moduleSpec.power;
           
           measurementData = {
             value: area,
@@ -647,4 +648,3 @@ export const useMeasurementCore = () => {
     createPVModuleMeasurement
   };
 };
-
