@@ -13,7 +13,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import PVMaterialsList from './PVMaterialsList';
 
 interface PVModuleSelectProps {
-  onModuleSelect: (module: PVModuleSpec) => void;
+  value?: PVModuleSpec;
+  onChange: (module: PVModuleSpec) => void;
+  onModuleSelect?: (module: PVModuleSpec) => void;
   currentModule?: PVModuleSpec;
   onDimensionsChange?: (dimensions: {width: number, length: number}) => void;
   pvModuleInfo?: PVModuleInfo;
@@ -22,6 +24,8 @@ interface PVModuleSelectProps {
 }
 
 const PVModuleSelect: React.FC<PVModuleSelectProps> = ({ 
+  value,
+  onChange,
   onModuleSelect,
   currentModule,
   onDimensionsChange,
@@ -30,14 +34,14 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   onCalculateMaterials
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
-    currentModule?.name || PV_MODULE_TEMPLATES[0].name
+    value?.name || currentModule?.name || PV_MODULE_TEMPLATES[0].name
   );
   const [customModule, setCustomModule] = useState<PVModuleSpec>({
     name: "Benutzerdefiniert",
-    width: currentModule?.width || 1.04,
-    height: currentModule?.height || 1.77,
-    power: currentModule?.power || 425,
-    efficiency: currentModule?.efficiency || 21.0
+    width: value?.width || currentModule?.width || 1.04,
+    height: value?.height || currentModule?.height || 1.77,
+    power: value?.power || currentModule?.power || 425,
+    efficiency: value?.efficiency || currentModule?.efficiency || 21.0
   });
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
@@ -121,7 +125,11 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
       ? customModule 
       : PV_MODULE_TEMPLATES.find(m => m.name === selectedTemplate) || PV_MODULE_TEMPLATES[0];
     
-    onModuleSelect(selectedModule);
+    if (onModuleSelect) {
+      onModuleSelect(selectedModule);
+    }
+    
+    onChange(selectedModule);
     
     if (useManualDimensions && onDimensionsChange) {
       onDimensionsChange({

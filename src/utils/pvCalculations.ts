@@ -508,7 +508,7 @@ export const calculatePVModulePlacement = (
   const landscapeModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));  // Modules across length (parallel to verge)
   
   // Total modules in landscape orientation
-  const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
+  const landscapeCount = landscapeModulesX * landscapeModulesY;
   
   // Portrait orientation calculations (Hochformat)
   // In portrait, the longer side of the module (height) is parallel to verge (Ortgang)
@@ -517,7 +517,7 @@ export const calculatePVModulePlacement = (
   const portraitModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing)); // Modules across length (parallel to verge)
   
   // Total modules in portrait orientation
-  const portraitModuleCount = portraitModulesX * portraitModulesY;
+  const portraitCount = portraitModulesX * portraitModulesY;
   
   // DEBUG: Log the module counts with clear orientation descriptions
   console.log("PV Module Counts:", {
@@ -525,7 +525,7 @@ export const calculatePVModulePlacement = (
       description: "Hochformat: Module LONGER side (height) parallel to verge (Ortgang), shorter side parallel to eave (Traufe)",
       modulesAcrossWidth: portraitModulesX,
       modulesAcrossLength: portraitModulesY,
-      totalModules: portraitModuleCount,
+      totalModules: portraitCount,
       formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesX}`,
       formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesY}`
     },
@@ -533,7 +533,7 @@ export const calculatePVModulePlacement = (
       description: "Querformat: Module LONGER side (height) parallel to eave (Traufe), shorter side parallel to verge (Ortgang)",
       modulesAcrossWidth: landscapeModulesX,
       modulesAcrossLength: landscapeModulesY,
-      totalModules: landscapeModuleCount,
+      totalModules: landscapeCount,
       formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesX}`,
       formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesY}`
     }
@@ -554,18 +554,14 @@ export const calculatePVModulePlacement = (
     azimuthFactor = 1.05;
   }
   
-  // Entscheide über die Ausrichtung unter Berücksichtigung des Azimuthfaktors
-  const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
-  const portraitModuleCount = portraitModulesX * portraitModulesY;
-  
   // Angepasste Berechnung mit Azimuthfaktor
-  const weightedLandscapeCount = landscapeModuleCount * azimuthFactor;
+  const weightedLandscapeCount = landscapeCount * azimuthFactor;
   
   // Entscheide über die Ausrichtung, die mehr Module ermöglicht
-  const usePortrait = portraitModuleCount > weightedLandscapeCount;
+  const usePortrait = portraitCount > weightedLandscapeCount;
   
   // Final module count, rows, and columns
-  const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;
+  const moduleCount = usePortrait ? portraitCount : landscapeCount;
   const columns = usePortrait ? portraitModulesX : landscapeModulesX;
   const rows = usePortrait ? portraitModulesY : landscapeModulesY;
   
