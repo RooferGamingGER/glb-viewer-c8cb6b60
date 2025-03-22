@@ -1,4 +1,4 @@
-import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
+import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
 // Default PV module dimensions in meters
@@ -19,6 +19,17 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
     efficiency: 21.0
   }
 ];
+
+// Default values for material calculations
+export const DEFAULT_ROOF_HOOK_SPACING = 0.8; // meters (80cm between hooks)
+export const DEFAULT_CABLE_PER_MODULE = 1.2; // meters of string cable per module
+export const DEFAULT_INVERTER_SIZING_FACTOR = 0.85; // Inverter should be 85% of module power
+export const DEFAULT_MODULES_PER_STRING = 10; // Default modules per string
+
+// Constants for material calculation
+const RAIL_LENGTH_PER_MODULE = 0.35; // meters of rail per module (approximation)
+const RAIL_STANDARD_LENGTH = 3.0; // Standard rail length in meters
+const END_CLAMPS_PER_ARRAY = 4; // 4 end clamps per array (one at each corner)
 
 /**
  * Berechnet den Durchschnitt der Y-Koordinaten für eine Reihe von Punkten
@@ -653,6 +664,207 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
 };
 
 /**
+ * Calculate the mounting system requirements based on PV module layout
+ * 
+ * @param pvInfo - PV module information
+ * @returns Mounting system requirements
+ */
+export const calculateMountingSystem = (pvInfo: PVModuleInfo): PVMountingSystem => {
+  // Safety check
+  if (!pvInfo.columns || !pvInfo.rows || !pvInfo.moduleCount) {
+    return {
+      railLength: 0,
+      roofHookCount: 0,
+      middleClampCount: 0,
+      endClampCount: 0,
+      railConnectorCount: 0
+    };
+  }
+  
+  // Calculate rail length based on module layout
+  // For portrait orientation, we need rails along the length
+  // For landscape orientation, we need rails along the width
+  const railsPerRow = 2; // Typically 2 rails per row of modules
+  
+  let totalRailLength = 0;
+  let totalRails = 0;
+  
+  if (pvInfo.orientation === 'portrait') {
+    // In portrait, rails run perpendicular to the rows (along columns)
+    const railLength = pvInfo.availableLength || 0;
+    totalRails = pvInfo.columns * railsPerRow;
+    totalRailLength = totalRails * railLength;
+  } else {
+    // In landscape, rails run along the rows
+    const railLength = pvInfo.availableWidth || 0;
+    totalRails = pvInfo.rows * railsPerRow;
+    totalRailLength = totalRails * railLength;
+  }
+  
+  // Calculate number of standard rail pieces needed
+  const railConnectorCount = Math.max(0, Math.ceil(totalRailLength / RAIL_STANDARD_LENGTH) - totalRails);
+  
+  // Calculate roof hooks (typically spaced 80-100cm apart along each rail)
+  const hooksPerRail = Math.ceil((pvInfo.orientation === 'portrait' ? 
+    pvInfo.availableLength : pvInfo.availableWidth) / DEFAULT_ROOF_HOOK_SPACING);
+  const roofHookCount = hooksPerRail * totalRails;
+  
+  // Calculate clamps
+  // End clamps at the edges of each row/column
+  const endClampCount = END_CLAMPS_PER_ARRAY * Math.max(1, Math.ceil(pvInfo.moduleCount / (pvInfo.rows * pvInfo.columns)));
+  
+  // Middle clamps between modules
+  let middleClampCount = 0;
+  if (pvInfo.orientation === 'portrait') {
+    // In portrait, middle clamps along rows
+    middleClampCount = (pvInfo.columns - 1) * pvInfo.rows * 2; // 2 per inter-module space
+  } else {
+    // In landscape, middle clamps along columns
+    middleClampCount = (pvInfo.rows - 1) * pvInfo.columns * 2; // 2 per inter-module space
+  }
+  
+  return {
+    railLength: Math.ceil(totalRailLength * 10) / 10, // Round up to nearest 0.1m
+    roofHookCount,
+    middleClampCount,
+    endClampCount,
+    railConnectorCount
+  };
+};
+
+/**
+ * Calculate the electrical system requirements based on PV module layout
+ * 
+ * @param pvInfo - PV module information
+ * @param inverterDistance - Distance to inverter in meters (default: 10m)
+ * @returns Electrical system requirements
+ */
+export const calculateElectricalSystem = (
+  pvInfo: PVModuleInfo, 
+  inverterDistance: number = 10
+): PVElectricalSystem => {
+  // Get module power
+  const modulePower = pvInfo.pvModuleSpec?.power || 425; // Watts
+  const totalPower = (pvInfo.moduleCount * modulePower) / 1000; // kWp
+  
+  // Calculate optimal string size
+  // This is a simplified calculation; in reality, it depends on inverter specs
+  const modulesPerString = Math.min(DEFAULT_MODULES_PER_STRING, pvInfo.moduleCount);
+  const stringCount = Math.ceil(pvInfo.moduleCount / modulesPerString);
+  
+  // Calculate inverter requirements
+  const inverterPower = totalPower * DEFAULT_INVERTER_SIZING_FACTOR; // 85% of module power
+  const inverterCount = Math.ceil(inverterPower / 10); // Assume 10kW per inverter max
+  
+  // Calculate cable lengths
+  // String cable connects modules within each string
+  const stringCableLength = pvInfo.moduleCount * DEFAULT_CABLE_PER_MODULE;
+  
+  // Main DC cable from strings to inverter
+  const mainCableLength = stringCount * inverterDistance * 2; // Two cables (+ and -) per string
+  
+  // AC cable from inverter to connection point (assumed 5m)
+  const acCableLength = inverterCount * 5;
+  
+  // Connectors (MC4 pairs)
+  const connectorPairCount = stringCount * 2; // 2 pairs per string (string ends + combiner)
+  
+  return {
+    stringCableLength: Math.ceil(stringCableLength),
+    mainCableLength: Math.ceil(mainCableLength),
+    acCableLength: Math.ceil(acCableLength),
+    connectorPairCount,
+    inverterCount,
+    inverterPower: Math.ceil(inverterPower * 10) / 10, // Round to 1 decimal place
+    stringCount,
+    modulesPerString
+  };
+};
+
+/**
+ * Calculate all materials needed for a PV system based on the PV module layout
+ * 
+ * @param pvInfo - PV module information with layout details
+ * @param inverterDistance - Distance to inverter in meters (default: 10m)
+ * @returns Complete material list for the PV system
+ */
+export const calculatePVMaterials = (
+  pvInfo: PVModuleInfo,
+  inverterDistance: number = 10
+): PVMaterials => {
+  // Safety check
+  if (!pvInfo.moduleCount || !pvInfo.pvModuleSpec) {
+    return {
+      totalModuleCount: 0,
+      totalPower: 0,
+      moduleSpec: PV_MODULE_TEMPLATES[0],
+      mountingSystem: {
+        railLength: 0,
+        roofHookCount: 0,
+        middleClampCount: 0,
+        endClampCount: 0,
+        railConnectorCount: 0
+      },
+      electricalSystem: {
+        stringCableLength: 0,
+        mainCableLength: 0,
+        acCableLength: 0,
+        connectorPairCount: 0,
+        inverterCount: 0,
+        inverterPower: 0,
+        stringCount: 0,
+        modulesPerString: 0
+      },
+      includesSurgeProtection: true,
+      includesMonitoringSystem: true,
+      notes: ["Keine Materialliste verfügbar. Bitte PV-Layout berechnen."]
+    };
+  }
+  
+  // Calculate total power
+  const modulePower = pvInfo.pvModuleSpec.power || 425; // Watts
+  const totalPower = (pvInfo.moduleCount * modulePower) / 1000; // kWp
+  
+  // Calculate mounting system
+  const mountingSystem = calculateMountingSystem(pvInfo);
+  
+  // Calculate electrical system
+  const electricalSystem = calculateElectricalSystem(pvInfo, inverterDistance);
+  
+  // Generate notes and recommendations
+  const notes: string[] = [];
+  
+  // Add notes based on calculations
+  if (totalPower > 15) {
+    notes.push("Große Anlage: Prüfen Sie, ob eine Dreiphasige Einspeisung erforderlich ist.");
+  }
+  
+  if (mountingSystem.roofHookCount > 40) {
+    notes.push("Hohe Anzahl an Dachhaken: Prüfen Sie die Statik des Daches.");
+  }
+  
+  if (electricalSystem.stringCount > 2) {
+    notes.push("Mehrere Strings: Ein Stringwechselrichter oder Moduloptimierer wird empfohlen.");
+  }
+  
+  // Default note if none were added
+  if (notes.length === 0) {
+    notes.push("Standardanlage: Keine besonderen Hinweise.");
+  }
+  
+  return {
+    totalModuleCount: pvInfo.moduleCount,
+    totalPower,
+    moduleSpec: pvInfo.pvModuleSpec,
+    mountingSystem,
+    electricalSystem,
+    includesSurgeProtection: true,  // Default to including these
+    includesMonitoringSystem: true, // Default to including these
+    notes
+  };
+};
+
+/**
  * Calculate the total power capacity of PV modules in kWp (kilowatt peak)
  * 
  * @param moduleCount - Number of PV modules
@@ -702,3 +914,20 @@ export const calculatePVModuleDimensions = (
     powerOutput: moduleSpec.power
   };
 };
+
+/**
+ * Format the materials list as a human-readable string
+ * 
+ * @param materials - The PV materials object
+ * @returns Formatted string with materials information
+ */
+export const formatPVMaterials = (materials: PVMaterials): string => {
+  if (!materials || !materials.mountingSystem || !materials.electricalSystem) {
+    return "Keine Materialliste verfügbar";
+  }
+  
+  return `${materials.totalModuleCount} Module (${materials.totalPower.toFixed(1)} kWp), ${materials.mountingSystem.railLength.toFixed(1)}m Schienen`;
+};
+
+
+

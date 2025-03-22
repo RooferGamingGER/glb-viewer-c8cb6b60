@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,11 +6,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PVModuleSpec, PVModuleInfo } from '@/types/measurements';
+import { PVModuleSpec, PVModuleInfo, PVMaterials } from '@/types/measurements';
 import { PV_MODULE_TEMPLATES, DEFAULT_EDGE_DISTANCE, DEFAULT_MODULE_SPACING } from '@/utils/pvCalculations';
-import { Settings, Ruler, AlertTriangle, Zap, Maximize2 } from 'lucide-react';
+import { Settings, Ruler, AlertTriangle, Zap, Maximize2, PackageIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import PVMaterialsList from './PVMaterialsList';
 
 interface PVModuleSelectProps {
   onModuleSelect: (module: PVModuleSpec) => void;
@@ -17,6 +19,7 @@ interface PVModuleSelectProps {
   onDimensionsChange?: (dimensions: {width: number, length: number}) => void;
   pvModuleInfo?: PVModuleInfo;
   onSpacingChange?: (spacing: {edgeDistance: number, moduleSpacing: number}) => void;
+  onCalculateMaterials?: (inverterDistance: number) => void;
 }
 
 const PVModuleSelect: React.FC<PVModuleSelectProps> = ({ 
@@ -24,7 +27,8 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   currentModule,
   onDimensionsChange,
   pvModuleInfo,
-  onSpacingChange
+  onSpacingChange,
+  onCalculateMaterials
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
     currentModule?.name || PV_MODULE_TEMPLATES[0].name
@@ -54,6 +58,7 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   const [moduleSpacing, setModuleSpacing] = useState<number>(
     pvModuleInfo?.moduleSpacing || DEFAULT_MODULE_SPACING
   );
+  const [inverterDistance, setInverterDistance] = useState<number>(10); // Default 10m
   
   useEffect(() => {
     if (pvModuleInfo) {
@@ -96,6 +101,19 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
       } else {
         setModuleSpacing(numValue);
       }
+    }
+  };
+  
+  const handleInverterDistanceChange = (value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setInverterDistance(numValue);
+    }
+  };
+  
+  const handleMaterialsCalculation = () => {
+    if (onCalculateMaterials) {
+      onCalculateMaterials(inverterDistance);
     }
   };
   
@@ -145,10 +163,11 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="module">Modul</TabsTrigger>
             <TabsTrigger value="dimensions">Abmessungen</TabsTrigger>
             <TabsTrigger value="spacing">Abstände</TabsTrigger>
+            <TabsTrigger value="materials">Material</TabsTrigger>
           </TabsList>
           
           <TabsContent value="module" className="py-4">
@@ -380,6 +399,54 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                     <div><strong>Randabstand:</strong> {pvModuleInfo.edgeDistance?.toFixed(2) || DEFAULT_EDGE_DISTANCE.toFixed(2)} m</div>
                     <div><strong>Modulabstand:</strong> {pvModuleInfo.moduleSpacing?.toFixed(2) || DEFAULT_MODULE_SPACING.toFixed(2)} m</div>
                   </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="materials" className="py-4">
+            <div className="space-y-4">
+              <div className="border p-3 rounded-md space-y-3">
+                <div className="flex items-center justify-start mb-2">
+                  <PackageIcon className="h-4 w-4 mr-2 text-purple-600" />
+                  <span className="text-sm font-medium">Materialberechnung</span>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="inverterDistance">Entfernung zum Wechselrichter (m)</Label>
+                  <Input
+                    id="inverterDistance"
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="100"
+                    value={inverterDistance}
+                    onChange={(e) => handleInverterDistanceChange(e.target.value)}
+                  />
+                </div>
+                
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={handleMaterialsCalculation}
+                >
+                  Materialliste berechnen
+                </Button>
+                
+                <div className="text-sm text-muted-foreground mt-2 p-2 bg-purple-50/10 border border-purple-100 rounded">
+                  <p>Die Materialberechnung umfasst Montagesystem, Verkabelung und elektrische Komponenten basierend auf dem PV-Layout.</p>
+                </div>
+              </div>
+              
+              {pvModuleInfo?.pvMaterials && (
+                <div className="mt-4 border rounded-md p-3">
+                  <h3 className="text-sm font-medium mb-2">Berechnete Materialliste:</h3>
+                  <PVMaterialsList 
+                    materials={pvModuleInfo.pvMaterials} 
+                    onCalculate={handleMaterialsCalculation}
+                  />
                 </div>
               )}
             </div>

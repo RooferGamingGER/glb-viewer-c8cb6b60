@@ -71,6 +71,7 @@ export interface PVModuleInfo {
   userDefinedLength?: number; // User-defined available length in meters
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
+  pvMaterials?: PVMaterials;  // Materials needed for the PV system
 }
 
 export interface PVModuleSpec {
@@ -79,6 +80,39 @@ export interface PVModuleSpec {
   height: number;           // Height in meters
   power: number;            // Power in watts
   efficiency: number;       // Efficiency percentage
+}
+
+// New interface for mounting hardware
+export interface PVMountingSystem {
+  railLength: number;         // Total length of mounting rails in meters
+  roofHookCount: number;      // Number of roof hooks needed
+  middleClampCount: number;   // Number of middle clamps
+  endClampCount: number;      // Number of end clamps
+  railConnectorCount: number; // Number of rail connectors
+}
+
+// New interface for electrical components
+export interface PVElectricalSystem {
+  stringCableLength: number;  // Total length of string cables in meters
+  mainCableLength: number;    // Length of main DC cables in meters
+  acCableLength: number;      // Length of AC cables in meters
+  connectorPairCount: number; // Number of MC4 connector pairs
+  inverterCount: number;      // Number of inverters needed
+  inverterPower: number;      // Power rating of inverter(s) in kW
+  stringCount: number;        // Number of strings
+  modulesPerString: number;   // Modules per string
+}
+
+// New interface for PV system material calculation
+export interface PVMaterials {
+  totalModuleCount: number;     // Total number of modules
+  totalPower: number;           // Total power in kWp
+  moduleSpec: PVModuleSpec;     // Module specification
+  mountingSystem: PVMountingSystem;     // Mounting system components
+  electricalSystem: PVElectricalSystem; // Electrical system components
+  includesSurgeProtection: boolean;     // Whether surge protection is included
+  includesMonitoringSystem: boolean;    // Whether monitoring system is included
+  notes: string[];                      // Additional notes or recommendations
 }
 
 export interface Measurement {

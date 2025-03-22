@@ -1,10 +1,11 @@
+
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
-import { extractRoofEdgeMeasurements } from '@/utils/pvCalculations';
-import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
+import { extractRoofEdgeMeasurements, calculatePVMaterials } from '@/utils/pvCalculations';
+import { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';
 import { useCallback, useRef } from 'react';
 
 /**
@@ -99,6 +100,39 @@ export const useMeasurements = () => {
     return extractRoofEdgeMeasurements(measurements);
   }, [measurements]);
 
+  // Calculate PV materials for a measurement
+  const calculatePVMaterialsForMeasurement = useCallback((measurementId: string, inverterDistance: number = 10): PVMaterials | undefined => {
+    const measurement = measurements.find(m => m.id === measurementId);
+    if (!measurement || !measurement.pvModuleInfo) return undefined;
+    
+    // Calculate materials
+    const materials = calculatePVMaterials(measurement.pvModuleInfo, inverterDistance);
+    
+    // Update the measurement with the calculated materials
+    if (materials) {
+      const updatedMeasurement = {
+        ...measurement,
+        pvModuleInfo: {
+          ...measurement.pvModuleInfo,
+          pvMaterials: materials
+        }
+      };
+      
+      // Update the measurement in the measurements array
+      const updatedMeasurements = measurements.map(m => 
+        m.id === measurementId ? updatedMeasurement : m
+      );
+      
+      // Update state and trigger visual update
+      setMeasurements(updatedMeasurements);
+      updateVisualState(updatedMeasurements, allLabelsVisible);
+      
+      return materials;
+    }
+    
+    return undefined;
+  }, [measurements, setMeasurements, updateVisualState, allLabelsVisible]);
+
   // Export all functionality and state from the composed hooks
   return {
     // State
@@ -132,6 +166,7 @@ export const useMeasurements = () => {
     moveMeasurementUp,
     moveMeasurementDown,
     getRoofEdgeInfo,
+    calculatePVMaterialsForMeasurement,
     
     // Visual state update function - expose this so it can be replaced
     setUpdateVisualState: (fn: typeof updateVisualState) => {
@@ -145,4 +180,4 @@ export const useMeasurements = () => {
 };
 
 // Re-export types
-export type { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
+export type { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';
