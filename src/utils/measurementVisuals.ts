@@ -9,7 +9,6 @@ import {
   updateTextSprite
 } from '@/utils/textSprite';
 import { generatePVModuleGrid } from '@/utils/pvCalculations';
-import { renderPVModules, updatePVModuleSelection } from '@/utils/pvModuleRenderer';
 
 /**
  * Helper functions to convert Point to THREE.Vector3
@@ -633,27 +632,14 @@ export function renderMeasurements(
           !existingSegmentLabels.some(label => label.userData.segmentId === segment.id)
         ));
       
-      if (measurement.type === 'solar') {
-        // Use specialized solar rendering for solar measurements
-        renderSolarMeasurement(
-          measurement, 
-          measurementsRef, 
-          labelsRef, 
-          segmentLabelsRef, 
-          isMeasurementBeingEdited,
-          shouldRecreateSegmentLabels
-        );
-      } else {
-        // Use standard area rendering for regular area measurements
-        renderAreaMeasurement(
-          measurement, 
-          measurementsRef, 
-          labelsRef, 
-          segmentLabelsRef, 
-          isMeasurementBeingEdited,
-          shouldRecreateSegmentLabels
-        );
-      }
+      renderAreaMeasurement(
+        measurement, 
+        measurementsRef, 
+        labelsRef, 
+        segmentLabelsRef, 
+        isMeasurementBeingEdited,
+        shouldRecreateSegmentLabels
+      );
       
       if (!isMeasurementBeingEdited && existingLabels.length > 0) {
         const points3D = pointsToVector3Array(measurement.points);
@@ -1082,39 +1068,22 @@ function renderAreaMeasurement(
     }
   }
   
-  // For solar panels, check if we need to render detailed modules
-  if (measurement.type === 'solar' && measurement.pvModuleInfo && 
-      measurement.modulesVisible !== false) {
-    
+  // For solar panels, add a visual marker
+  if (measurement.type === 'solar') {
     // Calculate centroid of points
     const centroid = calculateCentroid(points3D);
-
-    // If we have PV module info, render the modules
-    if (measurement.pvModuleInfo.moduleCount > 0) {
-      renderPVModules(
-        measurement,
-        measurementsRef,
-        labelsRef,
-        {
-          baseY: measurement.points[0]?.y || 0,
-          includeLabels: true,
-          showModuleNumbers: true,
-          isInteractive: true
-        }
-      );
-    } else {
-      // Create a solar panel marker as fallback
-      const solarMarker = createRoofElementMarker(centroid, 'solar', 0x1EAEDB);
-      
-      // Store measurement ID in user data
-      solarMarker.userData = {
-        measurementId: measurement.id,
-        type: 'solar'
-      };
-      
-      // Add marker to measurements group
-      measurementsRef.add(solarMarker);
-    }
+    
+    // Create a solar panel marker
+    const solarMarker = createRoofElementMarker(centroid, 'solar', 0x1EAEDB); // Changed to blue
+    
+    // Store measurement ID in user data
+    solarMarker.userData = {
+      measurementId: measurement.id,
+      type: 'solar'
+    };
+    
+    // Add marker to measurements group
+    measurementsRef.add(solarMarker);
   }
   
   // Only create a new main label if needed
@@ -1276,46 +1245,28 @@ function renderSolarMeasurement(
     measurementsRef.add(mesh);
   }
   
-  // Render PV modules if they're enabled and we have module info
-  if (measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0 && 
-      measurement.modulesVisible !== false) {
-    
-    renderPVModules(
-      measurement,
-      measurementsRef,
-      labelsRef,
-      {
-        baseY: measurement.points[0]?.y || 0,
-        includeLabels: true,
-        showModuleNumbers: true,
-        isInteractive: true
-      }
-    );
-  } else {
-    // Only add a marker if modules aren't being shown
-    const centroid = calculateCentroid(points3D);
-    const solarMarker = createRoofElementMarker(centroid, 'solar', measurementColor);
-    
-    // Store measurement ID in user data
-    solarMarker.userData = {
-      measurementId: measurement.id,
-      type: 'solar'
-    };
-    
-    // Add marker to measurements group
-    measurementsRef.add(solarMarker);
-  }
+  // Add a visual marker for solar area
+  const centroid = calculateCentroid(points3D);
+  const solarMarker = createRoofElementMarker(centroid, 'solar', measurementColor);
+  
+  // Store measurement ID in user data
+  solarMarker.userData = {
+    measurementId: measurement.id,
+    type: 'solar'
+  };
+  
+  // Add marker to measurements group
+  measurementsRef.add(solarMarker);
   
   // Create label if needed
   if (shouldCreateLabel) {
     // Calculate centroid for label placement
-    const centroid = calculateCentroid(points3D);
     centroid.y += LABEL_Y_OFFSET;
     
     // Create label text
     const labelText = formatMeasurementLabel(measurement.value, measurement.type);
     
-    // Convert color number to string using CSS hex format
+    // Fixed: Convert color number to string using CSS hex format
     const label = createMeasurementLabel(labelText, centroid, true, '#' + measurementColor.toString(16).padStart(6, '0'));
     
     // Store measurement ID in user data for reference
@@ -1654,4 +1605,3 @@ function renderPVModuleGrid(
   
   labelsRef.add(pvLabel);
 }
-

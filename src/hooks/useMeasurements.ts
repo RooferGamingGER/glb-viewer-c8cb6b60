@@ -1,4 +1,3 @@
-
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
@@ -100,125 +99,6 @@ export const useMeasurements = () => {
     return extractRoofEdgeMeasurements(measurements);
   }, [measurements]);
 
-  // PV Module visibility and selection management
-  const togglePVModulesVisibility = useCallback((id: string) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === id) {
-          return {
-            ...m,
-            modulesVisible: m.modulesVisible === undefined ? true : !m.modulesVisible
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
-  
-  // Function to toggle detailed module view
-  const toggleDetailedModules = useCallback((id: string) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === id && m.pvModuleInfo) {
-          return {
-            ...m,
-            pvModuleInfo: {
-              ...m.pvModuleInfo,
-              showDetailedModules: m.pvModuleInfo.showDetailedModules === undefined 
-                ? true 
-                : !m.pvModuleInfo.showDetailedModules
-            }
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
-  
-  // Function to select/deselect a PV module
-  const toggleModuleSelection = useCallback((measurementId: string, moduleIndex: number) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === measurementId) {
-          // Initialize selectedModules array if it doesn't exist
-          const currentSelectedModules = m.selectedModules || [];
-          
-          // Toggle selection: if already selected, remove it; otherwise add it
-          let newSelectedModules;
-          if (currentSelectedModules.includes(moduleIndex)) {
-            newSelectedModules = currentSelectedModules.filter(index => index !== moduleIndex);
-          } else {
-            newSelectedModules = [...currentSelectedModules, moduleIndex];
-          }
-          
-          return {
-            ...m,
-            selectedModules: newSelectedModules
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
-  
-  // Function to select all modules in a measurement
-  const selectAllModules = useCallback((measurementId: string) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === measurementId && m.pvModuleInfo && m.pvModuleInfo.moduleCount > 0) {
-          // Create an array with all module indices
-          const allModuleIndices = Array.from({ length: m.pvModuleInfo.moduleCount }, (_, index) => index);
-          
-          return {
-            ...m,
-            selectedModules: allModuleIndices
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
-  
-  // Function to deselect all modules in a measurement
-  const deselectAllModules = useCallback((measurementId: string) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === measurementId) {
-          return {
-            ...m,
-            selectedModules: []
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
-
   // Export all functionality and state from the composed hooks
   return {
     // State
@@ -252,13 +132,6 @@ export const useMeasurements = () => {
     moveMeasurementUp,
     moveMeasurementDown,
     getRoofEdgeInfo,
-    
-    // PV Module specific actions
-    togglePVModulesVisibility,
-    toggleDetailedModules,
-    toggleModuleSelection,
-    selectAllModules,
-    deselectAllModules,
     
     // Visual state update function - expose this so it can be replaced
     setUpdateVisualState: (fn: typeof updateVisualState) => {

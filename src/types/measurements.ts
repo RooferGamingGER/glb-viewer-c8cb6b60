@@ -71,7 +71,6 @@ export interface PVModuleInfo {
   userDefinedLength?: number; // User-defined available length in meters
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
-  showDetailedModules?: boolean; // Whether to show detailed 3D modules
 }
 
 export interface PVModuleSpec {
@@ -123,13 +122,8 @@ export interface Measurement {
   
   // PV module calculation data
   pvModuleInfo?: PVModuleInfo; // Information about PV module placement
-  
+
   // PV module specific fields for individually drawn modules
   pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
   powerOutput?: number;   // Power output in watts for this module
-  
-  // PV module selection
-  selectedModules?: number[]; // Array of indices of selected modules
-  showModules?: boolean;     // Whether to show the modules
-  modulesVisible?: boolean;  // Whether to show the modules
 }

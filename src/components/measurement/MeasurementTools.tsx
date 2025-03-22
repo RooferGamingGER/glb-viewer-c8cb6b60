@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
+// Import custom hooks
 import { useThreeObjects } from '@/hooks/useThreeObjects';
 import { useLabelScaling } from '@/hooks/useLabelScaling';
 import { useMeasurementInteraction } from '@/hooks/useMeasurementInteraction';
@@ -10,6 +10,7 @@ import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 
+// Import visualization utilities
 import { 
   renderCurrentPoints, 
   renderEditPoints, 
@@ -17,8 +18,7 @@ import {
   clearAllVisuals
 } from '@/utils/measurementVisuals';
 
-import { renderPVModules, updatePVModuleSelection } from '@/utils/pvModuleRenderer';
-
+// Import components
 import MeasurementSidebar from './MeasurementSidebar';
 import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
@@ -39,6 +39,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   camera,
   autoOpenSidebar = false
 }) => {
+  // Measurement state from main hook
   const { 
     measurements,
     currentPoints,
@@ -65,14 +66,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     allLabelsVisible,
     moveMeasurementUp,
     moveMeasurementDown,
-    setUpdateVisualState,
-    togglePVModulesVisibility,
-    toggleDetailedModules,
-    toggleModuleSelection,
-    selectAllModules,
-    deselectAllModules
+    setUpdateVisualState
   } = useMeasurements();
 
+  // Three.js object references
   const {
     pointsRef,
     linesRef,
@@ -82,6 +79,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     segmentLabelsRef
   } = useThreeObjects(scene, enabled);
 
+  // Utils for handling measurement visibility
   const { 
     handleToggleMeasurementVisibility,
     handleToggleLabelVisibility,
@@ -100,28 +98,19 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   );
 
+  // Define the visual update function
   const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean) => {
+    // Update all labels visibility
     if (labelsRef.current && segmentLabelsRef.current) {
       updateAllLabelsVisibility(labelVisible);
     }
     
+    // Update measurement markers visibility including PV areas
     if (measurementsRef.current) {
       updateMeasurementMarkers();
-      
-      updatedMeasurements
-        .filter(m => m.type === 'solar' && m.modulesVisible !== false && m.selectedModules !== undefined)
-        .forEach(measurement => {
-          if (measurement.selectedModules && measurement.selectedModules.length > 0) {
-            updatePVModuleSelection(
-              measurementsRef.current!,
-              labelsRef.current,
-              measurement.id,
-              measurement.selectedModules
-            );
-          }
-        });
     }
     
+    // Ensure the measurements are rendered with their updated state
     if (measurementsRef.current && labelsRef.current && segmentLabelsRef.current) {
       renderMeasurements(
         measurementsRef.current, 
@@ -133,16 +122,19 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [updateAllLabelsVisibility, updateMeasurementMarkers]);
 
+  // Set the update function in the measurements hook
   useEffect(() => {
     setUpdateVisualState(updateVisualState);
   }, [setUpdateVisualState, updateVisualState]);
 
+  // Handlers for measurement interaction
   const interactionHandlers = {
     addPoint,
     startPointEdit,
     updateMeasurementPoint
   };
 
+  // Measurement interaction state
   const { 
     movingPointInfo, 
     setMovingPointInfo, 
@@ -152,7 +144,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     enabled,
     scene,
     camera,
-    true,
+    true, // Always open
     {
       pointsRef,
       linesRef,
@@ -169,10 +161,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editingPointIndex
   );
 
+  // Scale labels based on camera distance
   useLabelScaling(camera, labelsRef, segmentLabelsRef);
-
+  
+  // Utils for cleaning up measurement visuals
   const { clearMeasurementVisuals } = useMeasurementCleanup();
 
+  // Additional state and handlers for UI
   const { 
     showTable,
     setShowTable,
@@ -211,48 +206,62 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   );
 
+  // Update visibility when allLabelsVisible changes
   useEffect(() => {
     updateAllLabelsVisibility(allLabelsVisible);
   }, [allLabelsVisible, updateAllLabelsVisibility]);
 
+  // Handle label visibility based on edit mode
   useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
     
+    // Determine if we're in any edit mode
     const isEditing = editMeasurementId !== null || movingPointInfo !== null || editingSegmentId !== null;
     
+    // Process all labels in both groups
     const processLabel = (label: THREE.Object3D, isSegmentLabel = false) => {
       if (!label.userData) return;
       
+      // Preview labels are always visible
       if (label.userData.isPreview) {
         label.visible = true;
         return;
       }
       
+      // During editing, hide all non-preview labels
       if (isEditing) {
         label.visible = false;
         return;
       }
       
+      // When not editing, set visibility based on the measurement's visibility state
       const measurementId = label.userData.measurementId;
       if (measurementId) {
         const measurement = measurements.find(m => m.id === measurementId);
+        // Only show label if measurement exists and is visible
         label.visible = measurement?.visible !== false && measurement?.labelVisible !== false;
       } else {
+        // If no measurement ID, default to visible
         label.visible = true;
       }
     };
     
+    // Process main labels
     labelsRef.current.children.forEach(label => {
       processLabel(label);
     });
     
+    // Process segment labels
     segmentLabelsRef.current.children.forEach(label => {
       processLabel(label, true);
     });
+    
   }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
 
+  // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
     if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
+      // When editing is complete, re-render all measurements to ensure labels are updated
       renderMeasurements(
         measurementsRef.current, 
         labelsRef.current, 
@@ -263,6 +272,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
 
+  // Re-render measurements when they change
   useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
@@ -273,6 +283,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements]);
 
+  // Re-render current points when they change
   useEffect(() => {
     renderCurrentPoints(
       pointsRef.current, 
@@ -283,6 +294,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [currentPoints, activeMode]);
 
+  // Re-render edit points when edit state changes
   useEffect(() => {
     renderEditPoints(
       editPointsRef.current, 
@@ -293,6 +305,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   }, [measurements, editMeasurementId, editingPointIndex]);
 
+  // Clean up when enabled state changes
   useEffect(() => {
     if (!enabled) {
       clearAllVisuals(
@@ -304,6 +317,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         segmentLabelsRef.current
       );
       
+      // Also clear any preview visuals
       if (clearPreviewGroup) {
         clearPreviewGroup();
       }
@@ -330,10 +344,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators]);
 
+  // Callback for handling cancellation of editing
   const handleCancelEditingWithCleanup = () => {
     handleCancelEditing();
     setMovingPointInfo(null);
     
+    // Clear preview displays
     if (clearPreviewGroup) {
       clearPreviewGroup();
     }
@@ -342,6 +358,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       clearAddPointIndicators();
     }
     
+    // Re-render measurements to ensure labels are displayed correctly
     renderMeasurements(
       measurementsRef.current, 
       labelsRef.current, 
@@ -351,30 +368,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   };
 
+  // Check if current mode is a roof element mode
   const isRoofElementMode = ![
     'length', 'height', 'area', 'none'
   ].includes(activeMode);
 
+  // Handle label visibility toggling with direct visual update
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
   };
 
-  // Create adapter functions to match the required signatures
-  const handleUpdateMeasurement = (measurement: Measurement) => {
-    updateMeasurement(measurement);
-  };
-
-  const handleToggleSegments = () => {
-    toggleSegments();
-    return true; // Return a boolean value
-  };
-
+  // Component rendering
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
+          {/* Fixed Header - Tools Section */}
           <div className="flex-shrink-0 border-b border-border/50">
             <MeasurementToolControls 
               activeMode={activeMode}
@@ -385,6 +396,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               setShowTable={setShowTable}
             />
             
+            {/* Only render MeasurementControls for standard measurements */}
             {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
               <MeasurementControls
                 activeMode={activeMode}
@@ -395,6 +407,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               />
             )}
             
+            {/* Only render RoofElementControls for roof elements */}
             {isRoofElementMode && (
               <RoofElementControls
                 activeMode={activeMode}
@@ -421,18 +434,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             )}
           </div>
           
+          {/* Measurement list */}
           <MeasurementSidebar
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
             toggleLabelVisibility={handleToggleLabelVisibility}
-            togglePVModulesVisibility={togglePVModulesVisibility}
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
-            updateMeasurement={handleUpdateMeasurement}
+            updateMeasurement={updateMeasurement}
             editMeasurementId={editMeasurementId}
             segmentsOpen={segmentsOpen}
-            toggleSegments={handleToggleSegments}
+            toggleSegments={toggleSegments}
             onEditSegment={setEditingSegmentId}
             movingPointInfo={movingPointInfo}
             showTable={showTable}
@@ -442,10 +455,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             activeMode={activeMode}
             handleMoveMeasurementUp={handleMoveMeasurementUp}
             handleMoveMeasurementDown={handleMoveMeasurementDown}
-            toggleModuleSelection={toggleModuleSelection}
-            selectAllModules={selectAllModules}
-            deselectAllModules={deselectAllModules}
-            toggleDetailedModules={toggleDetailedModules}
           />
         </div>
       </div>
