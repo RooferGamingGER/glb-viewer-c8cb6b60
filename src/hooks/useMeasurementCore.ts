@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -18,7 +19,8 @@ import {
   calculateAverageInclination,
   calculateQuadrilateralDimensions,
   calculateBoundingBox,
-  calculateCentroid
+  calculateCentroid,
+  calculatePolygonArea
 } from '@/utils/measurementCalculations';
 import {
   PV_MODULE_TEMPLATES,
