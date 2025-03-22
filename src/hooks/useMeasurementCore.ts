@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -26,7 +25,8 @@ import {
   PV_MODULE_TEMPLATES,
   calculatePVModulePlacement,
   DEFAULT_EDGE_DISTANCE,
-  DEFAULT_MODULE_SPACING
+  DEFAULT_MODULE_SPACING,
+  extractRoofEdgeMeasurements
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -227,8 +227,18 @@ export const useMeasurementCore = () => {
       }
     }
     
+    const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
+    
     const polygonArea = calculateArea(points);
-    const moduleInfo = calculatePVModulePlacement(points);
+    const moduleInfo = calculatePVModulePlacement(
+      points,
+      undefined,
+      undefined,
+      DEFAULT_EDGE_DISTANCE,
+      DEFAULT_MODULE_SPACING,
+      undefined,
+      roofEdgeInfo
+    );
     const moduleSpec = PV_MODULE_TEMPLATES[0];
     
     const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
@@ -258,7 +268,11 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
     
     toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
-  }, [allLabelsVisible, setMeasurements, setCurrentPoints, setActiveMode]);
+    
+    if (roofEdgeInfo.hasAllEdges) {
+      toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+    }
+  }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
 
   const handleCalculatePV = (areaPoints: Point[], userDimensions?: {width: number, length: number}) => {
     if (areaPoints.length !== 4) {
@@ -267,13 +281,16 @@ export const useMeasurementCore = () => {
       }
     }
     
+    const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
+    
     const moduleInfo = calculatePVModulePlacement(
       areaPoints,
       undefined,
       undefined,
       DEFAULT_EDGE_DISTANCE,
       DEFAULT_MODULE_SPACING,
-      userDimensions
+      userDimensions,
+      roofEdgeInfo
     );
     
     const moduleSpec = PV_MODULE_TEMPLATES[0];

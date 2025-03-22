@@ -42,6 +42,77 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
 ];
 
 /**
+ * Extract roof edge measurements from the measurements array
+ * @param measurements - Array of all measurements
+ * @returns Object with average dimensions for each edge type
+ */
+export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
+  ridgeLength?: number;   // First (ridge) length
+  eaveLength?: number;    // Traufe (eave) length
+  vergeWidth1?: number;   // Ortgang (verge) length 1
+  vergeWidth2?: number;   // Ortgang (verge) length 2
+  averageWidth?: number;  // Average of verge lengths
+  averageLength?: number; // Average of ridge and eave lengths
+  hasAllEdges: boolean;   // Whether all edge measurements are available
+} => {
+  // Find all ridge, eave, and verge measurements
+  const ridgeMeasurements = measurements.filter(m => m.type === 'ridge');
+  const eaveMeasurements = measurements.filter(m => m.type === 'eave');
+  const vergeMeasurements = measurements.filter(m => m.type === 'verge');
+  
+  // Initialize result object
+  const result: {
+    ridgeLength?: number;
+    eaveLength?: number;
+    vergeWidth1?: number;
+    vergeWidth2?: number;
+    averageWidth?: number;
+    averageLength?: number;
+    hasAllEdges: boolean;
+  } = {
+    hasAllEdges: false
+  };
+  
+  // Extract ridge length (if available)
+  if (ridgeMeasurements.length > 0) {
+    result.ridgeLength = ridgeMeasurements[0].value;
+  }
+  
+  // Extract eave length (if available)
+  if (eaveMeasurements.length > 0) {
+    result.eaveLength = eaveMeasurements[0].value;
+  }
+  
+  // Extract verge widths (if available)
+  if (vergeMeasurements.length >= 1) {
+    result.vergeWidth1 = vergeMeasurements[0].value;
+  }
+  
+  if (vergeMeasurements.length >= 2) {
+    result.vergeWidth2 = vergeMeasurements[1].value;
+  }
+  
+  // Calculate average dimensions if we have the necessary measurements
+  if (result.ridgeLength !== undefined && result.eaveLength !== undefined) {
+    result.averageLength = (result.ridgeLength + result.eaveLength) / 2;
+  }
+  
+  if (result.vergeWidth1 !== undefined && result.vergeWidth2 !== undefined) {
+    result.averageWidth = (result.vergeWidth1 + result.vergeWidth2) / 2;
+  } else if (result.vergeWidth1 !== undefined) {
+    result.averageWidth = result.vergeWidth1;
+  } else if (result.vergeWidth2 !== undefined) {
+    result.averageWidth = result.vergeWidth2;
+  }
+  
+  // Check if we have all edges
+  result.hasAllEdges = result.averageWidth !== undefined && result.averageLength !== undefined;
+  
+  console.log("Extracted roof edge measurements:", result);
+  return result;
+};
+
+/**
  * Calculate the distance between two points in 3D space
  */
 const calculateDistance3D = (p1: Point, p2: Point): number => {
@@ -91,6 +162,7 @@ const findParallelSides = (points: Point[]): {
  * @param edgeDistance - Distance from the roof edge in meters (default: 0.1m)
  * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
  * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
+ * @param roofEdgeInfo - Optional roof edge measurements from ridge, eave, verge
  * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
@@ -99,7 +171,12 @@ export const calculatePVModulePlacement = (
   moduleHeight: number = DEFAULT_MODULE_HEIGHT,
   edgeDistance: number = DEFAULT_EDGE_DISTANCE,
   moduleSpacing: number = DEFAULT_MODULE_SPACING,
-  userDimensions?: {width: number, length: number}
+  userDimensions?: {width: number, length: number},
+  roofEdgeInfo?: {
+    averageWidth?: number;
+    averageLength?: number;
+    hasAllEdges: boolean;
+  }
 ): PVModuleInfo => {
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
@@ -129,8 +206,24 @@ export const calculatePVModulePlacement = (
     // Adjust bounding dimensions to match user values plus edge distance
     boundingWidth = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
+  } 
+  // Use roof edge measurements if available (second priority)
+  else if (roofEdgeInfo && roofEdgeInfo.hasAllEdges) {
+    boundingWidth = roofEdgeInfo.averageWidth!;
+    boundingLength = roofEdgeInfo.averageLength!;
+    
+    // Derive the available area by accounting for edge distances
+    availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
+    availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+    
+    console.log("Using roof edge measurements for dimensions:", {
+      boundingWidth,
+      boundingLength,
+      availableWidth,
+      availableLength
+    });
   } else {
-    // Calculate dimensions based on the shape of the polygon
+    // Calculate dimensions based on the shape of the polygon (fallback)
     
     // Make sure we're working with a quadrilateral (4 points)
     // If not, we'll create a representative quadrilateral

@@ -4,6 +4,7 @@ import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
+import { extractRoofEdgeMeasurements } from '@/utils/pvCalculations';
 import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
 import { useCallback, useRef } from 'react';
 
@@ -93,6 +94,11 @@ export const useMeasurements = () => {
     setEditingPointIndex,
     setMeasurements
   );
+  
+  // Get roof edge information from measurements
+  const getRoofEdgeInfo = useCallback(() => {
+    return extractRoofEdgeMeasurements(measurements);
+  }, [measurements]);
 
   // Export all functionality and state from the composed hooks
   return {
@@ -126,6 +132,7 @@ export const useMeasurements = () => {
     cancelEditing,
     moveMeasurementUp,
     moveMeasurementDown,
+    getRoofEdgeInfo,
     
     // Visual state update function - expose this so it can be replaced
     setUpdateVisualState: (fn: typeof updateVisualState) => {
