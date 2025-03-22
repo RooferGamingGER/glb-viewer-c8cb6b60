@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -682,17 +681,19 @@ export function renderPVModules(
         const moduleGeometry = new THREE.BoxGeometry(width, height, depth);
         
         // Frame material (silver aluminum)
-        const frameMaterial = new THREE.MeshLambertMaterial({
+        const frameMaterial = new THREE.MeshStandardMaterial({
           color: 0xC0C0C0,
           metalness: 0.7,
-          roughness: 0.3
+          roughness: 0.5
         });
         
-        // Cell material (blue silicon)
-        const cellMaterial = new THREE.MeshLambertMaterial({
-          color: PV_MODULE_COLORS.MODULE,
+        // Glass material (clear glass)
+        const glassMaterial = new THREE.MeshStandardMaterial({
+          color: 0x6688aa,
+          transparent: true,
+          opacity: 0.6,
           metalness: 0.2,
-          roughness: 0.7
+          roughness: 0.1
         });
         
         // Create module mesh with multiple materials
@@ -701,7 +702,7 @@ export function renderPVModules(
           frameMaterial, // Left side
           frameMaterial, // Top
           frameMaterial, // Bottom
-          cellMaterial,  // Front (cell side)
+          glassMaterial, // Front (glass side)
           frameMaterial  // Back
         ];
         

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -138,9 +137,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   );
 
-  // Create a function to handle toggling segment info
+  // Create a function to handle toggling segment info that returns the required type
   const handleToggleSegments = (id: string) => {
-    return { [id]: true }; // Default implementation returns a valid object
+    return toggleSegments(id);
+  };
+
+  // Wrapper for updateMeasurement to handle the type mismatch
+  const handleUpdateMeasurement = (measurement: Measurement) => {
+    updateMeasurement(measurement);
   };
 
   // Additional state and handlers for UI
@@ -420,7 +424,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
+            updateMeasurement={handleUpdateMeasurement}
             editMeasurementId={editMeasurementId}
             segmentsOpen={segmentsOpen}
             toggleSegments={handleToggleSegments}
