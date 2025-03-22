@@ -396,15 +396,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleAllLabelsVisibility();
   };
 
-  // Create wrapper function for updateMeasurement that matches the expected signature
+  // Create adapter functions for handling different function signatures
   const handleUpdateMeasurement = (measurement: Measurement) => {
     updateMeasurement(measurement);
   };
 
-  // Create wrapper function for toggleSegments that returns a boolean as expected
+  // Create adapter for toggleSegments - now returns boolean and accepts no arguments
   const handleToggleSegments = () => {
     toggleSegments();
-    return true; // Return true to satisfy the boolean return type
+    return true; // Return a boolean value to match expected type
   };
 
   // Break up the component into logical sections
