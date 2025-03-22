@@ -49,14 +49,17 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
         </div>
         
         <div className="flex space-x-1 mb-1">
-          {(activeMode === 'area') && (
+          {(activeMode === 'area' || activeMode === 'length' || activeMode === 'height') && (
             <>
               <Button
                 variant="default" 
                 size="sm"
                 className="flex-1"
                 onClick={handleFinalizeMeasurement}
-                disabled={currentPoints.length < 3}
+                disabled={
+                  (activeMode === 'area' && currentPoints.length < 3) ||
+                  ((activeMode === 'length' || activeMode === 'height') && currentPoints.length < 2)
+                }
                 title="Messung abschließen"
               >
                 <Check className="h-3 w-3 mr-1" />

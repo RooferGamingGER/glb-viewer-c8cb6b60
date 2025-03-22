@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
@@ -75,11 +76,15 @@ export const generateSegments = (points: Point[]): Segment[] => {
     const length = calculateDistance(points[i], points[(i + 1) % points.length]);
     const inclination = calculateInclination(p1, p2);
     
+    // Format segment label with length
+    let label = `${length.toFixed(2)} m`;
+    
     segments.push({
       id: nanoid(),
       points: [points[i], points[(i + 1) % points.length]],
       length,
-      inclination
+      inclination,
+      label
     });
   }
   
@@ -98,7 +103,7 @@ export const calculateArea = (points: Point[]): number => {
     // First project points to best-fit plane for more accurate results
     const { projectedPoints } = projectPointsToPlane(points);
     
-    // Convert 3D points to 2D coordinates for triangulation
+    // Convert projected points to array for triangulation
     const vertices: number[] = [];
     for (const point of projectedPoints) {
       vertices.push(point.x, point.z); // Use x and z coordinates for 2D projection
@@ -110,22 +115,26 @@ export const calculateArea = (points: Point[]): number => {
     // Calculate the area of each triangle and sum them up
     let totalArea = 0;
     for (let i = 0; i < triangleIndices.length; i += 3) {
+      const i1 = triangleIndices[i];
+      const i2 = triangleIndices[i+1];
+      const i3 = triangleIndices[i+2];
+      
       const p1 = {
-        x: vertices[triangleIndices[i] * 2],
+        x: vertices[i1 * 2],
         y: 0,
-        z: vertices[triangleIndices[i] * 2 + 1]
+        z: vertices[i1 * 2 + 1]
       };
       
       const p2 = {
-        x: vertices[triangleIndices[i + 1] * 2],
+        x: vertices[i2 * 2],
         y: 0,
-        z: vertices[triangleIndices[i + 1] * 2 + 1]
+        z: vertices[i2 * 2 + 1]
       };
       
       const p3 = {
-        x: vertices[triangleIndices[i + 2] * 2],
+        x: vertices[i3 * 2],
         y: 0,
-        z: vertices[triangleIndices[i + 2] * 2 + 1]
+        z: vertices[i3 * 2 + 1]
       };
       
       // Calculate the area of this triangle using the cross product

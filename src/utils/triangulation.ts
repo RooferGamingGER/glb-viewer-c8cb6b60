@@ -30,9 +30,12 @@ export function isPointConcave(points: Point[], index: number): boolean {
 export function triangulatePolygon(points: Point[]): number[] {
   if (points.length < 3) return [];
   
+  // First project the points to 2D
+  const { projectedPoints } = projectPointsToPlane(points);
+  
   // Prepare data for earcut (flatten coordinates)
   const vertices: number[] = [];
-  for (const point of points) {
+  for (const point of projectedPoints) {
     vertices.push(point.x, point.z); // Use x and z for 2D projection
   }
   
@@ -68,6 +71,16 @@ export function projectPointsToPlane(points: Point[]): {
   const normal = new THREE.Vector3().fromArray(eigenvectors[0]);
   normal.normalize();
   
+  // Create orthogonal basis vectors for the plane
+  const tangent = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(normal.dot(tangent)) > 0.9) {
+    tangent.set(0, 1, 0); // Use different vector if too parallel
+  }
+  
+  // Get basis vectors for the plane
+  const binormal = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+  tangent.crossVectors(binormal, normal).normalize();
+  
   // Create a plane using the centroid and normal
   const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
     normal,
@@ -81,7 +94,8 @@ export function projectPointsToPlane(points: Point[]): {
     
     // Project the point onto the plane
     projected.copy(p);
-    projected.sub(normal.clone().multiplyScalar(plane.distanceToPoint(p)));
+    const distance = plane.distanceToPoint(p);
+    projected.sub(normal.clone().multiplyScalar(distance));
     
     return {
       x: projected.x,
@@ -159,9 +173,6 @@ function computeEigenVectorsJacobi(matrix: number[][]): {
   eigenvalues: number[], 
   eigenvectors: number[][] 
 } {
-  // For small 3x3 matrices, we can use a simpler algorithm
-  // This is a simplified implementation of the Jacobi eigenvalue algorithm
-  
   // Create a copy of the matrix to work with
   const a: number[][] = [
     [...matrix[0]],
