@@ -49,21 +49,28 @@ export const calculatePVModulePlacement = (
   const availableHeight = Math.max(0, boundingHeight - (2 * edgeDistance));
   
   // Calculate effective module dimensions including spacing
-  const effectiveModuleWidth = moduleWidth + moduleSpacing;
-  const effectiveModuleHeight = moduleHeight + moduleSpacing;
+  // For correct calculation, we need to consider:
+  // - Each module takes its own dimensions
+  // - Each module needs spacing on one side (the last module in each row/column doesn't need extra spacing)
   
-  // Calculate for portrait orientation (modules laid vertically)
-  const portraitModulesX = Math.floor(availableWidth / effectiveModuleWidth);
-  const portraitModulesY = Math.floor(availableHeight / effectiveModuleHeight);
+  // Calculate for portrait orientation (height is the larger dimension)
+  // Number of modules that can fit in the width 
+  const portraitModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
+  // Number of modules that can fit in the height
+  const portraitModulesY = Math.floor(availableHeight / (moduleHeight + moduleSpacing));
+  // Total portrait modules
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
-  // Calculate for landscape orientation (modules laid horizontally)
-  const landscapeModulesX = Math.floor(availableWidth / effectiveModuleHeight);
-  const landscapeModulesY = Math.floor(availableHeight / effectiveModuleWidth);
+  // Calculate for landscape orientation (width is the larger dimension)
+  // Number of modules that can fit in the width
+  const landscapeModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
+  // Number of modules that can fit in the height
+  const landscapeModulesY = Math.floor(availableHeight / (moduleWidth + moduleSpacing));
+  // Total landscape modules
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
   
   // Choose the orientation that fits more modules
-  const usePortrait = portraitModuleCount > landscapeModuleCount;
+  const usePortrait = portraitModuleCount >= landscapeModuleCount;
   
   // Final module count
   const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;
