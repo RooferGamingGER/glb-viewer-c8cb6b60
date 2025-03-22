@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -358,23 +359,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleAllLabelsVisibility();
   };
 
+  // Create adapter functions to match the required signatures
   const handleUpdateMeasurement = (measurement: Measurement) => {
-    if (updateMeasurement) {
-      updateMeasurement(measurement);
-    }
+    updateMeasurement(measurement);
   };
 
   const handleToggleSegments = () => {
-    if (toggleSegments) {
-      toggleSegments();
-      return true; // Return a boolean value
-    }
-    return false;
-  };
-
-  const handleEditSegment = () => {
-    // This is a stub function to satisfy type requirements
-    // The actual implementation will be provided by the parent component
+    toggleSegments();
+    return true; // Return a boolean value
   };
 
   return (

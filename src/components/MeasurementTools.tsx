@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -17,6 +18,8 @@ import {
   renderMeasurements,
   clearAllVisuals
 } from '@/utils/measurementVisuals';
+
+import { renderPVModules, updatePVModuleSelection } from '@/utils/pvModuleRenderer';
 
 // Import components
 import MeasurementSidebar from './measurement/MeasurementSidebar';
@@ -65,7 +68,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint,
     allLabelsVisible,
     moveMeasurementUp,
-    moveMeasurementDown
+    moveMeasurementDown,
+    togglePVModulesVisibility,
+    toggleDetailedModules,
+    toggleModuleSelection,
+    selectAllModules,
+    deselectAllModules,
+    setUpdateVisualState
   } = useMeasurements();
 
   // Three.js object references
@@ -84,6 +93,64 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     startPointEdit,
     updateMeasurementPoint
   };
+  
+  // Measurement visibility handlers
+  const { 
+    handleToggleMeasurementVisibility,
+    handleToggleLabelVisibility,
+    updateAllLabelsVisibility,
+    updateMeasurementMarkers
+  } = useMeasurementVisibility(
+    measurements,
+    toggleMeasurementVisibility,
+    toggleLabelVisibility,
+    {
+      pointsRef,
+      linesRef,
+      measurementsRef,
+      labelsRef,
+      segmentLabelsRef
+    }
+  );
+  
+  // Visual state update callback
+  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean) => {
+    if (labelsRef.current && segmentLabelsRef.current) {
+      updateAllLabelsVisibility(labelVisible);
+    }
+    
+    if (measurementsRef.current) {
+      updateMeasurementMarkers();
+      
+      updatedMeasurements
+        .filter(m => m.type === 'solar' && m.modulesVisible !== false && m.selectedModules !== undefined)
+        .forEach(measurement => {
+          if (measurement.selectedModules && measurement.selectedModules.length > 0) {
+            updatePVModuleSelection(
+              measurementsRef.current!,
+              labelsRef.current,
+              measurement.id,
+              measurement.selectedModules
+            );
+          }
+        });
+    }
+    
+    if (measurementsRef.current && labelsRef.current && segmentLabelsRef.current) {
+      renderMeasurements(
+        measurementsRef.current, 
+        labelsRef.current, 
+        segmentLabelsRef.current, 
+        updatedMeasurements, 
+        true
+      );
+    }
+  }, [updateAllLabelsVisibility, updateMeasurementMarkers]);
+
+  // Register the visual update callback with the measurements hook
+  useEffect(() => {
+    setUpdateVisualState(updateVisualState);
+  }, [setUpdateVisualState, updateVisualState]);
 
   // Measurement interaction state
   const { 
@@ -95,7 +162,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     enabled,
     scene,
     camera,
-    true, // Always open
+    true,
     {
       pointsRef,
       linesRef,
@@ -118,25 +185,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Utils for cleaning up measurement visuals
   const { clearMeasurementVisuals } = useMeasurementCleanup();
   
-  // Utils for handling measurement visibility
-  const { 
-    handleToggleMeasurementVisibility,
-    handleToggleLabelVisibility,
-    updateAllLabelsVisibility,
-    updateMeasurementMarkers
-  } = useMeasurementVisibility(
-    measurements,
-    toggleMeasurementVisibility,
-    toggleLabelVisibility,
-    {
-      pointsRef,
-      linesRef,
-      measurementsRef,
-      labelsRef,
-      segmentLabelsRef
-    }
-  );
-
   // Additional state and handlers for UI
   const { 
     showTable,
@@ -175,26 +223,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       moveMeasurementDown
     }
   );
-
-  // Create adapter functions to match the required signatures
-  const handleUpdateMeasurement = (measurement: Measurement) => {
-    if (updateMeasurement) {
-      updateMeasurement(measurement);
-    }
-  };
-
-  const handleToggleSegments = () => {
-    if (toggleSegments) {
-      toggleSegments();
-      return true; // Return a boolean value
-    }
-    return false;
-  };
-
-  const handleEditSegment = () => {
-    // This is a stub function to satisfy type requirements
-    // The actual implementation will be provided by the parent component
-  };
 
   // Update visibility when allLabelsVisible changes
   useEffect(() => {
@@ -366,7 +394,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Handle label visibility toggling
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
-    updateAllLabelsVisibility(!allLabelsVisible);
+  };
+
+  // Create wrapper function for updateMeasurement that matches the expected signature
+  const handleUpdateMeasurement = (measurement: Measurement) => {
+    updateMeasurement(measurement);
+  };
+
+  // Create wrapper function for toggleSegments that returns a boolean as expected
+  const handleToggleSegments = () => {
+    toggleSegments();
+    return true; // Return true to satisfy the boolean return type
   };
 
   // Break up the component into logical sections
@@ -443,6 +481,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             activeMode={activeMode}
             handleMoveMeasurementUp={handleMoveMeasurementUp}
             handleMoveMeasurementDown={handleMoveMeasurementDown}
+            toggleModuleSelection={toggleModuleSelection}
+            selectAllModules={selectAllModules}
+            deselectAllModules={deselectAllModules}
+            toggleDetailedModules={toggleDetailedModules}
           />
         </div>
       </div>
