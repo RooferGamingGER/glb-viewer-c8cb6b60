@@ -413,8 +413,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
-                ? 'Hochformat (Kürzere Seite parallel zum Ortgang)' 
-                : 'Querformat (Längere Seite parallel zum Ortgang)'}</div>
+                ? 'Hochformat (Längere Seite parallel zum Ortgang)' 
+                : 'Querformat (Längere Seite parallel zur Traufe)'} </div>
               <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
               <div><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
@@ -443,7 +443,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                       <>
                         <div className="col-span-2 mt-1 font-semibold">Hochformat-Berechnung:</div>
                         <div className="col-span-2"><strong>Modulanordnung:</strong> 
-                          <span> Kürzere Modulseite ({measurement.pvModuleInfo.moduleWidth.toFixed(2)}m) parallel zum Ortgang</span>
+                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
                         </div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
                           <span> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
@@ -478,7 +478,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                       <>
                         <div className="col-span-2 mt-1 font-semibold">Querformat-Berechnung:</div>
                         <div className="col-span-2"><strong>Modulanordnung:</strong> 
-                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
+                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zur Traufe</span>
                         </div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
                           <span> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>

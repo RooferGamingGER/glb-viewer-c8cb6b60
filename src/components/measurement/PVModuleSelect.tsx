@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -368,6 +367,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                 <div className="text-sm text-muted-foreground mt-2 p-2 bg-green-50/10 border border-green-100 rounded">
                   <p>Randabstand: Abstand von der Dachkante zu den Modulen.</p>
                   <p>Modulabstand: Abstand zwischen einzelnen Modulen.</p>
+                  <p className="mt-2 font-medium">Orientierungen:</p>
+                  <p>Hochformat: Längere Modulseite parallel zum Ortgang</p>
+                  <p>Querformat: Längere Modulseite parallel zur Traufe</p>
                 </div>
               </div>
               
