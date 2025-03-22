@@ -39,10 +39,8 @@ import {
   calculatePVModulePlacement, 
   calculatePVPower, 
   formatPVModuleInfo,
-  DEFAULT_MODULE_WIDTH,
-  DEFAULT_MODULE_HEIGHT,
   DEFAULT_EDGE_DISTANCE,
-  DEFAULT_MODULE_SPACING
+  DEFAULT_MODULE_SPACING 
 } from '@/utils/pvCalculations';
 
 interface MeasurementItemProps {
@@ -138,13 +136,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const handleCalculatePV = () => {
     if (measurement.type !== 'area') return;
     
-    const pvModuleInfo = calculatePVModulePlacement(
-      measurement.points,
-      DEFAULT_MODULE_WIDTH,
-      DEFAULT_MODULE_HEIGHT,
-      DEFAULT_EDGE_DISTANCE,
-      DEFAULT_MODULE_SPACING
-    );
+    const pvModuleInfo = calculatePVModulePlacement(measurement.points);
     updateMeasurement(measurement.id, { pvModuleInfo });
   };
 
@@ -329,23 +321,23 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
               <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount).toFixed(2)} kWp</div>
-              <div><strong>Randabstand:</strong> {measurement.pvModuleInfo!.edgeDistance * 100} cm</div>
-              <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing * 100} cm</div>
-              <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
-              <div className="col-span-2"><strong>Verfügbare Fläche:</strong> {measurement.pvModuleInfo!.availableArea?.toFixed(2) || '0.00'} m²</div>
               
-              {measurement.pvModuleInfo!.portraitCount !== undefined && measurement.pvModuleInfo!.landscapeCount !== undefined && (
-                <>
-                  <div><strong>Hochkant:</strong> {measurement.pvModuleInfo!.portraitCount} Module</div>
-                  <div><strong>Querformat:</strong> {measurement.pvModuleInfo!.landscapeCount} Module</div>
-                </>
+              {measurement.pvModuleInfo!.modulesX && measurement.pvModuleInfo!.modulesY && (
+                <div className="col-span-2"><strong>Anordnung:</strong> {measurement.pvModuleInfo!.modulesX} × {measurement.pvModuleInfo!.modulesY} Module</div>
+              )}
+              <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
+              <div className="col-span-2"><strong>Randabstand:</strong> {(measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE).toFixed(2)}m</div>
+              <div className="col-span-2"><strong>Modulabstand:</strong> {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(2)}m</div>
+              
+              {measurement.pvModuleInfo!.availableArea !== undefined && (
+                <div className="col-span-2"><strong>Nutzbare Fläche:</strong> {measurement.pvModuleInfo!.availableArea.toFixed(2)}m²</div>
               )}
             </div>
           </div>
         )}
       </div>
       
-      {isAreaMeasurement && !hasPVInfo && (
+      {isAreaMeasurement && (
         <Button 
           variant="outline" 
           size="sm" 
@@ -353,7 +345,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           onClick={handleCalculatePV}
         >
           <Zap className="h-4 w-4 mr-2" />
-          PV-Module berechnen
+          {hasPVInfo ? "PV-Module neu berechnen" : "PV-Module berechnen"}
         </Button>
       )}
       
