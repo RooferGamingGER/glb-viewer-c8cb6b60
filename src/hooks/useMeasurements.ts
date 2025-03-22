@@ -103,34 +103,51 @@ export const useMeasurements = () => {
   // Calculate PV materials for a measurement
   const calculatePVMaterialsForMeasurement = useCallback((measurementId: string, inverterDistance: number = 10): PVMaterials | undefined => {
     const measurement = measurements.find(m => m.id === measurementId);
-    if (!measurement || !measurement.pvModuleInfo) return undefined;
+    if (!measurement || !measurement.pvModuleInfo) {
+      console.warn('Cannot calculate PV materials: measurement or pvModuleInfo not found', { measurementId });
+      return undefined;
+    }
+    
+    // Make sure the pvModuleSpec exists
+    if (!measurement.pvModuleInfo.pvModuleSpec) {
+      console.warn('Cannot calculate PV materials: pvModuleSpec is missing', { measurementId });
+      return undefined;
+    }
+    
+    console.log('Calculating materials for measurement', { 
+      measurementId, 
+      pvInfo: measurement.pvModuleInfo 
+    });
     
     // Calculate materials
     const materials = calculatePVMaterials(measurement.pvModuleInfo, inverterDistance);
     
-    // Update the measurement with the calculated materials
-    if (materials) {
-      const updatedMeasurement = {
-        ...measurement,
-        pvModuleInfo: {
-          ...measurement.pvModuleInfo,
-          pvMaterials: materials
-        }
-      };
-      
-      // Update the measurement in the measurements array
-      const updatedMeasurements = measurements.map(m => 
-        m.id === measurementId ? updatedMeasurement : m
-      );
-      
-      // Update state and trigger visual update
-      setMeasurements(updatedMeasurements);
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return materials;
+    if (!materials) {
+      console.warn('PV materials calculation returned undefined');
+      return undefined;
     }
     
-    return undefined;
+    console.log('Calculated PV materials', materials);
+    
+    // Update the measurement with the calculated materials
+    const updatedMeasurement = {
+      ...measurement,
+      pvModuleInfo: {
+        ...measurement.pvModuleInfo,
+        pvMaterials: materials
+      }
+    };
+    
+    // Update the measurement in the measurements array
+    const updatedMeasurements = measurements.map(m => 
+      m.id === measurementId ? updatedMeasurement : m
+    );
+    
+    // Update state and trigger visual update
+    setMeasurements(updatedMeasurements);
+    updateVisualState(updatedMeasurements, allLabelsVisible);
+    
+    return materials;
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible]);
 
   // Export all functionality and state from the composed hooks

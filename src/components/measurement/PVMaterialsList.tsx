@@ -33,6 +33,8 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
     );
   }
 
+  console.log("Rendering materials list with:", materials);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -50,7 +52,7 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
         </Button>
       </div>
 
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion type="single" collapsible className="w-full" defaultValue="modules">
         <AccordionItem value="modules">
           <AccordionTrigger className="py-2">
             <div className="flex items-center">
@@ -61,19 +63,19 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
           <AccordionContent>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="text-muted-foreground">Modultyp:</div>
-              <div>{materials.moduleSpec.name}</div>
+              <div>{materials.moduleSpec?.name || "Standard"}</div>
               
               <div className="text-muted-foreground">Anzahl:</div>
               <div>{materials.totalModuleCount} Stück</div>
               
               <div className="text-muted-foreground">Leistung je Modul:</div>
-              <div>{materials.moduleSpec.power} Wp</div>
+              <div>{materials.moduleSpec?.power || 425} Wp</div>
               
               <div className="text-muted-foreground">Gesamtleistung:</div>
               <div>{materials.totalPower.toFixed(1)} kWp</div>
               
               <div className="text-muted-foreground">Abmessungen:</div>
-              <div>{materials.moduleSpec.width.toFixed(2)} × {materials.moduleSpec.height.toFixed(2)} m</div>
+              <div>{materials.moduleSpec?.width?.toFixed(2) || "1.04"} × {materials.moduleSpec?.height?.toFixed(2) || "1.77"} m</div>
             </div>
           </AccordionContent>
         </AccordionItem>
