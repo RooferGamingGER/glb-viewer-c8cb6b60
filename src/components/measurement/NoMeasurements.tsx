@@ -5,7 +5,7 @@ import {
   Ruler, 
   ArrowUp, 
   SquareAsterisk, 
-  SolarIcon, 
+  Sun, // Replacing SolarIcon with Sun
   Square, 
   ScanFace 
 } from 'lucide-react';
@@ -35,7 +35,7 @@ export const NoMeasurements: React.FC<NoMeasurementsProps> = ({ activeMode }) =>
         };
       case 'solar':
         return {
-          icon: <SolarIcon className="h-5 w-5 mb-2 opacity-40" />,
+          icon: <Sun className="h-5 w-5 mb-2 opacity-40" />, // Using Sun icon instead
           message: "Markiere Flächen für die PV-Modulplatzierung."
         };
       case 'skylight':

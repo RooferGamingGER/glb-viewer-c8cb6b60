@@ -13,7 +13,7 @@ import {
   Eye, 
   EyeOff, 
   Tag, 
-  SolarIcon,
+  Sun, // Replacing SolarIcon with Sun
   ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -201,7 +201,7 @@ export const MeasurementDetail: React.FC<MeasurementDetailProps> = ({
               onClick={() => togglePVModulesVisibility(measurement.id)}
               title={measurement.modulesVisible === false ? "Module anzeigen" : "Module ausblenden"}
             >
-              <SolarIcon className={`h-4 w-4 ${measurement.modulesVisible === false ? 'opacity-50' : ''}`} />
+              <Sun className={`h-4 w-4 ${measurement.modulesVisible === false ? 'opacity-50' : ''}`} />
             </Button>
           )}
         </div>

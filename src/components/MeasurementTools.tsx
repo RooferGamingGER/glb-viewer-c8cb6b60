@@ -24,6 +24,7 @@ import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
+import { Measurement } from '@/types/measurements';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -174,6 +175,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       moveMeasurementDown
     }
   );
+
+  // Create adapter functions to match the required signatures
+  const handleUpdateMeasurement = (measurement: Measurement) => {
+    if (updateMeasurement) {
+      updateMeasurement(measurement);
+    }
+  };
+
+  const handleToggleSegments = () => {
+    if (toggleSegments) {
+      toggleSegments();
+      return true; // Return a boolean value
+    }
+    return false;
+  };
+
+  const handleEditSegment = () => {
+    // This is a stub function to satisfy type requirements
+    // The actual implementation will be provided by the parent component
+  };
 
   // Update visibility when allLabelsVisible changes
   useEffect(() => {
@@ -355,7 +376,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
-          {/* Fixed Header - Tools Section */}
           <div className="flex-shrink-0 border-b border-border/50">
             <MeasurementToolControls 
               activeMode={activeMode}
@@ -366,7 +386,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               setShowTable={setShowTable}
             />
             
-            {/* Only render MeasurementControls for standard measurements */}
             {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
               <MeasurementControls
                 activeMode={activeMode}
@@ -377,7 +396,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               />
             )}
             
-            {/* Only render RoofElementControls for roof elements */}
             {isRoofElementMode && (
               <RoofElementControls
                 activeMode={activeMode}
@@ -404,18 +422,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             )}
           </div>
           
-          {/* Measurement list */}
           <MeasurementSidebar
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
             toggleLabelVisibility={handleToggleLabelVisibility}
+            togglePVModulesVisibility={togglePVModulesVisibility}
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
+            updateMeasurement={handleUpdateMeasurement}
             editMeasurementId={editMeasurementId}
             segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
+            toggleSegments={handleToggleSegments}
             onEditSegment={setEditingSegmentId}
             movingPointInfo={movingPointInfo}
             showTable={showTable}

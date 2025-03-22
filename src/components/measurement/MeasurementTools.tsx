@@ -358,6 +358,25 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleAllLabelsVisibility();
   };
 
+  const handleUpdateMeasurement = (measurement: Measurement) => {
+    if (updateMeasurement) {
+      updateMeasurement(measurement);
+    }
+  };
+
+  const handleToggleSegments = () => {
+    if (toggleSegments) {
+      toggleSegments();
+      return true; // Return a boolean value
+    }
+    return false;
+  };
+
+  const handleEditSegment = () => {
+    // This is a stub function to satisfy type requirements
+    // The actual implementation will be provided by the parent component
+  };
+
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
@@ -418,10 +437,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
+            updateMeasurement={handleUpdateMeasurement}
             editMeasurementId={editMeasurementId}
             segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
+            toggleSegments={handleToggleSegments}
             onEditSegment={setEditingSegmentId}
             movingPointInfo={movingPointInfo}
             showTable={showTable}

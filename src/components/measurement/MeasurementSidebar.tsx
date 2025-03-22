@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -15,7 +14,7 @@ import {
   AlertTriangle,
   ArrowUp,
   ArrowDown,
-  SolarIcon
+  Sun
 } from 'lucide-react';
 import { Measurement, MeasurementMode } from '@/hooks/useMeasurements';
 
@@ -99,22 +98,17 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   
   const isItemExpanded = (id: string) => expandedItems.includes(id);
   
-  // Count visible measurements
   const visibleMeasurements = measurements.filter(m => m.visible !== false);
   
-  // Count measurements by type
   const measurementsByType = measurements.reduce((acc, m) => {
     acc[m.type] = (acc[m.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
   
-  // Check if a measurement is being edited
   const isEditingMeasurement = editMeasurementId !== null || movingPointInfo !== null;
   
-  // Filter out draft measurements (used during creation)
   const finalizedMeasurements = measurements.filter(m => !m.editMode);
   
-  // Handle module actions
   const handleModuleSelection = toggleModuleSelection || (() => {});
   const handleSelectAllModules = selectAllModules || (() => {});
   const handleDeselectAllModules = deselectAllModules || (() => {});
@@ -161,7 +155,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           ) : (
             <ScrollArea className="h-[calc(100vh-12rem)] pr-2" type="auto">
               <div className="pb-2">
-                {/* Table display */}
                 {showTable ? (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
@@ -278,7 +271,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
                                   <Tag className={`h-3 w-3 ${measurement.labelVisible === false ? 'opacity-50' : ''}`} />
                                 </Button>
                                 
-                                {/* Add toggle for PV modules visibility for solar measurements */}
                                 {measurement.type === 'solar' && measurement.pvModuleInfo && 
                                  measurement.pvModuleInfo.moduleCount > 0 && togglePVModulesVisibility && (
                                   <Button 
@@ -290,7 +282,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
                                       togglePVModulesVisibility(measurement.id);
                                     }}
                                   >
-                                    <SolarIcon className={`h-3 w-3 ${measurement.modulesVisible === false ? 'opacity-50' : ''}`} />
+                                    <Sun className={`h-3 w-3 ${measurement.modulesVisible === false ? 'opacity-50' : ''}`} />
                                   </Button>
                                 )}
                               </div>
