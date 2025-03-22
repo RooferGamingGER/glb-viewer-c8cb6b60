@@ -51,6 +51,13 @@ export interface PVModuleInfo {
   orientation: 'portrait' | 'landscape'; // Module orientation
   edgeDistance?: number;    // Distance from roof edge in meters
   moduleSpacing?: number;   // Spacing between modules in meters
+  columns?: number;         // Number of columns (modules across width)
+  rows?: number;            // Number of rows (modules across length)
+  boundingWidth?: number;   // Width of the bounding box for the area
+  boundingLength?: number;  // Length of the bounding box for the area
+  availableWidth?: number;  // Available width after edge distance
+  availableLength?: number; // Available length after edge distance
+  pvModuleSpec?: PVModuleSpec; // Reference to the module specification used
 }
 
 export interface PVModuleSpec {

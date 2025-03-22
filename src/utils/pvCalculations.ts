@@ -147,8 +147,8 @@ export const calculatePVModulePlacement = (
     moduleSpacing,
     coveragePercent: Math.min(coveragePercent, 100), // Cap at 100%
     orientation: usePortrait ? 'portrait' : 'landscape',
-    columns,
-    rows,
+    columns, // Add columns property
+    rows,    // Add rows property
     boundingWidth,
     boundingLength,
     availableWidth,
