@@ -11,7 +11,12 @@ export type MeasurementMode =
   | 'solar'     // Solaranlage
   | 'vent'      // Lüfter (nur Markierung)
   | 'hook'      // Dachhaken
-  | 'other';    // Sonstige Einbauten
+  | 'other'     // Sonstige Einbauten
+  | 'ridge'     // First
+  | 'eave'      // Traufe
+  | 'verge'     // Ortgang
+  | 'valley'    // Kehle
+  | 'hip';      // Grat
 
 export interface Point {
   x: number;
@@ -35,6 +40,14 @@ export interface Segment {
 export interface Point2D {
   x: number;
   y: number;
+}
+
+export interface PVModuleInfo {
+  moduleWidth: number;      // Module width in meters
+  moduleHeight: number;     // Module height in meters
+  moduleCount: number;      // Number of modules that can fit
+  coveragePercent: number;  // Coverage percentage of the roof area
+  orientation: 'portrait' | 'landscape'; // Module orientation
 }
 
 export interface Measurement {
@@ -75,4 +88,7 @@ export interface Measurement {
   
   // Custom screenshots for PDF export
   customScreenshots?: string[];  // Array of base64 data URLs for custom screenshots
+  
+  // PV module calculation data
+  pvModuleInfo?: PVModuleInfo; // Information about PV module placement
 }

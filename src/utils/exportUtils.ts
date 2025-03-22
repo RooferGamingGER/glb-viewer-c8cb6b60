@@ -1,5 +1,5 @@
-
-import { Measurement } from '@/types/measurements';
+import { Measurement, PVModuleInfo } from '@/types/measurements';
+import { calculatePVPower } from './pvCalculations';
 
 /**
  * Map measurement types to German display names
@@ -14,7 +14,12 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'solar': 'Solaranlage',
     'vent': 'Lüfter',
     'hook': 'Dachhaken',
-    'other': 'Sonstige Einbauten'
+    'other': 'Sonstige Einbauten',
+    'ridge': 'First',
+    'eave': 'Traufe',
+    'verge': 'Ortgang',
+    'valley': 'Kehle',
+    'hip': 'Grat'
   };
   
   return typeMapping[type] || type;
@@ -35,6 +40,9 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
   const otherMeasurements = consolidatedMeasurements.filter(m => 
     !['length', 'height', 'area', 'skylight'].includes(m.type)
   );
+  
+  // Find measurements with PV info
+  const measurementsWithPV = consolidatedMeasurements.filter(m => m.pvModuleInfo && m.pvModuleInfo.moduleCount > 0);
   
   // CSV-Inhalte vorbereiten mit UTF-8 BOM für korrekte Zeichenkodierung
   let csvContent = '\ufeff'; // UTF-8 BOM für korrekte Darstellung von Umlauten
@@ -110,6 +118,21 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
         
         csvContent += '\n';
       }
+      
+      // Add PV module info if available
+      if (m.pvModuleInfo && m.pvModuleInfo.moduleCount > 0) {
+        const pvInfo = m.pvModuleInfo;
+        
+        csvContent += '\n';
+        csvContent += `;PV-Planung für Fläche ${index + 1};\n`;
+        csvContent += `;Anzahl Module;${pvInfo.moduleCount};\n`;
+        csvContent += `;Modulgröße;${pvInfo.moduleWidth.toFixed(3)}m × ${pvInfo.moduleHeight.toFixed(3)}m;\n`;
+        csvContent += `;Ausrichtung;${pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat'};\n`;
+        csvContent += `;Dachflächenabdeckung;${pvInfo.coveragePercent.toFixed(1)}%;\n`;
+        csvContent += `;Gesamtleistung;${calculatePVPower(pvInfo.moduleCount).toFixed(2)} kWp;\n`;
+        
+        csvContent += '\n';
+      }
     });
     
     csvContent += '\n';
@@ -142,6 +165,18 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
       
       csvContent += `${index + 1};${typeName};${count};${description};\n`;
     });
+  }
+  
+  // PV-Planung Zusammenfassung, wenn PV-Module vorhanden sind
+  if (measurementsWithPV.length > 0) {
+    const totalModules = measurementsWithPV.reduce((sum, m) => 
+      sum + (m.pvModuleInfo?.moduleCount || 0), 0);
+    
+    const totalPower = calculatePVPower(totalModules);
+    
+    csvContent += 'PV-Planung Zusammenfassung;\n';
+    csvContent += 'Anzahl Dachflächen mit PV;Gesamtanzahl Module;Gesamtleistung (kWp);\n';
+    csvContent += `${measurementsWithPV.length};${totalModules};${totalPower.toFixed(2)};\n\n`;
   }
   
   // Datei herunterladen
@@ -193,6 +228,8 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   hooks: number;
   otherPenetrations: number;
   solarArea: number;
+  pvModules: number;
+  pvPower: number;
 } => {
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
@@ -212,13 +249,23 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
     .filter(m => m.type === 'solar')
     .reduce((sum, m) => sum + m.value, 0);
   
+  // Calculate total PV modules
+  const pvModules = measurements
+    .filter(m => m.pvModuleInfo && m.pvModuleInfo.moduleCount > 0)
+    .reduce((sum, m) => sum + (m.pvModuleInfo?.moduleCount || 0), 0);
+  
+  // Calculate total PV power in kWp
+  const pvPower = calculatePVPower(pvModules);
+  
   return {
     chimneys,
     skylights,
     vents,
     hooks,
     otherPenetrations,
-    solarArea
+    solarArea,
+    pvModules,
+    pvPower
   };
 };
 
@@ -241,6 +288,13 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   // Format for chimney measurements
   if (measurement.type === 'chimney') {
     return measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
+  }
+  
+  // PV module information for area measurements
+  if (measurement.type === 'area' && measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
+    const areaText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
+    const pvInfo = measurement.pvModuleInfo;
+    return `${areaText} (${pvInfo.moduleCount} PV-Module, ${calculatePVPower(pvInfo.moduleCount).toFixed(1)} kWp)`;
   }
   
   // Standard formatting for other measurement types

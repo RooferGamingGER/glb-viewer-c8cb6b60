@@ -20,7 +20,8 @@ import {
   MoveUp,
   MoveDown,
   Camera,
-  Image
+  Image,
+  Zap
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { calculatePVModulePlacement, calculatePVPower, formatPVModuleInfo } from '@/utils/pvCalculations';
 
 interface MeasurementItemProps {
   measurement: Measurement;
@@ -125,6 +127,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       customScreenshots: newScreenshots
     });
   };
+  
+  const handleCalculatePV = () => {
+    if (measurement.type !== 'area') return;
+    
+    const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+    updateMeasurement(measurement.id, { pvModuleInfo });
+  };
 
   const getTypeIcon = (type: string) => {
     switch(type) {
@@ -166,6 +175,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const isPenetration = ['vent', 'hook', 'other'].includes(measurement.type);
 
   const hasCustomScreenshots = measurement.customScreenshots && measurement.customScreenshots.length > 0;
+  
+  const hasPVInfo = measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0;
+  const isAreaMeasurement = measurement.type === 'area';
 
   return (
     <div 
@@ -202,6 +214,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             <Badge variant="outline" className="ml-2 text-xs bg-blue-50/30">
               <Image className="h-3 w-3 mr-1" />
               {measurement.customScreenshots!.length}
+            </Badge>
+          )}
+          
+          {hasPVInfo && (
+            <Badge variant="outline" className="ml-2 text-xs bg-green-50/30">
+              <Zap className="h-3 w-3 mr-1" />
+              {measurement.pvModuleInfo!.moduleCount}
             </Badge>
           )}
         </div>
@@ -285,7 +304,37 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
           </span>
         )}
+        
+        {/* Display PV module information if available */}
+        {hasPVInfo && (
+          <div className="mt-2 p-2 bg-green-50/10 border border-green-200/30 rounded-md">
+            <div className="flex items-center mb-1">
+              <Zap className="h-4 w-4 mr-1 text-green-600" />
+              <span className="font-medium">PV-Planung</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+              <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
+              <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
+              <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
+              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount).toFixed(2)} kWp</div>
+              <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
+            </div>
+          </div>
+        )}
       </div>
+      
+      {/* PV Calculate Button for Area Measurements */}
+      {isAreaMeasurement && !hasPVInfo && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-2 w-full"
+          onClick={handleCalculatePV}
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          PV-Module berechnen
+        </Button>
+      )}
       
       {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
         <div className="flex justify-end space-x-1 mt-1 mb-2">
