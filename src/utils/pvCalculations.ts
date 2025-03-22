@@ -1,3 +1,4 @@
+
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea } from './measurementCalculations';
 
@@ -137,6 +138,10 @@ export const calculatePVModulePlacement = (
   // Calculate coverage percentage
   const coveragePercent = (area > 0) ? (moduleArea / area) * 100 : 0;
   
+  // Calculate start positions (where the grid begins after edge distance)
+  const startX = minX + edgeDistance;
+  const startZ = minZ + edgeDistance;
+  
   return {
     moduleWidth,
     moduleHeight,
@@ -150,8 +155,93 @@ export const calculatePVModulePlacement = (
     boundingWidth,
     boundingLength,
     availableWidth,
-    availableLength
+    availableLength,
+    startX,   // Added start X position for visualization
+    startZ,   // Added start Z position for visualization
+    minX,     // Added for grid boundary visualization
+    maxX,     // Added for grid boundary visualization
+    minZ,     // Added for grid boundary visualization
+    maxZ,     // Added for grid boundary visualization
+    actualArea: area // The actual polygon area (not just bounding box)
   };
+};
+
+/**
+ * Generate the grid points for PV module placement
+ * 
+ * @param pvInfo - PV module information
+ * @param baseY - The Y-coordinate (height) to place the modules at
+ * @returns Array of module corner points and grid lines
+ */
+export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
+  modulePoints: Point[][],  // Array of 4 points for each module
+  gridLines: {from: Point, to: Point}[]  // Lines for the grid
+} => {
+  const modulePoints: Point[][] = [];
+  const gridLines: {from: Point, to: Point}[] = [];
+  
+  // Determine module dimensions based on orientation
+  const moduleWidth = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
+  const moduleHeight = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
+  
+  // Get the starting position (add edge distance to min coordinates)
+  const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
+  const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
+  
+  // Generate module placement grid
+  for (let row = 0; row < pvInfo.rows!; row++) {
+    for (let col = 0; col < pvInfo.columns!; col++) {
+      // Calculate position of this module
+      const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
+      const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
+      
+      // Create 4 corner points for this module
+      const moduleCorners: Point[] = [
+        { x, y: baseY + 0.02, z },  // Top-left
+        { x: x + moduleWidth, y: baseY + 0.02, z },  // Top-right
+        { x: x + moduleWidth, y: baseY + 0.02, z: z + moduleHeight },  // Bottom-right
+        { x, y: baseY + 0.02, z: z + moduleHeight }  // Bottom-left
+      ];
+      
+      modulePoints.push(moduleCorners);
+      
+      // Add grid lines for this module
+      for (let i = 0; i < 4; i++) {
+        const from = moduleCorners[i];
+        const to = moduleCorners[(i + 1) % 4];
+        gridLines.push({ from, to });
+      }
+    }
+  }
+  
+  // Add boundary lines showing the edge distance
+  const boundaryPoints = [
+    { x: pvInfo.minX, y: baseY + 0.01, z: pvInfo.minZ },
+    { x: pvInfo.maxX, y: baseY + 0.01, z: pvInfo.minZ },
+    { x: pvInfo.maxX, y: baseY + 0.01, z: pvInfo.maxZ },
+    { x: pvInfo.minX, y: baseY + 0.01, z: pvInfo.maxZ }
+  ];
+  
+  // Add available area boundary lines inside edge distance
+  const availableAreaPoints = [
+    { x: startX, y: baseY + 0.01, z: startZ },
+    { x: startX + pvInfo.availableWidth, y: baseY + 0.01, z: startZ },
+    { x: startX + pvInfo.availableWidth, y: baseY + 0.01, z: startZ + pvInfo.availableLength },
+    { x: startX, y: baseY + 0.01, z: startZ + pvInfo.availableLength }
+  ];
+  
+  // Add boundary lines
+  for (let i = 0; i < 4; i++) {
+    const from = boundaryPoints[i];
+    const to = boundaryPoints[(i + 1) % 4];
+    gridLines.push({ from, to });
+    
+    const availFrom = availableAreaPoints[i];
+    const availTo = availableAreaPoints[(i + 1) % 4];
+    gridLines.push({ from: availFrom, to: availTo });
+  }
+  
+  return { modulePoints, gridLines };
 };
 
 /**

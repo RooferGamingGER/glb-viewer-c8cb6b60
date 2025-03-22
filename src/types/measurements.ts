@@ -57,6 +57,13 @@ export interface PVModuleInfo {
   boundingLength?: number;  // Length of the bounding box for the area
   availableWidth?: number;  // Available width after edge distance
   availableLength?: number; // Available length after edge distance
+  startX?: number;         // Starting X position for grid (after edge distance)
+  startZ?: number;         // Starting Z position for grid (after edge distance)
+  minX?: number;           // Minimum X of the bounding box
+  maxX?: number;           // Maximum X of the bounding box
+  minZ?: number;           // Minimum Z of the bounding box
+  maxZ?: number;           // Maximum Z of the bounding box
+  actualArea?: number;      // The actual area (not just bounding box)
   pvModuleSpec?: PVModuleSpec; // Reference to the module specification used
 }
 
@@ -114,4 +121,3 @@ export interface Measurement {
   pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
   powerOutput?: number;   // Power output in watts for this module
 }
-
