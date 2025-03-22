@@ -1,9 +1,8 @@
-
 import * as THREE from 'three';
 import earcut from 'earcut';
 import { Measurement, MeasurementMode, Point, Segment } from '@/types/measurements';
 import { createTextSprite } from './textSprite';
-import { measureSegmentLengths, calculateArea, calculatePolygonCenter } from './measurementCalculations';
+import { calculateArea, calculatePolygonCenter, measureSegmentLengths } from './measurementCalculations';
 
 // Constants for visual appearance
 const POINT_SIZE = 10;
@@ -107,8 +106,7 @@ const createMeasurementLabel = (
 const createAreaFill = (
   points: THREE.Vector3[],
   color: number = AREA_FILL_COLOR,
-  opacity: number = AREA_FILL_OPACITY,
-  isPreview: boolean = false
+  opacity: number = AREA_FILL_OPACITY
 ): THREE.Mesh => {
   if (points.length < 3) {
     throw new Error('Cannot create area with less than 3 points');
@@ -143,7 +141,7 @@ const createAreaFill = (
     side: THREE.DoubleSide,
     transparent: true,
     opacity,
-    depthTest: !isPreview,
+    depthTest: true,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1
@@ -255,7 +253,11 @@ export const renderCurrentPoints = (
     labelsGroup.add(label);
     
     // Calculate and display area if we have a closed polygon
-    const area = calculateArea(points);
+    // Convert THREE.Vector3 array to Point array for calculcations
+    const pointsForCalculation: Point[] = points.map(p => ({ x: p.x, y: p.y, z: p.z }));
+    const area = calculateArea(pointsForCalculation);
+    
+    // Calculate center for label placement
     const center = calculatePolygonCenter(points);
     
     const areaLabel = createMeasurementLabel(
@@ -460,7 +462,9 @@ export const renderMeasurements = (
       // Add area label if needed
       if (measurement.labelVisible !== false) {
         const center = calculatePolygonCenter(points);
-        const area = calculateArea(points);
+        // Convert THREE.Vector3 array to Point array for area calculation
+        const pointsForAreaCalculation: Point[] = measurement.points;
+        const area = calculateArea(pointsForAreaCalculation);
         
         const areaLabel = createMeasurementLabel(
           center,
