@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -20,7 +21,8 @@ import {
   MoveDown,
   Camera,
   Image,
-  Zap
+  Zap,
+  LineChart
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,7 @@ interface MeasurementItemProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
+  allMeasurements?: Measurement[]; // Added to access all measurements for ridge/eave detection
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -73,7 +76,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   onEditSegment,
   movingPointInfo,
   handleMoveMeasurementUp,
-  handleMoveMeasurementDown
+  handleMoveMeasurementDown,
+  allMeasurements
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -141,7 +145,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       undefined,
       undefined,
       DEFAULT_EDGE_DISTANCE,
-      DEFAULT_MODULE_SPACING
+      DEFAULT_MODULE_SPACING,
+      measurement,
+      allMeasurements
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
   };
@@ -157,6 +163,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       case 'area': return <Square className="h-4 w-4 mr-1" />;
       case 'vent': return <Wind className="h-4 w-4 mr-1" />;
       case 'hook': return <Anchor className="h-4 w-4 mr-1" />;
+      case 'ridge': return <LineChart className="h-4 w-4 mr-1" />; // Added icon for ridge
+      case 'eave': return <Minus className="h-4 w-4 mr-1" />; // Added icon for eave
       case 'other': return <X className="h-4 w-4 mr-1" />;
       default: return null;
     }
@@ -173,6 +181,11 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       'solar': 'Solaranlage',
       'vent': 'Lüfter',
       'hook': 'Dachhaken',
+      'ridge': 'First',
+      'eave': 'Traufe',
+      'verge': 'Ortgang',
+      'valley': 'Kehle',
+      'hip': 'Grat',
       'other': 'Sonstige Einbauten'
     };
     
@@ -184,6 +197,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   ].includes(measurement.type);
 
   const isPenetration = ['vent', 'hook', 'other'].includes(measurement.type);
+  const isRoofStructure = ['ridge', 'eave', 'verge', 'valley', 'hip'].includes(measurement.type);
 
   const hasCustomScreenshots = measurement.customScreenshots && measurement.customScreenshots.length > 0;
   
@@ -195,7 +209,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       className={`mb-3 p-2 rounded-md border ${
         measurement.editMode ? 'border-primary bg-secondary/20' : 
         isPenetration ? 'border-orange-300/50 bg-orange-50/10' :  
-        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 'border-border'
+        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 
+        isRoofStructure ? 'border-green-300/50 bg-green-50/10' : 'border-border'
       }`}
     >
       <div className="flex justify-between items-center mb-1">
@@ -206,6 +221,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           {isPenetration && (
             <Badge variant="outline" className="ml-2 text-xs bg-orange-50/30">
               Durchdringung
+            </Badge>
+          )}
+          
+          {isRoofStructure && (
+            <Badge variant="outline" className="ml-2 text-xs bg-green-50/30">
+              Dachstruktur
             </Badge>
           )}
           
@@ -309,7 +330,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           </div>
         )}
         
-        {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
+        {(measurement.type === 'length' || ['valley', 'ridge', 'verge', 'eave'].includes(measurement.type)) && 
          measurement.inclination !== undefined && (
           <span className="ml-2">
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
@@ -321,6 +342,11 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             <div className="flex items-center mb-1">
               <Zap className="h-4 w-4 mr-1 text-green-600" />
               <span className="font-medium">PV-Planung</span>
+              {measurement.pvModuleInfo?.alignWithRoof && (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  Firstausgerichtet
+                </Badge>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
@@ -333,6 +359,16 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               )}
               {measurement.pvModuleInfo!.moduleSpacing !== undefined && (
                 <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing.toFixed(2)}m</div>
+              )}
+              {measurement.pvModuleInfo?.roofOrientation?.ridgeId && (
+                <div className="col-span-2">
+                  <strong>First:</strong> Erkannt
+                </div>
+              )}
+              {measurement.pvModuleInfo?.roofOrientation?.eaveId && (
+                <div className="col-span-2">
+                  <strong>Traufe:</strong> Erkannt
+                </div>
               )}
             </div>
           </div>
@@ -351,7 +387,19 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </Button>
       )}
       
-      {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
+      {isAreaMeasurement && hasPVInfo && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-2 w-full"
+          onClick={handleCalculatePV}
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          PV-Berechnung aktualisieren
+        </Button>
+      )}
+      
+      {(isRoofElement || isPenetration || isRoofStructure) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
         <div className="flex justify-end space-x-1 mt-1 mb-2">
           <TooltipProvider>
             <Tooltip>
