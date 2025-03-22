@@ -6,18 +6,26 @@ import { calculatePolygonArea } from './measurementCalculations';
 export const DEFAULT_MODULE_WIDTH = 1.041;
 export const DEFAULT_MODULE_HEIGHT = 1.767;
 
+// Default distances in meters
+export const DEFAULT_EDGE_DISTANCE = 0.1;  // 10cm from roof edge
+export const DEFAULT_MODULE_SPACING = 0.05;  // 5cm between modules
+
 /**
  * Calculates the optimal placement of PV modules on a roof area
  * 
  * @param points - The 3D points defining the roof area polygon
  * @param moduleWidth - Width of a single PV module in meters (default: 1.041m)
  * @param moduleHeight - Height of a single PV module in meters (default: 1.767m)
+ * @param edgeDistance - Distance from the roof edge in meters (default: 0.1m)
+ * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
  * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
   points: Point[], 
   moduleWidth: number = DEFAULT_MODULE_WIDTH, 
-  moduleHeight: number = DEFAULT_MODULE_HEIGHT
+  moduleHeight: number = DEFAULT_MODULE_HEIGHT,
+  edgeDistance: number = DEFAULT_EDGE_DISTANCE,
+  moduleSpacing: number = DEFAULT_MODULE_SPACING
 ): PVModuleInfo => {
   // Calculate the area of the polygon
   const area = calculatePolygonArea(points);
@@ -36,37 +44,42 @@ export const calculatePVModulePlacement = (
   const boundingWidth = maxX - minX;
   const boundingHeight = maxY - minY;
   
-  // Try module placement in both landscape and portrait orientations
+  // Calculate the available area after applying edge distance
+  const availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
+  const availableHeight = Math.max(0, boundingHeight - (2 * edgeDistance));
   
-  // Landscape orientation: width is along the longer dimension
-  const isWidthLonger = boundingWidth > boundingHeight;
-  
-  // Calculate for landscape orientation (modules laid horizontally)
-  const landscapeModulesX = Math.floor(boundingWidth / moduleWidth);
-  const landscapeModulesY = Math.floor(boundingHeight / moduleHeight);
-  const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
-  const landscapeArea = landscapeModuleCount * moduleWidth * moduleHeight;
+  // Calculate effective module dimensions including spacing
+  const effectiveModuleWidth = moduleWidth + moduleSpacing;
+  const effectiveModuleHeight = moduleHeight + moduleSpacing;
   
   // Calculate for portrait orientation (modules laid vertically)
-  const portraitModulesX = Math.floor(boundingWidth / moduleHeight);
-  const portraitModulesY = Math.floor(boundingHeight / moduleWidth);
+  const portraitModulesX = Math.floor(availableWidth / effectiveModuleWidth);
+  const portraitModulesY = Math.floor(availableHeight / effectiveModuleHeight);
   const portraitModuleCount = portraitModulesX * portraitModulesY;
-  const portraitArea = portraitModuleCount * moduleWidth * moduleHeight;
+  
+  // Calculate for landscape orientation (modules laid horizontally)
+  const landscapeModulesX = Math.floor(availableWidth / effectiveModuleHeight);
+  const landscapeModulesY = Math.floor(availableHeight / effectiveModuleWidth);
+  const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
   
   // Choose the orientation that fits more modules
   const usePortrait = portraitModuleCount > landscapeModuleCount;
   
-  // Apply an efficiency factor to account for irregularities in the roof shape
-  const efficiencyFactor = 0.85; // Approximate factor to account for unusable spaces
+  // Final module count
+  const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;
   
-  const moduleCount = Math.floor((usePortrait ? portraitModuleCount : landscapeModuleCount) * efficiencyFactor);
+  // Calculate the actual area covered by the modules (without spacing at the outer edges)
   const moduleArea = moduleCount * moduleWidth * moduleHeight;
+  
+  // Calculate coverage percentage
   const coveragePercent = (area > 0) ? (moduleArea / area) * 100 : 0;
   
   return {
     moduleWidth,
     moduleHeight,
     moduleCount,
+    edgeDistance,
+    moduleSpacing,
     coveragePercent: Math.min(coveragePercent, 100), // Cap at 100%
     orientation: usePortrait ? 'portrait' : 'landscape'
   };
