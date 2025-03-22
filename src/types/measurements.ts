@@ -71,10 +71,6 @@ export interface PVModuleInfo {
   userDefinedLength?: number; // User-defined available length in meters
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
-  isTrapezoid?: boolean;      // Whether the roof is a trapezoid
-  roofPitch?: number;         // Roof pitch in degrees
-  ridgeLength?: number;       // Length of the ridge
-  eaveLength?: number;        // Length of the eave
 }
 
 export interface PVModuleSpec {

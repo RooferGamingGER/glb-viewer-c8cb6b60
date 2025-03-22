@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
@@ -283,121 +282,16 @@ const findParallelSides = (points: Point[]): {
 };
 
 /**
- * Berechnet die Dachneigung basierend auf den Punkten
- * @param points - Array von 3D-Punkten, die das Dach definieren
- * @returns Dachneigung in Grad
- */
-const calculateRoofPitch = (points: Point[]): number => {
-  if (points.length < 3) return 0;
-  
-  // Wir erstellen Vektoren zwischen den Punkten, um eine Ebene zu definieren
-  const v1 = new THREE.Vector3(
-    points[1].x - points[0].x,
-    points[1].y - points[0].y,
-    points[1].z - points[0].z
-  );
-  
-  const v2 = new THREE.Vector3(
-    points[2].x - points[0].x,
-    points[2].y - points[0].y,
-    points[2].z - points[0].z
-  );
-  
-  // Berechnen der Normalen der Ebene mit dem Kreuzprodukt
-  const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
-  
-  // Berechnen des Winkels zwischen der Normalen und der Y-Achse
-  const yAxis = new THREE.Vector3(0, 1, 0);
-  const angle = Math.acos(normal.dot(yAxis));
-  
-  // Umrechnen in Grad und von der Normalen zur Ebene
-  return 90 - (angle * 180 / Math.PI);
-};
-
-/**
- * Berechnet die horizontale Projektion einer trapezförmigen Fläche
- * @param points - Array von 3D-Punkten, die das Trapez definieren
- * @param roofPitch - Dachneigung in Grad
- * @returns Projizierte Fläche als Array von Punkten
- */
-const calculateHorizontalProjection = (points: Point[], roofPitch: number): Point[] => {
-  if (points.length < 4) return points;
-  
-  // Wenn die Dachneigung nahe 0 ist, keine Projektion notwendig
-  if (Math.abs(roofPitch) < 1) return points;
-  
-  // Umrechnung der Neigung in Radianten
-  const pitchRad = roofPitch * (Math.PI / 180);
-  
-  // Projektionsfaktor (cosinus der Neigung)
-  const projectionFactor = Math.cos(pitchRad);
-  
-  // Finde die minimale y-Koordinate
-  const minY = Math.min(...points.map(p => p.y));
-  
-  // Projiziere alle Punkte auf die horizontale Ebene
-  return points.map(point => {
-    // Höhenunterschied zum niedrigsten Punkt
-    const heightDiff = point.y - minY;
-    
-    // Berechnen der horizontalen Verschiebung basierend auf der Neigung
-    // Wir benötigen die Richtung der Dachneigung, nehmen wir z.B. negative z-Richtung an
-    // Dies müsste in realen Anwendungen an die tatsächliche Dachausrichtung angepasst werden
-    const horizontalShift = heightDiff * Math.tan(pitchRad);
-    
-    // Projektion auf die horizontale Ebene
-    return {
-      x: point.x,
-      y: minY, // Alle Punkte werden auf die gleiche Höhe projiziert
-      z: point.z + horizontalShift
-    };
-  });
-};
-
-/**
- * Identifiziert Firstkante und Traufenkante in einem trapezförmigen Dach
- * @param points - Array von 4 Punkten, die das Trapez definieren
- * @returns Objekt mit Indizes der First- und Traufenkante
- */
-const identifyRidgeAndEave = (points: Point[]): { 
-  ridgeIndices: [number, number], 
-  eaveIndices: [number, number] 
-} => {
-  if (points.length !== 4) {
-    throw new Error("Expected exactly 4 points for ridge and eave identification");
-  }
-  
-  // Wir berechnen die durchschnittliche y-Koordinate für jede Kante
-  const edges = [
-    { indices: [0, 1], avgY: (points[0].y + points[1].y) / 2 },
-    { indices: [1, 2], avgY: (points[1].y + points[2].y) / 2 },
-    { indices: [2, 3], avgY: (points[2].y + points[3].y) / 2 },
-    { indices: [3, 0], avgY: (points[3].y + points[0].y) / 2 }
-  ];
-  
-  // Sortieren der Kanten nach y-Koordinate (aufsteigend)
-  edges.sort((a, b) => a.avgY - b.avgY);
-  
-  // Die oberste Kante ist der First, die unterste die Traufe
-  const eaveIndices: [number, number] = edges[0].indices as [number, number];
-  const ridgeIndices: [number, number] = edges[3].indices as [number, number];
-  
-  return { ridgeIndices, eaveIndices };
-};
-
-/**
- * Berechnet die optimale Modulplatzierung für trapezförmige Dachflächen
- * mit Berücksichtigung der horizontalen Montage
+ * Calculates the optimal placement of PV modules on a roof area
  * 
- * @param points - Array von 3D-Punkten, die das Dachtrapez definieren
- * @param moduleWidth - Breite eines einzelnen PV-Moduls in Metern
- * @param moduleHeight - Höhe eines einzelnen PV-Moduls in Metern
- * @param edgeDistance - Abstand von der Dachkante in Metern
- * @param moduleSpacing - Abstand zwischen Modulen in Metern
- * @param userDimensions - Optional: Benutzerdefinierte Abmessungen
- * @param roofEdgeInfo - Optional: First-, Traufen- und Ortgangmaße
- * @param considerTrapezoid - Ob trapezförmige Berechnung verwendet werden soll
- * @returns Informationen zur PV-Modulplatzierung
+ * @param points - The 3D points defining the roof area polygon
+ * @param moduleWidth - Width of a single PV module in meters (default: 1.041m)
+ * @param moduleHeight - Height of a single PV module in meters (default: 1.767m)
+ * @param edgeDistance - Distance from the roof edge in meters (default: 0.1m)
+ * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
+ * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
+ * @param roofEdgeInfo - Optional roof edge measurements from ridge, eave, verge
+ * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
   points: Point[], 
@@ -412,8 +306,7 @@ export const calculatePVModulePlacement = (
     hasAllEdges: boolean;
     isValid?: boolean;
     validationMessage?: string;
-  },
-  considerTrapezoid: boolean = true
+  }
 ): PVModuleInfo => {
   // Enforce exactly 4 points for PV module calculation
   if (points.length !== 4) {
@@ -453,30 +346,16 @@ export const calculatePVModulePlacement = (
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
   
-  // Berechnung der Dachneigung
-  const roofPitch = calculateRoofPitch(points);
-  console.log("Berechnete Dachneigung:", roofPitch.toFixed(2), "Grad");
-  
-  // Horizontale Projektion für waagerechte Montage, wenn die Neigung signifikant ist
-  let projectedPoints = points;
-  if (roofPitch > 5 && considerTrapezoid) {
-    projectedPoints = calculateHorizontalProjection(points, roofPitch);
-    console.log("Horizontale Projektion angewendet für waagerechte Montage");
-  }
-  
   // Initialize dimensions variables
   let availableWidth: number;
   let availableLength: number;
   let boundingHeight: number;
   let boundingLength: number;
   let manualDimensions = false;
-  let isTrapezoid = false;
-  let ridgeLength: number | undefined;
-  let eaveLength: number | undefined;
   
   // Calculate minimum and maximum coordinates for visualization
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  projectedPoints.forEach(point => {
+  points.forEach(point => {
     minX = Math.min(minX, point.x);
     maxX = Math.max(maxX, point.x);
     minZ = Math.min(minZ, point.z);
@@ -517,109 +396,39 @@ export const calculatePVModulePlacement = (
       availableLength
     });
   } else {
-    // Behandlung von Trapezformen, wenn wir 4 Punkte haben
-    if (projectedPoints.length === 4 && considerTrapezoid) {
-      try {
-        // Identifikation von First und Traufe
-        const { ridgeIndices, eaveIndices } = identifyRidgeAndEave(projectedPoints);
-        
-        // Berechne die Längen von First und Traufe
-        ridgeLength = calculateDistance3D(
-          projectedPoints[ridgeIndices[0]], 
-          projectedPoints[ridgeIndices[1]]
-        );
-        
-        eaveLength = calculateDistance3D(
-          projectedPoints[eaveIndices[0]], 
-          projectedPoints[eaveIndices[1]]
-        );
-        
-        // Überprüfe, ob es sich um ein Trapez handelt (signifikanter Unterschied zwischen First und Traufe)
-        if (Math.abs(ridgeLength - eaveLength) > 0.2) {
-          isTrapezoid = true;
-          console.log("Trapezform erkannt:", { 
-            firstLänge: ridgeLength.toFixed(2), 
-            traufeLänge: eaveLength.toFixed(2) 
-          });
-          
-          // Für das Trapez nehmen wir die kürzere Kante (konservativer Ansatz)
-          boundingLength = Math.min(ridgeLength, eaveLength);
-          
-          // Die Breite (Ortgang) approximieren wir mit dem Abstand zwischen First und Traufe
-          const midRidge = {
-            x: (projectedPoints[ridgeIndices[0]].x + projectedPoints[ridgeIndices[1]].x) / 2,
-            z: (projectedPoints[ridgeIndices[0]].z + projectedPoints[ridgeIndices[1]].z) / 2
-          };
-          
-          const midEave = {
-            x: (projectedPoints[eaveIndices[0]].x + projectedPoints[eaveIndices[1]].x) / 2,
-            z: (projectedPoints[eaveIndices[0]].z + projectedPoints[eaveIndices[1]].z) / 2
-          };
-          
-          boundingHeight = Math.sqrt(
-            Math.pow(midRidge.x - midEave.x, 2) + Math.pow(midRidge.z - midEave.z, 2)
-          );
-          
-          console.log("Berechnete Trapezabmessungen:", { 
-            boundingHeight, 
-            boundingLength 
-          });
-        } else {
-          // Wenn der Unterschied nicht signifikant ist, Standard-Berechnung verwenden
-          isTrapezoid = false;
-          
-          try {
-            // Find parallel sides using the new approach
-            const parallelSides = findParallelSides(projectedPoints);
-            
-            // Calculate width and length as average of parallel sides
-            const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
-            const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
-            
-            // Assign width and length (width should be shorter than length by convention)
-            if (width1 < width2) {
-              boundingHeight = width1;
-              boundingLength = width2;
-            } else {
-              boundingHeight = width2;
-              boundingLength = width1;
-            }
-          } catch (error) {
-            console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
-            
-            // Fallback to the quadrilateral dimensions calculation
-            const dimensions = calculateQuadrilateralDimensions(projectedPoints);
-            boundingHeight = dimensions.width;
-            boundingLength = dimensions.length;
-          }
-        }
-      } catch (error) {
-        console.error("Fehler bei der Trapezberechnung, Standard-Ansatz wird verwendet", error);
-        
-        // Fallback zu Standard-Berechnung
-        try {
-          // ... keep existing code (standard parallel sides calculation) the same ...
-        } catch (error) {
-          console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
-          
-          // Fallback to the quadrilateral dimensions calculation
-          const dimensions = calculateQuadrilateralDimensions(projectedPoints);
-          boundingHeight = dimensions.width;
-          boundingLength = dimensions.length;
-        }
+    // Calculate dimensions based on the shape of the polygon (fallback)
+    
+    // Make sure we're working with a quadrilateral (4 points)
+    // If not, we'll create a representative quadrilateral
+    let quadPoints = [...points];
+    
+    try {
+      // Find parallel sides using the new approach
+      const parallelSides = findParallelSides(quadPoints);
+      
+      // Calculate width and length as average of parallel sides
+      const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
+      const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+      
+      // Assign width and length (width should be shorter than length by convention)
+      if (width1 < width2) {
+        boundingHeight = width1;
+        boundingLength = width2;
+      } else {
+        boundingHeight = width2;
+        boundingLength = width1;
       }
-    } else {
-      // Standard-Berechnung für nicht-trapezförmige Flächen oder wenn weniger als 4 Punkte
-      try {
-        // ... keep existing code (standard parallel sides calculation) the same ...
-      } catch (error) {
-        console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
-        
-        // Fallback to the quadrilateral dimensions calculation
-        const dimensions = calculateQuadrilateralDimensions(projectedPoints);
-        boundingHeight = dimensions.width;
-        boundingLength = dimensions.length;
-      }
+      
+      console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
+    } catch (error) {
+      console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+      
+      // Fallback to the quadrilateral dimensions calculation
+      const dimensions = calculateQuadrilateralDimensions(quadPoints);
+      boundingHeight = dimensions.width;
+      boundingLength = dimensions.length;
+      
+      console.log("Fallback dimensions:", dimensions);
     }
     
     // Derive the available area by accounting for edge distances
@@ -662,125 +471,50 @@ export const calculatePVModulePlacement = (
     moduleHeight,
     edgeDistance,
     moduleSpacing,
-    roofEdgeInfo,
-    isTrapezoid,
-    roofPitch
+    roofEdgeInfo
   });
   
-  // KORRIGIERTE ORIENTIERUNGSDEFINITIONEN:
-  // Querformat: Die LÄNGERE Seite des Moduls (Höhe) ist parallel zur Dachlänge (First/Traufe)
-  // Hochformat: Die LÄNGERE Seite des Moduls (Höhe) ist parallel zur Dachbreite (Ortgang)
+  // CORRECTED ORIENTATION DEFINITIONS:
+  // Landscape (Querformat): Module's LONGER side (height) is aligned with the roof's LENGTH (ridge/eave)
+  // Portrait (Hochformat): Module's LONGER side (height) is aligned with the roof's HEIGHT (verge/Ortgang)
   
-  let portraitModuleCount = 0;
-  let landscapeModuleCount = 0;
-  let portraitModulesX = 0;
-  let portraitModulesY = 0;
-  let landscapeModulesX = 0;
-  let landscapeModulesY = 0;
+  // Landscape orientation calculations (Querformat)
+  // In landscape, the longer side of the module (height) is parallel to eave/ridge (Traufe/First)
+  // and the shorter side (width) is parallel to verge (Ortgang)
+  const landscapeModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing)); // Modules across width (parallel to eave/ridge)
+  const landscapeModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));  // Modules across length (parallel to verge)
   
-  // Spezialfall für Trapezform: Berechnung der Module reihenweise
-  if (isTrapezoid && ridgeLength !== undefined && eaveLength !== undefined) {
-    console.log("Trapezform-Berechnung wird angewendet");
-    
-    // Hochformat-Berechnung (längere Seite parallel zum Ortgang)
-    portraitModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
-    
-    // Bei Trapezform müssen wir die Anzahl der Module pro Reihe unterschiedlich berechnen
-    const availableRows = Math.floor(availableLength / (moduleWidth + moduleSpacing));
-    portraitModulesY = availableRows;
-    
-    // Geschätzte Abnahme der Breite pro Reihe
-    const ridgeEaveDiff = Math.abs(ridgeLength - eaveLength);
-    const widthDecreasePerRow = ridgeEaveDiff / availableRows;
-    
-    // Startbreite (bei First oder Traufe, je nachdem welche kürzer ist)
-    let startWidth = Math.min(ridgeLength, eaveLength) - (2 * edgeDistance);
-    
-    // Wenn First kürzer ist als Traufe, beginnen wir beim First
-    const startAtRidge = ridgeLength < eaveLength;
-    
-    // Berechnung der Module pro Reihe
-    let totalPortraitModules = 0;
-    for (let row = 0; row < availableRows; row++) {
-      // Aktuelle Breite für diese Reihe
-      const rowWidth = startWidth + (startAtRidge ? row * widthDecreasePerRow : (availableRows - row - 1) * widthDecreasePerRow);
-      
-      // Anzahl der Module, die in diese Reihe passen
-      const modulesInRow = Math.floor(rowWidth / (moduleWidth + moduleSpacing));
-      
-      totalPortraitModules += modulesInRow;
+  // Total modules in landscape orientation
+  const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
+  
+  // Portrait orientation calculations (Hochformat)
+  // In portrait, the longer side of the module (height) is parallel to verge (Ortgang)
+  // and the shorter side (width) is parallel to eave/ridge (Traufe/First)
+  const portraitModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));  // Modules across width (parallel to eave/ridge)
+  const portraitModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing)); // Modules across length (parallel to verge)
+  
+  // Total modules in portrait orientation
+  const portraitModuleCount = portraitModulesX * portraitModulesY;
+  
+  // DEBUG: Log the module counts with clear orientation descriptions
+  console.log("PV Module Counts:", {
+    portrait: {
+      description: "Hochformat: Module LONGER side (height) parallel to verge (Ortgang), shorter side parallel to eave (Traufe)",
+      modulesAcrossWidth: portraitModulesX,
+      modulesAcrossLength: portraitModulesY,
+      totalModules: portraitModuleCount,
+      formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesX}`,
+      formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesY}`
+    },
+    landscape: {
+      description: "Querformat: Module LONGER side (height) parallel to eave (Traufe), shorter side parallel to verge (Ortgang)",
+      modulesAcrossWidth: landscapeModulesX,
+      modulesAcrossLength: landscapeModulesY,
+      totalModules: landscapeModuleCount,
+      formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesX}`,
+      formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesY}`
     }
-    
-    // Setze die berechnete Anzahl
-    portraitModuleCount = totalPortraitModules;
-    
-    // Querformat-Berechnung (längere Seite parallel zur Traufe)
-    landscapeModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
-    
-    // Bei Trapezform müssen wir die Anzahl der Module pro Reihe unterschiedlich berechnen
-    const availableLandscapeRows = Math.floor(availableLength / (moduleHeight + moduleSpacing));
-    landscapeModulesY = availableLandscapeRows;
-    
-    // Berechnung der Module pro Reihe
-    let totalLandscapeModules = 0;
-    for (let row = 0; row < availableLandscapeRows; row++) {
-      // Aktuelle Breite für diese Reihe
-      const rowWidth = startWidth + (startAtRidge ? row * widthDecreasePerRow : (availableLandscapeRows - row - 1) * widthDecreasePerRow);
-      
-      // Anzahl der Module, die in diese Reihe passen
-      const modulesInRow = Math.floor(rowWidth / (moduleHeight + moduleSpacing));
-      
-      totalLandscapeModules += modulesInRow;
-    }
-    
-    // Setze die berechnete Anzahl
-    landscapeModuleCount = totalLandscapeModules;
-    
-    console.log("Trapezform-Modulberechnung:", {
-      hochformat: {
-        modulesPerRow: portraitModulesX,
-        rows: portraitModulesY,
-        totalModules: portraitModuleCount
-      },
-      querformat: {
-        modulesPerRow: landscapeModulesX,
-        rows: landscapeModulesY,
-        totalModules: landscapeModuleCount
-      }
-    });
-  } else {
-    // Standardberechnung für rechteckige oder andere Formen
-    
-    // Querformat (längere Seite parallel zu First/Traufe)
-    landscapeModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
-    landscapeModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));
-    landscapeModuleCount = landscapeModulesX * landscapeModulesY;
-    
-    // Hochformat (längere Seite parallel zu Ortgang)
-    portraitModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
-    portraitModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing));
-    portraitModuleCount = portraitModulesX * portraitModulesY;
-    
-    // DEBUG: Log the module counts with clear orientation descriptions
-    console.log("PV Module Counts:", {
-      hochformat: {
-        beschreibung: "Hochformat: LÄNGERE Seite des Moduls parallel zum Ortgang, kürzere Seite parallel zur Traufe",
-        moduleAcrossWidth: portraitModulesX,
-        moduleAcrossLength: portraitModulesY,
-        totalModules: portraitModuleCount,
-        formel: `Module über Breite: floor(${availableWidth.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesX}`,
-        formel2: `Module über Länge: floor(${availableLength.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesY}`
-      },
-      querformat: {
-        beschreibung: "Querformat: LÄNGERE Seite des Moduls parallel zur Traufe, kürzere Seite parallel zum Ortgang",
-        moduleAcrossWidth: landscapeModulesX,
-        moduleAcrossLength: landscapeModulesY,
-        totalModules: landscapeModuleCount,
-        formel: `Module über Breite: floor(${availableWidth.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesX}`,
-        formel2: `Module über Länge: floor(${availableLength.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesY}`
-      }
-    });
-  }
+  });
   
   // Choose the orientation that fits more modules
   const usePortrait = portraitModuleCount >= landscapeModuleCount;
@@ -833,18 +567,12 @@ export const calculatePVModulePlacement = (
       height: moduleHeight,
       power: 425, // Default power value
       efficiency: 21.0 // Default efficiency value
-    },
-    // Neue Eigenschaften für Trapezform-Berechnung
-    isTrapezoid,
-    roofPitch,
-    ridgeLength,
-    eaveLength
+    }
   };
 };
 
 /**
  * Generate the grid points for PV module placement
- * with support for trapezoidal roof shapes
  * 
  * @param pvInfo - PV module information
  * @param baseY - The Y-coordinate (height) to place the modules at
@@ -858,8 +586,8 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
   const gridLines: {from: Point, to: Point}[] = [];
   
   // Determine module dimensions based on CORRECTED orientation definitions:
-  // Querformat (Landscape): Module's LONGER side (height) is aligned with the roof's LENGTH (ridge/eave)
-  // Hochformat (Portrait): Module's LONGER side (height) is aligned with the roof's HEIGHT (verge/Ortgang)
+  // Landscape (Querformat): Module's LONGER side (height) is aligned with the roof's LENGTH (ridge/eave)
+  // Portrait (Hochformat): Module's LONGER side (height) is aligned with the roof's HEIGHT (verge/Ortgang)
   
   const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
@@ -868,96 +596,28 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
-  // Check if we're dealing with a trapezoidal roof
-  if (pvInfo.isTrapezoid && pvInfo.ridgeLength !== undefined && pvInfo.eaveLength !== undefined) {
-    // Für Trapezform spezielle Berechnung
-    const ridgeLength = pvInfo.ridgeLength;
-    const eaveLength = pvInfo.eaveLength;
-    
-    // Bestimme, ob der First oder die Traufe kürzer ist
-    const startAtRidge = ridgeLength < eaveLength;
-    
-    // Die kleinere Länge (abzüglich Randabstand) ist unsere Startbreite
-    const startWidth = Math.min(ridgeLength, eaveLength) - (2 * pvInfo.edgeDistance!);
-    
-    // Geschätzte Abnahme der Breite pro Reihe
-    const widthDecreasePerRow = Math.abs(ridgeLength - eaveLength) / pvInfo.rows!;
-    
-    // Generieren der Modulpositionen
-    let totalModulesPlaced = 0;
-    
-    for (let row = 0; row < pvInfo.rows!; row++) {
-      // Aktuelle Breite für diese Reihe
-      const rowWidth = startWidth + (startAtRidge ? row * widthDecreasePerRow : (pvInfo.rows! - row - 1) * widthDecreasePerRow);
+  // Generate module placement grid
+  for (let row = 0; row < pvInfo.rows!; row++) {
+    for (let col = 0; col < pvInfo.columns!; col++) {
+      // Calculate position of this module
+      const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
+      const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Anzahl der Module, die in diese Reihe passen
-      const modulesInRow = Math.floor(rowWidth / (moduleWidth + pvInfo.moduleSpacing!));
+      // Create 4 corner points for this module
+      const moduleCorners: Point[] = [
+        { x, y: baseY + 0.02, z },  // Top-left
+        { x: x + moduleWidth, y: baseY + 0.02, z },  // Top-right
+        { x: x + moduleWidth, y: baseY + 0.02, z: z + moduleHeight },  // Bottom-right
+        { x, y: baseY + 0.02, z: z + moduleHeight }  // Bottom-left
+      ];
       
-      // Zentrieren der Module in der Reihe
-      const remainingSpace = rowWidth - (modulesInRow * (moduleWidth + pvInfo.moduleSpacing!)) + pvInfo.moduleSpacing!;
-      const extraOffset = remainingSpace / 2;
+      modulePoints.push(moduleCorners);
       
-      for (let col = 0; col < modulesInRow; col++) {
-        // Hier berechnen wir die Verschiebung basierend auf der Reihe
-        // Wenn der First kürzer ist, müssen wir die Module in höheren Reihen mehr nach rechts verschieben
-        const horizontalShift = startAtRidge 
-          ? extraOffset + (row * widthDecreasePerRow / 2)
-          : extraOffset + ((pvInfo.rows! - row - 1) * widthDecreasePerRow / 2);
-        
-        // Berechne Position dieses Moduls
-        const x = startX + horizontalShift + col * (moduleWidth + pvInfo.moduleSpacing!);
-        const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
-        
-        // Erstelle 4 Eckpunkte für dieses Modul
-        const moduleCorners: Point[] = [
-          { x, y: baseY + 0.02, z },  // Oben-Links
-          { x: x + moduleWidth, y: baseY + 0.02, z },  // Oben-Rechts
-          { x: x + moduleWidth, y: baseY + 0.02, z: z + moduleHeight },  // Unten-Rechts
-          { x, y: baseY + 0.02, z: z + moduleHeight }  // Unten-Links
-        ];
-        
-        modulePoints.push(moduleCorners);
-        
-        // Linien für dieses Modul hinzufügen
-        for (let i = 0; i < 4; i++) {
-          const from = moduleCorners[i];
-          const to = moduleCorners[(i + 1) % 4];
-          gridLines.push({ from, to });
-        }
-        
-        totalModulesPlaced++;
-      }
-    }
-    
-    // Überprüfe, ob die Anzahl der platzierten Module mit der berechneten Anzahl übereinstimmt
-    if (totalModulesPlaced !== pvInfo.moduleCount) {
-      console.warn(`Warnung: Platzierte Module (${totalModulesPlaced}) unterscheiden sich von berechneter Anzahl (${pvInfo.moduleCount})`);
-    }
-  } else {
-    // Standard-Berechnung für rechteckige Dächer
-    // Generate module placement grid
-    for (let row = 0; row < pvInfo.rows!; row++) {
-      for (let col = 0; col < pvInfo.columns!; col++) {
-        // Calculate position of this module
-        const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
-        const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
-        
-        // Create 4 corner points for this module
-        const moduleCorners: Point[] = [
-          { x, y: baseY + 0.02, z },  // Top-left
-          { x: x + moduleWidth, y: baseY + 0.02, z },  // Top-right
-          { x: x + moduleWidth, y: baseY + 0.02, z: z + moduleHeight },  // Bottom-right
-          { x, y: baseY + 0.02, z: z + moduleHeight }  // Bottom-left
-        ];
-        
-        modulePoints.push(moduleCorners);
-        
-        // Add grid lines for this module
-        for (let i = 0; i < 4; i++) {
-          const from = moduleCorners[i];
-          const to = moduleCorners[(i + 1) % 4];
-          gridLines.push({ from, to });
-        }
+      // Add grid lines for this module
+      for (let i = 0; i < 4; i++) {
+        const from = moduleCorners[i];
+        const to = moduleCorners[(i + 1) % 4];
+        gridLines.push({ from, to });
       }
     }
   }
