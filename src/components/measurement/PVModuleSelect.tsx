@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PVModuleSpec, PVModuleInfo } from '@/types/measurements';
-import { PV_MODULE_TEMPLATES } from '@/utils/pvCalculations';
-import { Settings, Ruler, AlertTriangle } from 'lucide-react';
+import { PV_MODULE_TEMPLATES, DEFAULT_EDGE_DISTANCE, DEFAULT_MODULE_SPACING } from '@/utils/pvCalculations';
+import { Settings, Ruler, AlertTriangle, Zap, Maximize2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -17,23 +17,25 @@ interface PVModuleSelectProps {
   currentModule?: PVModuleSpec;
   onDimensionsChange?: (dimensions: {width: number, length: number}) => void;
   pvModuleInfo?: PVModuleInfo;
+  onSpacingChange?: (spacing: {edgeDistance: number, moduleSpacing: number}) => void;
 }
 
 const PVModuleSelect: React.FC<PVModuleSelectProps> = ({ 
   onModuleSelect,
   currentModule,
   onDimensionsChange,
-  pvModuleInfo
+  pvModuleInfo,
+  onSpacingChange
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
     currentModule?.name || PV_MODULE_TEMPLATES[0].name
   );
   const [customModule, setCustomModule] = useState<PVModuleSpec>({
     name: "Benutzerdefiniert",
-    width: currentModule?.width || 1.041,
-    height: currentModule?.height || 1.767,
-    power: currentModule?.power || 380,
-    efficiency: currentModule?.efficiency || 19.5
+    width: currentModule?.width || 1.04,
+    height: currentModule?.height || 1.77,
+    power: currentModule?.power || 425,
+    efficiency: currentModule?.efficiency || 21.0
   });
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
@@ -47,12 +49,20 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   const [availableLength, setAvailableLength] = useState<number>(
     pvModuleInfo?.userDefinedLength || pvModuleInfo?.availableLength || 5.0
   );
+  const [edgeDistance, setEdgeDistance] = useState<number>(
+    pvModuleInfo?.edgeDistance || DEFAULT_EDGE_DISTANCE
+  );
+  const [moduleSpacing, setModuleSpacing] = useState<number>(
+    pvModuleInfo?.moduleSpacing || DEFAULT_MODULE_SPACING
+  );
   
   useEffect(() => {
     if (pvModuleInfo) {
       setUseManualDimensions(pvModuleInfo.manualDimensions || false);
       setAvailableWidth(pvModuleInfo.userDefinedWidth || pvModuleInfo.availableWidth || 4.0);
       setAvailableLength(pvModuleInfo.userDefinedLength || pvModuleInfo.availableLength || 5.0);
+      setEdgeDistance(pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
+      setModuleSpacing(pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING);
     }
   }, [pvModuleInfo]);
   
@@ -79,6 +89,17 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
     }
   };
   
+  const handleSpacingChange = (type: 'edge' | 'module', value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      if (type === 'edge') {
+        setEdgeDistance(numValue);
+      } else {
+        setModuleSpacing(numValue);
+      }
+    }
+  };
+  
   const handleSubmit = () => {
     const selectedModule = isCustom 
       ? customModule 
@@ -91,6 +112,14 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
       onDimensionsChange({
         width: availableWidth,
         length: availableLength
+      });
+    }
+    
+    // Send spacing information
+    if (onSpacingChange) {
+      onSpacingChange({
+        edgeDistance,
+        moduleSpacing
       });
     }
     
@@ -117,9 +146,10 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="module">Modul</TabsTrigger>
             <TabsTrigger value="dimensions">Abmessungen</TabsTrigger>
+            <TabsTrigger value="spacing">Abstände</TabsTrigger>
           </TabsList>
           
           <TabsContent value="module" className="py-4">
@@ -294,6 +324,60 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="spacing" className="py-4">
+            <div className="space-y-4">
+              <div className="border p-3 rounded-md space-y-3">
+                <div className="flex items-center justify-start mb-2">
+                  <Maximize2 className="h-4 w-4 mr-2 text-green-600" />
+                  <span className="text-sm font-medium">Abstandseinstellungen</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edgeDistance">Randabstand (m)</Label>
+                    <Input
+                      id="edgeDistance"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={edgeDistance}
+                      onChange={(e) => handleSpacingChange('edge', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="moduleSpacing">Modulabstand (m)</Label>
+                    <Input
+                      id="moduleSpacing"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="0.5"
+                      value={moduleSpacing}
+                      onChange={(e) => handleSpacingChange('module', e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="text-sm text-muted-foreground mt-2 p-2 bg-green-50/10 border border-green-100 rounded">
+                  <p>Randabstand: Abstand von der Dachkante zu den Modulen.</p>
+                  <p>Modulabstand: Abstand zwischen einzelnen Modulen.</p>
+                </div>
+              </div>
+              
+              {pvModuleInfo && (
+                <div className="p-3 border rounded-md bg-gray-50/30">
+                  <h3 className="text-sm font-medium mb-2">Aktuelle Einstellungen:</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><strong>Randabstand:</strong> {pvModuleInfo.edgeDistance?.toFixed(2) || DEFAULT_EDGE_DISTANCE.toFixed(2)} m</div>
+                    <div><strong>Modulabstand:</strong> {pvModuleInfo.moduleSpacing?.toFixed(2) || DEFAULT_MODULE_SPACING.toFixed(2)} m</div>
+                  </div>
                 </div>
               )}
             </div>

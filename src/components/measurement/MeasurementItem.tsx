@@ -166,6 +166,24 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     }
   };
 
+  const handlePVSpacingChange = (spacing: { edgeDistance: number, moduleSpacing: number }) => {
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        spacing.edgeDistance,
+        spacing.moduleSpacing,
+        measurement.pvModuleInfo.manualDimensions ? {
+          width: measurement.pvModuleInfo.userDefinedWidth || 0,
+          length: measurement.pvModuleInfo.userDefinedLength || 0
+        } : undefined
+      );
+      
+      updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     switch(type) {
       case 'dormer': return <House className="h-4 w-4 mr-1" />;
@@ -386,6 +404,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                   currentModule={measurement.pvModuleSpec || PV_MODULE_TEMPLATES[0]}
                   onDimensionsChange={handlePVDimensionsChange}
                   pvModuleInfo={measurement.pvModuleInfo}
+                  onSpacingChange={handlePVSpacingChange}
                 />
               </div>
             </div>
@@ -394,7 +413,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
-              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 380).toFixed(2)} kWp</div>
+              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
               <div><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
               {measurement.pvModuleInfo!.edgeDistance !== undefined && (

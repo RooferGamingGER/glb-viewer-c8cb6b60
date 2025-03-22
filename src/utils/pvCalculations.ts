@@ -1,4 +1,3 @@
-
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
@@ -13,32 +12,11 @@ export const DEFAULT_MODULE_SPACING = 0.05;  // 5cm between modules
 // Common PV module templates that users can select from
 export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
   {
-    name: "Standard (380W)",
-    width: 1.041,
-    height: 1.767,
-    power: 380,
-    efficiency: 19.5
-  },
-  {
-    name: "Hochleistung (415W)",
-    width: 1.052,
-    height: 1.776,
-    power: 415,
-    efficiency: 21.3
-  },
-  {
-    name: "Kompakt (365W)",
-    width: 1.030,
-    height: 1.692,
-    power: 365,
-    efficiency: 20.1
-  },
-  {
-    name: "Maxi (425W)",
-    width: 1.134,
-    height: 2.094,
+    name: "Standard (425W)",
+    width: 1.04,
+    height: 1.77,
     power: 425,
-    efficiency: 20.8
+    efficiency: 21.0
   }
 ];
 
@@ -477,11 +455,11 @@ export const calculatePVModulePlacement = (
     edgeInfoValid: roofEdgeInfo ? (roofEdgeInfo.isValid !== false) : undefined,
     edgeInfoMessage: roofEdgeInfo?.validationMessage,
     pvModuleSpec: {
-      name: "Standard (380W)", // The required 'name' property
+      name: "Standard (425W)", // The required 'name' property
       width: moduleWidth,
       height: moduleHeight,
-      power: 380, // Default power value
-      efficiency: 19.5 // Default efficiency value
+      power: 425, // Default power value
+      efficiency: 21.0 // Default efficiency value
     }
   };
 };
