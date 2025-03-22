@@ -545,7 +545,7 @@ export function renderMeasurements(
                                      existingSegmentLabels.length === 0 ||
                                      (measurement.type === 'area' && 
                                       measurement.segments && 
-                                      existingSegmentLabels.length !== measurement.segments.length);
+                                      existingSegmentLabels.length !== measurement.segments.length);\
     
     // If this measurement is being edited or doesn't have labels, remove any existing labels
     if (isMeasurementBeingEdited) {
