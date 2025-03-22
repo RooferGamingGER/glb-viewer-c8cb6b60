@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
@@ -1041,4 +1042,3 @@ export const calculatePVModuleDimensions = (
     powerOutput: moduleSpec.power
   };
 };
-
