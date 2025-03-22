@@ -366,7 +366,8 @@ export function createMeasurementLabel(
   position: THREE.Vector3,
   isPreview: boolean = false,
   type?: string,
-  isPointLabel: boolean = false
+  isPointLabel: boolean = false,
+  color?: number
 ): THREE.Sprite {
   // For penetration elements, we might want to create a symbol-only label
   if (type === 'vent' || type === 'hook' || type === 'other') {

@@ -254,11 +254,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Re-render current points when they change
   useEffect(() => {
+    if (!pointsRef.current || !linesRef.current || !labelsRef.current || currentPoints.length === 0) return;
+    
+    // Convert Point[] to Vector3[] for compatibility with the updated function
+    const vector3Points = currentPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    
     renderCurrentPoints(
       pointsRef.current, 
       linesRef.current, 
       labelsRef.current, 
-      currentPoints, 
+      vector3Points, 
       activeMode
     );
   }, [currentPoints, activeMode]);
