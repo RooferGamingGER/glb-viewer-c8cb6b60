@@ -1050,7 +1050,7 @@ function renderAreaMeasurement(
       midpoint.y += LABEL_Y_OFFSET;
       
       // Create label with smaller size
-      const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint, true);
+      const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint, true, '#' + measurementColor.toString(16).padStart(6, '0'));
       
       // Adjust the scale to make it slightly smaller than area labels
       segmentLabelSprite.scale.multiplyScalar(0.75);
@@ -1097,7 +1097,7 @@ function renderAreaMeasurement(
     // Create label text (without inclination for area measurements)
     const labelText = formatMeasurementLabel(measurement.value, measurement.type);
     
-    const label = createMeasurementLabel(labelText, centroid, true);
+    const label = createMeasurementLabel(labelText, centroid, true, '#' + measurementColor.toString(16).padStart(6, '0'));
     
     // Store measurement ID in user data for reference
     label.userData.measurementId = measurement.id;
@@ -1178,7 +1178,7 @@ function renderSolarMeasurement(
       midpoint.y += LABEL_Y_OFFSET;
       
       // Create label with smaller size
-      const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint, true, measurementColor);
+      const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint, true, '#' + measurementColor.toString(16).padStart(6, '0'));
       
       // Adjust the scale to make it slightly smaller than area labels
       segmentLabelSprite.scale.multiplyScalar(0.8);
@@ -1266,7 +1266,8 @@ function renderSolarMeasurement(
     // Create label text
     const labelText = formatMeasurementLabel(measurement.value, measurement.type);
     
-    const label = createMeasurementLabel(labelText, centroid, true, measurementColor);
+    // Fixed: Convert color number to string using CSS hex format
+    const label = createMeasurementLabel(labelText, centroid, true, '#' + measurementColor.toString(16).padStart(6, '0'));
     
     // Store measurement ID in user data for reference
     label.userData.measurementId = measurement.id;
@@ -1531,7 +1532,8 @@ function renderPVModuleGrid(
       (points[0].z + points[2].z) / 2
     );
     
-    const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true, 0x33C3F0);
+    // Fixed: Convert color number to string using CSS hex format
+    const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true, '#' + PV_MODULE_COLORS.MODULE.toString(16).padStart(6, '0'));
     moduleLabel.userData = {
       measurementId: measurement.id,
       isModuleLabel: true,
@@ -1594,7 +1596,8 @@ function renderPVModuleGrid(
   // Position label above the area
   centroid.y += LABEL_Y_OFFSET + 0.15;
   
-  const pvLabel = createMeasurementLabel(powerLabel, centroid, true, 0x33C3F0);
+  // Fixed: Convert color number to string using CSS hex format
+  const pvLabel = createMeasurementLabel(powerLabel, centroid, true, '#' + PV_MODULE_COLORS.MODULE.toString(16).padStart(6, '0'));
   pvLabel.userData = {
     measurementId: measurement.id,
     isPVLabel: true
