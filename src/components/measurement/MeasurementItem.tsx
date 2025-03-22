@@ -332,7 +332,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         {measurement.dimensions && (
           <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
             {measurement.dimensions.length !== undefined && (
-              <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
+              <div><strong>L��nge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
             )}
             {measurement.dimensions.width !== undefined && (
               <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
@@ -413,8 +413,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
-                ? 'Hochformat (Längere Seite parallel zum Ortgang)' 
-                : 'Querformat (Längere Seite parallel zur Traufe)'}</div>
+                ? 'Hochformat (Kürzere Seite parallel zum Ortgang)' 
+                : 'Querformat (Längere Seite parallel zum Ortgang)'}</div>
               <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
               <div><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
@@ -427,7 +427,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             </div>
             
             {showPVDetails && (
-              <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs">
+              <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs text-black">
                 <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
                 
                 {measurement.pvModuleInfo && (
@@ -441,76 +441,76 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                     
                     {measurement.pvModuleInfo.orientation === 'portrait' ? (
                       <>
-                        <div className="col-span-2 mt-1 text-blue-700 font-semibold">Hochformat-Berechnung:</div>
+                        <div className="col-span-2 mt-1 font-semibold">Hochformat-Berechnung:</div>
                         <div className="col-span-2"><strong>Modulanordnung:</strong> 
-                          <span className="text-blue-600"> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
+                          <span> Kürzere Modulseite ({measurement.pvModuleInfo.moduleWidth.toFixed(2)}m) parallel zum Ortgang</span>
                         </div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
-                          <span className="text-blue-600"> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>
+                          <span> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
-                          <span className="text-blue-600"> floor(
+                          <span> floor(
                             {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
                             {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
                               measurement.pvModuleInfo.availableWidth / 
-                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
                         <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
-                          <span className="text-blue-600"> floor(verfügbare Länge / (Modulhöhe + Modulabstand))</span>
+                          <span> floor(verfügbare Länge / (Modulbreite + Modulabstand))</span>
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
-                          <span className="text-blue-600"> floor(
+                          <span> floor(
                             {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
                             {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
                               measurement.pvModuleInfo.availableLength / 
-                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="col-span-2 mt-1 text-blue-700 font-semibold">Querformat-Berechnung:</div>
+                        <div className="col-span-2 mt-1 font-semibold">Querformat-Berechnung:</div>
                         <div className="col-span-2"><strong>Modulanordnung:</strong> 
-                          <span className="text-blue-600"> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zur Traufe</span>
+                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
                         </div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
-                          <span className="text-blue-600"> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
+                          <span> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
-                          <span className="text-blue-600"> floor(
+                          <span> floor(
                             {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
                             {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
                               measurement.pvModuleInfo.availableWidth / 
-                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
                         <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
-                          <span className="text-blue-600"> floor(verfügbare Länge / (Modulbreite + Modulabstand))</span>
+                          <span> floor(verfügbare Länge / (Modulhöhe + Modulabstand))</span>
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong>
-                          <span className="text-blue-600"> floor(
+                          <span> floor(
                             {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
                             {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
                               measurement.pvModuleInfo.availableLength / 
-                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
                       </>
                     )}
-                    <div className="col-span-2 mt-2 text-blue-700 font-semibold">Modulanzahl: {measurement.pvModuleInfo.columns || '?'} × {measurement.pvModuleInfo.rows || '?'} = {measurement.pvModuleInfo.moduleCount} Module</div>
+                    <div className="col-span-2 mt-2 font-semibold">Modulanzahl: {measurement.pvModuleInfo.columns || '?'} × {measurement.pvModuleInfo.rows || '?'} = {measurement.pvModuleInfo.moduleCount} Module</div>
                   </div>
                 )}
               </div>
