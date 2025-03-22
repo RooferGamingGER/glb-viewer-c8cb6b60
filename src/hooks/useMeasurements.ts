@@ -1,4 +1,3 @@
-
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
@@ -71,7 +70,6 @@ export const useMeasurements = () => {
     toggleLabelVisibility,
     toggleAllMeasurementsVisibility,
     toggleAllLabelsVisibility,
-    togglePVModulesVisibility,
     moveMeasurementUp,
     moveMeasurementDown
   } = useMeasurementVisibilityToggle(
@@ -123,7 +121,6 @@ export const useMeasurements = () => {
     toggleLabelVisibility,
     toggleAllMeasurementsVisibility,
     toggleAllLabelsVisibility,
-    togglePVModulesVisibility,
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,

@@ -59,32 +59,6 @@ export const useMeasurementVisibilityToggle = (
     console.log('All labels visibility toggle is deprecated - labels are always visible');
   }, []);
 
-  // Toggle visibility of PV modules
-  const togglePVModulesVisibility = useCallback((id: string) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === id && m.type === 'solar' && m.pvModuleInfo) {
-          // Toggle the showPVModules flag in pvModuleInfo
-          return {
-            ...m,
-            pvModuleInfo: {
-              ...m.pvModuleInfo,
-              showPVModules: m.pvModuleInfo.showPVModules === false ? true : false
-            }
-          };
-        }
-        return m;
-      });
-      
-      // Update visual state if the callback is provided
-      if (updateVisualState) {
-        updateVisualState(updatedMeasurements, allLabelsVisible);
-      }
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, allLabelsVisible, updateVisualState]);
-
   // Move a measurement up in the list within its type category
   const moveMeasurementUp = useCallback((id: string) => {
     setMeasurements(prev => {
@@ -152,7 +126,6 @@ export const useMeasurementVisibilityToggle = (
     toggleLabelVisibility, // Keep for backward compatibility
     toggleAllMeasurementsVisibility,
     toggleAllLabelsVisibility, // Keep for backward compatibility
-    togglePVModulesVisibility, // Neue Funktion für PV-Module
     moveMeasurementUp,
     moveMeasurementDown
   };
