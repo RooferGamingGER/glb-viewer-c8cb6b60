@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -72,6 +71,10 @@ export interface PVModuleInfo {
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
   pvMaterials?: PVMaterials;  // Materials needed for the PV system
+  roofAzimuth?: number;       // Azimuth angle in degrees (0=North, 90=East, 180=South, 270=West)
+  roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)
+  roofInclination?: number;   // Roof inclination in degrees 
+  yieldFactor?: number;       // Yield factor in kWh/kWp per year
 }
 
 export interface PVModuleSpec {
@@ -82,7 +85,6 @@ export interface PVModuleSpec {
   efficiency: number;       // Efficiency percentage
 }
 
-// New interface for mounting hardware
 export interface PVMountingSystem {
   railLength: number;         // Total length of mounting rails in meters
   roofHookCount: number;      // Number of roof hooks needed
@@ -91,7 +93,6 @@ export interface PVMountingSystem {
   railConnectorCount: number; // Number of rail connectors
 }
 
-// New interface for electrical components
 export interface PVElectricalSystem {
   stringCableLength: number;  // Total length of string cables in meters
   mainCableLength: number;    // Length of main DC cables in meters
@@ -103,7 +104,6 @@ export interface PVElectricalSystem {
   modulesPerString: number;   // Modules per string
 }
 
-// New interface for PV system material calculation
 export interface PVMaterials {
   totalModuleCount: number;     // Total number of modules
   totalPower: number;           // Total power in kWp
@@ -129,7 +129,6 @@ export interface Measurement {
   segments?: Segment[];
   inclination?: number;
   
-  // Roof element specific fields
   subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
   dimensions?: {         // Specific dimensions for roof elements
     width?: number;
@@ -151,13 +150,10 @@ export interface Measurement {
   screenshot?: string;   // Base64 data URL of measurement screenshot for PDF export
   polygon2D?: string;    // Base64 data URL of 2D polygon rendering for PDF export
   
-  // Custom screenshots for PDF export
   customScreenshots?: string[];  // Array of base64 data URLs for custom screenshots
   
-  // PV module calculation data
   pvModuleInfo?: PVModuleInfo; // Information about PV module placement
 
-  // PV module specific fields for individually drawn modules
   pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
   powerOutput?: number;   // Power output in watts for this module
 }
