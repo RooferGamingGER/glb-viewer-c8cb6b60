@@ -412,7 +412,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
-              <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
+              <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
+                ? 'Hochformat (Längere Seite parallel zum Ortgang)' 
+                : 'Querformat (Längere Seite parallel zur Traufe)'}</div>
               <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
               <div><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
@@ -430,9 +432,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                 
                 {measurement.pvModuleInfo && (
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3) || measurement.pvModuleInfo.boundingWidth.toFixed(3)}m</div>
+                    <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3)}m</div>
                     <div><strong>Begrenzungslänge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength || measurement.pvModuleInfo.boundingWidth * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
+                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
                     
                     <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
                     <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
@@ -440,6 +442,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                     {measurement.pvModuleInfo.orientation === 'portrait' ? (
                       <>
                         <div className="col-span-2 mt-1 text-blue-700 font-semibold">Hochformat-Berechnung:</div>
+                        <div className="col-span-2"><strong>Modulanordnung:</strong> 
+                          <span className="text-blue-600"> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
+                        </div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
                           <span className="text-blue-600"> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>
                         </div>
@@ -472,6 +477,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                     ) : (
                       <>
                         <div className="col-span-2 mt-1 text-blue-700 font-semibold">Querformat-Berechnung:</div>
+                        <div className="col-span-2"><strong>Modulanordnung:</strong> 
+                          <span className="text-blue-600"> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zur Traufe</span>
+                        </div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
                           <span className="text-blue-600"> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
                         </div>
@@ -489,7 +497,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
                           <span className="text-blue-600"> floor(verfügbare Länge / (Modulbreite + Modulabstand))</span>
                         </div>
-                        <div className="col-span-2"><strong>Formel:</strong> 
+                        <div className="col-span-2"><strong>Formel:</strong>
                           <span className="text-blue-600"> floor(
                             {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
                             {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
@@ -673,4 +681,3 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 };
 
 export default MeasurementItem;
-

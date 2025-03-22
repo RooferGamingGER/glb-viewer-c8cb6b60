@@ -1,3 +1,4 @@
+
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
@@ -264,7 +265,7 @@ export const calculatePVModulePlacement = (
   // Initialize dimensions variables
   let availableWidth: number;
   let availableLength: number;
-  let boundingHeight: number; // Changed from boundingWidth
+  let boundingHeight: number;
   let boundingLength: number;
   let manualDimensions = false;
   
@@ -296,8 +297,9 @@ export const calculatePVModulePlacement = (
   } 
   // Use roof edge measurements if available, valid, and complete (second priority)
   else if (roofEdgeInfo && roofEdgeInfo.hasAllEdges && (roofEdgeInfo.isValid !== false)) {
-    boundingHeight = roofEdgeInfo.minVergeWidth!; // Changed from averageWidth to minVergeWidth
-    boundingLength = roofEdgeInfo.minLength!; // Changed from averageLength to minLength
+    // Use min verge width for boundingHeight and min ridge/eave length for boundingLength
+    boundingHeight = roofEdgeInfo.minVergeWidth!; 
+    boundingLength = roofEdgeInfo.minLength!;
     
     // Derive the available area by accounting for edge distances
     availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
@@ -388,32 +390,45 @@ export const calculatePVModulePlacement = (
     roofEdgeInfo
   });
   
+  // IMPORTANT: Portrait orientation means the module's HEIGHT (longer side) is aligned with the roof's HEIGHT (verge/Ortgang)
+  // Landscape orientation means the module's WIDTH (shorter side) is aligned with the roof's HEIGHT (verge/Ortgang)
+  
   // Portrait orientation calculations 
-  // For modules in portrait orientation, width refers to the narrow side
-  const portraitModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
-  const portraitModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));
+  // In portrait, the longer side of the module (height) is parallel to verge (Ortgang)
+  // and the shorter side (width) is parallel to eave/ridge (Traufe/First)
+  const portraitModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));  // Modules across width (parallel to eave/ridge)
+  const portraitModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing)); // Modules across length (parallel to verge)
   
   // Total modules in portrait orientation
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
   // Landscape orientation calculations
-  // For modules in landscape orientation, height refers to the narrow side (rotated 90 degrees)
-  const landscapeModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
-  const landscapeModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing));
+  // In landscape, the longer side of the module (height) is parallel to eave/ridge (Traufe/First)
+  // and the shorter side (width) is parallel to verge (Ortgang)
+  const landscapeModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing)); // Modules across width (parallel to eave/ridge)
+  const landscapeModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing));  // Modules across length (parallel to verge)
   
   // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
   
-  // DEBUG: Log the module counts
+  // DEBUG: Log the module counts with clear orientation descriptions
   console.log("PV Module Counts:", {
-    portraitModulesX,
-    portraitModulesY,
-    portraitModuleCount,
-    landscapeModulesX,
-    landscapeModulesY,
-    landscapeModuleCount,
-    portraitFormula: `(${availableWidth}) / (${moduleWidth} + ${moduleSpacing}) = ${availableWidth / (moduleWidth + moduleSpacing)}`,
-    landscapeFormula: `(${availableWidth}) / (${moduleHeight} + ${moduleSpacing}) = ${availableWidth / (moduleHeight + moduleSpacing)}`
+    portrait: {
+      description: "Module HEIGHT parallel to verge (Ortgang), WIDTH parallel to eave (Traufe)",
+      modulesAcrossWidth: portraitModulesX,
+      modulesAcrossLength: portraitModulesY,
+      totalModules: portraitModuleCount,
+      formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesX}`,
+      formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${portraitModulesY}`
+    },
+    landscape: {
+      description: "Module WIDTH parallel to verge (Ortgang), HEIGHT parallel to eave (Traufe)",
+      modulesAcrossWidth: landscapeModulesX,
+      modulesAcrossLength: landscapeModulesY,
+      totalModules: landscapeModuleCount,
+      formula: `Modules across width: floor(${availableWidth.toFixed(3)} / (${moduleHeight.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesX}`,
+      formula2: `Modules across length: floor(${availableLength.toFixed(3)} / (${moduleWidth.toFixed(3)} + ${moduleSpacing.toFixed(3)})) = ${landscapeModulesY}`
+    }
   });
   
   // Choose the orientation that fits more modules
@@ -446,15 +461,15 @@ export const calculatePVModulePlacement = (
     rows,    // Number of rows (modules across length)
     boundingWidth: boundingHeight, // Keep property name for compatibility
     boundingLength,
-    boundingHeight, // Added for correctly named property
+    boundingHeight, // Correct property name
     availableWidth,
     availableLength,
-    startX,   // Added start X position for visualization
-    startZ,   // Added start Z position for visualization
-    minX,     // Added for grid boundary visualization
-    maxX,     // Added for grid boundary visualization
-    minZ,     // Added for grid boundary visualization
-    maxZ,     // Added for grid boundary visualization
+    startX,   // Start X position for visualization
+    startZ,   // Start Z position for visualization
+    minX,     // For grid boundary visualization
+    maxX,     // For grid boundary visualization
+    minZ,     // For grid boundary visualization
+    maxZ,     // For grid boundary visualization
     actualArea: area, // The actual polygon area (not just bounding box)
     manualDimensions,
     userDefinedWidth: manualDimensions ? availableWidth : undefined,
@@ -486,6 +501,8 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
   const gridLines: {from: Point, to: Point}[] = [];
   
   // Determine module dimensions based on orientation
+  // Portrait: the longer side (height) is parallel to roof height (verge/Ortgang)
+  // Landscape: the shorter side (width) is parallel to roof height (verge/Ortgang)
   const moduleWidth = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   
