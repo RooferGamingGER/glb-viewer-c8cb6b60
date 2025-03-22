@@ -216,7 +216,15 @@ export const useMeasurementCore = () => {
   }, [allLabelsVisible]);
 
   const createPVModuleMeasurement = useCallback((points: Point[]) => {
-    if (points.length < 4) return;
+    if (points.length !== 4) {
+      if (points.length < 4) {
+        toast.error("Für PV-Module werden genau 4 Punkte benötigt.");
+        return;
+      } else {
+        points = points.slice(0, 4);
+        toast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
+      }
+    }
     
     const area = calculateArea(points);
     const moduleInfo = calculatePVModulePlacement(points);
@@ -249,10 +257,15 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
     
     toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
-  }, [allLabelsVisible]);
+  }, [allLabelsVisible, setMeasurements, setCurrentPoints, setActiveMode]);
 
-  // Update handling for calculating PV modules on an area
   const handleCalculatePV = (areaPoints: Point[], userDimensions?: {width: number, length: number}) => {
+    if (areaPoints.length !== 4) {
+      if (areaPoints.length > 4) {
+        areaPoints = areaPoints.slice(0, 4);
+      }
+    }
+    
     const moduleInfo = calculatePVModulePlacement(
       areaPoints,
       undefined,
@@ -380,20 +393,28 @@ export const useMeasurementCore = () => {
         break;
         
       case 'pvmodule':
-        if (points.length >= 4) {
-          const moduleSpec = PV_MODULE_TEMPLATES[0];
-          const area = calculatePolygonArea(points);
-          const powerOutput = moduleSpec.power;
-          
-          measurementData = {
-            value: area,
-            label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
-            pvModuleSpec: moduleSpec,
-            powerOutput,
-            labelVisible: allLabelsVisible,
-            unit: 'W'
-          };
+        if (points.length !== 4) {
+          if (points.length < 4) {
+            toast.error("Für PV-Module werden genau 4 Punkte benötigt.");
+            return;
+          } else {
+            points = points.slice(0, 4);
+            toast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
+          }
         }
+        
+        const moduleSpec = PV_MODULE_TEMPLATES[0];
+        const area = calculatePolygonArea(points);
+        const powerOutput = moduleSpec.power;
+        
+        measurementData = {
+          value: area,
+          label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
+          pvModuleSpec: moduleSpec,
+          powerOutput,
+          labelVisible: allLabelsVisible,
+          unit: 'W'
+        };
         break;
         
       case 'vent':
@@ -495,6 +516,11 @@ export const useMeasurementCore = () => {
       toast.success(`PV-Modul-Zeichnung abgeschlossen - Messwerkzeug deaktiviert`);
     } else if (currentMode === 'pvmodule' && updatedPoints.length > 0 && updatedPoints.length < 4) {
       toast.info(`Punkt ${updatedPoints.length} von 4 für PV-Modul platziert`);
+    } else if (currentMode === 'pvmodule') {
+      if (updatedPoints.length > 4) {
+        createPVModuleMeasurement(updatedPoints.slice(0, 4));
+        toast.warning(`Mehr als 4 Punkte platziert. Nur die ersten 4 wurden verwendet.`);
+      }
     }
   }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 

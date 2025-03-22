@@ -42,6 +42,47 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
 ];
 
 /**
+ * Calculate the distance between two points in 3D space
+ */
+const calculateDistance3D = (p1: Point, p2: Point): number => {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const dz = p2.z - p1.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+};
+
+/**
+ * Find parallel line segments in a quadrilateral
+ * @param points - Array of 4 points defining the quadrilateral 
+ * @returns An object with pairs of parallel sides
+ */
+const findParallelSides = (points: Point[]): { 
+  pair1: {length1: number, length2: number}, 
+  pair2: {length1: number, length2: number} 
+} => {
+  if (points.length !== 4) {
+    throw new Error("Expected exactly 4 points for parallel sides calculation");
+  }
+  
+  // Calculate all side lengths
+  const side1 = calculateDistance3D(points[0], points[1]);
+  const side2 = calculateDistance3D(points[1], points[2]);
+  const side3 = calculateDistance3D(points[2], points[3]);
+  const side4 = calculateDistance3D(points[3], points[0]);
+  
+  // Calculate diagonals to determine which sides are more parallel
+  const diagonal1 = calculateDistance3D(points[0], points[2]);
+  const diagonal2 = calculateDistance3D(points[1], points[3]);
+  
+  // By default, assume sides 1,3 and 2,4 are parallel pairs
+  // This is a simplification but works for most rectangular-like shapes
+  return {
+    pair1: { length1: side1, length2: side3 },
+    pair2: { length1: side2, length2: side4 }
+  };
+};
+
+/**
  * Calculates the optimal placement of PV modules on a roof area
  * 
  * @param points - The 3D points defining the roof area polygon
@@ -79,7 +120,7 @@ export const calculatePVModulePlacement = (
     maxZ = Math.max(maxZ, point.z);
   });
   
-  // Use user-defined dimensions if provided
+  // Use user-defined dimensions if provided (highest priority)
   if (userDimensions && userDimensions.width > 0 && userDimensions.length > 0) {
     availableWidth = userDimensions.width;
     availableLength = userDimensions.length;
@@ -89,56 +130,50 @@ export const calculatePVModulePlacement = (
     boundingWidth = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
   } else {
-    // Calculate dimensions based on the area and shape of the polygon
+    // Calculate dimensions based on the shape of the polygon
     
-    // For quadrilaterals, use dedicated function that handles rectangular and non-rectangular shapes
-    if (points.length === 4) {
-      const dimensions = calculateQuadrilateralDimensions(points);
-      boundingWidth = dimensions.width;
-      boundingLength = dimensions.length;
-    } else {
-      // For other polygons, derive dimensions from the area
+    // Make sure we're working with a quadrilateral (4 points)
+    // If not, we'll create a representative quadrilateral
+    let quadPoints = [...points];
+    if (points.length !== 4) {
+      console.warn("PV module placement works best with exactly 4 points. Using approximation.");
       
-      // First, use segment analysis to estimate the shape
-      const segments = generateSegments(points);
+      // Create a quadrilateral from the min/max points (bounding box)
+      quadPoints = [
+        { x: minX, y: points[0].y, z: minZ },
+        { x: maxX, y: points[0].y, z: minZ },
+        { x: maxX, y: points[0].y, z: maxZ },
+        { x: minX, y: points[0].y, z: maxZ }
+      ];
+    }
+    
+    try {
+      // Find parallel sides using the new approach
+      const parallelSides = findParallelSides(quadPoints);
       
-      // Sort segments by length (descending)
-      segments.sort((a, b) => b.length - a.length);
-      
-      // Find the two longest, relatively perpendicular segments
-      // These likely represent the primary dimensions of the shape
-      let primaryLength = segments[0].length;
-      let secondaryLength = 0;
-      
-      // Find segments that are somewhat perpendicular to the longest segment
-      if (segments.length > 1) {
-        // Look for the longest segment that's somewhat perpendicular
-        for (let i = 1; i < segments.length; i++) {
-          secondaryLength = segments[i].length;
-          break;
-        }
-      }
-      
-      // If we couldn't determine a secondary length, derive it from the area
-      if (secondaryLength === 0 && primaryLength > 0) {
-        secondaryLength = area / primaryLength;
-      }
-      
-      // Ensure we have valid dimensions
-      if (primaryLength === 0 || secondaryLength === 0) {
-        // Fallback: estimate dimensions from the bounding box
-        primaryLength = maxX - minX;
-        secondaryLength = maxZ - minZ;
-      }
+      // Calculate width and length as average of parallel sides
+      const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
+      const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
       
       // Assign width and length (width should be shorter than length by convention)
-      if (primaryLength < secondaryLength) {
-        boundingWidth = primaryLength;
-        boundingLength = secondaryLength;
+      if (width1 < width2) {
+        boundingWidth = width1;
+        boundingLength = width2;
       } else {
-        boundingWidth = secondaryLength;
-        boundingLength = primaryLength;
+        boundingWidth = width2;
+        boundingLength = width1;
       }
+      
+      console.log("Calculated from parallel sides:", { boundingWidth, boundingLength });
+    } catch (error) {
+      console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+      
+      // Fallback to the quadrilateral dimensions calculation
+      const dimensions = calculateQuadrilateralDimensions(quadPoints);
+      boundingWidth = dimensions.width;
+      boundingLength = dimensions.length;
+      
+      console.log("Fallback dimensions:", dimensions);
     }
     
     // Derive the available area by accounting for edge distances
@@ -158,6 +193,14 @@ export const calculatePVModulePlacement = (
       // Update bounding dimensions
       boundingWidth = availableWidth + (2 * edgeDistance);
       boundingLength = availableLength + (2 * edgeDistance);
+      
+      console.log("Dimensions adjusted after area sanity check:", {
+        scaleFactor,
+        availableWidth,
+        availableLength,
+        boundingWidth, 
+        boundingLength
+      });
     }
   }
   
@@ -383,4 +426,3 @@ export const calculatePVModuleDimensions = (
     powerOutput: moduleSpec.power
   };
 };
-
