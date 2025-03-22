@@ -457,6 +457,11 @@ export const useMeasurementCore = () => {
         'vent': 1,
         'hook': 1,
         'other': 1,
+        'ridge': 2,
+        'eave': 2,
+        'verge': 2,
+        'valley': 2,
+        'hip': 2,
         'length': 2,
         'height': 2,
         'area': 3,
@@ -472,7 +477,12 @@ export const useMeasurementCore = () => {
           'solar': 'Solaranlage',
           'vent': 'Lüfter',
           'hook': 'Dachhaken',
-          'other': 'Sonstige Einbauten'
+          'other': 'Sonstige Einbauten',
+          'ridge': 'First',
+          'eave': 'Traufe',
+          'verge': 'Ortgang',
+          'valley': 'Kehle',
+          'hip': 'Grat'
         }[activeMode] || activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
         
         toast.success(`${typeName}-Messung abgeschlossen`);
