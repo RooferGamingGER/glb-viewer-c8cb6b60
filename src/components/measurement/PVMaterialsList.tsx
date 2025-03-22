@@ -1,11 +1,11 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { PVMaterials } from '@/types/measurements';
 import { formatPVMaterials } from '@/utils/pvCalculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DownloadIcon, LayersIcon, ZapIcon, WrenchIcon, Cable, AlertTriangle } from 'lucide-react';
+import { DownloadIcon, LayersIcon, ZapIcon, WrenchIcon, Cable, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PVMaterialsListProps {
@@ -17,23 +17,36 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
   materials,
   onCalculate
 }) => {
-  if (!materials || !materials.mountingSystem || !materials.electricalSystem) {
+  // Debug log to check the materials being passed in
+  useEffect(() => {
+    console.log("PVMaterialsList: Rendering with materials:", materials);
+  }, [materials]);
+
+  // Check if materials data is valid and complete
+  const isValidMaterials = materials && 
+    materials.mountingSystem && 
+    materials.electricalSystem && 
+    materials.totalModuleCount > 0;
+
+  if (!isValidMaterials) {
+    console.warn("Invalid or incomplete PV materials data:", materials);
     return (
       <div className="p-4 border border-dashed border-gray-300 rounded-md">
         <div className="flex flex-col items-center gap-2 text-center">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
-          <p className="text-sm text-muted-foreground">Keine Materialliste verfügbar</p>
+          <p className="text-sm text-muted-foreground">
+            Keine vollständige Materialliste verfügbar
+            {materials ? " (unvollständige Daten)" : ""}
+          </p>
           {onCalculate && (
             <Button size="sm" variant="outline" onClick={onCalculate}>
-              Materialliste berechnen
+              Materialliste neu berechnen
             </Button>
           )}
         </div>
       </div>
     );
   }
-
-  console.log("Rendering materials list with:", materials);
 
   return (
     <div className="space-y-4">

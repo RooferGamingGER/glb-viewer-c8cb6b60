@@ -8,7 +8,7 @@ import { formatPVModuleInfo, calculatePVModulePlacement } from '@/utils/pvCalcul
 import PVModuleSelect from './PVModuleSelect';
 import PVMaterialsList from './PVMaterialsList';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { Zap, ListTodo, PackageIcon } from 'lucide-react';
+import { Zap, ListTodo, PackageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SolarMeasurementContentProps {
@@ -21,10 +21,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   updateMeasurement 
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
-  const { calculatePVMaterialsForMeasurement } = useMeasurements();
-  
-  // Add a state to track if materials are being calculated
-  const [isCalculating, setIsCalculating] = useState(false);
+  const { calculatePVMaterialsForMeasurement, calculatingMaterials } = useMeasurements();
   
   // Effect to automatically set the tab to materials if they exist
   useEffect(() => {
@@ -33,8 +30,21 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     }
   }, [measurement.pvModuleInfo?.pvMaterials, activeTab]);
   
+  // Debug log when measurement or PV info changes
+  useEffect(() => {
+    console.log("SolarMeasurementContent: Measurement updated", {
+      id: measurement.id,
+      hasPvModuleInfo: !!measurement.pvModuleInfo,
+      hasPvMaterials: !!measurement.pvModuleInfo?.pvMaterials,
+      pvModuleSpec: measurement.pvModuleInfo?.pvModuleSpec ? 
+        `${measurement.pvModuleInfo.pvModuleSpec.name} (${measurement.pvModuleInfo.pvModuleSpec.power}W)` : 'None',
+    });
+  }, [measurement]);
+  
   const handleModuleSelect = (moduleSpec: any) => {
     if (!measurement.pvModuleInfo) return;
+    
+    console.log("Module selected:", moduleSpec);
     
     // Update PV module info with the selected module
     const updatedPVInfo = {
@@ -50,6 +60,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   
   const handleDimensionsChange = (dimensions: {width: number, length: number}) => {
     if (!measurement.pvModuleInfo) return;
+    
+    console.log("Dimensions changed:", dimensions);
     
     // Create updated PV info with manual dimensions
     const updatedPVInfo = {
@@ -87,6 +99,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   
   const handleSpacingChange = (spacing: {edgeDistance: number, moduleSpacing: number}) => {
     if (!measurement.pvModuleInfo) return;
+    
+    console.log("Spacing changed:", spacing);
     
     // Update spacing values
     const updatedPVInfo = {
@@ -127,33 +141,27 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   };
   
   const handleCalculateMaterials = async (inverterDistance: number = 10) => {
-    if (!measurement.pvModuleInfo || !measurement.pvModuleInfo.pvModuleSpec) {
+    if (!measurement.pvModuleInfo) {
+      toast.error('Keine PV-Modul-Informationen verfügbar');
+      return;
+    }
+    
+    if (!measurement.pvModuleInfo.pvModuleSpec) {
       toast.error('Bitte wählen Sie ein PV-Modul aus');
       return;
     }
     
-    setIsCalculating(true);
+    console.log("Starting materials calculation with:", {
+      measurementId: measurement.id,
+      moduleSpec: measurement.pvModuleInfo.pvModuleSpec,
+      inverterDistance
+    });
     
-    try {
-      // Call the hook function to calculate materials
-      const materials = calculatePVMaterialsForMeasurement(measurement.id, inverterDistance);
-      
-      if (!materials) {
-        toast.error('Fehler bei der Berechnung der Materialliste');
-        return;
-      }
-      
-      console.log("Calculated materials:", materials);
-      toast.success('Materialliste erfolgreich berechnet');
-      
-      // Switch to the materials tab
-      setActiveTab("materials");
-    } catch (error) {
-      console.error("Error calculating materials:", error);
-      toast.error('Fehler bei der Berechnung der Materialliste');
-    } finally {
-      setIsCalculating(false);
-    }
+    // Call the hook function to calculate materials
+    calculatePVMaterialsForMeasurement(measurement.id, inverterDistance);
+    
+    // Switch to the materials tab
+    setActiveTab("materials");
   };
   
   if (!measurement.pvModuleInfo) {
@@ -234,10 +242,19 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 size="sm" 
                 className="w-full h-7"
                 onClick={() => handleCalculateMaterials()}
-                disabled={isCalculating}
+                disabled={calculatingMaterials}
               >
-                <PackageIcon className="h-3 w-3 mr-1" />
-                {isCalculating ? 'Berechnung läuft...' : 'Materialliste berechnen'}
+                {calculatingMaterials ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Berechnung läuft...
+                  </>
+                ) : (
+                  <>
+                    <PackageIcon className="h-3 w-3 mr-1" />
+                    Materialliste berechnen
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -271,7 +288,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
         </TabsContent>
         
         <TabsContent value="materials" className="pt-2">
-          {measurement.pvModuleInfo.pvMaterials ? (
+          {calculatingMaterials ? (
+            <div className="p-4 text-center">
+              <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
+              <p className="text-sm">Berechne Materialliste...</p>
+            </div>
+          ) : measurement.pvModuleInfo.pvMaterials ? (
             <PVMaterialsList 
               materials={measurement.pvModuleInfo.pvMaterials}
               onCalculate={() => handleCalculateMaterials()}
@@ -285,10 +307,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleCalculateMaterials()}
-                disabled={isCalculating}
+                disabled={calculatingMaterials}
               >
                 <PackageIcon className="h-4 w-4 mr-1" />
-                {isCalculating ? 'Berechnung läuft...' : 'Materialliste berechnen'}
+                Materialliste berechnen
               </Button>
             </div>
           )}
