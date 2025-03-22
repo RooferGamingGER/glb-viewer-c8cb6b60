@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
@@ -865,3 +866,644 @@ const createMeasurementTable = (
     
     // Inclination column for length measurements
     if (type === 'length') {
+      const inclinationCell = document.createElement('td');
+      if (measurement.inclination !== undefined) {
+        inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
+      } else {
+        inclinationCell.textContent = '–';
+      }
+      row.appendChild(inclinationCell);
+    }
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  return table;
+};
+
+const createAreaMeasurementsTable = (areaMeasurements: Measurement[]): HTMLElement => {
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Nr.', 'Beschreibung', 'Fläche (m²)', 'Segmente'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  areaMeasurements.forEach((measurement, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr column
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description column
+    const descCell = document.createElement('td');
+    descCell.textContent = measurement.description || '–';
+    row.appendChild(descCell);
+    
+    // Area value column
+    const valueCell = document.createElement('td');
+    valueCell.textContent = formatMeasurementValue(measurement);
+    valueCell.style.fontWeight = 'bold';
+    row.appendChild(valueCell);
+    
+    // Segments count column
+    const segmentsCell = document.createElement('td');
+    if (measurement.segments && measurement.segments.length > 0) {
+      segmentsCell.textContent = measurement.segments.length.toString();
+    } else {
+      segmentsCell.textContent = '–';
+    }
+    row.appendChild(segmentsCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  return table;
+};
+
+const createAreaSegmentsTable = (measurement: Measurement, measurementIndex: number): HTMLElement => {
+  const container = document.createElement('div');
+  container.className = 'segment-table-container';
+  
+  const title = document.createElement('h3');
+  title.textContent = `Segmente für Fläche ${measurementIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+  title.style.fontSize = '16px';
+  title.style.marginTop = '20px';
+  container.appendChild(title);
+  
+  const table = document.createElement('table');
+  table.className = 'segment-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Segment', 'Fläche (m²)', 'Neigung'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  if (measurement.segments && measurement.segments.length > 0) {
+    measurement.segments.forEach((segment, index) => {
+      const row = document.createElement('tr');
+      
+      // Segment number column
+      const numCell = document.createElement('td');
+      numCell.textContent = `Segment ${index + 1}`;
+      row.appendChild(numCell);
+      
+      // Area column
+      const areaCell = document.createElement('td');
+      if (segment.area !== undefined) {
+        areaCell.textContent = `${segment.area.toFixed(2)} m²`;
+        areaCell.style.fontWeight = 'bold';
+      } else {
+        areaCell.textContent = '–';
+      }
+      row.appendChild(areaCell);
+      
+      // Inclination column
+      const inclinationCell = document.createElement('td');
+      if (segment.inclination !== undefined) {
+        inclinationCell.textContent = `${Math.abs(segment.inclination).toFixed(1)}°`;
+      } else {
+        inclinationCell.textContent = '–';
+      }
+      row.appendChild(inclinationCell);
+      
+      tableBody.appendChild(row);
+    });
+  } else {
+    const emptyRow = document.createElement('tr');
+    const emptyCell = document.createElement('td');
+    emptyCell.colSpan = 3;
+    emptyCell.textContent = 'Keine Segmente verfügbar';
+    emptyCell.style.textAlign = 'center';
+    emptyCell.style.padding = '20px';
+    emptyRow.appendChild(emptyCell);
+    tableBody.appendChild(emptyRow);
+  }
+  
+  table.appendChild(tableBody);
+  container.appendChild(table);
+  
+  return container;
+};
+
+const appendRoofElementsSection = (
+  contentWrapper: HTMLElement, 
+  roofElements: Measurement[], 
+  title: string
+) => {
+  const roofElementsContent = document.createElement('div');
+  roofElementsContent.className = 'pdf-section force-page-break';
+  
+  // Create section with header that stays with content
+  const roofElementsSection = document.createElement('div');
+  roofElementsSection.className = 'section-with-header';
+  roofElementsSection.appendChild(createHeader(title));
+  
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Dachelemente';
+  sectionTitle.style.marginTop = '20px'; // Added extra spacing
+  sectionTitle.style.marginBottom = '30px'; // Added extra spacing
+  roofElementsSection.appendChild(sectionTitle);
+  
+  // Count the number of each type of roof element
+  const skylights = roofElements.filter(m => m.type === 'skylight');
+  const chimneys = roofElements.filter(m => m.type === 'chimney');
+  const solar = roofElements.filter(m => m.type === 'solar');
+  
+  const description = document.createElement('p');
+  description.textContent = `Dieser Abschnitt enthält ${roofElements.length} Dachelemente:`;
+  roofElementsSection.appendChild(description);
+  
+  // Create a list of element counts
+  const elementList = document.createElement('ul');
+  elementList.style.marginTop = '10px';
+  elementList.style.marginBottom = '20px';
+  elementList.style.paddingLeft = '20px';
+  
+  const addListItem = (count: number, label: string) => {
+    if (count > 0) {
+      const item = document.createElement('li');
+      item.textContent = `${count} ${label}${count !== 1 ? 'e' : ''}`;
+      item.style.marginBottom = '5px';
+      elementList.appendChild(item);
+    }
+  };
+  
+  addListItem(skylights.length, 'Dachfenster');
+  addListItem(chimneys.length, 'Schornstein');
+  addListItem(solar.length, 'Solaranlage');
+  
+  roofElementsSection.appendChild(elementList);
+  roofElementsContent.appendChild(roofElementsSection);
+  
+  // Create main roof elements table in its own container
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'keep-together table-container';
+  tableContainer.style.marginTop = '30px'; // Added extra spacing
+  
+  const columns = ['Nr.', 'Beschreibung', 'Typ', 'Wert'];
+  const table = createRoofElementsTable(roofElements, columns);
+  tableContainer.appendChild(table);
+  
+  roofElementsContent.appendChild(tableContainer);
+  contentWrapper.appendChild(roofElementsContent);
+};
+
+const createRoofElementsTable = (roofElements: Measurement[], columns: string[]): HTMLElement => {
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  columns.forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  roofElements.forEach((element, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr column
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description column
+    const descCell = document.createElement('td');
+    descCell.textContent = element.description || '–';
+    row.appendChild(descCell);
+    
+    // Type column
+    const typeCell = document.createElement('td');
+    const typeDisplayName = getMeasurementTypeDisplayName(element.type);
+    typeCell.textContent = typeDisplayName || '–';
+    row.appendChild(typeCell);
+    
+    // Value column (area or count)
+    const valueCell = document.createElement('td');
+    valueCell.textContent = formatMeasurementValue(element);
+    valueCell.style.fontWeight = 'bold';
+    row.appendChild(valueCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  return table;
+};
+
+const appendInstallationsSection = (
+  contentWrapper: HTMLElement, 
+  installations: Measurement[], 
+  title: string
+) => {
+  const installationsContent = document.createElement('div');
+  installationsContent.className = 'pdf-section force-page-break';
+  
+  // Create section with header that stays with content
+  const installationsSection = document.createElement('div');
+  installationsSection.className = 'section-with-header';
+  installationsSection.appendChild(createHeader(title));
+  
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Installationen';
+  sectionTitle.style.marginTop = '20px'; // Added extra spacing
+  sectionTitle.style.marginBottom = '30px'; // Added extra spacing
+  installationsSection.appendChild(sectionTitle);
+  
+  // Count the number of each type of installations
+  const vents = installations.filter(m => m.type === 'vent');
+  const hooks = installations.filter(m => m.type === 'hook');
+  const other = installations.filter(m => m.type === 'other');
+  
+  const description = document.createElement('p');
+  description.textContent = `Dieser Abschnitt enthält ${installations.length} Installationen:`;
+  installationsSection.appendChild(description);
+  
+  // Create a list of installation counts
+  const installationList = document.createElement('ul');
+  installationList.style.marginTop = '10px';
+  installationList.style.marginBottom = '20px';
+  installationList.style.paddingLeft = '20px';
+  
+  const addListItem = (count: number, label: string) => {
+    if (count > 0) {
+      const item = document.createElement('li');
+      item.textContent = `${count} ${label}${count !== 1 ? 'e' : ''}`;
+      item.style.marginBottom = '5px';
+      installationList.appendChild(item);
+    }
+  };
+  
+  addListItem(vents.length, 'Entlüftung');
+  addListItem(hooks.length, 'Sicherheitshaken');
+  addListItem(other.length, 'Sonstige');
+  
+  installationsSection.appendChild(installationList);
+  installationsContent.appendChild(installationsSection);
+  
+  // Create main installations table in its own container
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'keep-together table-container';
+  tableContainer.style.marginTop = '30px'; // Added extra spacing
+  
+  const columns = ['Nr.', 'Beschreibung', 'Typ', 'Wert'];
+  const table = createRoofElementsTable(installations, columns);
+  tableContainer.appendChild(table);
+  
+  installationsContent.appendChild(tableContainer);
+  contentWrapper.appendChild(installationsContent);
+};
+
+const appendPVMaterialsSection = (
+  contentWrapper: HTMLElement,
+  solarMeasurements: Measurement[],
+  title: string
+) => {
+  // Check if we actually have PV materials to show
+  const measurementsWithMaterials = solarMeasurements.filter(m => 
+    m.pvModuleInfo?.pvMaterials && m.type === 'solar' && m.area && m.area > 0
+  );
+  
+  if (measurementsWithMaterials.length === 0) return;
+  
+  const pvMaterialsContent = document.createElement('div');
+  pvMaterialsContent.className = 'pdf-section force-page-break';
+  
+  // Create section with header that stays with content
+  const pvMaterialsSection = document.createElement('div');
+  pvMaterialsSection.className = 'section-with-header';
+  pvMaterialsSection.appendChild(createHeader(title));
+  
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'PV-Anlagen Materialliste';
+  sectionTitle.style.marginTop = '20px';
+  sectionTitle.style.marginBottom = '30px';
+  pvMaterialsSection.appendChild(sectionTitle);
+  
+  // Add description
+  const description = document.createElement('p');
+  description.textContent = `Dieser Abschnitt enthält die Materiallisten für ${measurementsWithMaterials.length} PV-Anlagen. Die folgenden Materialien werden für die Installation benötigt:`;
+  pvMaterialsSection.appendChild(description);
+  
+  // Process each solar measurement with materials
+  measurementsWithMaterials.forEach((measurement, index) => {
+    if (!measurement.pvModuleInfo?.pvMaterials) return;
+    
+    // Create measurement container
+    const measurementContainer = document.createElement('div');
+    measurementContainer.className = 'keep-together summary-card';
+    measurementContainer.style.marginTop = '30px';
+    
+    // Add measurement title
+    const measurementTitle = document.createElement('h3');
+    measurementTitle.textContent = `PV-Anlage ${index + 1}${measurement.description ? `: ${measurement.description}` : ''}`;
+    measurementContainer.appendChild(measurementTitle);
+    
+    // Add measurement info
+    const measurementInfo = document.createElement('div');
+    measurementInfo.style.marginBottom = '20px';
+    measurementInfo.style.display = 'flex';
+    measurementInfo.style.flexWrap = 'wrap';
+    measurementInfo.style.gap = '20px';
+    
+    // Module info box
+    const moduleInfoBox = document.createElement('div');
+    moduleInfoBox.style.flex = '1';
+    moduleInfoBox.style.minWidth = '200px';
+    moduleInfoBox.style.backgroundColor = '#f8f9fa';
+    moduleInfoBox.style.padding = '15px';
+    moduleInfoBox.style.borderRadius = '8px';
+    moduleInfoBox.style.border = '1px solid #eee';
+    
+    const moduleTitle = document.createElement('div');
+    moduleTitle.textContent = 'Modulinformation';
+    moduleTitle.style.fontWeight = 'bold';
+    moduleTitle.style.marginBottom = '10px';
+    moduleInfoBox.appendChild(moduleTitle);
+    
+    const moduleList = document.createElement('ul');
+    moduleList.style.listStyle = 'none';
+    moduleList.style.padding = '0';
+    moduleList.style.margin = '0';
+    
+    const moduleData = [
+      { label: 'Modultyp', value: measurement.pvModuleInfo.moduleName || '–' },
+      { label: 'Modulfläche', value: `${measurement.pvModuleInfo.moduleArea?.toFixed(2) || '–'} m²` },
+      { label: 'Leistung', value: `${measurement.pvModuleInfo.modulePower || '–'} Wp` },
+      { label: 'Anzahl', value: measurement.pvModuleInfo.pvMaterials?.moduleCount.toString() || '–' },
+      { label: 'Gesamtleistung', value: `${(measurement.pvModuleInfo.pvMaterials?.totalPower || 0).toFixed(1)} kWp` }
+    ];
+    
+    moduleData.forEach(item => {
+      const li = document.createElement('li');
+      li.style.marginBottom = '5px';
+      li.style.display = 'flex';
+      li.style.justifyContent = 'space-between';
+      
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      label.style.color = '#555';
+      
+      const value = document.createElement('span');
+      value.textContent = item.value;
+      value.style.fontWeight = 'bold';
+      
+      li.appendChild(label);
+      li.appendChild(value);
+      moduleList.appendChild(li);
+    });
+    
+    moduleInfoBox.appendChild(moduleList);
+    measurementInfo.appendChild(moduleInfoBox);
+    
+    // Installation info box
+    const installInfoBox = document.createElement('div');
+    installInfoBox.style.flex = '1';
+    installInfoBox.style.minWidth = '200px';
+    installInfoBox.style.backgroundColor = '#f8f9fa';
+    installInfoBox.style.padding = '15px';
+    installInfoBox.style.borderRadius = '8px';
+    installInfoBox.style.border = '1px solid #eee';
+    
+    const installTitle = document.createElement('div');
+    installTitle.textContent = 'Installationsdaten';
+    installTitle.style.fontWeight = 'bold';
+    installTitle.style.marginBottom = '10px';
+    installInfoBox.appendChild(installTitle);
+    
+    const installList = document.createElement('ul');
+    installList.style.listStyle = 'none';
+    installList.style.padding = '0';
+    installList.style.margin = '0';
+    
+    const formatNumber = (value: number) => value.toLocaleString('de-DE');
+    
+    const installData = [
+      { label: 'Dachfläche', value: `${measurement.area?.toFixed(2) || '–'} m²` },
+      { label: 'Dachneigung', value: measurement.segments && measurement.segments[0]?.inclination !== undefined ? `${Math.abs(measurement.segments[0].inclination).toFixed(1)}°` : '–' },
+      { label: 'Ausrichtung', value: measurement.orientation || '–' },
+      { label: 'Belegungsgrad', value: measurement.pvModuleInfo.pvMaterials?.coverage ? `${(measurement.pvModuleInfo.pvMaterials.coverage * 100).toFixed(0)}%` : '–' }
+    ];
+    
+    installData.forEach(item => {
+      const li = document.createElement('li');
+      li.style.marginBottom = '5px';
+      li.style.display = 'flex';
+      li.style.justifyContent = 'space-between';
+      
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      label.style.color = '#555';
+      
+      const value = document.createElement('span');
+      value.textContent = item.value;
+      value.style.fontWeight = 'bold';
+      
+      li.appendChild(label);
+      li.appendChild(value);
+      installList.appendChild(li);
+    });
+    
+    installInfoBox.appendChild(installList);
+    measurementInfo.appendChild(installInfoBox);
+    measurementContainer.appendChild(measurementInfo);
+    
+    // Create tables for materials
+    const pvMaterials = measurement.pvModuleInfo.pvMaterials;
+    
+    // Create mounting materials table
+    if (pvMaterials.mounting && Object.keys(pvMaterials.mounting).length > 0) {
+      const mountingTitle = document.createElement('h4');
+      mountingTitle.textContent = 'Befestigungsmaterial';
+      mountingTitle.style.marginTop = '25px';
+      mountingTitle.style.marginBottom = '15px';
+      measurementContainer.appendChild(mountingTitle);
+      
+      const mountingTable = document.createElement('table');
+      mountingTable.className = 'measurement-table';
+      
+      // Table header
+      const mountingTableHead = document.createElement('thead');
+      const mountingHeaderRow = document.createElement('tr');
+      
+      ['Material', 'Anzahl'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        mountingHeaderRow.appendChild(th);
+      });
+      
+      mountingTableHead.appendChild(mountingHeaderRow);
+      mountingTable.appendChild(mountingTableHead);
+      
+      // Table body
+      const mountingTableBody = document.createElement('tbody');
+      
+      // Format the mounting materials for display
+      const formattedMounting = formatPVMaterials(pvMaterials);
+      
+      formattedMounting.mounting.forEach(item => {
+        const row = document.createElement('tr');
+        
+        // Material name column
+        const nameCell = document.createElement('td');
+        nameCell.textContent = item.name;
+        row.appendChild(nameCell);
+        
+        // Count column
+        const countCell = document.createElement('td');
+        countCell.textContent = item.value;
+        countCell.style.fontWeight = 'bold';
+        row.appendChild(countCell);
+        
+        mountingTableBody.appendChild(row);
+      });
+      
+      mountingTable.appendChild(mountingTableBody);
+      measurementContainer.appendChild(mountingTable);
+    }
+    
+    // Create electrical materials table
+    if (pvMaterials.electrical && Object.keys(pvMaterials.electrical).length > 0) {
+      const electricalTitle = document.createElement('h4');
+      electricalTitle.textContent = 'Elektromaterial';
+      electricalTitle.style.marginTop = '25px';
+      electricalTitle.style.marginBottom = '15px';
+      measurementContainer.appendChild(electricalTitle);
+      
+      const electricalTable = document.createElement('table');
+      electricalTable.className = 'measurement-table';
+      
+      // Table header
+      const electricalTableHead = document.createElement('thead');
+      const electricalHeaderRow = document.createElement('tr');
+      
+      ['Material', 'Anzahl'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        electricalHeaderRow.appendChild(th);
+      });
+      
+      electricalTableHead.appendChild(electricalHeaderRow);
+      electricalTable.appendChild(electricalTableHead);
+      
+      // Table body
+      const electricalTableBody = document.createElement('tbody');
+      
+      // Format the electrical materials for display
+      const formattedElectrical = formatPVMaterials(pvMaterials);
+      
+      formattedElectrical.electrical.forEach(item => {
+        const row = document.createElement('tr');
+        
+        // Material name column
+        const nameCell = document.createElement('td');
+        nameCell.textContent = item.name;
+        row.appendChild(nameCell);
+        
+        // Count column
+        const countCell = document.createElement('td');
+        countCell.textContent = item.value;
+        countCell.style.fontWeight = 'bold';
+        row.appendChild(countCell);
+        
+        electricalTableBody.appendChild(row);
+      });
+      
+      electricalTable.appendChild(electricalTableBody);
+      measurementContainer.appendChild(electricalTable);
+    }
+    
+    pvMaterialsContent.appendChild(measurementContainer);
+  });
+  
+  contentWrapper.appendChild(pvMaterialsContent);
+};
+
+const appendCustomScreenshotsSection = (
+  contentWrapper: HTMLElement,
+  measurementsWithScreenshots: Measurement[],
+  title: string
+) => {
+  const screenshotsContent = document.createElement('div');
+  screenshotsContent.className = 'pdf-section custom-screenshots-section';
+  
+  // Create section with header
+  screenshotsContent.appendChild(createHeader(title));
+  
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'Bildergalerie';
+  sectionTitle.style.marginTop = '20px';
+  sectionTitle.style.marginBottom = '30px';
+  screenshotsContent.appendChild(sectionTitle);
+  
+  const description = document.createElement('p');
+  description.textContent = 'Die folgenden Bilder wurden während der Vermessung aufgenommen:';
+  screenshotsContent.appendChild(description);
+  
+  // Create a grid for screenshots (2 columns)
+  const screenshotsGrid = document.createElement('div');
+  screenshotsGrid.className = 'screenshots-grid';
+  
+  // Add screenshots from all measurements
+  measurementsWithScreenshots.forEach(measurement => {
+    if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) return;
+    
+    measurement.customScreenshots.forEach((screenshot, screenIndex) => {
+      const screenshotItem = document.createElement('div');
+      screenshotItem.className = 'screenshot-item keep-together';
+      
+      const img = document.createElement('img');
+      img.src = screenshot.dataUrl;
+      img.className = 'custom-screenshot';
+      img.alt = screenshot.title || `Screenshot ${screenIndex + 1}`;
+      
+      const title = document.createElement('div');
+      title.className = 'screenshot-title';
+      title.textContent = screenshot.title || `Bild ${screenIndex + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+      
+      screenshotItem.appendChild(img);
+      screenshotItem.appendChild(title);
+      screenshotsGrid.appendChild(screenshotItem);
+    });
+  });
+  
+  screenshotsContent.appendChild(screenshotsGrid);
+  contentWrapper.appendChild(screenshotsContent);
+};
