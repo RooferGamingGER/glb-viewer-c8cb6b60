@@ -1,4 +1,3 @@
-
 import { Point, PVModuleInfo } from '@/types/measurements';
 import { calculatePolygonArea } from './measurementCalculations';
 
@@ -30,63 +29,52 @@ export const calculatePVModulePlacement = (
   // Calculate the area of the polygon
   const area = calculatePolygonArea(points);
   
-  // Calculate the minimum and maximum X and Y coordinates
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  // Calculate the minimum and maximum X and Z coordinates (not Y, because Y is height)
+  // This ensures we get the actual roof surface dimensions
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   
   points.forEach(point => {
     minX = Math.min(minX, point.x);
     maxX = Math.max(maxX, point.x);
-    minY = Math.min(minY, point.y);
-    maxY = Math.max(maxY, point.y);
+    minZ = Math.min(minZ, point.z);
+    maxZ = Math.max(maxZ, point.z);
   });
   
   // Calculate approximate dimensions of the bounding rectangle
   const boundingWidth = maxX - minX;
-  const boundingHeight = maxY - minY;
+  const boundingLength = maxZ - minZ;
   
   // Calculate the available area after applying edge distance
   const availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
-  const availableHeight = Math.max(0, boundingHeight - (2 * edgeDistance));
+  const availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
   
   // DEBUG: Log calculation values to diagnose the issue
   console.log("PV Calculation Debug:", {
     area,
     boundingWidth,
-    boundingHeight,
+    boundingLength,
     availableWidth,
-    availableHeight,
+    availableLength,
     moduleWidth,
     moduleHeight,
     edgeDistance,
     moduleSpacing
   });
   
-  // Calculate how many modules can fit in each direction
-  // For portrait orientation (height > width)
-  // We need to account for spacing between modules, but not after the last module
-  
-  // Portrait orientation calculations
-  // How many complete modules+spacing units fit along width
-  let portraitModulesX = Math.floor((availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing));
-  // How many complete modules+spacing units fit along height
-  let portraitModulesY = Math.floor((availableHeight + moduleSpacing) / (moduleHeight + moduleSpacing));
-  
-  // Ensure we have at least 1 module if there's enough space for it
-  portraitModulesX = Math.max(portraitModulesX, availableWidth >= moduleWidth ? 1 : 0);
-  portraitModulesY = Math.max(portraitModulesY, availableHeight >= moduleHeight ? 1 : 0);
+  // Portrait orientation calculations (module height > module width)
+  // How many complete modules fit along width
+  const portraitModulesX = Math.max(0, Math.floor((availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing)));
+  // How many complete modules fit along length
+  const portraitModulesY = Math.max(0, Math.floor((availableLength + moduleSpacing) / (moduleHeight + moduleSpacing)));
   
   // Total modules in portrait orientation
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
-  // Landscape orientation calculations
-  // How many complete modules+spacing units fit along width
-  let landscapeModulesX = Math.floor((availableWidth + moduleSpacing) / (moduleHeight + moduleSpacing));
-  // How many complete modules+spacing units fit along height
-  let landscapeModulesY = Math.floor((availableHeight + moduleSpacing) / (moduleWidth + moduleSpacing));
-  
-  // Ensure we have at least 1 module if there's enough space for it
-  landscapeModulesX = Math.max(landscapeModulesX, availableWidth >= moduleHeight ? 1 : 0);
-  landscapeModulesY = Math.max(landscapeModulesY, availableHeight >= moduleWidth ? 1 : 0);
+  // Landscape orientation calculations (module width > module height)
+  // How many complete modules fit along width
+  const landscapeModulesX = Math.max(0, Math.floor((availableWidth + moduleSpacing) / (moduleHeight + moduleSpacing)));
+  // How many complete modules fit along length
+  const landscapeModulesY = Math.max(0, Math.floor((availableLength + moduleSpacing) / (moduleWidth + moduleSpacing)));
   
   // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;

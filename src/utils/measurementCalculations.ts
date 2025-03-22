@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
@@ -106,8 +105,12 @@ export const calculateArea = (points: Point[]): number => {
     // Find the best-fit plane for these points
     const { projectedPoints, planeNormal } = projectPointsToPlane(points);
     
+    console.log("Projected points for area calculation:", projectedPoints);
+    
     // Apply triangulation (Ear clipping algorithm)
     const triangles = earClip(projectedPoints);
+    
+    console.log("Triangles after ear clipping:", triangles);
     
     let totalArea = 0;
     
@@ -130,57 +133,34 @@ export const calculateArea = (points: Point[]): number => {
       totalArea += triangleArea;
     }
     
+    console.log("Total calculated area:", totalArea);
+    
     // Return the total area of all triangles in the polygon
     return totalArea;
   } catch (error) {
     console.error("Error in area calculation:", error);
     
-    // Fallback to earcut triangulation in case earClip fails
-    const triangleIndices = triangulatePolygon(points);
-    const { projectedPoints } = projectPointsToPlane(points);
-    
-    // Convert to 2D vertices for area calculation
-    const vertices: number[] = [];
-    for (const point of projectedPoints) {
-      vertices.push(point.x, point.z);
+    // Fallback to a simpler 3D area calculation
+    try {
+      // Project points to XZ plane for 2D area calculation
+      const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
+      
+      // Calculate area using shoelace formula (Gauss's area formula)
+      let area = 0;
+      for (let i = 0; i < flatPoints.length; i++) {
+        const j = (i + 1) % flatPoints.length;
+        area += flatPoints[i].x * flatPoints[j].z;
+        area -= flatPoints[j].x * flatPoints[i].z;
+      }
+      area = Math.abs(area) / 2;
+      
+      console.log("Fallback area calculation (shoelace formula):", area);
+      
+      return area;
+    } catch (fallbackError) {
+      console.error("Fallback area calculation also failed:", fallbackError);
+      return 0; // Return 0 if all calculations fail
     }
-    
-    let totalArea = 0;
-    
-    // Calculate area for each triangle
-    for (let i = 0; i < triangleIndices.length; i += 3) {
-      const i1 = triangleIndices[i];
-      const i2 = triangleIndices[i+1];
-      const i3 = triangleIndices[i+2];
-      
-      const p1 = {
-        x: vertices[i1 * 2],
-        y: 0,
-        z: vertices[i1 * 2 + 1]
-      };
-      
-      const p2 = {
-        x: vertices[i2 * 2],
-        y: 0,
-        z: vertices[i2 * 2 + 1]
-      };
-      
-      const p3 = {
-        x: vertices[i3 * 2],
-        y: 0,
-        z: vertices[i3 * 2 + 1]
-      };
-      
-      // Calculate the area of this triangle using the cross product
-      const v1 = new THREE.Vector3(p2.x - p1.x, 0, p2.z - p1.z);
-      const v2 = new THREE.Vector3(p3.x - p1.x, 0, p3.z - p1.z);
-      const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
-      
-      // The length of the cross product is twice the area
-      totalArea += crossProduct.length() / 2;
-    }
-    
-    return totalArea;
   }
 };
 
@@ -405,5 +385,33 @@ export const calculateCentroid = (points: Point[]): { x: number; y: number; z: n
  * @returns Area in square meters
  */
 export const calculatePolygonArea = (points: Point[]): number => {
-  return calculateArea(points); // Now we just redirect to our main implementation
+  if (points.length < 3) return 0;
+  
+  try {
+    return calculateArea(points);
+  } catch (error) {
+    console.error("Error in polygon area calculation:", error);
+    
+    // Extreme fallback - use shoelace formula on XZ plane
+    try {
+      // Project points to XZ plane for 2D area calculation
+      const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
+      
+      // Calculate area using shoelace formula (Gauss's area formula)
+      let area = 0;
+      for (let i = 0; i < flatPoints.length; i++) {
+        const j = (i + 1) % flatPoints.length;
+        area += flatPoints[i].x * flatPoints[j].z;
+        area -= flatPoints[j].x * flatPoints[i].z;
+      }
+      area = Math.abs(area) / 2;
+      
+      console.log("Emergency fallback area calculation:", area);
+      
+      return area;
+    } catch (fallbackError) {
+      console.error("All area calculations failed:", fallbackError);
+      return 0; // Return 0 if all calculations fail
+    }
+  }
 };
