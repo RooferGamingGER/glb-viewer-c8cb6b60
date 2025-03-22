@@ -1,11 +1,10 @@
-
+import { useCallback, useRef } from 'react';
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
 import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
-import { useCallback, useRef } from 'react';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
