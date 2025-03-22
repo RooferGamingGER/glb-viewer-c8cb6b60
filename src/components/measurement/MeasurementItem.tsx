@@ -210,46 +210,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const hasPVInfo = measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0;
   const isAreaMeasurement = measurement.type === 'area';
 
-  const getBoundingBoxDimensions = () => {
-    if (!measurement.points || measurement.points.length < 3) {
-      return null;
-    }
-    
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    
-    measurement.points.forEach(point => {
-      minX = Math.min(minX, point.x);
-      maxX = Math.max(maxX, point.x);
-      minZ = Math.min(minZ, point.z);
-      maxZ = Math.max(maxZ, point.z);
-    });
-    
-    const boundingWidth = maxX - minX;
-    const boundingLength = maxZ - minZ;
-    
-    return {
-      width: boundingWidth,
-      length: boundingLength,
-      area: boundingWidth * boundingLength
-    };
-  };
-
-  const getAvailableArea = () => {
-    if (!measurement.pvModuleInfo || !getBoundingBoxDimensions()) return null;
-    
-    const edgeDistance = measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
-    const boundingBox = getBoundingBoxDimensions()!;
-    
-    const availableWidth = Math.max(0, boundingBox.width - (2 * edgeDistance));
-    const availableLength = Math.max(0, boundingBox.length - (2 * edgeDistance));
-    
-    return {
-      width: availableWidth,
-      length: availableLength,
-      area: availableWidth * availableLength
-    };
-  };
-
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
@@ -449,16 +409,16 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs">
                 <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
                 
-                {getBoundingBoxDimensions() && (
+                {measurement.pvModuleInfo && (
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div><strong>Begrenzung Breite:</strong> {getBoundingBoxDimensions()!.width.toFixed(3)}m</div>
-                    <div><strong>Begrenzung Länge:</strong> {getBoundingBoxDimensions()!.length.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {getBoundingBoxDimensions()!.area.toFixed(3)}m²</div>
+                    <div><strong>Begrenzung Breite:</strong> {measurement.pvModuleInfo.boundingWidth.toFixed(3)}m</div>
+                    <div><strong>Begrenzung Länge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingWidth * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
                     
-                    <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Verfügbare Länge:</strong> {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)}m</div>
+                    <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
                     
-                    {measurement.pvModuleInfo!.orientation === 'portrait' ? (
+                    {measurement.pvModuleInfo.orientation === 'portrait' ? (
                       <>
                         <div className="col-span-2 mt-1 text-blue-700 font-semibold">Hochformat-Berechnung:</div>
                         <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
@@ -466,12 +426,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
                           <span className="text-blue-600"> floor(
-                            {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} / (
-                            {measurement.pvModuleInfo!.moduleWidth.toFixed(3)} + 
-                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
-                              (getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / 
-                              (measurement.pvModuleInfo!.moduleWidth + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              measurement.pvModuleInfo.availableWidth / 
+                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
@@ -480,12 +440,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
                           <span className="text-blue-600"> floor(
-                            {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} / (
-                            {measurement.pvModuleInfo!.moduleHeight.toFixed(3)} + 
-                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
-                              (getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / 
-                              (measurement.pvModuleInfo!.moduleHeight + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              measurement.pvModuleInfo.availableLength / 
+                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
@@ -498,12 +458,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
                           <span className="text-blue-600"> floor(
-                            {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} / (
-                            {measurement.pvModuleInfo!.moduleHeight.toFixed(3)} + 
-                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
-                              (getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / 
-                              (measurement.pvModuleInfo!.moduleHeight + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              measurement.pvModuleInfo.availableWidth / 
+                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
@@ -512,18 +472,18 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         </div>
                         <div className="col-span-2"><strong>Formel:</strong> 
                           <span className="text-blue-600"> floor(
-                            {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} / (
-                            {measurement.pvModuleInfo!.moduleWidth.toFixed(3)} + 
-                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
                             {Math.floor(
-                              (getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / 
-                              (measurement.pvModuleInfo!.moduleWidth + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              measurement.pvModuleInfo.availableLength / 
+                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
                             )}
                           </span>
                         </div>
                       </>
                     )}
-                    <div className="col-span-2 mt-2 text-blue-700 font-semibold">Modulanzahl: {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'} = {measurement.pvModuleInfo!.moduleCount} Module</div>
+                    <div className="col-span-2 mt-2 text-blue-700 font-semibold">Modulanzahl: {measurement.pvModuleInfo.columns || '?'} × {measurement.pvModuleInfo.rows || '?'} = {measurement.pvModuleInfo.moduleCount} Module</div>
                   </div>
                 )}
               </div>
@@ -694,4 +654,3 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 };
 
 export default MeasurementItem;
-
