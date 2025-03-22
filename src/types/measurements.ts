@@ -67,6 +67,8 @@ export interface PVModuleInfo {
   manualDimensions?: boolean; // Flag to indicate if dimensions were manually set
   userDefinedWidth?: number;  // User-defined available width in meters
   userDefinedLength?: number; // User-defined available length in meters
+  edgeInfoValid?: boolean;    // Whether the edge measurements are valid
+  edgeInfoMessage?: string;   // Validation message for edge measurements
 }
 
 export interface PVModuleSpec {

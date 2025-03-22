@@ -1,3 +1,4 @@
+
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
@@ -54,6 +55,8 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
   averageWidth?: number;  // Average of verge lengths
   averageLength?: number; // Average of ridge and eave lengths
   hasAllEdges: boolean;   // Whether all edge measurements are available
+  isValid: boolean;       // Whether the measurements are valid/consistent
+  validationMessage?: string; // Optional message about validation issues
 } => {
   // Find all ridge, eave, and verge measurements
   const ridgeMeasurements = measurements.filter(m => m.type === 'ridge');
@@ -69,8 +72,11 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     averageWidth?: number;
     averageLength?: number;
     hasAllEdges: boolean;
+    isValid: boolean;
+    validationMessage?: string;
   } = {
-    hasAllEdges: false
+    hasAllEdges: false,
+    isValid: true
   };
   
   // Extract ridge length (if available)
@@ -95,10 +101,32 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
   // Calculate average dimensions if we have the necessary measurements
   if (result.ridgeLength !== undefined && result.eaveLength !== undefined) {
     result.averageLength = (result.ridgeLength + result.eaveLength) / 2;
+    
+    // Validate consistency between ridge and eave
+    const lengthDifference = Math.abs(result.ridgeLength - result.eaveLength);
+    const maxAllowedDifference = Math.max(result.ridgeLength, result.eaveLength) * 0.2; // Allow 20% difference
+    
+    if (lengthDifference > maxAllowedDifference) {
+      console.warn(`Large difference between ridge (${result.ridgeLength.toFixed(2)}m) and eave (${result.eaveLength.toFixed(2)}m) measurements: ${lengthDifference.toFixed(2)}m`);
+      result.validationMessage = "Die Werte für First und Traufe weichen stark voneinander ab.";
+      result.isValid = false;
+    }
   }
   
   if (result.vergeWidth1 !== undefined && result.vergeWidth2 !== undefined) {
     result.averageWidth = (result.vergeWidth1 + result.vergeWidth2) / 2;
+    
+    // Validate consistency between verges
+    const widthDifference = Math.abs(result.vergeWidth1 - result.vergeWidth2);
+    const maxAllowedDifference = Math.max(result.vergeWidth1, result.vergeWidth2) * 0.2; // Allow 20% difference
+    
+    if (widthDifference > maxAllowedDifference) {
+      console.warn(`Large difference between verge measurements: ${widthDifference.toFixed(2)}m`);
+      result.validationMessage = result.validationMessage 
+        ? result.validationMessage + " Die Werte für die Ortgänge weichen stark voneinander ab."
+        : "Die Werte für die Ortgänge weichen stark voneinander ab.";
+      result.isValid = false;
+    }
   } else if (result.vergeWidth1 !== undefined) {
     result.averageWidth = result.vergeWidth1;
   } else if (result.vergeWidth2 !== undefined) {
@@ -107,6 +135,37 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
   
   // Check if we have all edges
   result.hasAllEdges = result.averageWidth !== undefined && result.averageLength !== undefined;
+  
+  // Validate against roof area measurement
+  const roofAreaMeasurements = measurements.filter(m => m.type === 'area');
+  if (result.hasAllEdges && roofAreaMeasurements.length > 0) {
+    // Find the most recent area measurement (likely to be the roof area)
+    const roofArea = roofAreaMeasurements[roofAreaMeasurements.length - 1];
+    
+    // Calculate expected area from edge measurements
+    const expectedArea = result.averageWidth! * result.averageLength!;
+    const actualArea = roofArea.value;
+    
+    // Calculate the area difference percentage
+    const areaDifference = Math.abs(expectedArea - actualArea);
+    const areaDifferencePercent = (areaDifference / actualArea) * 100;
+    
+    console.log("Area validation:", {
+      expectedArea,
+      actualArea,
+      areaDifference,
+      areaDifferencePercent
+    });
+    
+    // If the areas differ by more than 30%, flag as potentially invalid
+    if (areaDifferencePercent > 30) {
+      console.warn(`Large difference between expected area from edges (${expectedArea.toFixed(2)}m²) and actual roof area (${actualArea.toFixed(2)}m²): ${areaDifferencePercent.toFixed(1)}%`);
+      result.validationMessage = result.validationMessage 
+        ? result.validationMessage + " Die berechnete Fläche weicht stark von der gemessenen Fläche ab."
+        : "Die berechnete Fläche weicht stark von der gemessenen Fläche ab.";
+      result.isValid = false;
+    }
+  }
   
   console.log("Extracted roof edge measurements:", result);
   return result;
@@ -176,8 +235,45 @@ export const calculatePVModulePlacement = (
     averageWidth?: number;
     averageLength?: number;
     hasAllEdges: boolean;
+    isValid?: boolean;
+    validationMessage?: string;
   }
 ): PVModuleInfo => {
+  // Enforce exactly 4 points for PV module calculation
+  if (points.length !== 4) {
+    console.warn(`PV module calculation expects exactly 4 points, got ${points.length}. Using subset or adding points to make a quadrilateral.`);
+    
+    // If we have more than 4 points, take just the first 4
+    if (points.length > 4) {
+      points = points.slice(0, 4);
+    } 
+    // If we have fewer than 4 points, try to create a rectangle
+    else if (points.length < 4) {
+      // We need at least 2 points to create a rectangle
+      if (points.length < 2) {
+        console.error("Cannot create PV module area with fewer than 2 points");
+        // Create a default small rectangle as fallback
+        const defaultPoint = points.length > 0 ? points[0] : { x: 0, y: 0, z: 0 };
+        points = [
+          defaultPoint,
+          { x: defaultPoint.x + 1, y: defaultPoint.y, z: defaultPoint.z },
+          { x: defaultPoint.x + 1, y: defaultPoint.y, z: defaultPoint.z + 1 },
+          { x: defaultPoint.x, y: defaultPoint.y, z: defaultPoint.z + 1 }
+        ];
+      } else {
+        // Create a rectangle using first two points as diagonal corners
+        const p1 = points[0];
+        const p2 = points[1];
+        points = [
+          p1,
+          { x: p2.x, y: p1.y, z: p1.z },
+          p2,
+          { x: p1.x, y: p1.y, z: p2.z }
+        ];
+      }
+    }
+  }
+
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
   
@@ -206,9 +302,16 @@ export const calculatePVModulePlacement = (
     // Adjust bounding dimensions to match user values plus edge distance
     boundingWidth = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
+    
+    console.log("Using user-defined dimensions:", {
+      availableWidth,
+      availableLength,
+      boundingWidth,
+      boundingLength
+    });
   } 
-  // Use roof edge measurements if available (second priority)
-  else if (roofEdgeInfo && roofEdgeInfo.hasAllEdges) {
+  // Use roof edge measurements if available, valid, and complete (second priority)
+  else if (roofEdgeInfo && roofEdgeInfo.hasAllEdges && (roofEdgeInfo.isValid !== false)) {
     boundingWidth = roofEdgeInfo.averageWidth!;
     boundingLength = roofEdgeInfo.averageLength!;
     
@@ -228,17 +331,6 @@ export const calculatePVModulePlacement = (
     // Make sure we're working with a quadrilateral (4 points)
     // If not, we'll create a representative quadrilateral
     let quadPoints = [...points];
-    if (points.length !== 4) {
-      console.warn("PV module placement works best with exactly 4 points. Using approximation.");
-      
-      // Create a quadrilateral from the min/max points (bounding box)
-      quadPoints = [
-        { x: minX, y: points[0].y, z: minZ },
-        { x: maxX, y: points[0].y, z: minZ },
-        { x: maxX, y: points[0].y, z: maxZ },
-        { x: minX, y: points[0].y, z: maxZ }
-      ];
-    }
     
     try {
       // Find parallel sides using the new approach
@@ -308,7 +400,8 @@ export const calculatePVModulePlacement = (
     moduleWidth,
     moduleHeight,
     edgeDistance,
-    moduleSpacing
+    moduleSpacing,
+    roofEdgeInfo
   });
   
   // Portrait orientation calculations 
@@ -381,6 +474,8 @@ export const calculatePVModulePlacement = (
     manualDimensions,
     userDefinedWidth: manualDimensions ? availableWidth : undefined,
     userDefinedLength: manualDimensions ? availableLength : undefined,
+    edgeInfoValid: roofEdgeInfo ? (roofEdgeInfo.isValid !== false) : undefined,
+    edgeInfoMessage: roofEdgeInfo?.validationMessage,
     pvModuleSpec: {
       name: "Standard (380W)", // The required 'name' property
       width: moduleWidth,

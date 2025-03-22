@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PVModuleSpec, PVModuleInfo } from '@/types/measurements';
 import { PV_MODULE_TEMPLATES } from '@/utils/pvCalculations';
-import { Settings, Ruler } from 'lucide-react';
+import { Settings, Ruler, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PVModuleSelectProps {
   onModuleSelect: (module: PVModuleSpec) => void;
@@ -95,6 +96,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
     
     setDialogOpen(false);
   };
+  
+  // Check if we have edge validation issues
+  const hasEdgeInfoValidationIssues = pvModuleInfo?.edgeInfoValid === false && pvModuleInfo?.edgeInfoMessage;
   
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -213,6 +217,15 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
           
           <TabsContent value="dimensions" className="py-4">
             <div className="space-y-4">
+              {hasEdgeInfoValidationIssues && (
+                <Alert variant="warning" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="ml-2">
+                    {pvModuleInfo?.edgeInfoMessage}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="flex items-center space-x-2 mb-4">
                 <Checkbox 
                   id="useManualDimensions" 
@@ -271,6 +284,16 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                     <div><strong>Länge:</strong> {pvModuleInfo.availableLength?.toFixed(2) || "-"} m</div>
                     <div><strong>Fläche:</strong> {pvModuleInfo.actualArea?.toFixed(2) || "-"} m²</div>
                   </div>
+                  
+                  {pvModuleInfo.boundingWidth && pvModuleInfo.boundingLength && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <h3 className="text-sm font-medium mb-2">Begrenzungsabmessungen:</h3>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><strong>Breite:</strong> {pvModuleInfo.boundingWidth.toFixed(2)} m</div>
+                        <div><strong>Länge:</strong> {pvModuleInfo.boundingLength.toFixed(2)} m</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

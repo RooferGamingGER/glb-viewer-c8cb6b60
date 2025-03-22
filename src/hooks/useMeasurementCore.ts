@@ -270,7 +270,11 @@ export const useMeasurementCore = () => {
     toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
     
     if (roofEdgeInfo.hasAllEdges) {
-      toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+      if (roofEdgeInfo.isValid === false && roofEdgeInfo.validationMessage) {
+        toast.warning(`Hinweis zu Dachkanten: ${roofEdgeInfo.validationMessage}`);
+      } else {
+        toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+      }
     }
   }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
 

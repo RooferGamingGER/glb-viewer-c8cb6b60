@@ -95,7 +95,7 @@ export const useMeasurements = () => {
     setMeasurements
   );
   
-  // Get roof edge information from measurements
+  // Get roof edge information from measurements with validation
   const getRoofEdgeInfo = useCallback(() => {
     return extractRoofEdgeMeasurements(measurements);
   }, [measurements]);
