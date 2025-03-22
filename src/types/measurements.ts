@@ -65,9 +65,6 @@ export interface PVModuleInfo {
   maxZ?: number;           // Maximum Z of the bounding box
   actualArea?: number;      // The actual area (not just bounding box)
   pvModuleSpec?: PVModuleSpec; // Reference to the module specification used
-  showMeasurementPoints?: boolean; // Whether to show measurement points
-  showGrid?: boolean;       // Whether to show the module grid
-  showModuleLabels?: boolean; // Whether to show labels for individual modules
 }
 
 export interface PVModuleSpec {
