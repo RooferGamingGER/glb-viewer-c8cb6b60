@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
 import earcut from 'earcut';
@@ -20,6 +19,109 @@ export function isPointConcave(points: Point[], index: number): boolean {
   const crossProduct = new THREE.Vector3().crossVectors(v1, v2).y;
   
   return crossProduct < 0;
+}
+
+/**
+ * Ear-clipping algorithm for triangulating a polygon
+ * This works better for complex 3D surfaces than earcut in some cases
+ */
+export function earClip(points: Point[]): number[][] {
+  if (points.length < 3) return [];
+  
+  // Make a copy of the points array that we can modify
+  const vertices = [...points];
+  const triangles: number[][] = [];
+  const indices = Array.from({ length: points.length }, (_, i) => i);
+  
+  let i = 0;
+  let n = indices.length;
+  
+  // Continue until we can't form any more triangles
+  while (n > 2) {
+    // Get indices of the three consecutive vertices
+    const a = indices[i % n];
+    const b = indices[(i + 1) % n];
+    const c = indices[(i + 2) % n];
+    
+    // Get the actual vertices
+    const pointA = vertices[a];
+    const pointB = vertices[b];
+    const pointC = vertices[c];
+    
+    // Check if this vertex forms an ear
+    if (isEar(vertices, indices, i % n, n)) {
+      // Add the triangle to our result
+      triangles.push([a, b, c]);
+      
+      // Remove the middle vertex from the polygon
+      indices.splice((i + 1) % n, 1);
+      n--;
+      
+      // Reset the counter to ensure we don't skip vertices
+      i = 0;
+    } else {
+      // Move to the next vertex
+      i++;
+      
+      // If we've gone all the way around without finding an ear, break to avoid infinite loop
+      if (i >= n) break;
+    }
+  }
+  
+  return triangles;
+}
+
+/**
+ * Check if a vertex forms an "ear" in the polygon
+ */
+function isEar(vertices: Point[], indices: number[], i: number, n: number): boolean {
+  const a = indices[i % n];
+  const b = indices[(i + 1) % n];
+  const c = indices[(i + 2) % n];
+  
+  const pointA = vertices[a];
+  const pointB = vertices[b];
+  const pointC = vertices[c];
+  
+  // First check if the angle is convex
+  const v1 = new THREE.Vector3(pointA.x - pointB.x, 0, pointA.z - pointB.z);
+  const v2 = new THREE.Vector3(pointC.x - pointB.x, 0, pointC.z - pointB.z);
+  
+  // Using 2D coordinates (x,z) for this check
+  const cross = v1.x * v2.z - v1.z * v2.x;
+  
+  // If angle is not convex, this can't be an ear
+  if (cross < 0) return false;
+  
+  // Check if any other point is inside this triangle
+  for (let j = 0; j < n; j++) {
+    // Skip the points that form the triangle
+    if (j === i % n || j === (i + 1) % n || j === (i + 2) % n) continue;
+    
+    const p = vertices[indices[j]];
+    
+    // Check if point p is inside the triangle (a,b,c)
+    if (isPointInTriangle(p, pointA, pointB, pointC)) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Check if a point is inside a triangle (using 2D projection, ignoring Y)
+ */
+function isPointInTriangle(p: Point, a: Point, b: Point, c: Point): boolean {
+  // Using barycentric coordinates to check if point is in triangle
+  const area = 0.5 * Math.abs(
+    (a.x * (b.z - c.z) + b.x * (c.z - a.z) + c.x * (a.z - b.z))
+  );
+  
+  const s = 1 / (2 * area) * (a.z * c.x - a.x * c.z + (c.z - a.z) * p.x + (a.x - c.x) * p.z);
+  const t = 1 / (2 * area) * (a.x * b.z - a.z * b.x + (a.z - b.z) * p.x + (b.x - a.x) * p.z);
+  
+  return s > 0 && t > 0 && 1 - s - t > 0;
 }
 
 /**

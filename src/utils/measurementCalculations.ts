@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
 import earcut from 'earcut';
-import { triangulatePolygon, projectPointsToPlane } from './triangulation';
+import { triangulatePolygon, projectPointsToPlane, earClip } from './triangulation';
 
 /**
  * Calculate the distance between two 3D points
@@ -100,20 +100,54 @@ export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
   try {
-    // First project points to best-fit plane for more accurate results
-    const { projectedPoints } = projectPointsToPlane(points);
+    // Create vectors for each point
+    const vectors = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
     
-    // Convert projected points to array for triangulation
-    const vertices: number[] = [];
-    for (const point of projectedPoints) {
-      vertices.push(point.x, point.z); // Use x and z coordinates for 2D projection
+    // Find the best-fit plane for these points
+    const { projectedPoints, planeNormal } = projectPointsToPlane(points);
+    
+    // Apply triangulation (Ear clipping algorithm)
+    const triangles = earClip(projectedPoints);
+    
+    let totalArea = 0;
+    
+    // Calculate area using the cross product method - this preserves the actual 3D area
+    for (const triangle of triangles) {
+      const p0 = vectors[triangle[0]];
+      const p1 = vectors[triangle[1]];
+      const p2 = vectors[triangle[2]];
+      
+      // Calculate vectors between points
+      const v1 = new THREE.Vector3().subVectors(p1, p0);
+      const v2 = new THREE.Vector3().subVectors(p2, p0);
+      
+      // Calculate cross product - the length is 2x the area
+      const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
+      
+      // The area is half the length of the cross product
+      const triangleArea = crossProduct.length() * 0.5;
+      
+      totalArea += triangleArea;
     }
     
-    // Triangulate with earcut
-    const triangleIndices = earcut(vertices, undefined, 2);
+    // Return the total area of all triangles in the polygon
+    return totalArea;
+  } catch (error) {
+    console.error("Error in area calculation:", error);
     
-    // Calculate the area of each triangle and sum them up
+    // Fallback to earcut triangulation in case earClip fails
+    const triangleIndices = triangulatePolygon(points);
+    const { projectedPoints } = projectPointsToPlane(points);
+    
+    // Convert to 2D vertices for area calculation
+    const vertices: number[] = [];
+    for (const point of projectedPoints) {
+      vertices.push(point.x, point.z);
+    }
+    
     let totalArea = 0;
+    
+    // Calculate area for each triangle
     for (let i = 0; i < triangleIndices.length; i += 3) {
       const i1 = triangleIndices[i];
       const i2 = triangleIndices[i+1];
@@ -147,17 +181,6 @@ export const calculateArea = (points: Point[]): number => {
     }
     
     return totalArea;
-  } catch (error) {
-    console.error("Error in area calculation:", error);
-    
-    // Fallback to simpler but less accurate calculation
-    // Simple shoelace formula for XZ plane
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      const j = (i + 1) % points.length;
-      area += (points[i].x * points[j].z) - (points[j].x * points[i].z);
-    }
-    return Math.abs(area) / 2;
   }
 };
 
