@@ -25,7 +25,7 @@ const Test = () => {
             Zurück
           </Button>
           
-          <h1 className="text-lg font-medium ml-4">Demo 3D-Viewer</h1>
+          <h1 className="text-lg font-medium ml-4">Demo DrohnenGLB by RooferGaming®</h1>
         </div>
         
         <Button
