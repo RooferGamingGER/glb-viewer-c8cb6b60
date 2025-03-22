@@ -1,152 +1,89 @@
+
 import * as THREE from 'three';
-import { nanoid } from 'nanoid';
 import { Point, Segment } from '@/types/measurements';
-import { MIN_INCLINATION_THRESHOLD } from '@/constants/measurements';
-import { earClip, projectPointsToPlane } from './triangulation';
+import { nanoid } from 'nanoid';
+import earcut from 'earcut';
+import { triangulatePolygon, projectPointsToPlane, earClip } from './triangulation';
 
 /**
- * Calculate 3D distance between two points
+ * Calculate the distance between two 3D points
+ * @param p1 - First point
+ * @param p2 - Second point
+ * @returns Distance in meters
  */
-export const calculateDistance = (point1: Point, point2: Point): number => {
-  return Math.sqrt(
-    Math.pow(point2.x - point1.x, 2) +
-    Math.pow(point2.y - point1.y, 2) +
-    Math.pow(point2.z - point1.z, 2)
-  );
+export const calculateDistance = (p1: Point, p2: Point): number => {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const dz = p2.z - p1.z;
+  
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 };
 
 /**
- * Calculate height (Y-axis difference) between two points
+ * Calculate the height difference between two 3D points (y-axis)
+ * @param p1 - First point
+ * @param p2 - Second point
+ * @returns Height difference in meters
  */
-export const calculateHeight = (point1: Point, point2: Point): number => {
-  return Math.abs(point2.y - point1.y);
+export const calculateHeight = (p1: Point, p2: Point): number => {
+  return Math.abs(p2.y - p1.y);
 };
 
 /**
- * Calculate area of polygon defined by points using 3D triangulation
- * Improved to handle non-planar surfaces better
- */
-export const calculateArea = (points: Point[]): number => {
-  if (points.length < 3) return 0;
-  
-  // Create vectors for each point
-  const vectors = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
-  
-  // Find the best-fit plane for these points
-  const { projectedPoints, planeNormal } = projectPointsToPlane(points);
-  
-  // Apply triangulation (Ear clipping algorithm)
-  const triangles = earClip(projectedPoints);
-  
-  let totalArea = 0;
-  
-  // Calculate area using the cross product method - this preserves the actual 3D area
-  for (const triangle of triangles) {
-    const p0 = vectors[triangle[0]];
-    const p1 = vectors[triangle[1]];
-    const p2 = vectors[triangle[2]];
-    
-    // Calculate vectors between points
-    const v1 = new THREE.Vector3().subVectors(p1, p0);
-    const v2 = new THREE.Vector3().subVectors(p2, p0);
-    
-    // Calculate cross product - the length is 2x the area
-    const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
-    
-    // The area is half the length of the cross product
-    const triangleArea = crossProduct.length() * 0.5;
-    
-    totalArea += triangleArea;
-  }
-  
-  // Return the total area of all triangles in the polygon
-  return totalArea;
-};
-
-/**
- * Calculate length of a segment between two points
- */
-export const calculateSegmentLength = (point1: Point, point2: Point): number => {
-  return Math.sqrt(
-    Math.pow(point2.x - point1.x, 2) +
-    Math.pow(point2.y - point1.y, 2) +
-    Math.pow(point2.z - point1.z, 2)
-  );
-};
-
-/**
- * Calculate inclination in degrees between two points
+ * Calculate the inclination (slope) between two 3D points in degrees
+ * @param p1 - First point (THREE.Vector3)
+ * @param p2 - Second point (THREE.Vector3)
+ * @returns Inclination in degrees
  */
 export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
-  const deltaY = p2.y - p1.y;
-  const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const distanceXZ = Math.sqrt(dx * dx + (p2.z - p1.z) * (p2.z - p1.z));
   
-  // Calculate inclination in radians
-  const inclinationRad = Math.atan2(deltaY, horizontalDistance);
+  // Avoid division by zero
+  if (distanceXZ === 0) {
+    return 0; // Or another appropriate value/logic
+  }
   
-  // Convert radians to degrees
-  return inclinationRad * (180 / Math.PI);
+  const inclinationRad = Math.atan(dy / distanceXZ);
+  return THREE.MathUtils.radToDeg(inclinationRad);
 };
 
 /**
- * Calculate average inclination from all segments
+ * Calculate the average inclination of multiple segments
+ * @param segments - Array of segments with inclination data
+ * @returns Average inclination in degrees
  */
-export const calculateAverageInclination = (segments: Segment[]): number | undefined => {
-  if (!segments || segments.length === 0) return undefined;
+export const calculateAverageInclination = (segments: Segment[]): number => {
+  if (segments.length === 0) return 0;
   
-  let totalInclination = 0;
-  let segmentsWithSignificantInclination = 0;
-  
-  for (const segment of segments) {
-    const p1 = new THREE.Vector3(segment.points[0].x, segment.points[0].y, segment.points[0].z);
-    const p2 = new THREE.Vector3(segment.points[1].x, segment.points[1].y, segment.points[1].z);
-    
-    // Skip horizontal segments (no inclination)
-    if (Math.abs(p1.y - p2.y) < 0.001) continue;
-    
-    const inclination = calculateInclination(p1, p2);
-    
-    // Only consider inclinations above the minimum threshold
-    if (Math.abs(inclination) >= MIN_INCLINATION_THRESHOLD) {
-      totalInclination += Math.abs(inclination);
-      segmentsWithSignificantInclination++;
-    }
-  }
-  
-  // Only return if we have segments with significant inclination
-  if (segmentsWithSignificantInclination > 0) {
-    return totalInclination / segmentsWithSignificantInclination;
-  }
-  
-  return undefined;
+  const totalInclination = segments.reduce((sum, segment) => sum + (segment.inclination || 0), 0);
+  return totalInclination / segments.length;
 };
 
 /**
- * Generate segments from an array of points
+ * Generate segments from an array of 3D points
+ * @param points - Array of 3D points
+ * @returns Array of segments with length and inclination
  */
 export const generateSegments = (points: Point[]): Segment[] => {
-  if (points.length < 3) return [];
-  
   const segments: Segment[] = [];
   
-  // Create a segment for each pair of consecutive points
   for (let i = 0; i < points.length; i++) {
-    const p1 = points[i];
-    const p2 = points[(i + 1) % points.length]; // Connect back to first point
+    const p1 = new THREE.Vector3(points[i].x, points[i].y, points[i].z);
+    const p2 = new THREE.Vector3(points[(i + 1) % points.length].x, points[(i + 1) % points.length].y, points[(i + 1) % points.length].z);
     
-    const length = calculateSegmentLength(p1, p2);
-    const label = `${length.toFixed(2)} m`;
+    const length = calculateDistance(points[i], points[(i + 1) % points.length]);
+    const inclination = calculateInclination(p1, p2);
     
-    // Calculate inclination for each segment
-    const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
-    const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
-    const inclination = calculateInclination(v1, v2);
+    // Format segment label with length
+    let label = `${length.toFixed(2)} m`;
     
-    // For area measurements, don't include inclination in segment label
     segments.push({
       id: nanoid(),
-      points: [p1, p2],
+      points: [points[i], points[(i + 1) % points.length]],
       length,
+      inclination,
       label
     });
   }
@@ -155,85 +92,109 @@ export const generateSegments = (points: Point[]): Segment[] => {
 };
 
 /**
- * Get the nearest point index in a measurement
+ * Calculate the area of a polygon defined by 3D points using triangulation
+ * @param points - Array of 3D points defining the polygon
+ * @returns Area in square meters
  */
-export const getNearestPointIndex = (measurement: any, position: Point): number => {
-  // Find the index of the closest point in the measurement
-  let nearestIndex = 0;
-  let minDistance = Number.MAX_VALUE;
+export const calculateArea = (points: Point[]): number => {
+  if (points.length < 3) return 0;
   
-  measurement.points.forEach((point: Point, index: number) => {
-    const distance = Math.sqrt(
-      Math.pow(position.x - point.x, 2) +
-      Math.pow(position.y - point.y, 2) +
-      Math.pow(position.z - point.z, 2)
-    );
+  try {
+    // Create vectors for each point
+    const vectors = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
     
-    if (distance < minDistance) {
-      minDistance = distance;
-      nearestIndex = index;
+    // Find the best-fit plane for these points
+    const { projectedPoints, planeNormal } = projectPointsToPlane(points);
+    
+    console.log("Projected points for area calculation:", projectedPoints);
+    
+    // Apply triangulation (Ear clipping algorithm)
+    const triangles = earClip(projectedPoints);
+    
+    console.log("Triangles after ear clipping:", triangles);
+    
+    let totalArea = 0;
+    
+    // Calculate area using the cross product method - this preserves the actual 3D area
+    for (const triangle of triangles) {
+      const p0 = vectors[triangle[0]];
+      const p1 = vectors[triangle[1]];
+      const p2 = vectors[triangle[2]];
+      
+      // Calculate vectors between points
+      const v1 = new THREE.Vector3().subVectors(p1, p0);
+      const v2 = new THREE.Vector3().subVectors(p2, p0);
+      
+      // Calculate cross product - the length is 2x the area
+      const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
+      
+      // The area is half the length of the cross product
+      const triangleArea = crossProduct.length() * 0.5;
+      
+      totalArea += triangleArea;
     }
-  });
-  
-  return nearestIndex;
+    
+    console.log("Total calculated area:", totalArea);
+    
+    // Return the total area of all triangles in the polygon
+    return totalArea;
+  } catch (error) {
+    console.error("Error in area calculation:", error);
+    
+    // Fallback to a simpler 3D area calculation
+    try {
+      // Project points to XZ plane for 2D area calculation
+      const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
+      
+      // Calculate area using shoelace formula (Gauss's area formula)
+      let area = 0;
+      for (let i = 0; i < flatPoints.length; i++) {
+        const j = (i + 1) % flatPoints.length;
+        area += flatPoints[i].x * flatPoints[j].z;
+        area -= flatPoints[j].x * flatPoints[i].z;
+      }
+      area = Math.abs(area) / 2;
+      
+      console.log("Fallback area calculation (shoelace formula):", area);
+      
+      return area;
+    } catch (fallbackError) {
+      console.error("Fallback area calculation also failed:", fallbackError);
+      return 0; // Return 0 if all calculations fail
+    }
+  }
 };
 
 /**
- * Validate a polygon to check if it's valid for area calculation
+ * Validate if the polygon is valid (has at least 3 points and is not self-intersecting)
+ * @param points - Array of 3D points defining the polygon
+ * @returns Object with validity status and message
  */
-export const validatePolygon = (points: Point[]): { 
-  valid: boolean; 
-  message?: string;
-} => {
+export const validatePolygon = (points: Point[]): { valid: boolean; message?: string } => {
   if (points.length < 3) {
-    return { valid: false, message: 'Mindestens 3 Punkte werden benötigt.' };
-  }
-  
-  // Check if all points are coplanar (on the same plane)
-  if (points.length > 3) {
-    const { projectedPoints } = projectPointsToPlane(points);
-    
-    // Compare original points with projected points
-    let maxDeviation = 0;
-    for (let i = 0; i < points.length; i++) {
-      const deviation = calculateDistance(points[i], projectedPoints[i]);
-      maxDeviation = Math.max(maxDeviation, deviation);
-    }
-    
-    // If max deviation is too large, polygon is not sufficiently planar
-    if (maxDeviation > 0.5) {  // 0.5 meter tolerance
-      return { 
-        valid: true,  // Still valid but with warning
-        message: 'Warnung: Die Punkte liegen nicht auf einer Ebene. Die Flächenberechnung könnte ungenau sein.' 
-      };
-    }
+    return {
+      valid: false,
+      message: 'Fläche benötigt mindestens 3 Punkte.'
+    };
   }
   
   // Check if the polygon is self-intersecting
-  // This is a simplified check - a full implementation would need a more complex algorithm
-  if (points.length > 3) {
-    // Project points to 2D for intersection check
-    const { projectedPoints } = projectPointsToPlane(points);
+  for (let i = 0; i < points.length; i++) {
+    const p1 = points[i];
+    const p2 = points[(i + 1) % points.length];
     
-    // Simple check for obvious self-intersections
-    for (let i = 0; i < projectedPoints.length; i++) {
-      const p1 = projectedPoints[i];
-      const p2 = projectedPoints[(i + 1) % projectedPoints.length];
+    for (let j = i + 2; j < points.length; j++) {
+      // Skip adjacent edges
+      if ((j + 1) % points.length === i) continue;
       
-      for (let j = i + 2; j < projectedPoints.length; j++) {
-        // Skip adjacent edges
-        if (j === i - 1 || j === (i + 1) % projectedPoints.length) continue;
-        
-        const p3 = projectedPoints[j];
-        const p4 = projectedPoints[(j + 1) % projectedPoints.length];
-        
-        // Check for intersection
-        if (doSegmentsIntersect(p1, p2, p3, p4)) {
-          return {
-            valid: false,
-            message: 'Das Polygon überschneidet sich selbst. Bitte positionieren Sie die Punkte neu.'
-          };
-        }
+      const p3 = points[j];
+      const p4 = points[(j + 1) % points.length];
+      
+      if (doIntersect(p1, p2, p3, p4)) {
+        return {
+          valid: false,
+          message: 'Polygon schneidet sich selbst. Bitte anpassen.'
+        };
       }
     }
   }
@@ -242,169 +203,167 @@ export const validatePolygon = (points: Point[]): {
 };
 
 /**
- * Check if two line segments intersect (for polygon validation)
+ * Basic line segment intersection check
+ * @param p1 - Start point of the first line segment
+ * @param p2 - End point of the first line segment
+ * @param p3 - Start point of the second line segment
+ * @param p4 - End point of the second line segment
+ * @returns True if the line segments intersect, false otherwise
  */
-function doSegmentsIntersect(p1: Point, p2: Point, p3: Point, p4: Point): boolean {
-  // Convert to 2D for simplicity (assuming points are already projected to a plane)
-  const a = { x: p1.x, y: p1.z };
-  const b = { x: p2.x, y: p2.z };
-  const c = { x: p3.x, y: p3.z };
-  const d = { x: p4.x, y: p4.z };
+const doIntersect = (p1: Point, p2: Point, p3: Point, p4: Point): boolean => {
+  const o1 = orientation(p1, p2, p3);
+  const o2 = orientation(p1, p2, p4);
+  const o3 = orientation(p3, p4, p1);
+  const o4 = orientation(p3, p4, p2);
   
-  // Calculate direction vectors
-  const ab = { x: b.x - a.x, y: b.y - a.y };
-  const cd = { x: d.x - c.x, y: d.y - c.y };
+  if (o1 !== o2 && o3 !== o4) {
+    return true; // General case
+  }
   
-  // Calculate the denominator for intersection test
-  const denominator = ab.x * cd.y - ab.y * cd.x;
+  // Special Cases
+  // p1, p2 and p3 are collinear and p3 lies on segment p1p2
+  if (o1 === 0 && onSegment(p1, p3, p2)) return true;
   
-  // If lines are parallel, they don't intersect
-  if (Math.abs(denominator) < 0.0001) return false;
+  // p1, p2 and p4 are collinear and p4 lies on segment p1p2
+  if (o2 === 0 && onSegment(p1, p4, p2)) return true;
   
-  // Calculate intersection parameters
-  const ac = { x: c.x - a.x, y: c.y - a.y };
-  const t = (ac.x * cd.y - ac.y * cd.x) / denominator;
-  const u = (ac.x * ab.y - ac.y * ab.x) / denominator;
+  // p3, p4 and p1 are collinear and p1 lies on segment p3p4
+  if (o3 === 0 && onSegment(p3, p1, p4)) return true;
   
-  // Check if intersection is within both segments
-  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
-}
-
-/**
- * Calculate diameter from two opposite points of a circle
- */
-export const calculateDiameter = (point1: Point, point2: Point): number => {
-  return calculateDistance(point1, point2);
+  // p3, p4 and p2 are collinear and p2 lies on segment p3p4
+  if (o4 === 0 && onSegment(p3, p2, p4)) return true;
+  
+  return false; // Doesn't fall in any of the above cases
 };
 
 /**
- * Calculate rectangular dimensions (width and length) from 4 points
- * For skylights and chimney cutouts
+ * Utility function to check if point q lies on segment p-r
+ * @param p - Start point of the segment
+ * @param q - Point to check
+ * @param r - End point of the segment
+ * @returns True if q lies on segment p-r, false otherwise
  */
-export const calculateQuadrilateralDimensions = (points: Point[]): { 
-  width: number; 
-  length: number; 
+const onSegment = (p: Point, q: Point, r: Point): boolean => {
+  if (q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) &&
+      q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y))
+    return true;
+  
+  return false;
+};
+
+/**
+ * Utility function to find the orientation of ordered triplet (p, q, r)
+ * @param p - First point
+ * @param q - Second point
+ * @param r - Third point
+ * @returns 0 if p, q and r are collinear, 1 if Clockwise, 2 if Counterclockwise
+ */
+const orientation = (p: Point, q: Point, r: Point): number => {
+  const val = (q.y - p.y) * (r.x - q.x) -
+              (q.x - p.x) * (r.y - q.y);
+  
+  if (val === 0) return 0;  // collinear
+  
+  return (val > 0) ? 1 : 2; // clock or counterclock wise
+};
+
+/**
+ * Calculate the nearest point index on a list of points
+ * @param point - The reference point
+ * @param points - Array of points to search
+ * @returns The index of the nearest point
+ */
+export const getNearestPointIndex = (point: Point, points: Point[]): number => {
+  let nearestIndex = -1;
+  let minDistance = Infinity;
+  
+  for (let i = 0; i < points.length; i++) {
+    const distance = calculateDistance(point, points[i]);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = i;
+    }
+  }
+  
+  return nearestIndex;
+};
+
+/**
+ * Calculate the length of a segment
+ */
+export const calculateSegmentLength = (segment: Segment): number => {
+  return calculateDistance(segment.points[0], segment.points[1]);
+};
+
+/**
+ * Calculate dimensions (width, length, area, perimeter) of a quadrilateral
+ * @param points - Array of 4 points defining the quadrilateral
+ * @returns Object with dimensions
+ */
+export const calculateQuadrilateralDimensions = (points: Point[]): {
+  width: number;
+  length: number;
   area: number;
   perimeter: number;
 } => {
-  if (points.length < 4) {
+  if (points.length !== 4) {
     return { width: 0, length: 0, area: 0, perimeter: 0 };
   }
-
+  
+  // Calculate the lengths of the sides
+  const side1 = calculateDistance(points[0], points[1]);
+  const side2 = calculateDistance(points[1], points[2]);
+  const side3 = calculateDistance(points[2], points[3]);
+  const side4 = calculateDistance(points[3], points[0]);
+  
+  // Instead of taking average of opposite sides, take minimum for width (height)
+  // and minimum for length to be more conservative in estimates
+  const width = Math.min(side1, side3);
+  const length = Math.min(side2, side4);
+  
+  // Calculate area (approximation for non-rectangles)
+  const area = width * length;
+  
   // Calculate perimeter
-  let perimeter = 0;
-  for (let i = 0; i < points.length; i++) {
-    const nextIdx = (i + 1) % points.length;
-    perimeter += calculateDistance(points[i], points[nextIdx]);
-  }
-  
-  // Calculate area using the polygon area formula
-  const area = calculateArea(points);
-  
-  // Use bounding box for width and length approximation
-  const boundingBox = calculateBoundingBox(points);
-  const width = boundingBox.max.x - boundingBox.min.x;
-  const length = boundingBox.max.z - boundingBox.min.z;
+  const perimeter = side1 + side2 + side3 + side4;
   
   return { width, length, area, perimeter };
 };
 
 /**
- * Create a measurement object for a chimney or vent
+ * Calculate the bounding box of a set of points
+ * @param points - Array of 3D points
+ * @returns Object with min and max coordinates
  */
-export const createChimneyMeasurement = (points: Point[], type: 'chimney' | 'vent'): {
-  value: number;
-  diameter?: number;
-  height?: number;
-  width?: number;
-  length?: number;
-  area?: number;
-  perimeter?: number;
-  position?: Point;
+export const calculateBoundingBox = (points: Point[]): {
+  minX: number;
+  minY: number;
+  minZ: number;
+  maxX: number;
+  maxY: number;
+  maxZ: number;
 } => {
-  // For a vent, we just need position
-  if (type === 'vent' || points.length === 1) {
-    return {
-      value: 0,
-      position: points[0]
-    };
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    minZ = Math.min(minZ, point.z);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+    maxZ = Math.max(maxZ, point.z);
   }
   
-  // For a chimney with 4 points (cutout measurement)
-  if (points.length >= 4) {
-    const dimensions = calculateQuadrilateralDimensions(points);
-    
-    return {
-      value: dimensions.area,
-      width: dimensions.width,
-      length: dimensions.length,
-      area: dimensions.area,
-      perimeter: dimensions.perimeter
-    };
-  }
-  
-  // Fallback for older measurements with 2-3 points
-  if (points.length >= 2) {
-    const diameter = calculateDiameter(points[0], points[1]);
-    let height: number | undefined;
-    
-    // If we have a height measurement
-    if (points.length >= 3) {
-      height = calculateHeight(points[0], points[2]);
-    }
-    
-    return {
-      value: diameter,
-      diameter,
-      height,
-      position: points[0]
-    };
-  }
-  
-  return {
-    value: 0
-  };
+  return { minX, minY, minZ, maxX, maxY, maxZ };
 };
 
 /**
- * Create a measurement object for a dormer
+ * Calculate the centroid (center point) of a set of points
+ * @param points - Array of 3D points
+ * @returns Object with centroid coordinates
  */
-export const createDormerMeasurement = (points: Point[]): {
-  value: number;
-  area: number;
-  width?: number;
-  length?: number;
-  height?: number;
-} => {
-  // Calculate base area
-  const area = calculateArea(points.slice(0, points.length > 3 ? points.length - 1 : 3));
-  
-  // Try to estimate width and length from the points
-  const boundingBox = calculateBoundingBox(points.slice(0, points.length > 3 ? points.length - 1 : 3));
-  const width = boundingBox.max.x - boundingBox.min.x;
-  const length = boundingBox.max.z - boundingBox.min.z;
-  
-  // If we have an additional point for height
-  let height: number | undefined;
-  if (points.length > 3) {
-    const baseCenter = calculateCentroid(points.slice(0, 3));
-    height = calculateHeight(baseCenter, points[3]);
-  }
-  
-  return {
-    value: area,
-    area,
-    width,
-    length,
-    height
-  };
-};
-
-/**
- * Calculate a centroid (center point) of a set of points
- */
-export const calculateCentroid = (points: Point[]): Point => {
-  const numPoints = points.length;
+export const calculateCentroid = (points: Point[]): { x: number; y: number; z: number } => {
   let sumX = 0, sumY = 0, sumZ = 0;
   
   for (const point of points) {
@@ -413,45 +372,48 @@ export const calculateCentroid = (points: Point[]): Point => {
     sumZ += point.z;
   }
   
+  const count = points.length;
   return {
-    x: sumX / numPoints,
-    y: sumY / numPoints,
-    z: sumZ / numPoints
+    x: sumX / count,
+    y: sumY / count,
+    z: sumZ / count
   };
 };
 
 /**
- * Calculate bounding box of a set of points
+ * Calculate the area of a polygon defined by 3D points using projection
+ * This is kept for compatibility with existing code
+ * @param points - Array of 3D points defining the polygon
+ * @returns Area in square meters
  */
-export const calculateBoundingBox = (points: Point[]): { min: Point; max: Point } => {
-  if (points.length === 0) {
-    return {
-      min: { x: 0, y: 0, z: 0 },
-      max: { x: 0, y: 0, z: 0 }
-    };
-  }
+export const calculatePolygonArea = (points: Point[]): number => {
+  if (points.length < 3) return 0;
   
-  const min = { 
-    x: points[0].x, 
-    y: points[0].y, 
-    z: points[0].z 
-  };
-  
-  const max = { 
-    x: points[0].x, 
-    y: points[0].y, 
-    z: points[0].z 
-  };
-  
-  for (let i = 1; i < points.length; i++) {
-    min.x = Math.min(min.x, points[i].x);
-    min.y = Math.min(min.y, points[i].y);
-    min.z = Math.min(min.z, points[i].z);
+  try {
+    return calculateArea(points);
+  } catch (error) {
+    console.error("Error in polygon area calculation:", error);
     
-    max.x = Math.max(max.x, points[i].x);
-    max.y = Math.max(max.y, points[i].y);
-    max.z = Math.max(max.z, points[i].z);
+    // Extreme fallback - use shoelace formula on XZ plane
+    try {
+      // Project points to XZ plane for 2D area calculation
+      const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
+      
+      // Calculate area using shoelace formula (Gauss's area formula)
+      let area = 0;
+      for (let i = 0; i < flatPoints.length; i++) {
+        const j = (i + 1) % flatPoints.length;
+        area += flatPoints[i].x * flatPoints[j].z;
+        area -= flatPoints[j].x * flatPoints[i].z;
+      }
+      area = Math.abs(area) / 2;
+      
+      console.log("Emergency fallback area calculation:", area);
+      
+      return area;
+    } catch (fallbackError) {
+      console.error("All area calculations failed:", fallbackError);
+      return 0; // Return 0 if all calculations fail
+    }
   }
-  
-  return { min, max };
 };

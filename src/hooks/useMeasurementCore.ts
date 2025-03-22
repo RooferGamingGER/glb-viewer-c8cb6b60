@@ -5,7 +5,8 @@ import {
   MeasurementMode, 
   Point, 
   Measurement,
-  Segment
+  Segment,
+  PVModuleSpec
 } from '@/types/measurements';
 import { 
   calculateDistance, 
@@ -17,8 +18,16 @@ import {
   calculateAverageInclination,
   calculateQuadrilateralDimensions,
   calculateBoundingBox,
-  calculateCentroid
+  calculateCentroid,
+  calculatePolygonArea
 } from '@/utils/measurementCalculations';
+import {
+  PV_MODULE_TEMPLATES,
+  calculatePVModulePlacement,
+  DEFAULT_EDGE_DISTANCE,
+  DEFAULT_MODULE_SPACING,
+  extractRoofEdgeMeasurements
+} from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
 
@@ -58,7 +67,7 @@ export const useMeasurementCore = () => {
           
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
-        } else if (m.type === 'area') {
+        } else if (m.type === 'area' || m.type === 'solar') {
           const validation = validatePolygon(newPoints);
           if (!validation.valid) {
             toast.error(validation.message || 'Ungültiges Polygon');
@@ -74,6 +83,23 @@ export const useMeasurementCore = () => {
             value: calculateArea(newPoints),
             label,
             segments: newSegments
+          };
+        } else if (m.type === 'pvmodule') {
+          const area = calculateArea(newPoints);
+          const moduleInfo = calculatePVModulePlacement(newPoints);
+          const moduleSpec = PV_MODULE_TEMPLATES[0];
+          
+          const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+          const label = `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`;
+          
+          return {
+            ...m,
+            points: newPoints,
+            value: area,
+            label,
+            pvModuleInfo: moduleInfo,
+            pvModuleSpec: moduleSpec,
+            powerOutput: moduleInfo.moduleCount * moduleSpec.power
           };
         } else {
           newValue = m.value;
@@ -190,6 +216,98 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
   }, [allLabelsVisible]);
 
+  const createPVModuleMeasurement = useCallback((points: Point[]) => {
+    if (points.length !== 4) {
+      if (points.length < 4) {
+        toast.error("Für PV-Module werden genau 4 Punkte benötigt.");
+        return;
+      } else {
+        points = points.slice(0, 4);
+        toast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
+      }
+    }
+    
+    const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
+    
+    const polygonArea = calculateArea(points);
+    const moduleInfo = calculatePVModulePlacement(
+      points,
+      undefined,
+      undefined,
+      DEFAULT_EDGE_DISTANCE,
+      DEFAULT_MODULE_SPACING,
+      undefined,
+      roofEdgeInfo
+    );
+    const moduleSpec = PV_MODULE_TEMPLATES[0];
+    
+    const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+    const label = `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`;
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'pvmodule',
+        points: [...points],
+        value: polygonArea,
+        label,
+        visible: true,
+        labelVisible: allLabelsVisible,
+        unit: 'kWp',
+        description: '',
+        pvModuleInfo: moduleInfo,
+        pvModuleSpec: moduleSpec,
+        powerOutput: moduleInfo.moduleCount * moduleSpec.power
+      }
+    ]);
+    
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    setActiveMode('none');
+    
+    toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
+    
+    if (roofEdgeInfo.hasAllEdges) {
+      if (roofEdgeInfo.isValid === false && roofEdgeInfo.validationMessage) {
+        toast.warning(`Hinweis zu Dachkanten: ${roofEdgeInfo.validationMessage}`);
+      } else {
+        toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+      }
+    }
+  }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
+
+  const handleCalculatePV = (areaPoints: Point[], userDimensions?: {width: number, length: number}) => {
+    if (areaPoints.length !== 4) {
+      if (areaPoints.length > 4) {
+        areaPoints = areaPoints.slice(0, 4);
+      }
+    }
+    
+    const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
+    
+    const moduleInfo = calculatePVModulePlacement(
+      areaPoints,
+      undefined,
+      undefined,
+      DEFAULT_EDGE_DISTANCE,
+      DEFAULT_MODULE_SPACING,
+      userDimensions,
+      roofEdgeInfo
+    );
+    
+    const moduleSpec = PV_MODULE_TEMPLATES[0];
+    const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+    
+    return {
+      moduleInfo,
+      moduleSpec,
+      powerOutput: moduleInfo.moduleCount * moduleSpec.power,
+      label: `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`
+    };
+  };
+
   const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
     value: number;
     width: number;
@@ -244,17 +362,17 @@ export const useMeasurementCore = () => {
     switch (type) {
       case 'chimney':
         if (points.length >= 4) {
-          const area = calculateArea(points);
+          const elementArea = calculateArea(points);
           const dimensions = calculateQuadrilateralDimensions(points);
           
           measurementData = {
-            value: area,
+            value: elementArea,
             label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
             subType: 'Kaminausschnitt',
             dimensions: {
               width: dimensions.width,
               length: dimensions.length,
-              area: area,
+              area: elementArea,
               perimeter: dimensions.perimeter
             },
             labelVisible: allLabelsVisible
@@ -264,16 +382,16 @@ export const useMeasurementCore = () => {
         
       case 'skylight':
         if (points.length >= 4) {
-          const area = calculateArea(points);
+          const elementArea = calculateArea(points);
           const dimensions = calculateQuadrilateralDimensions(points);
           
           measurementData = {
-            value: area,
+            value: elementArea,
             label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
             dimensions: {
               width: dimensions.width,
               length: dimensions.length,
-              area: area,
+              area: elementArea,
               perimeter: dimensions.perimeter
             },
             labelVisible: allLabelsVisible
@@ -282,17 +400,42 @@ export const useMeasurementCore = () => {
         break;
         
       case 'solar':
-        const area = calculateArea(points);
+        const solarArea = calculateArea(points);
         const segments = generateSegments(points);
         
         measurementData = {
-          value: area,
-          label: formatMeasurement(area, 'area'),
+          value: solarArea,
+          label: formatMeasurement(solarArea, 'area'),
           segments,
           dimensions: {
-            area
+            area: solarArea
           },
           labelVisible: allLabelsVisible
+        };
+        break;
+        
+      case 'pvmodule':
+        if (points.length !== 4) {
+          if (points.length < 4) {
+            toast.error("Für PV-Module werden genau 4 Punkte benötigt.");
+            return;
+          } else {
+            points = points.slice(0, 4);
+            toast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
+          }
+        }
+        
+        const moduleSpec = PV_MODULE_TEMPLATES[0];
+        const moduleArea = calculatePolygonArea(points);
+        const powerOutput = moduleSpec.power;
+        
+        measurementData = {
+          value: moduleArea,
+          label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
+          pvModuleSpec: moduleSpec,
+          powerOutput,
+          labelVisible: allLabelsVisible,
+          unit: 'W'
         };
         break;
         
@@ -325,6 +468,7 @@ export const useMeasurementCore = () => {
         visible: true,
         labelVisible: allLabelsVisible,
         unit: type === 'solar' ? 'm²' : 
+              type === 'pvmodule' ? 'kWp' :
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
       }
@@ -388,7 +532,19 @@ export const useMeasurementCore = () => {
     } else if (currentMode === 'chimney' && updatedPoints.length > 0 && updatedPoints.length < 4) {
       toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
     }
-  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
+    
+    if (currentMode === 'pvmodule' && updatedPoints.length === 4) {
+      createPVModuleMeasurement(updatedPoints);
+      toast.success(`PV-Modul-Zeichnung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'pvmodule' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für PV-Modul platziert`);
+    } else if (currentMode === 'pvmodule') {
+      if (updatedPoints.length > 4) {
+        createPVModuleMeasurement(updatedPoints.slice(0, 4));
+        toast.warning(`Mehr als 4 Punkte platziert. Nur die ersten 4 wurden verwendet.`);
+      }
+    }
+  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -412,32 +568,37 @@ export const useMeasurementCore = () => {
         toast.warning(validation.message);
       }
       
-      const value = calculateArea(points);
-      const label = formatMeasurement(value, 'area');
-      const segments = generateSegments(points);
-      
-      toast.success(
-        `3D-Fläche berechnet: ${label} (Potree-Methode)`
-      );
-      
-      setMeasurements(prev => [
-        ...prev,
-        {
-          id: nanoid(),
-          type: 'area',
-          points: [...points],
-          value,
-          label,
-          visible: true,
-          labelVisible: allLabelsVisible,
-          unit: 'm²',
-          description: '',
-          segments
-        }
-      ]);
-      setCurrentPoints([]);
-      currentPointsRef.current = [];
-      setActiveMode('none');
+      try {
+        const value = calculateArea(points);
+        const label = formatMeasurement(value, 'area');
+        const segments = generateSegments(points);
+        
+        toast.success(
+          `3D-Fläche berechnet: ${label}`
+        );
+        
+        setMeasurements(prev => [
+          ...prev,
+          {
+            id: nanoid(),
+            type: 'area',
+            points: [...points],
+            value,
+            label,
+            visible: true,
+            labelVisible: allLabelsVisible,
+            unit: 'm²',
+            description: '',
+            segments
+          }
+        ]);
+        setCurrentPoints([]);
+        currentPointsRef.current = [];
+        setActiveMode('none');
+      } catch (error) {
+        console.error("Error finalizing area measurement:", error);
+        toast.error("Fehler bei der Flächenberechnung. Bitte versuchen Sie es mit anderen Punkten.");
+      }
     }
     else if (activeMode === 'solar' && points.length >= 3) {
       const validation = validatePolygon(points);
@@ -449,14 +610,23 @@ export const useMeasurementCore = () => {
       createRoofElementMeasurement(activeMode, points);
       toast.success(`Solaranlage-Messung abgeschlossen`);
     }
-    else if (!['length', 'height', 'area', 'solar', 'none'].includes(activeMode)) {
+    else if (activeMode === 'pvmodule' && points.length >= 4) {
+      createPVModuleMeasurement(points);
+    }
+    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
         'solar': 3,
+        'pvmodule': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,
+        'ridge': 2,
+        'eave': 2,
+        'verge': 2,
+        'valley': 2,
+        'hip': 2,
         'length': 2,
         'height': 2,
         'area': 3,
@@ -470,21 +640,29 @@ export const useMeasurementCore = () => {
           'chimney': 'Kamin',
           'skylight': 'Dachfenster',
           'solar': 'Solaranlage',
+          'pvmodule': 'PV-Modul',
           'vent': 'Lüfter',
           'hook': 'Dachhaken',
-          'other': 'Sonstige Einbauten'
+          'other': 'Sonstige Einbauten',
+          'ridge': 'First',
+          'eave': 'Traufe',
+          'verge': 'Ortgang',
+          'valley': 'Kehle',
+          'hip': 'Grat'
         }[activeMode] || activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
         
         toast.success(`${typeName}-Messung abgeschlossen`);
       } else {
         toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
         
-        if (activeMode === 'skylight' || activeMode === 'chimney') {
-          toast.error(`Für ${activeMode === 'skylight' ? 'Dachfenster' : 'Kamin'} werden genau 4 Punkte benötigt.`);
+        if (['skylight', 'chimney', 'pvmodule'].includes(activeMode)) {
+          const elementName = activeMode === 'skylight' ? 'Dachfenster' : 
+                              activeMode === 'chimney' ? 'Kamin' : 'PV-Modul';
+          toast.error(`Für ${elementName} werden genau 4 Punkte benötigt.`);
         }
       }
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, allLabelsVisible]);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, allLabelsVisible, setMeasurements, setCurrentPoints, setActiveMode]);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {
@@ -539,6 +717,8 @@ export const useMeasurementCore = () => {
     undoLastPoint,
     createLengthMeasurement,
     createHeightMeasurement,
-    createRoofElementMeasurement
+    createRoofElementMeasurement,
+    createPVModuleMeasurement,
+    handleCalculatePV
   };
 };

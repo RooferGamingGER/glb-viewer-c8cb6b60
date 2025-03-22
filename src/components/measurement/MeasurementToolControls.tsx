@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -82,7 +81,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </TabsList>
         
         <TabsContent value="standard">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 mb-2">
             <Button
               variant={activeMode === 'length' ? "default" : "outline"} 
               size="sm"
@@ -153,7 +152,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               disabled={!!editMeasurementId}
             >
               <Sun className="h-4 w-4 mr-1" />
-              <span className="text-xs">Solaranlagen</span>
+              <span className="text-xs">Solarfläche</span>
             </Button>
           </div>
         </TabsContent>

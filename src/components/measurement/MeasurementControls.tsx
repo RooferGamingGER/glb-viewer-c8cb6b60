@@ -6,8 +6,7 @@ import {
   Undo2, 
   X 
 } from 'lucide-react';
-import { MeasurementMode, Point } from '@/hooks/useMeasurements';
-import RoofElementControls from './RoofElementControls';
+import { MeasurementMode, Point } from '@/types/measurements';
 
 interface MeasurementControlsProps {
   activeMode: MeasurementMode;
@@ -50,14 +49,17 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
         </div>
         
         <div className="flex space-x-1 mb-1">
-          {activeMode === 'area' && (
+          {(activeMode === 'area' || activeMode === 'length' || activeMode === 'height') && (
             <>
               <Button
                 variant="default" 
                 size="sm"
                 className="flex-1"
                 onClick={handleFinalizeMeasurement}
-                disabled={currentPoints.length < 3}
+                disabled={
+                  (activeMode === 'area' && currentPoints.length < 3) ||
+                  ((activeMode === 'length' || activeMode === 'height') && currentPoints.length < 2)
+                }
                 title="Messung abschließen"
               >
                 <Check className="h-3 w-3 mr-1" />
@@ -82,12 +84,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
             variant="outline" 
             size="sm"
             className={activeMode === 'area' ? "w-9" : "flex-1"}
-            onClick={() => {
-              clearCurrentPoints();
-              if (activeMode !== 'area') {
-                // Nothing else to do here, parent will handle mode reset
-              }
-            }}
+            onClick={clearCurrentPoints}
             title="Abbrechen"
           >
             <X className="h-3 w-3" />

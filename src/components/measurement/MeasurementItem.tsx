@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -20,7 +19,10 @@ import {
   MoveUp,
   MoveDown,
   Camera,
-  Image
+  Image,
+  Zap,
+  Info,
+  Ruler
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { 
+  calculatePVModulePlacement, 
+  calculatePVPower, 
+  formatPVModuleInfo,
+  DEFAULT_EDGE_DISTANCE,
+  DEFAULT_MODULE_SPACING,
+  PV_MODULE_TEMPLATES,
+  calculateAnnualYield
+} from '@/utils/pvCalculations';
+import PVModuleSelect from './PVModuleSelect';
 
 interface MeasurementItemProps {
   measurement: Measurement;
@@ -71,6 +83,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
+  const [showPVDetails, setShowPVDetails] = useState(false);
 
   const handleEditStart = (id: string, description: string = '') => {
     setEditingId(id);
@@ -126,6 +139,52 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     });
   };
 
+  const handleCalculatePV = () => {
+    if (measurement.type !== 'area') return;
+    
+    const pvModuleInfo = calculatePVModulePlacement(
+      measurement.points,
+      undefined,
+      undefined,
+      DEFAULT_EDGE_DISTANCE,
+      DEFAULT_MODULE_SPACING
+    );
+    updateMeasurement(measurement.id, { pvModuleInfo });
+  };
+
+  const handlePVDimensionsChange = (dimensions: { width: number, length: number }) => {
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+        measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+        dimensions
+      );
+      
+      updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
+    }
+  };
+
+  const handlePVSpacingChange = (spacing: { edgeDistance: number, moduleSpacing: number }) => {
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        spacing.edgeDistance,
+        spacing.moduleSpacing,
+        measurement.pvModuleInfo.manualDimensions ? {
+          width: measurement.pvModuleInfo.userDefinedWidth || 0,
+          length: measurement.pvModuleInfo.userDefinedLength || 0
+        } : undefined
+      );
+      
+      updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     switch(type) {
       case 'dormer': return <House className="h-4 w-4 mr-1" />;
@@ -166,13 +225,18 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const isPenetration = ['vent', 'hook', 'other'].includes(measurement.type);
 
   const hasCustomScreenshots = measurement.customScreenshots && measurement.customScreenshots.length > 0;
+  
+  const hasPVInfo = measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0;
+  const isAreaMeasurement = measurement.type === 'area';
 
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
         measurement.editMode ? 'border-primary bg-secondary/20' : 
         isPenetration ? 'border-orange-300/50 bg-orange-50/10' :  
-        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 'border-border'
+        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 
+        measurement.type === 'solar' || measurement.type === 'pvmodule' ? 'border-blue-300/50 bg-blue-50/10' : 
+        'border-border'
       }`}
     >
       <div className="flex justify-between items-center mb-1">
@@ -202,6 +266,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             <Badge variant="outline" className="ml-2 text-xs bg-blue-50/30">
               <Image className="h-3 w-3 mr-1" />
               {measurement.customScreenshots!.length}
+            </Badge>
+          )}
+          
+          {hasPVInfo && (
+            <Badge variant="outline" className="ml-2 text-xs bg-green-50/30">
+              <Zap className="h-3 w-3 mr-1" />
+              {measurement.pvModuleInfo!.moduleCount}
             </Badge>
           )}
         </div>
@@ -262,7 +333,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         {measurement.dimensions && (
           <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
             {measurement.dimensions.length !== undefined && (
-              <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
+              <div><strong>L��nge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
             )}
             {measurement.dimensions.width !== undefined && (
               <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
@@ -285,7 +356,198 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
           </span>
         )}
+        
+        {hasPVInfo && (
+          <div className="mt-2 p-2 bg-blue-50/10 border border-blue-200/30 rounded-md">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center">
+                <Zap className="h-4 w-4 mr-1 text-blue-600" />
+                <span className="font-medium">PV-Planung</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={() => setShowPVDetails(!showPVDetails)}
+                >
+                  <Info className="h-3 w-3" />
+                </Button>
+                
+                <PVModuleSelect 
+                  onModuleSelect={(moduleSpec) => {
+                    if (measurement.pvModuleInfo) {
+                      const updatedInfo = {
+                        ...measurement.pvModuleInfo,
+                        moduleWidth: moduleSpec.width,
+                        moduleHeight: moduleSpec.height,
+                        pvModuleSpec: moduleSpec
+                      };
+                      
+                      const recalculatedInfo = calculatePVModulePlacement(
+                        measurement.points,
+                        moduleSpec.width,
+                        moduleSpec.height,
+                        updatedInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+                        updatedInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+                        updatedInfo.manualDimensions ? {
+                          width: updatedInfo.userDefinedWidth || 0,
+                          length: updatedInfo.userDefinedLength || 0
+                        } : undefined
+                      );
+                      
+                      updateMeasurement(measurement.id, { 
+                        pvModuleInfo: recalculatedInfo,
+                        pvModuleSpec: moduleSpec
+                      });
+                    }
+                  }}
+                  currentModule={measurement.pvModuleSpec || PV_MODULE_TEMPLATES[0]}
+                  onDimensionsChange={handlePVDimensionsChange}
+                  pvModuleInfo={measurement.pvModuleInfo}
+                  onSpacingChange={handlePVSpacingChange}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+              <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
+              <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
+              <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
+                ? 'Hochformat' 
+                : 'Querformat'}</div>
+              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
+              <div className="col-span-2"><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
+              <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
+              {measurement.pvModuleInfo!.edgeDistance !== undefined && (
+                <div><strong>Randabstand:</strong> {measurement.pvModuleInfo!.edgeDistance.toFixed(2)}m</div>
+              )}
+              {measurement.pvModuleInfo!.moduleSpacing !== undefined && (
+                <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing.toFixed(2)}m</div>
+              )}
+              <div className="col-span-2"><strong>Geschätzter Jahresertrag:</strong> {calculateAnnualYield(
+                calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425),
+                measurement.pvModuleInfo!.orientation === 'portrait' ? 'hochformat' : 'querformat'
+              ).toFixed(0)} kWh/Jahr</div>
+            </div>
+            
+            {showPVDetails && (
+              <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs text-black">
+                <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
+                
+                {measurement.pvModuleInfo && (
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3)}m</div>
+                    <div><strong>Begrenzungslänge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
+                    
+                    <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
+                    
+                    {measurement.pvModuleInfo.orientation === 'portrait' ? (
+                      <>
+                        <div className="col-span-2 mt-1 font-semibold">Hochformat-Berechnung:</div>
+                        <div className="col-span-2"><strong>Modulanordnung:</strong> 
+                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
+                        </div>
+                        <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
+                          <span> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span> floor(
+                            {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor(
+                              measurement.pvModuleInfo.availableWidth / 
+                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                            )}
+                          </span>
+                        </div>
+                        <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
+                          <span> floor(verfügbare Länge / (Modulbreite + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span> floor(
+                            {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor(
+                              measurement.pvModuleInfo.availableLength / 
+                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                            )}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="col-span-2 mt-1 font-semibold">Querformat-Berechnung:</div>
+                        <div className="col-span-2"><strong>Modulanordnung:</strong> 
+                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zur Traufe</span>
+                        </div>
+                        <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
+                          <span> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span> floor(
+                            {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor(
+                              measurement.pvModuleInfo.availableWidth / 
+                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                            )}
+                          </span>
+                        </div>
+                        <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
+                          <span> floor(verfügbare Länge / (Modulhöhe + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong>
+                          <span> floor(
+                            {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
+                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor(
+                              measurement.pvModuleInfo.availableLength / 
+                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                            )}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    <div className="col-span-2 mt-2 font-semibold">Modulanzahl: {measurement.pvModuleInfo.columns || '?'} × {measurement.pvModuleInfo.rows || '?'} = {measurement.pvModuleInfo.moduleCount} Module</div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {measurement.pvModuleInfo && measurement.pvModuleInfo.manualDimensions && (
+              <div className="mt-1 p-1 bg-green-50/10 border border-green-200/30 rounded-md text-xs">
+                <div className="flex items-center">
+                  <Ruler className="h-3 w-3 mr-1 text-green-600" />
+                  <span className="font-medium">Manuelle Abmessungen:</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 mt-1">
+                  <div><strong>Breite:</strong> {measurement.pvModuleInfo.userDefinedWidth?.toFixed(2) || "-"} m</div>
+                  <div><strong>Länge:</strong> {measurement.pvModuleInfo.userDefinedLength?.toFixed(2) || "-"} m</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      
+      {isAreaMeasurement && !hasPVInfo && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-2 w-full"
+          onClick={handleCalculatePV}
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          PV-Module berechnen
+        </Button>
+      )}
       
       {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
         <div className="flex justify-end space-x-1 mt-1 mb-2">
@@ -367,7 +629,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </div>
       )}
       
-      {/* Screenshot capture button */}
       <div className="mt-2">
         <CaptureScreenshotButton 
           measurementId={measurement.id}
@@ -375,7 +636,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       </div>
       
-      {/* Screenshots gallery */}
       {hasCustomScreenshots && (
         <Collapsible
           open={screenshotsOpen}

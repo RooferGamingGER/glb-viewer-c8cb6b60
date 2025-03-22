@@ -47,17 +47,26 @@ export const useMeasurementState = (
 
   // Handler for finalizing a measurement
   const handleFinalizeMeasurement = useCallback(() => {
-    if (currentPoints.length >= 3) {
-      handlers.finalizeMeasurement();
-      
-      if (activeMode === 'area') {
-        handlers.toggleMeasurementTool('none');
-        toast.success('Flächenmessung abgeschlossen - Messwerkzeug deaktiviert');
-      } else {
-        toast.success('Flächenmessung abgeschlossen');
+    if (activeMode === 'area') {
+      if (currentPoints.length < 3) {
+        toast.error('Mindestens 3 Punkte für eine Flächenmessung erforderlich');
+        return;
       }
-    } else {
-      toast.error('Mindestens 3 Punkte für eine Flächenmessung erforderlich');
+      
+      handlers.finalizeMeasurement();
+      handlers.toggleMeasurementTool('none');
+    } 
+    else if (activeMode === 'solar') {
+      if (currentPoints.length < 3) {
+        toast.error('Mindestens 3 Punkte für eine Solaranlage erforderlich');
+        return;
+      }
+      
+      handlers.finalizeMeasurement();
+      handlers.toggleMeasurementTool('none');
+    }
+    else {
+      handlers.finalizeMeasurement();
     }
   }, [currentPoints.length, handlers, activeMode]);
 

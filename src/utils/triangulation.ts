@@ -1,6 +1,6 @@
-
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
+import earcut from 'earcut';
 
 /**
  * Check if a point is concave in the polygon
@@ -22,88 +22,86 @@ export function isPointConcave(points: Point[], index: number): boolean {
 }
 
 /**
- * Ear clipping algorithm for robust triangulation
- * Converts a polygon into triangles
+ * Ear-clipping algorithm for triangulating a polygon
+ * This works better for complex 3D surfaces than earcut in some cases
  */
 export function earClip(points: Point[]): number[][] {
   if (points.length < 3) return [];
   
-  // Use indices to manipulate points without modifying the original array
-  const indices: number[] = Array.from({ length: points.length }, (_, i) => i);
+  // Make a copy of the points array that we can modify
+  const vertices = [...points];
   const triangles: number[][] = [];
-
-  let remainingPoints = points.length;
-  let iteration = 0;
-  const maxIterations = points.length * 2; // Safety to prevent infinite loops
+  const indices = Array.from({ length: points.length }, (_, i) => i);
   
-  // Process until only 3 points remain
-  while (remainingPoints > 3 && iteration < maxIterations) {
-    iteration++;
-    let earFound = false;
-    
-    // Try to find an ear in the current polygon
-    for (let i = 0; i < remainingPoints; i++) {
-      if (isEar(points, indices, remainingPoints, i)) {
-        // Found an ear, add the triangle
-        const prevIndex = (i - 1 + remainingPoints) % remainingPoints;
-        const nextIndex = (i + 1) % remainingPoints;
-        
-        triangles.push([
-          indices[prevIndex],
-          indices[i],
-          indices[nextIndex]
-        ]);
-        
-        // Remove the current point (ear tip)
-        indices.splice(i, 1);
-        remainingPoints--;
-        earFound = true;
-        break;
-      }
-    }
-    
-    // If no ear was found and we still have more than 3 points,
-    // continue with a less strict ear test to handle complex polygons
-    if (!earFound && remainingPoints > 3 && iteration >= points.length) {
-      // Fallback: just make a triangle with consecutive points
-      // This helps with difficult shapes
-      triangles.push([indices[0], indices[1], indices[2]]);
-      indices.splice(1, 1);
-      remainingPoints--;
-    }
-  }
+  let i = 0;
+  let n = indices.length;
   
-  // Add the final triangle
-  if (remainingPoints === 3) {
-    triangles.push([indices[0], indices[1], indices[2]]);
+  // Continue until we can't form any more triangles
+  while (n > 2) {
+    // Get indices of the three consecutive vertices
+    const a = indices[i % n];
+    const b = indices[(i + 1) % n];
+    const c = indices[(i + 2) % n];
+    
+    // Get the actual vertices
+    const pointA = vertices[a];
+    const pointB = vertices[b];
+    const pointC = vertices[c];
+    
+    // Check if this vertex forms an ear
+    if (isEar(vertices, indices, i % n, n)) {
+      // Add the triangle to our result
+      triangles.push([a, b, c]);
+      
+      // Remove the middle vertex from the polygon
+      indices.splice((i + 1) % n, 1);
+      n--;
+      
+      // Reset the counter to ensure we don't skip vertices
+      i = 0;
+    } else {
+      // Move to the next vertex
+      i++;
+      
+      // If we've gone all the way around without finding an ear, break to avoid infinite loop
+      if (i >= n) break;
+    }
   }
   
   return triangles;
 }
 
 /**
- * Test if a point forms an ear in the polygon
+ * Check if a vertex forms an "ear" in the polygon
  */
-function isEar(points: Point[], indices: number[], numPoints: number, currentIndex: number): boolean {
-  const prevIndex = (currentIndex - 1 + numPoints) % numPoints;
-  const nextIndex = (currentIndex + 1) % numPoints;
+function isEar(vertices: Point[], indices: number[], i: number, n: number): boolean {
+  const a = indices[i % n];
+  const b = indices[(i + 1) % n];
+  const c = indices[(i + 2) % n];
   
-  const p0 = points[indices[prevIndex]];
-  const p1 = points[indices[currentIndex]];
-  const p2 = points[indices[nextIndex]];
+  const pointA = vertices[a];
+  const pointB = vertices[b];
+  const pointC = vertices[c];
   
-  // Concave points cannot be ears
-  if (isTriangleClockwise(p0, p1, p2)) {
-    return false;
-  }
+  // First check if the angle is convex
+  const v1 = new THREE.Vector3(pointA.x - pointB.x, 0, pointA.z - pointB.z);
+  const v2 = new THREE.Vector3(pointC.x - pointB.x, 0, pointC.z - pointB.z);
   
-  // Check if any other point is inside the triangle
-  for (let i = 0; i < numPoints; i++) {
-    // Skip the three points that form the triangle
-    if (i === prevIndex || i === currentIndex || i === nextIndex) continue;
+  // Using 2D coordinates (x,z) for this check
+  const cross = v1.x * v2.z - v1.z * v2.x;
+  
+  // If angle is not convex, this can't be an ear
+  if (cross < 0) return false;
+  
+  // Check if any other point is inside this triangle
+  for (let j = 0; j < n; j++) {
+    // Skip the points that form the triangle
+    if (j === i % n || j === (i + 1) % n || j === (i + 2) % n) continue;
     
-    const p = points[indices[i]];
-    if (isPointInTriangle(p, p0, p1, p2)) {
+    const p = vertices[indices[j]];
+    
+    // Check if point p is inside the triangle (a,b,c)
+    if (isPointInTriangle(p, pointA, pointB, pointC)) {
       return false;
     }
   }
@@ -112,28 +110,39 @@ function isEar(points: Point[], indices: number[], numPoints: number, currentInd
 }
 
 /**
- * Check if a triangle is clockwise oriented
+ * Check if a point is inside a triangle (using 2D projection, ignoring Y)
  */
-function isTriangleClockwise(p0: Point, p1: Point, p2: Point): boolean {
-  return (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y) < 0;
+function isPointInTriangle(p: Point, a: Point, b: Point, c: Point): boolean {
+  // Using barycentric coordinates to check if point is in triangle
+  const area = 0.5 * Math.abs(
+    (a.x * (b.z - c.z) + b.x * (c.z - a.z) + c.x * (a.z - b.z))
+  );
+  
+  const s = 1 / (2 * area) * (a.z * c.x - a.x * c.z + (c.z - a.z) * p.x + (a.x - c.x) * p.z);
+  const t = 1 / (2 * area) * (a.x * b.z - a.z * b.x + (a.z - b.z) * p.x + (b.x - a.x) * p.z);
+  
+  return s > 0 && t > 0 && 1 - s - t > 0;
 }
 
 /**
- * Check if a point is inside a triangle
+ * Triangulate a polygon using earcut
+ * @param points - Array of 3D points defining the polygon
+ * @returns Array of triangle indices
  */
-function isPointInTriangle(p: Point, p0: Point, p1: Point, p2: Point): boolean {
-  // Use barycentric coordinates for the test
-  const area = 0.5 * Math.abs(
-    (p0.x * (p1.y - p2.y) + p1.x * (p2.y - p0.y) + p2.x * (p0.y - p1.y))
-  );
+export function triangulatePolygon(points: Point[]): number[] {
+  if (points.length < 3) return [];
   
-  const s = 1 / (2 * area) * (p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * p.x + (p0.x - p2.x) * p.y);
-  const t = 1 / (2 * area) * (p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * p.x + (p1.x - p0.x) * p.y);
-  const u = 1 - s - t;
+  // First project the points to 2D
+  const { projectedPoints } = projectPointsToPlane(points);
   
-  // Point is inside the triangle if all coordinates are positive (with a small epsilon for floating point precision)
-  const epsilon = 0.0001;
-  return s >= -epsilon && t >= -epsilon && u >= -epsilon;
+  // Prepare data for earcut (flatten coordinates)
+  const vertices: number[] = [];
+  for (const point of projectedPoints) {
+    vertices.push(point.x, point.z); // Use x and z for 2D projection
+  }
+  
+  // Perform triangulation
+  return earcut(vertices, undefined, 2);
 }
 
 /**
@@ -164,6 +173,16 @@ export function projectPointsToPlane(points: Point[]): {
   const normal = new THREE.Vector3().fromArray(eigenvectors[0]);
   normal.normalize();
   
+  // Create orthogonal basis vectors for the plane
+  const tangent = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(normal.dot(tangent)) > 0.9) {
+    tangent.set(0, 1, 0); // Use different vector if too parallel
+  }
+  
+  // Get basis vectors for the plane
+  const binormal = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+  tangent.crossVectors(binormal, normal).normalize();
+  
   // Create a plane using the centroid and normal
   const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
     normal,
@@ -177,7 +196,8 @@ export function projectPointsToPlane(points: Point[]): {
     
     // Project the point onto the plane
     projected.copy(p);
-    projected.sub(normal.clone().multiplyScalar(plane.distanceToPoint(p)));
+    const distance = plane.distanceToPoint(p);
+    projected.sub(normal.clone().multiplyScalar(distance));
     
     return {
       x: projected.x,
@@ -255,9 +275,6 @@ function computeEigenVectorsJacobi(matrix: number[][]): {
   eigenvalues: number[], 
   eigenvectors: number[][] 
 } {
-  // For small 3x3 matrices, we can use a simpler algorithm
-  // This is a simplified implementation of the Jacobi eigenvalue algorithm
-  
   // Create a copy of the matrix to work with
   const a: number[][] = [
     [...matrix[0]],
