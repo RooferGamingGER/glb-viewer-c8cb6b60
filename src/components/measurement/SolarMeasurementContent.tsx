@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,14 +22,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   const [activeTab, setActiveTab] = useState("overview");
   const { calculatePVMaterialsForMeasurement } = useMeasurements();
   
-  // When component loads, check if materials calculation is needed
-  useEffect(() => {
-    if (measurement.pvModuleInfo && !measurement.pvModuleInfo.pvMaterials && measurement.pvModuleInfo.moduleCount > 0) {
-      console.log("No materials found, calculating automatically");
-      handleCalculateMaterials();
-    }
-  }, [measurement.id]);
-  
   const handleModuleSelect = (moduleSpec: any) => {
     if (!measurement.pvModuleInfo) return;
     
@@ -43,9 +35,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     updateMeasurement(measurement.id, {
       pvModuleInfo: updatedPVInfo
     });
-    
-    // Recalculate materials with the new module spec
-    setTimeout(() => handleCalculateMaterials(), 300);
   };
   
   const handleDimensionsChange = (dimensions: {width: number, length: number}) => {
@@ -83,9 +72,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     updateMeasurement(measurement.id, {
       pvModuleInfo: finalPVInfo
     });
-    
-    // Recalculate materials with new dimensions
-    setTimeout(() => handleCalculateMaterials(), 300);
   };
   
   const handleSpacingChange = (spacing: {edgeDistance: number, moduleSpacing: number}) => {
@@ -127,9 +113,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     updateMeasurement(measurement.id, {
       pvModuleInfo: finalPVInfo
     });
-    
-    // Recalculate materials with new spacing
-    setTimeout(() => handleCalculateMaterials(), 300);
   };
   
   const handleCalculateMaterials = (inverterDistance: number = 10) => {
@@ -150,9 +133,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       </div>
     );
   }
-  
-  // Check if materials are available
-  const hasMaterials = !!measurement.pvModuleInfo.pvMaterials;
   
   return (
     <div className="pt-2">
@@ -185,7 +165,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           <TabsTrigger value="materials">
             <PackageIcon className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Material</span>
-            {hasMaterials && <span className="ml-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>}
           </TabsTrigger>
         </TabsList>
         
@@ -222,7 +201,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 onClick={() => handleCalculateMaterials()}
               >
                 <PackageIcon className="h-3 w-3 mr-1" />
-                {hasMaterials ? "Materialliste aktualisieren" : "Materialliste berechnen"}
+                Materialliste berechnen
               </Button>
             </div>
           </div>

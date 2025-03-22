@@ -1,4 +1,3 @@
-
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -295,8 +294,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   if (measurement.type === 'area' && measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
     const areaText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
     const pvInfo = measurement.pvModuleInfo;
-    const pvPower = calculatePVPower(pvInfo.moduleCount, pvInfo.pvModuleSpec?.power);
-    return `${areaText} (${pvInfo.moduleCount} PV-Module, ${pvPower.toFixed(1)} kWp)`;
+    return `${areaText} (${pvInfo.moduleCount} PV-Module, ${calculatePVPower(pvInfo.moduleCount).toFixed(1)} kWp)`;
   }
   
   // Standard formatting for other measurement types
