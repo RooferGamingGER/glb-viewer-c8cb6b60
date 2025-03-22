@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -11,6 +12,7 @@ export type MeasurementMode =
   | 'vent'      // Lüfter (nur Markierung)
   | 'hook'      // Dachhaken
   | 'other'     // Sonstige Einbauten
+  | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
   | 'ridge'     // First
   | 'eave'      // Traufe
   | 'verge'     // Ortgang
@@ -49,6 +51,14 @@ export interface PVModuleInfo {
   orientation: 'portrait' | 'landscape'; // Module orientation
   edgeDistance?: number;    // Distance from roof edge in meters
   moduleSpacing?: number;   // Spacing between modules in meters
+}
+
+export interface PVModuleSpec {
+  name: string;             // Module name/model
+  width: number;            // Width in meters
+  height: number;           // Height in meters
+  power: number;            // Power in watts
+  efficiency: number;       // Efficiency percentage
 }
 
 export interface Measurement {
@@ -92,4 +102,9 @@ export interface Measurement {
   
   // PV module calculation data
   pvModuleInfo?: PVModuleInfo; // Information about PV module placement
+
+  // PV module specific fields for individually drawn modules
+  pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
+  powerOutput?: number;   // Power output in watts for this module
 }
+

@@ -13,7 +13,8 @@ import {
   Cylinder,
   Wind,
   Anchor,
-  Droplet
+  Droplet,
+  PanelLeft  // Using this icon for PV modules
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -63,7 +64,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     
     if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
-    } else if (['solar'].includes(activeMode)) {
+    } else if (['solar', 'pvmodule'].includes(activeMode)) {
       setActiveTab("roof-elements");
     } else if (['skylight', 'chimney', 'vent', 'hook', 'other'].includes(activeMode)) {
       setActiveTab("penetrations");
@@ -153,7 +154,18 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               disabled={!!editMeasurementId}
             >
               <Sun className="h-4 w-4 mr-1" />
-              <span className="text-xs">Solaranlagen</span>
+              <span className="text-xs">Solarfläche</span>
+            </Button>
+
+            <Button
+              variant={activeMode === 'pvmodule' ? "default" : "outline"} 
+              size="sm"
+              className="w-full col-span-3 mt-1"
+              onClick={() => toggleMeasurementTool(activeMode === 'pvmodule' ? 'none' : 'pvmodule')}
+              disabled={!!editMeasurementId}
+            >
+              <PanelLeft className="h-4 w-4 mr-1" />
+              <span className="text-xs">PV-Modul zeichnen</span>
             </Button>
           </div>
         </TabsContent>

@@ -1,5 +1,5 @@
 
-import { Point, PVModuleInfo } from '@/types/measurements';
+import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea } from './measurementCalculations';
 
 // Default PV module dimensions in meters
@@ -9,6 +9,38 @@ export const DEFAULT_MODULE_HEIGHT = 1.767;
 // Default distances in meters
 export const DEFAULT_EDGE_DISTANCE = 0.1;  // 10cm from roof edge
 export const DEFAULT_MODULE_SPACING = 0.05;  // 5cm between modules
+
+// Common PV module templates that users can select from
+export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
+  {
+    name: "Standard (380W)",
+    width: 1.041,
+    height: 1.767,
+    power: 380,
+    efficiency: 19.5
+  },
+  {
+    name: "Hochleistung (415W)",
+    width: 1.052,
+    height: 1.776,
+    power: 415,
+    efficiency: 21.3
+  },
+  {
+    name: "Kompakt (365W)",
+    width: 1.030,
+    height: 1.692,
+    power: 365,
+    efficiency: 20.1
+  },
+  {
+    name: "Maxi (425W)",
+    width: 1.134,
+    height: 2.094,
+    power: 425,
+    efficiency: 20.8
+  }
+];
 
 /**
  * Calculates the optimal placement of PV modules on a roof area
@@ -133,3 +165,36 @@ export const formatPVModuleInfo = (pvInfo: PVModuleInfo): string => {
   const orientationText = pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat';
   return `${pvInfo.moduleCount} Module (${orientationText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
 };
+
+/**
+ * Calculate the total power output of all individually drawn PV modules
+ * 
+ * @param measurements - Array of all measurements
+ * @returns Total power in kWp
+ */
+export const calculateTotalPVPower = (measurements: Measurement[]): number => {
+  const pvModules = measurements.filter(m => m.type === 'pvmodule' && m.powerOutput);
+  const totalWatts = pvModules.reduce((sum, module) => sum + (module.powerOutput || 0), 0);
+  return totalWatts / 1000; // Convert to kWp
+};
+
+/**
+ * Calculate the dimensions and power output for a single PV module
+ * based on its placement points
+ * 
+ * @param points - The four corner points of the module
+ * @param moduleSpec - The specification of the module
+ * @returns Calculated dimensions and power information
+ */
+export const calculatePVModuleDimensions = (
+  points: Point[], 
+  moduleSpec: PVModuleSpec
+): { area: number; powerOutput: number } => {
+  const area = calculatePolygonArea(points);
+  // We return the nominal power since it's a standard module
+  return {
+    area,
+    powerOutput: moduleSpec.power
+  };
+};
+

@@ -5,7 +5,8 @@ import {
   MeasurementMode, 
   Point, 
   Measurement,
-  Segment
+  Segment,
+  PVModuleSpec
 } from '@/types/measurements';
 import { 
   calculateDistance, 
@@ -19,6 +20,10 @@ import {
   calculateBoundingBox,
   calculateCentroid
 } from '@/utils/measurementCalculations';
+import {
+  PV_MODULE_TEMPLATES,
+  calculatePVModuleDimensions
+} from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
 
@@ -58,7 +63,7 @@ export const useMeasurementCore = () => {
           
         } else if (m.type === 'height') {
           newValue = calculateHeight(newPoints[0], newPoints[1]);
-        } else if (m.type === 'area') {
+        } else if (m.type === 'area' || m.type === 'solar') {
           const validation = validatePolygon(newPoints);
           if (!validation.valid) {
             toast.error(validation.message || 'Ungültiges Polygon');
@@ -74,6 +79,18 @@ export const useMeasurementCore = () => {
             value: calculateArea(newPoints),
             label,
             segments: newSegments
+          };
+        } else if (m.type === 'pvmodule') {
+          const area = calculateArea(newPoints);
+          const { powerOutput } = calculatePVModuleDimensions(newPoints, m.pvModuleSpec || PV_MODULE_TEMPLATES[0]);
+          const moduleSpec = m.pvModuleSpec || PV_MODULE_TEMPLATES[0];
+          
+          return {
+            ...m,
+            points: newPoints,
+            value: area,
+            powerOutput,
+            label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`
           };
         } else {
           newValue = m.value;
@@ -190,6 +207,38 @@ export const useMeasurementCore = () => {
     setActiveMode('none');
   }, [allLabelsVisible]);
 
+  const createPVModuleMeasurement = useCallback((points: Point[]) => {
+    if (points.length < 4) return;
+    
+    const moduleSpec = PV_MODULE_TEMPLATES[0];
+    
+    const { area, powerOutput } = calculatePVModuleDimensions(points, moduleSpec);
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'pvmodule',
+        points: [...points],
+        value: area,
+        label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
+        visible: true,
+        labelVisible: allLabelsVisible,
+        unit: 'W',
+        description: '',
+        pvModuleSpec: moduleSpec,
+        powerOutput
+      }
+    ]);
+    
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    setActiveMode('none');
+    
+    toast.success(`PV-Modul platziert (${moduleSpec.power}W)`);
+  }, [allLabelsVisible]);
+
   const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
     value: number;
     width: number;
@@ -296,6 +345,22 @@ export const useMeasurementCore = () => {
         };
         break;
         
+      case 'pvmodule':
+        if (points.length >= 4) {
+          const moduleSpec = PV_MODULE_TEMPLATES[0];
+          const { area, powerOutput } = calculatePVModuleDimensions(points, moduleSpec);
+          
+          measurementData = {
+            value: area,
+            label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
+            pvModuleSpec: moduleSpec,
+            powerOutput,
+            labelVisible: allLabelsVisible,
+            unit: 'W'
+          };
+        }
+        break;
+        
       case 'vent':
       case 'hook':
       case 'other':
@@ -325,6 +390,7 @@ export const useMeasurementCore = () => {
         visible: true,
         labelVisible: allLabelsVisible,
         unit: type === 'solar' ? 'm²' : 
+              type === 'pvmodule' ? 'W' :
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
       }
@@ -388,7 +454,14 @@ export const useMeasurementCore = () => {
     } else if (currentMode === 'chimney' && updatedPoints.length > 0 && updatedPoints.length < 4) {
       toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
     }
-  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, updateMeasurementPoint, setEditingPointIndex]);
+    
+    if (currentMode === 'pvmodule' && updatedPoints.length === 4) {
+      createPVModuleMeasurement(updatedPoints);
+      toast.success(`PV-Modul-Zeichnung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'pvmodule' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für PV-Modul platziert`);
+    }
+  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
   const finalizeMeasurement = useCallback(() => {
     const points = [...currentPointsRef.current];
@@ -454,11 +527,15 @@ export const useMeasurementCore = () => {
       createRoofElementMeasurement(activeMode, points);
       toast.success(`Solaranlage-Messung abgeschlossen`);
     }
-    else if (!['length', 'height', 'area', 'solar', 'none'].includes(activeMode)) {
+    else if (activeMode === 'pvmodule' && points.length >= 4) {
+      createPVModuleMeasurement(points);
+    }
+    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
         'solar': 3,
+        'pvmodule': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,
@@ -480,6 +557,7 @@ export const useMeasurementCore = () => {
           'chimney': 'Kamin',
           'skylight': 'Dachfenster',
           'solar': 'Solaranlage',
+          'pvmodule': 'PV-Modul',
           'vent': 'Lüfter',
           'hook': 'Dachhaken',
           'other': 'Sonstige Einbauten',
@@ -494,12 +572,14 @@ export const useMeasurementCore = () => {
       } else {
         toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
         
-        if (activeMode === 'skylight' || activeMode === 'chimney') {
-          toast.error(`Für ${activeMode === 'skylight' ? 'Dachfenster' : 'Kamin'} werden genau 4 Punkte benötigt.`);
+        if (['skylight', 'chimney', 'pvmodule'].includes(activeMode)) {
+          const elementName = activeMode === 'skylight' ? 'Dachfenster' : 
+                              activeMode === 'chimney' ? 'Kamin' : 'PV-Modul';
+          toast.error(`Für ${elementName} werden genau 4 Punkte benötigt.`);
         }
       }
     }
-  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, allLabelsVisible, setMeasurements, setCurrentPoints, setActiveMode]);
+  }, [activeMode, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, allLabelsVisible, setMeasurements, setCurrentPoints, setActiveMode]);
 
   const undoLastPoint = useCallback((): boolean => {
     if (currentPoints.length === 0) {
@@ -554,6 +634,7 @@ export const useMeasurementCore = () => {
     undoLastPoint,
     createLengthMeasurement,
     createHeightMeasurement,
-    createRoofElementMeasurement
+    createRoofElementMeasurement,
+    createPVModuleMeasurement
   };
 };

@@ -5,7 +5,8 @@ import {
   Check, 
   Undo2, 
   X,
-  Info 
+  Info,
+  Sun
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
 import { 
@@ -42,6 +43,8 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         return 4; // Vier Punkte für exakte Rechteckdefinition
       case 'chimney': 
         return 4; // Vier Punkte für genaue Vermessung
+      case 'pvmodule':
+        return 4; // Vier Punkte für exakte Moduldefinition
       case 'vent': 
       case 'hook': 
       case 'other': 
@@ -74,6 +77,15 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
           return "Dachfenster vollständig definiert. Schließen Sie die Messung ab.";
         }
       
+      case 'pvmodule':
+        if (currentPoints.length === 0) {
+          return "Markieren Sie die erste Ecke des PV-Moduls.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken des PV-Moduls. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else {
+          return "PV-Modul vollständig definiert. Schließen Sie die Messung ab.";
+        }
+      
       case 'solar':
         return `Markieren Sie die Eckpunkte der Solaranlage. Noch ${remainingPoints} Punkt(e) benötigt.`;
       
@@ -100,6 +112,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
       case 'chimney': return "Kaminausschnitt";
       case 'skylight': return "Dachfenster";
       case 'solar': return "Solaranlage";
+      case 'pvmodule': return "PV-Modul";
       case 'vent': return "Lüfter";
       case 'hook': return "Dachhaken";
       case 'other': return "Sonstige Einbauten";
