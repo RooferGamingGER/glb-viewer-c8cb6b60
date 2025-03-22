@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -1150,19 +1149,39 @@ function renderPVModuleGrid(
     return;
   }
   
-  // Generate PV module layout
-  const moduleLayout = generatePVModuleGrid(measurement);
+  // Get average Y coordinate for the base elevation
+  const avgY = measurement.points.reduce((sum, p) => sum + p.y, 0) / measurement.points.length;
+  
+  // Generate PV module layout - Fix for error #1: Pass the required avgY parameter
+  const moduleLayout = generatePVModuleGrid(measurement.pvModuleInfo, avgY);
   
   // If no layout generated, skip
   if (!moduleLayout) return;
   
-  // For each module in the layout, create a visual representation
-  moduleLayout.modules.forEach((module) => {
+  // For each module point set in the layout, create a visual representation
+  // Fix for error #2: Use modulePoints instead of modules
+  moduleLayout.modulePoints.forEach((moduleCorners) => {
     // Create a module representation as a thin box
+    // Use the first point as the reference for positioning
+    const centerX = (moduleCorners[0].x + moduleCorners[2].x) / 2;
+    const centerY = (moduleCorners[0].y + moduleCorners[2].y) / 2;
+    const centerZ = (moduleCorners[0].z + moduleCorners[2].z) / 2;
+    
+    // Calculate module dimensions from corners
+    const width = Math.sqrt(
+      Math.pow(moduleCorners[1].x - moduleCorners[0].x, 2) + 
+      Math.pow(moduleCorners[1].z - moduleCorners[0].z, 2)
+    );
+    
+    const height = Math.sqrt(
+      Math.pow(moduleCorners[3].x - moduleCorners[0].x, 2) + 
+      Math.pow(moduleCorners[3].z - moduleCorners[0].z, 2)
+    );
+    
     const moduleGeometry = new THREE.BoxGeometry(
-      module.width, 
+      width, 
       0.02, // Very thin
-      module.height
+      height
     );
     
     const moduleMaterial = new THREE.MeshLambertMaterial({
@@ -1175,35 +1194,49 @@ function renderPVModuleGrid(
     
     // Position the module at its center
     moduleMesh.position.set(
-      module.position.x,
-      module.position.y + PV_LINE_Y_OFFSET, // Slightly above surface
-      module.position.z
-    );
-    
-    // Apply rotation
-    moduleMesh.rotation.set(
-      module.rotation.x,
-      module.rotation.y,
-      module.rotation.z
+      centerX,
+      centerY + PV_LINE_Y_OFFSET, // Slightly above surface
+      centerZ
     );
     
     // Add to measurements group
     measurementsRef.add(moduleMesh);
   });
   
+  // Add lines for the module grid
+  moduleLayout.gridLines.forEach(line => {
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(line.from.x, line.from.y, line.from.z),
+      new THREE.Vector3(line.to.x, line.to.y, line.to.z)
+    ]);
+    
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: PV_MODULE_COLORS.GRID,
+      linewidth: 1,
+      opacity: 0.6,
+      transparent: true
+    });
+    
+    const lineObject = new THREE.Line(lineGeometry, lineMaterial);
+    lineObject.renderOrder = 3;
+    measurementsRef.add(lineObject);
+  });
+  
+  // Fix for errors #3, #4, #5, #6: Calculate totalModules and use power from PVModuleSpec
   // Add label with module count and power info
-  if (moduleLayout.totalModules > 0 && measurement.pvModuleInfo) {
+  if (measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
     // Create a label near the top of the area
     const points = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
     const centroid = calculateCentroid(points);
     centroid.y += LABEL_Y_OFFSET + 0.1; // Position above the area label
     
-    // Calculate total power based on module count and wattage
-    const totalPower = (moduleLayout.totalModules * 
-                        (measurement.pvModuleInfo.moduleWattage || 400)) / 1000;
+    // Calculate total power based on module count and power from pvModuleSpec
+    const moduleCount = measurement.pvModuleInfo.moduleCount;
+    const powerPerModule = measurement.pvModuleInfo.pvModuleSpec?.power || 400; // Default to 400W if not specified
+    const totalPower = (moduleCount * powerPerModule) / 1000;
     
     // Format label text
-    const modulesLabel = `${moduleLayout.totalModules} Module - ${totalPower.toFixed(2)} kWp`;
+    const modulesLabel = `${moduleCount} Module - ${totalPower.toFixed(2)} kWp`;
     
     const label = createMeasurementLabel(modulesLabel, centroid, true);
     
