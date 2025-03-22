@@ -1,3 +1,4 @@
+
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 
@@ -21,7 +22,40 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
 ];
 
 /**
+ * Berechnet den Durchschnitt der Y-Koordinaten für eine Reihe von Punkten
+ * @param points - Array von Punkten
+ * @returns Durchschnittliche Y-Koordinate
+ */
+const calculateAverageY = (points: Point[]): number => {
+  if (points.length === 0) return 0;
+  return points.reduce((sum, point) => sum + point.y, 0) / points.length;
+};
+
+/**
+ * Berechnet die Neigung einer Linie zwischen zwei Punkten
+ * @param p1 - Erster Punkt
+ * @param p2 - Zweiter Punkt
+ * @returns Neigung in Grad
+ */
+const calculateLineInclination = (p1: Point, p2: Point): number => {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const dz = p2.z - p1.z;
+  
+  // Horizontale Distanz
+  const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+  
+  // Vermeiden von Division durch Null
+  if (horizontalDistance === 0) return 0;
+  
+  // Berechnen der Neigung in Grad
+  const inclinationRad = Math.atan(dy / horizontalDistance);
+  return Math.abs(inclinationRad * (180 / Math.PI));
+};
+
+/**
  * Extract roof edge measurements from the measurements array
+ * and classify them correctly based on their height and inclination
  * @param measurements - Array of all measurements
  * @returns Object with minimum dimensions for each edge type
  */
@@ -36,12 +70,12 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
   isValid: boolean;       // Whether the measurements are valid/consistent
   validationMessage?: string; // Optional message about validation issues
 } => {
-  // Find all ridge, eave, and verge measurements
+  // Sammle alle Kanten-Messungen nach Typ
   const ridgeMeasurements = measurements.filter(m => m.type === 'ridge');
   const eaveMeasurements = measurements.filter(m => m.type === 'eave');
   const vergeMeasurements = measurements.filter(m => m.type === 'verge');
   
-  // Initialize result object
+  // Ergebnisse initialisieren
   const result: {
     ridgeLength?: number;
     eaveLength?: number;
@@ -57,23 +91,75 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     isValid: true
   };
   
-  // Extract ridge length (if available)
-  if (ridgeMeasurements.length > 0) {
-    result.ridgeLength = ridgeMeasurements[0].value;
+  // Wenn es Messungen vom Typ 'ridge' und 'eave' gibt, überprüfe, welche höher liegt (First vs. Traufe)
+  if (ridgeMeasurements.length > 0 && eaveMeasurements.length > 0) {
+    // Berechne den durchschnittlichen Y-Wert für alle Messungen vom Typ 'ridge'
+    const ridgeY = ridgeMeasurements.reduce((sum, m) => {
+      if (m.points?.length >= 2) {
+        return sum + calculateAverageY(m.points);
+      }
+      return sum;
+    }, 0) / ridgeMeasurements.length;
+    
+    // Berechne den durchschnittlichen Y-Wert für alle Messungen vom Typ 'eave'
+    const eaveY = eaveMeasurements.reduce((sum, m) => {
+      if (m.points?.length >= 2) {
+        return sum + calculateAverageY(m.points);
+      }
+      return sum;
+    }, 0) / eaveMeasurements.length;
+    
+    // Bestimme First und Traufe basierend auf der Höhe
+    if (ridgeY > eaveY) {
+      // 'ridge' ist die höhere Kante, also First
+      result.ridgeLength = ridgeMeasurements[0].value;
+      result.eaveLength = eaveMeasurements[0].value;
+    } else {
+      // 'eave' ist die höhere Kante, also tauschen wir die Bezeichnungen
+      console.log("Korrigiere Kennzeichnung: 'eave' ist höher als 'ridge', tausche Bezeichnungen");
+      result.ridgeLength = eaveMeasurements[0].value;
+      result.eaveLength = ridgeMeasurements[0].value;
+    }
+  } else {
+    // Wenn nur eine Art von Messung vorhanden ist, nehmen wir sie wie markiert
+    if (ridgeMeasurements.length > 0) {
+      result.ridgeLength = ridgeMeasurements[0].value;
+    }
+    
+    if (eaveMeasurements.length > 0) {
+      result.eaveLength = eaveMeasurements[0].value;
+    }
   }
   
-  // Extract eave length (if available)
-  if (eaveMeasurements.length > 0) {
-    result.eaveLength = eaveMeasurements[0].value;
-  }
-  
-  // Extract verge widths (if available)
+  // Verarbeite Ortgang-Messungen und prüfe ihre Neigung
   if (vergeMeasurements.length >= 1) {
     result.vergeWidth1 = vergeMeasurements[0].value;
+    
+    // Überprüfe, ob die Messung tatsächlich eine Neigung hat (Ortgang sollte geneigt sein)
+    if (vergeMeasurements[0].points?.length >= 2) {
+      const inclination = calculateLineInclination(
+        vergeMeasurements[0].points[0],
+        vergeMeasurements[0].points[1]
+      );
+      if (inclination < 5) { // Wenn die Neigung weniger als 5 Grad beträgt
+        console.warn(`Ortgang 1 hat eine sehr geringe Neigung (${inclination.toFixed(2)}°), könnte falsch markiert sein`);
+      }
+    }
   }
   
   if (vergeMeasurements.length >= 2) {
     result.vergeWidth2 = vergeMeasurements[1].value;
+    
+    // Überprüfe, ob die Messung tatsächlich eine Neigung hat
+    if (vergeMeasurements[1].points?.length >= 2) {
+      const inclination = calculateLineInclination(
+        vergeMeasurements[1].points[0],
+        vergeMeasurements[1].points[1]
+      );
+      if (inclination < 5) { // Wenn die Neigung weniger als 5 Grad beträgt
+        console.warn(`Ortgang 2 hat eine sehr geringe Neigung (${inclination.toFixed(2)}°), könnte falsch markiert sein`);
+      }
+    }
   }
   
   // Calculate minimum dimensions (instead of averages) for boundary calculation
@@ -86,7 +172,7 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     const maxAllowedDifference = Math.max(result.ridgeLength, result.eaveLength) * 0.2; // Allow 20% difference
     
     if (lengthDifference > maxAllowedDifference) {
-      console.warn(`Large difference between ridge (${result.ridgeLength.toFixed(2)}m) and eave (${result.eaveLength.toFixed(2)}m) measurements: ${lengthDifference.toFixed(2)}m`);
+      console.warn(`Große Differenz zwischen First (${result.ridgeLength.toFixed(2)}m) und Traufe (${result.eaveLength.toFixed(2)}m) Messungen: ${lengthDifference.toFixed(2)}m`);
       result.validationMessage = "Die Werte für First und Traufe weichen stark voneinander ab.";
       result.isValid = false;
     }
@@ -105,7 +191,7 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     const maxAllowedDifference = Math.max(result.vergeWidth1, result.vergeWidth2) * 0.2; // Allow 20% difference
     
     if (widthDifference > maxAllowedDifference) {
-      console.warn(`Large difference between verge measurements: ${widthDifference.toFixed(2)}m`);
+      console.warn(`Große Differenz zwischen Ortgang-Messungen: ${widthDifference.toFixed(2)}m`);
       result.validationMessage = result.validationMessage 
         ? result.validationMessage + " Die Werte für die Ortgänge weichen stark voneinander ab."
         : "Die Werte für die Ortgänge weichen stark voneinander ab.";
@@ -134,16 +220,16 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     const areaDifference = Math.abs(expectedArea - actualArea);
     const areaDifferencePercent = (areaDifference / actualArea) * 100;
     
-    console.log("Area validation:", {
-      expectedArea,
-      actualArea,
-      areaDifference,
-      areaDifferencePercent
+    console.log("Flächenvalidierung:", {
+      erwarteteFlaeche: expectedArea,
+      tatsaechlicheFlaeche: actualArea,
+      flaechenDifferenz: areaDifference,
+      flaechenDifferenzProzent: areaDifferencePercent
     });
     
     // If the areas differ by more than 30%, flag as potentially invalid
     if (areaDifferencePercent > 30) {
-      console.warn(`Large difference between expected area from edges (${expectedArea.toFixed(2)}m²) and actual roof area (${actualArea.toFixed(2)}m²): ${areaDifferencePercent.toFixed(1)}%`);
+      console.warn(`Große Differenz zwischen erwarteter Fläche aus Kanten (${expectedArea.toFixed(2)}m²) und tatsächlicher Dachfläche (${actualArea.toFixed(2)}m²): ${areaDifferencePercent.toFixed(1)}%`);
       result.validationMessage = result.validationMessage 
         ? result.validationMessage + " Die berechnete Fläche weicht stark von der gemessenen Fläche ab."
         : "Die berechnete Fläche weicht stark von der gemessenen Fläche ab.";
@@ -151,7 +237,7 @@ export const extractRoofEdgeMeasurements = (measurements: Measurement[]): {
     }
   }
   
-  console.log("Extracted roof edge measurements:", result);
+  console.log("Extrahierte Dachkantenmessungen:", result);
   return result;
 };
 
