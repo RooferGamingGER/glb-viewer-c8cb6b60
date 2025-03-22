@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Table,
@@ -8,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Measurement } from '@/hooks/useMeasurements';
+import { Measurement } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, EyeIcon, BookmarkX, Trash2 } from 'lucide-react';
 import { formatMeasurementValue } from '@/utils/exportUtils';

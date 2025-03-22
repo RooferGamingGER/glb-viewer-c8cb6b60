@@ -1,13 +1,16 @@
-
 import React, { useState } from 'react';
 import { 
-  Button,
+  Button
+} from "@/components/ui/button";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
+import {
   ScrollArea
-} from "@/components/ui";
+} from "@/components/ui/scroll-area";
 import { Measurement } from '@/types/measurements';
 import MeasurementItem from './MeasurementItem';
 import MeasurementTable from './MeasurementTable';
@@ -262,10 +265,9 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
         {showTable ? (
           <MeasurementTable 
             measurements={filteredMeasurements} 
-            onDeleteMeasurement={handleDeleteMeasurement}
-            onEditMeasurement={handleStartPointEdit}
-            onUpdateMeasurement={updateMeasurement}
-            editMeasurementId={editMeasurementId}
+            handleDeleteMeasurement={handleDeleteMeasurement}
+            toggleMeasurementVisibility={toggleMeasurementVisibility}
+            toggleLabelVisibility={toggleLabelVisibility}
           />
         ) : (
           <ScrollArea className="h-full">
