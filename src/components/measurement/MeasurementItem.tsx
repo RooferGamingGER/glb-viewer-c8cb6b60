@@ -42,8 +42,10 @@ import {
   calculatePVPower, 
   formatPVModuleInfo,
   DEFAULT_EDGE_DISTANCE,
-  DEFAULT_MODULE_SPACING
+  DEFAULT_MODULE_SPACING,
+  PV_MODULE_TEMPLATES
 } from '@/utils/pvCalculations';
+import PVModuleSelect from './PVModuleSelect';
 
 interface MeasurementItemProps {
   measurement: Measurement;
