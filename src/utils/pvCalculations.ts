@@ -446,7 +446,7 @@ export const calculatePVModulePlacement = (
     rows,    // Number of rows (modules across length)
     boundingWidth: boundingHeight, // Keep property name for compatibility
     boundingLength,
-    boundingHeight, // Add new correctly named property
+    boundingHeight, // Added for correctly named property
     availableWidth,
     availableLength,
     startX,   // Added start X position for visualization

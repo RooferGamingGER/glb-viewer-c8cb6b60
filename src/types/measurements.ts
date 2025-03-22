@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -54,6 +55,7 @@ export interface PVModuleInfo {
   rows?: number;            // Number of rows (modules across length)
   boundingWidth?: number;   // Width of the bounding box for the area
   boundingLength?: number;  // Length of the bounding box for the area
+  boundingHeight?: number;  // Added: Height of the bounding box (replacing width)
   availableWidth?: number;  // Available width after edge distance
   availableLength?: number; // Available length after edge distance
   startX?: number;         // Starting X position for grid (after edge distance)
