@@ -1,3 +1,4 @@
+
 import { Point, PVModuleInfo } from '@/types/measurements';
 import { calculatePolygonArea } from './measurementCalculations';
 
@@ -61,20 +62,22 @@ export const calculatePVModulePlacement = (
     moduleSpacing
   });
   
-  // Portrait orientation calculations (module height > module width)
-  // How many complete modules fit along width
-  const portraitModulesX = Math.max(0, Math.floor((availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing)));
-  // How many complete modules fit along length
-  const portraitModulesY = Math.max(0, Math.floor((availableLength + moduleSpacing) / (moduleHeight + moduleSpacing)));
+  // FIXED CALCULATION: Portrait orientation calculations
+  // How many complete modules fit along width (corrected formula)
+  const portraitModulesX = Math.max(0, Math.floor(availableWidth / (moduleWidth + moduleSpacing)));
+  
+  // How many complete modules fit along length (corrected formula)
+  const portraitModulesY = Math.max(0, Math.floor(availableLength / (moduleHeight + moduleSpacing)));
   
   // Total modules in portrait orientation
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
-  // Landscape orientation calculations (module width > module height)
-  // How many complete modules fit along width
-  const landscapeModulesX = Math.max(0, Math.floor((availableWidth + moduleSpacing) / (moduleHeight + moduleSpacing)));
-  // How many complete modules fit along length
-  const landscapeModulesY = Math.max(0, Math.floor((availableLength + moduleSpacing) / (moduleWidth + moduleSpacing)));
+  // FIXED CALCULATION: Landscape orientation calculations
+  // How many complete modules fit along width (corrected formula)
+  const landscapeModulesX = Math.max(0, Math.floor(availableWidth / (moduleHeight + moduleSpacing)));
+  
+  // How many complete modules fit along length (corrected formula)
+  const landscapeModulesY = Math.max(0, Math.floor(availableLength / (moduleWidth + moduleSpacing)));
   
   // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
