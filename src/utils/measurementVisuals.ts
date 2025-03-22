@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -569,65 +570,9 @@ export function renderMeasurements(
     // Create different visualizations based on measurement type
     if (measurement.type === 'length') {
       renderLengthMeasurement(measurement, measurementsRef, labelsRef, isMeasurementBeingEdited);
-      
-      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
-        const [p1, p2] = measurement.points;
-        const point1 = pointToVector3(p1);
-        const point2 = pointToVector3(p2);
-        
-        // Calculate inclination
-        const inclination = Math.abs(calculateInclination(point1, point2));
-        
-        // Add text label at midpoint
-        const midpoint = calculateMidpoint(point1, point2);
-        // Raise label position slightly higher for visibility
-        midpoint.y += LABEL_Y_OFFSET;
-        
-        const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
-        const label = createMeasurementLabel(labelText, midpoint, true);
-        
-        // Store measurement ID in user data for reference
-        label.userData.measurementId = measurement.id;
-        
-        // Add to labels group
-        labelsRef.add(label);
-      }
     } 
     else if (measurement.type === 'height') {
       renderHeightMeasurement(measurement, measurementsRef, labelsRef, isMeasurementBeingEdited);
-      
-      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
-        const [p1, p2] = measurement.points;
-        const point1 = pointToVector3(p1);
-        const point2 = pointToVector3(p2);
-        
-        // Determine which point is higher
-        const higherPoint = point1.y > point2.y ? point1 : point2;
-        const lowerPoint = point1.y > point2.y ? point2 : point1;
-        
-        // Create a vertical projection point below/above the higher point
-        const verticalPoint = new THREE.Vector3(
-          higherPoint.x,
-          lowerPoint.y,
-          higherPoint.z
-        );
-        
-        // Add text label at midpoint of vertical line
-        const labelPos = new THREE.Vector3(
-          verticalPoint.x + 0.2, // Slightly offset from vertical line
-          (higherPoint.y + verticalPoint.y) / 2 + LINE_Y_OFFSET,
-          verticalPoint.z
-        );
-        
-        const labelText = formatMeasurementLabel(measurement.value, 'height');
-        const label = createMeasurementLabel(labelText, labelPos, true);
-        
-        // Store measurement ID in user data for reference
-        label.userData.measurementId = measurement.id;
-        
-        // Add to labels group
-        labelsRef.add(label);
-      }
     } 
     else if (measurement.type === 'area') {
       // Always recreate segment labels if the measurement is being edited
@@ -646,60 +591,6 @@ export function renderMeasurements(
         isMeasurementBeingEdited,
         shouldRecreateSegmentLabels
       );
-      
-      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
-        const points3D = pointsToVector3Array(measurement.points);
-        
-        // Calculate centroid for label placement
-        const centroid = calculateCentroid(points3D);
-        
-        // Create label text (without inclination for area measurements)
-        const labelText = formatMeasurementLabel(measurement.value, measurement.type);
-        
-        // Update the existing label
-        const label = existingLabels[0] as THREE.Sprite;
-        updateTextSprite(label, labelText);
-        
-        // Update position
-        label.position.copy(centroid);
-      }
-      
-      if (!shouldRecreateSegmentLabels && existingSegmentLabels.length > 0 && measurement.segments) {
-        // Get all points as THREE.Vector3
-        const points3D = pointsToVector3Array(measurement.points);
-        
-        // For each segment, find its label and update it
-        for (const segment of measurement.segments) {
-          const segmentLabel = existingSegmentLabels.find(
-            label => label.userData.segmentId === segment.id
-          ) as THREE.Sprite | undefined;
-          
-          if (segmentLabel && segment) {
-            // Find the segment's points
-            const startPointIndex = segmentLabel.userData.startPointIndex || 0;
-            const endPointIndex = segmentLabel.userData.endPointIndex || 0;
-            
-            // Make sure the indices are valid
-            if (startPointIndex < points3D.length && endPointIndex < points3D.length) {
-              const p1 = points3D[startPointIndex];
-              const p2 = points3D[endPointIndex];
-              
-              // Update label position
-              const midpoint = calculateMidpoint(p1, p2);
-              
-              // Offset midpoint slightly to avoid overlap with lines
-              midpoint.y += 0.05;
-              
-              // Entferne Neigungs-Info aus dem Segment-Label für Flächenmessungen
-              const segmentLabelText = segment.label || "";
-              
-              // Update the label text and position
-              updateTextSprite(segmentLabel, segmentLabelText);
-              segmentLabel.position.copy(midpoint);
-            }
-          }
-        }
-      }
     }
     else if (measurement.type === 'solar') {
       // Always recreate segment labels if the measurement is being edited
@@ -741,8 +632,595 @@ export function renderMeasurements(
         isMeasurementBeingEdited
       );
     }
-    
-    // Update labels when an existing measurement has changed but is not in edit mode
-    if (!isMeasurementBeingEdited) {
-      // Update
+  });
+}
 
+/**
+ * Function to render a solar array visualization with PV modules
+ */
+export function renderPVModules(
+  measurement: Measurement,
+  measurementsRef: THREE.Group | null
+) {
+  if (!measurementsRef || !measurement.pvModuleInfo) return;
+
+  const moduleInfo = measurement.pvModuleInfo;
+  
+  // Calculate average Y height for the plane
+  const avgY = measurement.points.reduce((sum, pt) => sum + pt.y, 0) / measurement.points.length;
+  
+  // Create a group for the PV modules
+  const pvModuleGroup = new THREE.Group();
+  pvModuleGroup.name = `pv-modules-${measurement.id}`;
+  
+  // Setting user data for identification
+  pvModuleGroup.userData = {
+    measurementId: measurement.id,
+    type: 'pv-modules'
+  };
+  
+  // Create module visualization
+  if (moduleInfo.rows && moduleInfo.columns) {
+    const moduleWidth = moduleInfo.moduleWidth || 1.0;
+    const moduleHeight = moduleInfo.moduleHeight || 1.7;
+    const moduleSpacing = moduleInfo.moduleSpacing || 0.05;
+    const isPortrait = moduleInfo.orientation === 'portrait';
+    
+    // Dimensions for visualization
+    const width = isPortrait ? moduleWidth : moduleHeight;
+    const height = 0.04; // Thickness of the module
+    const depth = isPortrait ? moduleHeight : moduleWidth;
+    
+    // Loop through the grid and create modules
+    for (let row = 0; row < moduleInfo.rows; row++) {
+      for (let col = 0; col < moduleInfo.columns; col++) {
+        // Calculate position
+        const x = (moduleInfo.startX || 0) + col * (width + moduleSpacing);
+        const z = (moduleInfo.startZ || 0) + row * (depth + moduleSpacing);
+        
+        // Create module geometry and materials
+        const moduleGeometry = new THREE.BoxGeometry(width, height, depth);
+        
+        // Frame material (silver aluminum)
+        const frameMaterial = new THREE.MeshLambertMaterial({
+          color: 0xC0C0C0,
+          metalness: 0.7,
+          roughness: 0.3
+        });
+        
+        // Cell material (blue silicon)
+        const cellMaterial = new THREE.MeshLambertMaterial({
+          color: PV_MODULE_COLORS.MODULE,
+          metalness: 0.2,
+          roughness: 0.7
+        });
+        
+        // Create module mesh with multiple materials
+        const materials = [
+          frameMaterial, // Right side
+          frameMaterial, // Left side
+          frameMaterial, // Top
+          frameMaterial, // Bottom
+          cellMaterial,  // Front (cell side)
+          frameMaterial  // Back
+        ];
+        
+        const moduleMesh = new THREE.Mesh(moduleGeometry, materials);
+        
+        // Position the module
+        moduleMesh.position.set(x + width/2, avgY + height/2 + PV_LINE_Y_OFFSET, z + depth/2);
+        
+        // Add to group
+        pvModuleGroup.add(moduleMesh);
+      }
+    }
+    
+    // Add to measurements group
+    measurementsRef.add(pvModuleGroup);
+  }
+}
+
+/**
+ * Renders a length measurement
+ */
+export function renderLengthMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  recreateLabels: boolean
+) {
+  if (!measurementsRef || measurement.points.length < 2) return;
+
+  const [p1, p2] = measurement.points;
+  const point1 = pointToVector3(p1);
+  const point2 = pointToVector3(p2);
+  
+  // Create line with proper Y-offset for visibility
+  const linePoints = [
+    new THREE.Vector3(point1.x, point1.y + LINE_Y_OFFSET, point1.z),
+    new THREE.Vector3(point2.x, point2.y + LINE_Y_OFFSET, point2.z)
+  ];
+  
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x00ff00,
+    linewidth: 2
+  });
+  
+  const line = new THREE.Line(lineGeometry, lineMaterial);
+  line.renderOrder = 2; // Ensure it renders above the model
+  
+  // Store measurement ID in user data for reference
+  line.userData = {
+    measurementId: measurement.id,
+    measurementType: 'length'
+  };
+  
+  // Add to measurements group
+  measurementsRef.add(line);
+  
+  // If we should recreate the labels
+  if (recreateLabels && labelsRef) {
+    // Calculate inclination for label
+    const inclination = calculateInclination(point1, point2);
+    
+    // Add text label at midpoint
+    const midpoint = calculateMidpoint(point1, point2);
+    // Raise label position for visibility
+    midpoint.y += LABEL_Y_OFFSET;
+    
+    const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
+    const label = createMeasurementLabel(labelText, midpoint, true);
+    
+    // Store measurement ID in user data
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+}
+
+/**
+ * Renders a height measurement
+ */
+export function renderHeightMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  recreateLabels: boolean
+) {
+  if (!measurementsRef || measurement.points.length < 2) return;
+
+  const [p1, p2] = measurement.points;
+  const point1 = pointToVector3(p1);
+  const point2 = pointToVector3(p2);
+  
+  // Determine which point is higher for vertical line visualization
+  const higherPoint = point1.y > point2.y ? point1 : point2;
+  const lowerPoint = point1.y > point2.y ? point2 : point1;
+  
+  // Create a vertical projection point below/above the higher point
+  const verticalPoint = new THREE.Vector3(
+    higherPoint.x,
+    lowerPoint.y,
+    higherPoint.z
+  );
+  
+  // Create the main line between the two original points with proper Y-offset
+  const mainPoints = [
+    new THREE.Vector3(point1.x, point1.y + LINE_Y_OFFSET, point1.z),
+    new THREE.Vector3(point2.x, point2.y + LINE_Y_OFFSET, point2.z)
+  ];
+  
+  const mainGeometry = new THREE.BufferGeometry().setFromPoints(mainPoints);
+  const mainMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x0000ff,
+    linewidth: 2
+  });
+  
+  const mainLine = new THREE.Line(mainGeometry, mainMaterial);
+  mainLine.renderOrder = 2;
+  
+  // Add vertical line highlighting the height difference
+  const verticalPoints = [
+    new THREE.Vector3(higherPoint.x, lowerPoint.y + LINE_Y_OFFSET, higherPoint.z),
+    new THREE.Vector3(higherPoint.x, higherPoint.y + LINE_Y_OFFSET, higherPoint.z)
+  ];
+  
+  const verticalGeometry = new THREE.BufferGeometry().setFromPoints(verticalPoints);
+  const verticalMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x0000ff,
+    linewidth: 3,
+    opacity: 0.7,
+    transparent: true
+  });
+  
+  const verticalLine = new THREE.Line(verticalGeometry, verticalMaterial);
+  verticalLine.renderOrder = 2;
+  
+  // Add horizontal helper line
+  const horizontalPoints = [
+    new THREE.Vector3(lowerPoint.x, lowerPoint.y + LINE_Y_OFFSET, lowerPoint.z),
+    new THREE.Vector3(higherPoint.x, lowerPoint.y + LINE_Y_OFFSET, higherPoint.z)
+  ];
+  
+  const horizontalGeometry = new THREE.BufferGeometry().setFromPoints(horizontalPoints);
+  const horizontalMaterial = new THREE.LineDashedMaterial({ 
+    color: 0x0000ff,
+    dashSize: 0.1,
+    gapSize: 0.05,
+    opacity: 0.5,
+    transparent: true
+  });
+  
+  const horizontalLine = new THREE.Line(horizontalGeometry, horizontalMaterial);
+  horizontalLine.computeLineDistances();
+  horizontalLine.renderOrder = 2;
+  
+  // Store data in user data
+  mainLine.userData = { 
+    measurementId: measurement.id,
+    measurementType: 'height'
+  };
+  verticalLine.userData = { 
+    measurementId: measurement.id,
+    measurementType: 'height'
+  };
+  horizontalLine.userData = { 
+    measurementId: measurement.id,
+    measurementType: 'height'
+  };
+  
+  // Add to measurements group
+  measurementsRef.add(mainLine);
+  measurementsRef.add(verticalLine);
+  measurementsRef.add(horizontalLine);
+  
+  // If we should recreate the labels
+  if (recreateLabels && labelsRef) {
+    // Add text label beside the vertical line
+    const labelPos = new THREE.Vector3(
+      verticalPoint.x + 0.2, // Offset from vertical line
+      (higherPoint.y + verticalPoint.y) / 2 + LINE_Y_OFFSET,
+      verticalPoint.z
+    );
+    
+    const labelText = formatMeasurementLabel(measurement.value, 'height');
+    const label = createMeasurementLabel(labelText, labelPos, true);
+    
+    // Store measurement ID in user data
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+}
+
+/**
+ * Renders an area measurement
+ */
+export function renderAreaMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  segmentLabelsRef: THREE.Group | null,
+  recreateLabels: boolean,
+  recreateSegmentLabels: boolean
+) {
+  if (!measurementsRef || measurement.points.length < 3) return;
+
+  // Convert points to THREE.Vector3
+  const points3D = pointsToVector3Array(measurement.points);
+  
+  // Create a shape with proper Y offset for visibility
+  const offsetPoints = points3D.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
+  
+  // First, create the boundary lines
+  for (let i = 0; i < offsetPoints.length; i++) {
+    const p1 = offsetPoints[i];
+    const p2 = offsetPoints[(i + 1) % offsetPoints.length];
+    
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+      color: 0xffaa00, // Orange for area
+      linewidth: 2
+    });
+    
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.renderOrder = 2;
+    
+    // Store data
+    line.userData = { 
+      measurementId: measurement.id,
+      measurementType: 'area',
+      boundaryLine: true,
+      pointIndex1: i,
+      pointIndex2: (i + 1) % offsetPoints.length
+    };
+    
+    // Add to measurements group
+    measurementsRef.add(line);
+  }
+  
+  // If we should recreate the labels
+  if (recreateLabels && labelsRef) {
+    // Calculate the centroid for the label position
+    const centroid = calculateCentroid(points3D);
+    // Raise label position
+    centroid.y += LABEL_Y_OFFSET;
+    
+    const labelText = formatMeasurementLabel(measurement.value, 'area');
+    const label = createMeasurementLabel(labelText, centroid, true);
+    
+    // Store measurement ID in user data
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+  
+  // Add segment labels if specified
+  if (recreateSegmentLabels && segmentLabelsRef && measurement.segments) {
+    for (const segment of measurement.segments) {
+      const { points: segmentPoints } = segment;
+      
+      // Check if the segment has valid point data
+      if (segmentPoints && segmentPoints.length === 2) {
+        const p1 = pointToVector3(segmentPoints[0]);
+        const p2 = pointToVector3(segmentPoints[1]);
+        
+        // Find the indices of these points in the measurement's points array
+        let startIndex = -1;
+        let endIndex = -1;
+        
+        for (let i = 0; i < measurement.points.length; i++) {
+          const point = measurement.points[i];
+          if (point.x === segmentPoints[0].x && 
+              point.y === segmentPoints[0].y && 
+              point.z === segmentPoints[0].z) {
+            startIndex = i;
+          }
+          if (point.x === segmentPoints[1].x && 
+              point.y === segmentPoints[1].y && 
+              point.z === segmentPoints[1].z) {
+            endIndex = i;
+          }
+        }
+        
+        // Calculate midpoint for label placement
+        const midpoint = calculateMidpoint(p1, p2);
+        // Raise segment label slightly above the line
+        midpoint.y += 0.05;
+        
+        // Create segment label - don't include inclination for area segment labels
+        const segmentLabel = segment.label || "";
+        
+        const label = createMeasurementLabel(segmentLabel, midpoint, true);
+        
+        // Store segment information in user data
+        label.userData = {
+          measurementId: measurement.id,
+          segmentId: segment.id,
+          startPointIndex: startIndex,
+          endPointIndex: endIndex,
+          isSegmentLabel: true
+        };
+        
+        // Add to segment labels group
+        segmentLabelsRef.add(label);
+      }
+    }
+  }
+}
+
+/**
+ * Renders a solar measurement (similar to area but with different styling and PV module potential)
+ */
+export function renderSolarMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  segmentLabelsRef: THREE.Group | null,
+  recreateLabels: boolean,
+  recreateSegmentLabels: boolean
+) {
+  if (!measurementsRef || measurement.points.length < 3) return;
+
+  // Convert points to THREE.Vector3
+  const points3D = pointsToVector3Array(measurement.points);
+  
+  // Create a shape with proper Y offset for visibility
+  const offsetPoints = points3D.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
+  
+  // First, create the boundary lines
+  for (let i = 0; i < offsetPoints.length; i++) {
+    const p1 = offsetPoints[i];
+    const p2 = offsetPoints[(i + 1) % offsetPoints.length];
+    
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+      color: 0x1EAEDB, // Blue for solar
+      linewidth: 2
+    });
+    
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.renderOrder = 2;
+    
+    // Store data
+    line.userData = { 
+      measurementId: measurement.id,
+      measurementType: 'solar',
+      boundaryLine: true,
+      pointIndex1: i,
+      pointIndex2: (i + 1) % offsetPoints.length
+    };
+    
+    // Add to measurements group
+    measurementsRef.add(line);
+  }
+  
+  // If we should recreate the labels
+  if (recreateLabels && labelsRef) {
+    // Calculate the centroid for the label position
+    const centroid = calculateCentroid(points3D);
+    // Raise label position
+    centroid.y += LABEL_Y_OFFSET;
+    
+    // Format label text with appropriate unit
+    let labelText = formatMeasurementLabel(measurement.value, 'solar');
+    
+    // Add PV module information if available
+    if (measurement.pvModuleInfo) {
+      const moduleInfo = measurement.pvModuleInfo;
+      if (moduleInfo.moduleCount > 0) {
+        labelText += `\n${moduleInfo.moduleCount} Module`;
+        
+        if (measurement.pvModuleInfo.pvModuleSpec && measurement.pvModuleInfo.pvModuleSpec.power) {
+          const totalPower = moduleInfo.moduleCount * measurement.pvModuleInfo.pvModuleSpec.power;
+          labelText += ` (${totalPower.toFixed(1)} kWp)`;
+        }
+      }
+    }
+    
+    const label = createMeasurementLabel(labelText, centroid, true);
+    
+    // Store measurement ID in user data
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+  
+  // Add segment labels if specified - similar to area measurement
+  if (recreateSegmentLabels && segmentLabelsRef && measurement.segments) {
+    for (const segment of measurement.segments) {
+      const { points: segmentPoints } = segment;
+      
+      // Check if the segment has valid point data
+      if (segmentPoints && segmentPoints.length === 2) {
+        const p1 = pointToVector3(segmentPoints[0]);
+        const p2 = pointToVector3(segmentPoints[1]);
+        
+        // Find the indices of these points in the measurement's points array
+        let startIndex = -1;
+        let endIndex = -1;
+        
+        for (let i = 0; i < measurement.points.length; i++) {
+          const point = measurement.points[i];
+          if (point.x === segmentPoints[0].x && 
+              point.y === segmentPoints[0].y && 
+              point.z === segmentPoints[0].z) {
+            startIndex = i;
+          }
+          if (point.x === segmentPoints[1].x && 
+              point.y === segmentPoints[1].y && 
+              point.z === segmentPoints[1].z) {
+            endIndex = i;
+          }
+        }
+        
+        // Calculate midpoint for label placement
+        const midpoint = calculateMidpoint(p1, p2);
+        // Raise segment label slightly above the line
+        midpoint.y += 0.05;
+        
+        // Create segment label - don't include inclination for solar segment labels
+        const segmentLabel = segment.label || "";
+        
+        const label = createMeasurementLabel(segmentLabel, midpoint, true);
+        
+        // Store segment information in user data
+        label.userData = {
+          measurementId: measurement.id,
+          segmentId: segment.id,
+          startPointIndex: startIndex,
+          endPointIndex: endIndex,
+          isSegmentLabel: true
+        };
+        
+        // Add to segment labels group
+        segmentLabelsRef.add(label);
+      }
+    }
+  }
+}
+
+/**
+ * Renders a roof element (skylight, chimney, etc.)
+ */
+export function renderRoofElementMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group | null,
+  labelsRef: THREE.Group | null,
+  recreateLabels: boolean
+) {
+  if (!measurementsRef || measurement.points.length < 3) return;
+
+  // Get points as THREE.Vector3
+  const points3D = pointsToVector3Array(measurement.points);
+  
+  // Add perimeter lines
+  const offsetPoints = points3D.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
+  
+  // Create a color based on the type
+  let color;
+  switch (measurement.type) {
+    case 'skylight': color = 0xff8800; break;
+    case 'chimney': color = 0xff0000; break;
+    case 'vent': color = 0x00ffff; break;
+    case 'hook': color = 0xff00ff; break;
+    default: color = 0xffaa00;
+  }
+  
+  // Create boundary lines
+  for (let i = 0; i < offsetPoints.length; i++) {
+    const p1 = offsetPoints[i];
+    const p2 = offsetPoints[(i + 1) % offsetPoints.length];
+    
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+      color,
+      linewidth: 2
+    });
+    
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.renderOrder = 2;
+    
+    // Add user data
+    line.userData = {
+      measurementId: measurement.id,
+      measurementType: measurement.type,
+      boundaryLine: true
+    };
+    
+    measurementsRef.add(line);
+  }
+  
+  // Add a visual marker for the roof element
+  const centroid = calculateCentroid(points3D);
+  const marker = createRoofElementMarker(centroid, measurement.type, color);
+  
+  // Add user data
+  marker.userData = {
+    measurementId: measurement.id,
+    measurementType: measurement.type
+  };
+  
+  // Add to measurements group
+  measurementsRef.add(marker);
+  
+  // If we should recreate the labels
+  if (recreateLabels && labelsRef) {
+    // Raise label position
+    const labelPosition = new THREE.Vector3(centroid.x, centroid.y + LABEL_Y_OFFSET * 1.5, centroid.z);
+    
+    const labelText = formatMeasurementLabel(measurement.value, measurement.type as any);
+    const label = createMeasurementLabel(labelText, labelPosition, true);
+    
+    // Store measurement ID in user data
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+}
