@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -71,6 +70,7 @@ export interface PVModuleInfo {
   userDefinedLength?: number; // User-defined available length in meters
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
+  showPVModules?: boolean;    // Flag to control visibility of PV modules
 }
 
 export interface PVModuleSpec {
