@@ -1,3 +1,4 @@
+
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
@@ -47,20 +48,6 @@ export const useMeasurements = () => {
     visualStateUpdaterRef.current(updatedMeasurements, labelVisibility);
   }, []);
   
-  // Extend the updateMeasurement function to refresh visuals when PV data is updated
-  const updateMeasurementWithVisuals = useCallback((id: string, data: Partial<Measurement>) => {
-    // Call the original updateMeasurement function
-    updateMeasurement(id, data);
-    
-    // If PV module data is being updated, refresh the visuals
-    if (data.pvModuleInfo) {
-      const updatedMeasurements = measurements.map(m => 
-        m.id === id ? { ...m, ...data } : m
-      );
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-    }
-  }, [measurements, updateMeasurement, updateVisualState, allLabelsVisible]);
-  
   // Editing functionality
   const {
     toggleEditMode,
@@ -76,6 +63,20 @@ export const useMeasurements = () => {
     setEditMeasurementId,
     setEditingPointIndex
   );
+  
+  // Extend the updateMeasurement function to refresh visuals when PV data is updated
+  const updateMeasurementWithVisuals = useCallback((id: string, data: Partial<Measurement>) => {
+    // Call the original updateMeasurement function
+    updateMeasurement(id, data);
+    
+    // If PV module data is being updated, refresh the visuals
+    if (data.pvModuleInfo) {
+      const updatedMeasurements = measurements.map(m => 
+        m.id === id ? { ...m, ...data } : m
+      );
+      updateVisualState(updatedMeasurements, allLabelsVisible);
+    }
+  }, [measurements, updateMeasurement, updateVisualState, allLabelsVisible]);
   
   // Visibility toggling with visual update callback
   const {

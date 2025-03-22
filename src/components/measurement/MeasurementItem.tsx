@@ -35,7 +35,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { calculatePVModulePlacement, calculatePVPower, formatPVModuleInfo } from '@/utils/pvCalculations';
+import { 
+  calculatePVModulePlacement, 
+  calculatePVPower, 
+  formatPVModuleInfo,
+  DEFAULT_MODULE_WIDTH,
+  DEFAULT_MODULE_HEIGHT,
+  DEFAULT_EDGE_DISTANCE,
+  DEFAULT_MODULE_SPACING
+} from '@/utils/pvCalculations';
 
 interface MeasurementItemProps {
   measurement: Measurement;
