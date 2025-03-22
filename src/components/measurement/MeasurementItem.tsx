@@ -21,7 +21,8 @@ import {
   Camera,
   Image,
   Zap,
-  Info
+  Info,
+  Ruler
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -134,7 +135,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       customScreenshots: newScreenshots
     });
   };
-  
+
   const handleCalculatePV = () => {
     if (measurement.type !== 'area') return;
     
@@ -146,6 +147,21 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       DEFAULT_MODULE_SPACING
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
+  };
+
+  const handlePVDimensionsChange = (dimensions: { width: number, length: number }) => {
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+        measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+        dimensions
+      );
+      
+      updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
+    }
   };
 
   const getTypeIcon = (type: string) => {
@@ -367,15 +383,51 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                 <Zap className="h-4 w-4 mr-1 text-blue-600" />
                 <span className="font-medium">PV-Planung</span>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6" 
-                onClick={() => setShowPVDetails(!showPVDetails)}
-              >
-                <Info className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={() => setShowPVDetails(!showPVDetails)}
+                >
+                  <Info className="h-3 w-3" />
+                </Button>
+                
+                <PVModuleSelect 
+                  onModuleSelect={(moduleSpec) => {
+                    if (measurement.pvModuleInfo) {
+                      const updatedInfo = {
+                        ...measurement.pvModuleInfo,
+                        moduleWidth: moduleSpec.width,
+                        moduleHeight: moduleSpec.height,
+                        pvModuleSpec: moduleSpec
+                      };
+                      
+                      const recalculatedInfo = calculatePVModulePlacement(
+                        measurement.points,
+                        moduleSpec.width,
+                        moduleSpec.height,
+                        updatedInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+                        updatedInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+                        updatedInfo.manualDimensions ? {
+                          width: updatedInfo.userDefinedWidth || 0,
+                          length: updatedInfo.userDefinedLength || 0
+                        } : undefined
+                      );
+                      
+                      updateMeasurement(measurement.id, { 
+                        pvModuleInfo: recalculatedInfo,
+                        pvModuleSpec: moduleSpec
+                      });
+                    }
+                  }}
+                  currentModule={measurement.pvModuleSpec || PV_MODULE_TEMPLATES[0]}
+                  onDimensionsChange={handlePVDimensionsChange}
+                  pvModuleInfo={measurement.pvModuleInfo}
+                />
+              </div>
             </div>
+            
             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
@@ -472,6 +524,19 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                     <div className="col-span-2 mt-2 text-blue-700 font-semibold">Modulanzahl: {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'} = {measurement.pvModuleInfo!.moduleCount} Module</div>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {measurement.pvModuleInfo && measurement.pvModuleInfo.manualDimensions && (
+              <div className="mt-1 p-1 bg-green-50/10 border border-green-200/30 rounded-md text-xs">
+                <div className="flex items-center">
+                  <Ruler className="h-3 w-3 mr-1 text-green-600" />
+                  <span className="font-medium">Manuelle Abmessungen:</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 mt-1">
+                  <div><strong>Breite:</strong> {measurement.pvModuleInfo.userDefinedWidth?.toFixed(2) || "-"} m</div>
+                  <div><strong>Länge:</strong> {measurement.pvModuleInfo.userDefinedLength?.toFixed(2) || "-"} m</div>
+                </div>
               </div>
             )}
           </div>
@@ -627,3 +692,4 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 };
 
 export default MeasurementItem;
+

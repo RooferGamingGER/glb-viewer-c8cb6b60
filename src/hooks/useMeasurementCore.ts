@@ -252,13 +252,14 @@ export const useMeasurementCore = () => {
   }, [allLabelsVisible]);
 
   // Update handling for calculating PV modules on an area
-  const handleCalculatePV = (areaPoints: Point[]) => {
+  const handleCalculatePV = (areaPoints: Point[], userDimensions?: {width: number, length: number}) => {
     const moduleInfo = calculatePVModulePlacement(
       areaPoints,
       undefined,
       undefined,
       DEFAULT_EDGE_DISTANCE,
-      DEFAULT_MODULE_SPACING
+      DEFAULT_MODULE_SPACING,
+      userDimensions
     );
     
     const moduleSpec = PV_MODULE_TEMPLATES[0];

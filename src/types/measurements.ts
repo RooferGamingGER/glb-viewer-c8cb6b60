@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -65,6 +64,9 @@ export interface PVModuleInfo {
   maxZ?: number;           // Maximum Z of the bounding box
   actualArea?: number;      // The actual area (not just bounding box)
   pvModuleSpec?: PVModuleSpec; // Reference to the module specification used
+  manualDimensions?: boolean; // Flag to indicate if dimensions were manually set
+  userDefinedWidth?: number;  // User-defined available width in meters
+  userDefinedLength?: number; // User-defined available length in meters
 }
 
 export interface PVModuleSpec {

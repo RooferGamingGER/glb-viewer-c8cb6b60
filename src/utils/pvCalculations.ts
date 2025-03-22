@@ -1,4 +1,3 @@
-
 import { Point, PVModuleInfo, PVModuleSpec, Measurement } from '@/types/measurements';
 import { calculatePolygonArea } from './measurementCalculations';
 
@@ -50,6 +49,7 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
  * @param moduleHeight - Height of a single PV module in meters (default: 1.767m)
  * @param edgeDistance - Distance from the roof edge in meters (default: 0.1m)
  * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
+ * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
  * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
@@ -57,7 +57,8 @@ export const calculatePVModulePlacement = (
   moduleWidth: number = DEFAULT_MODULE_WIDTH, 
   moduleHeight: number = DEFAULT_MODULE_HEIGHT,
   edgeDistance: number = DEFAULT_EDGE_DISTANCE,
-  moduleSpacing: number = DEFAULT_MODULE_SPACING
+  moduleSpacing: number = DEFAULT_MODULE_SPACING,
+  userDimensions?: {width: number, length: number}
 ): PVModuleInfo => {
   // Calculate the area of the polygon
   const area = calculatePolygonArea(points);
@@ -74,27 +75,41 @@ export const calculatePVModulePlacement = (
   });
   
   // Calculate approximate dimensions of the bounding rectangle
-  const boundingWidth = maxX - minX;
-  const boundingLength = maxZ - minZ;
+  let boundingWidth = maxX - minX;
+  let boundingLength = maxZ - minZ;
   
-  // Calculate the available area after applying edge distance
-  const availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
-  const availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+  // Use user-defined dimensions if provided
+  let availableWidth: number;
+  let availableLength: number;
+  let manualDimensions = false;
   
-  // DEBUG: Log calculation values to diagnose the issue
+  if (userDimensions && userDimensions.width > 0 && userDimensions.length > 0) {
+    availableWidth = userDimensions.width;
+    availableLength = userDimensions.length;
+    manualDimensions = true;
+    
+    // Adjust bounding dimensions to match user values plus edge distance
+    boundingWidth = availableWidth + (2 * edgeDistance);
+    boundingLength = availableLength + (2 * edgeDistance);
+  } else {
+    // Calculate the available area after applying edge distance
+    availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
+    availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+  }
+  
+  // DEBUG: Log calculation values
   console.log("PV Calculation Debug:", {
     area,
     boundingWidth,
     boundingLength,
     availableWidth,
     availableLength,
+    manualDimensions,
     moduleWidth,
     moduleHeight,
     edgeDistance,
     moduleSpacing
   });
-  
-  // CORRECTED CALCULATION FORMULAS
   
   // Portrait orientation calculations - corrected formula
   // For modules in portrait orientation, width refers to the narrow side
@@ -112,7 +127,7 @@ export const calculatePVModulePlacement = (
   // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
   
-  // DEBUG: Log the module counts to diagnose the issue
+  // DEBUG: Log the module counts
   console.log("PV Module Counts:", {
     portraitModulesX,
     portraitModulesY,
@@ -162,7 +177,10 @@ export const calculatePVModulePlacement = (
     maxX,     // Added for grid boundary visualization
     minZ,     // Added for grid boundary visualization
     maxZ,     // Added for grid boundary visualization
-    actualArea: area // The actual polygon area (not just bounding box)
+    actualArea: area, // The actual polygon area (not just bounding box)
+    manualDimensions,
+    userDefinedWidth: manualDimensions ? availableWidth : undefined,
+    userDefinedLength: manualDimensions ? availableLength : undefined
   };
 };
 
