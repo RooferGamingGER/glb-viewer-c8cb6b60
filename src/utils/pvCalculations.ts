@@ -94,22 +94,21 @@ export const calculatePVModulePlacement = (
     moduleSpacing
   });
   
-  // FIXED CALCULATION: Portrait orientation calculations
-  // How many complete modules fit along width (corrected formula)
-  const portraitModulesX = Math.max(0, Math.floor(availableWidth / (moduleWidth + moduleSpacing)));
+  // FIXED CALCULATION: The issue is with how module spacing is incorporated
   
-  // How many complete modules fit along length (corrected formula)
-  const portraitModulesY = Math.max(0, Math.floor(availableLength / (moduleHeight + moduleSpacing)));
+  // Portrait orientation calculations - corrected formula
+  // For n modules, we need (n-1) spaces between them
+  // The total available width must accommodate: n*moduleWidth + (n-1)*moduleSpacing
+  // Solving for n: n = (availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing)
+  const portraitModulesX = Math.floor((availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing));
+  const portraitModulesY = Math.floor((availableLength + moduleSpacing) / (moduleHeight + moduleSpacing));
   
   // Total modules in portrait orientation
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
-  // FIXED CALCULATION: Landscape orientation calculations
-  // How many complete modules fit along width (corrected formula)
-  const landscapeModulesX = Math.max(0, Math.floor(availableWidth / (moduleHeight + moduleSpacing)));
-  
-  // How many complete modules fit along length (corrected formula)
-  const landscapeModulesY = Math.max(0, Math.floor(availableLength / (moduleWidth + moduleSpacing)));
+  // Landscape orientation calculations - corrected formula
+  const landscapeModulesX = Math.floor((availableWidth + moduleSpacing) / (moduleHeight + moduleSpacing));
+  const landscapeModulesY = Math.floor((availableLength + moduleSpacing) / (moduleWidth + moduleSpacing));
   
   // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
@@ -121,14 +120,18 @@ export const calculatePVModulePlacement = (
     portraitModuleCount,
     landscapeModulesX,
     landscapeModulesY,
-    landscapeModuleCount
+    landscapeModuleCount,
+    portraitFormula: `(${availableWidth} + ${moduleSpacing}) / (${moduleWidth} + ${moduleSpacing}) = ${(availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing)}`,
+    landscapeFormula: `(${availableWidth} + ${moduleSpacing}) / (${moduleHeight} + ${moduleSpacing}) = ${(availableWidth + moduleSpacing) / (moduleHeight + moduleSpacing)}`
   });
   
   // Choose the orientation that fits more modules
   const usePortrait = portraitModuleCount >= landscapeModuleCount;
   
-  // Final module count
+  // Final module count, rows, and columns
   const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;
+  const columns = usePortrait ? portraitModulesX : landscapeModulesX;
+  const rows = usePortrait ? portraitModulesY : landscapeModulesY;
   
   // Calculate the actual area covered by the modules (without spacing at the outer edges)
   const moduleArea = moduleCount * moduleWidth * moduleHeight;
@@ -143,7 +146,13 @@ export const calculatePVModulePlacement = (
     edgeDistance,
     moduleSpacing,
     coveragePercent: Math.min(coveragePercent, 100), // Cap at 100%
-    orientation: usePortrait ? 'portrait' : 'landscape'
+    orientation: usePortrait ? 'portrait' : 'landscape',
+    columns,
+    rows,
+    boundingWidth,
+    boundingLength,
+    availableWidth,
+    availableLength
   };
 };
 

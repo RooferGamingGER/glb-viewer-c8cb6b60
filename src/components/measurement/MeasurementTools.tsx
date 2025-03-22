@@ -105,7 +105,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       updateAllLabelsVisibility(labelVisible);
     }
     
-    // Update measurement markers visibility
+    // Update measurement markers visibility including PV areas
     if (measurementsRef.current) {
       updateMeasurementMarkers();
     }

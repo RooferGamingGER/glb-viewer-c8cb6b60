@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -193,13 +192,11 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const hasPVInfo = measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0;
   const isAreaMeasurement = measurement.type === 'area';
 
-  // Get bounding box dimensions if PV info is available
   const getBoundingBoxDimensions = () => {
     if (!measurement.points || measurement.points.length < 3) {
       return null;
     }
     
-    // Calculate the minimum and maximum X and Z coordinates
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     
     measurement.points.forEach(point => {
@@ -219,13 +216,29 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     };
   };
 
+  const getAvailableArea = () => {
+    if (!measurement.pvModuleInfo || !getBoundingBoxDimensions()) return null;
+    
+    const edgeDistance = measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
+    const boundingBox = getBoundingBoxDimensions()!;
+    
+    const availableWidth = Math.max(0, boundingBox.width - (2 * edgeDistance));
+    const availableLength = Math.max(0, boundingBox.length - (2 * edgeDistance));
+    
+    return {
+      width: availableWidth,
+      length: availableLength,
+      area: availableWidth * availableLength
+    };
+  };
+
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
         measurement.editMode ? 'border-primary bg-secondary/20' : 
         isPenetration ? 'border-orange-300/50 bg-orange-50/10' :  
         isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 
-        measurement.type === 'solar' ? 'border-blue-300/50 bg-blue-50/10' : 
+        measurement.type === 'solar' || measurement.type === 'pvmodule' ? 'border-blue-300/50 bg-blue-50/10' : 
         'border-border'
       }`}
     >
@@ -348,10 +361,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         )}
         
         {hasPVInfo && (
-          <div className="mt-2 p-2 bg-green-50/10 border border-green-200/30 rounded-md">
+          <div className="mt-2 p-2 bg-blue-50/10 border border-blue-200/30 rounded-md">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <Zap className="h-4 w-4 mr-1 text-green-600" />
+                <Zap className="h-4 w-4 mr-1 text-blue-600" />
                 <span className="font-medium">PV-Planung</span>
               </div>
               <Button 
@@ -367,7 +380,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
-              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount).toFixed(2)} kWp</div>
+              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 380).toFixed(2)} kWp</div>
+              <div><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
               {measurement.pvModuleInfo!.edgeDistance !== undefined && (
                 <div><strong>Randabstand:</strong> {measurement.pvModuleInfo!.edgeDistance.toFixed(2)}m</div>
@@ -378,23 +392,100 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             </div>
             
             {showPVDetails && (
-              <div className="mt-2 border-t border-green-200/30 pt-2 text-xs">
+              <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs">
                 <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
                 
                 {getBoundingBoxDimensions() && (
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div><strong>Bounding Box Breite:</strong> {getBoundingBoxDimensions()!.width.toFixed(3)}m</div>
-                    <div><strong>Bounding Box Länge:</strong> {getBoundingBoxDimensions()!.length.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Bounding Box Fläche:</strong> {getBoundingBoxDimensions()!.area.toFixed(3)}m²</div>
+                    <div><strong>Begrenzung Breite:</strong> {getBoundingBoxDimensions()!.width.toFixed(3)}m</div>
+                    <div><strong>Begrenzung Länge:</strong> {getBoundingBoxDimensions()!.length.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {getBoundingBoxDimensions()!.area.toFixed(3)}m²</div>
                     
                     <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)}m</div>
                     <div className="col-span-2"><strong>Verfügbare Länge:</strong> {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)}m</div>
                     
-                    <div className="col-span-2 mt-1"><strong>Module pro Reihe (Hochformat):</strong> {Math.floor((getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleWidth + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
-                    <div className="col-span-2"><strong>Reihen (Hochformat):</strong> {Math.floor((getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleHeight + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
-                    
-                    <div className="col-span-2 mt-1"><strong>Module pro Reihe (Querformat):</strong> {Math.floor((getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleHeight + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
-                    <div className="col-span-2"><strong>Reihen (Querformat):</strong> {Math.floor((getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleWidth + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
+                    {measurement.pvModuleInfo!.orientation === 'portrait' ? (
+                      <>
+                        <div className="col-span-2 mt-1 text-blue-700 font-semibold">Hochformat-Berechnung:</div>
+                        <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
+                          <span className="text-blue-600"> floor((verfügbare Breite + Modulabstand) / (Modulbreite + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span className="text-blue-600"> floor((
+                            {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)}) / (
+                            {measurement.pvModuleInfo!.moduleWidth.toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor((
+                              (getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ) / (
+                              measurement.pvModuleInfo!.moduleWidth + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ))}
+                          </span>
+                        </div>
+                        <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
+                          <span className="text-blue-600"> floor((verfügbare Länge + Modulabstand) / (Modulhöhe + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span className="text-blue-600"> floor((
+                            {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)}) / (
+                            {measurement.pvModuleInfo!.moduleHeight.toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor((
+                              (getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ) / (
+                              measurement.pvModuleInfo!.moduleHeight + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ))}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="col-span-2 mt-1 text-blue-700 font-semibold">Querformat-Berechnung:</div>
+                        <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
+                          <span className="text-blue-600"> floor((verfügbare Breite + Modulabstand) / (Modulhöhe + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span className="text-blue-600"> floor((
+                            {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)}) / (
+                            {measurement.pvModuleInfo!.moduleHeight.toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor((
+                              (getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ) / (
+                              measurement.pvModuleInfo!.moduleHeight + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ))}
+                          </span>
+                        </div>
+                        <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
+                          <span className="text-blue-600"> floor((verfügbare Länge + Modulabstand) / (Modulbreite + Modulabstand))</span>
+                        </div>
+                        <div className="col-span-2"><strong>Formel:</strong> 
+                          <span className="text-blue-600"> floor((
+                            {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)}) / (
+                            {measurement.pvModuleInfo!.moduleWidth.toFixed(3)} + 
+                            {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                            {Math.floor((
+                              (getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ) / (
+                              measurement.pvModuleInfo!.moduleWidth + 
+                              (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)
+                            ))}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    <div className="col-span-2 mt-2 text-blue-700 font-semibold">Modulanzahl: {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'} = {measurement.pvModuleInfo!.moduleCount} Module</div>
                   </div>
                 )}
               </div>
@@ -552,3 +643,4 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
 };
 
 export default MeasurementItem;
+

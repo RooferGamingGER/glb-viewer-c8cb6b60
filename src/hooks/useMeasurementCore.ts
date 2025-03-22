@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -24,7 +23,9 @@ import {
 } from '@/utils/measurementCalculations';
 import {
   PV_MODULE_TEMPLATES,
-  calculatePVModulePlacement
+  calculatePVModulePlacement,
+  DEFAULT_EDGE_DISTANCE,
+  DEFAULT_MODULE_SPACING
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -249,6 +250,27 @@ export const useMeasurementCore = () => {
     
     toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
   }, [allLabelsVisible]);
+
+  // Update handling for calculating PV modules on an area
+  const handleCalculatePV = (areaPoints: Point[]) => {
+    const moduleInfo = calculatePVModulePlacement(
+      areaPoints,
+      undefined,
+      undefined,
+      DEFAULT_EDGE_DISTANCE,
+      DEFAULT_MODULE_SPACING
+    );
+    
+    const moduleSpec = PV_MODULE_TEMPLATES[0];
+    const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+    
+    return {
+      moduleInfo,
+      moduleSpec,
+      powerOutput: moduleInfo.moduleCount * moduleSpec.power,
+      label: `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`
+    };
+  };
 
   const createChimneyOrSkylightMeasurement = (points: Point[], type: 'chimney' | 'skylight'): {
     value: number;
@@ -647,6 +669,7 @@ export const useMeasurementCore = () => {
     createLengthMeasurement,
     createHeightMeasurement,
     createRoofElementMeasurement,
-    createPVModuleMeasurement
+    createPVModuleMeasurement,
+    handleCalculatePV
   };
 };
