@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -42,14 +41,6 @@ export interface Point2D {
   y: number;
 }
 
-export interface RoofOrientation {
-  ridgeDirection?: THREE.Vector3;  // Direction vector of the ridge
-  eaveDirection?: THREE.Vector3;   // Direction vector of the eave
-  principalDirection?: "ridge" | "eave"; // Which direction to align modules with
-  ridgeId?: string;               // ID of ridge measurement
-  eaveId?: string;                // ID of eave measurement
-}
-
 export interface PVModuleInfo {
   moduleWidth: number;      // Module width in meters
   moduleHeight: number;     // Module height in meters
@@ -58,8 +49,6 @@ export interface PVModuleInfo {
   orientation: 'portrait' | 'landscape'; // Module orientation
   edgeDistance?: number;    // Distance from roof edge in meters
   moduleSpacing?: number;   // Spacing between modules in meters
-  roofOrientation?: RoofOrientation; // Orientation relative to roof structure
-  alignWithRoof?: boolean;  // Whether modules are aligned with roof structure
 }
 
 export interface Measurement {
