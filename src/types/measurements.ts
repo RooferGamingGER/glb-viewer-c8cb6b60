@@ -71,6 +71,8 @@ export interface PVModuleInfo {
   userDefinedLength?: number; // User-defined available length in meters
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
+  roofInclination?: number;   // Roof inclination angle in degrees
+  roofOrientation?: number;   // Roof orientation angle in degrees (azimuth)
 }
 
 export interface PVModuleSpec {
@@ -79,6 +81,10 @@ export interface PVModuleSpec {
   height: number;           // Height in meters
   power: number;            // Power in watts
   efficiency: number;       // Efficiency percentage
+  thickness?: number;       // Thickness in meters
+  frameColor?: string;      // Color of the module frame
+  cellColor?: string;       // Color of the PV cells
+  frameThickness?: number;  // Thickness of the frame in meters
 }
 
 export interface Measurement {
@@ -122,8 +128,37 @@ export interface Measurement {
   
   // PV module calculation data
   pvModuleInfo?: PVModuleInfo; // Information about PV module placement
+  pvModulesVisible?: boolean;  // Whether PV modules should be displayed
 
   // PV module specific fields for individually drawn modules
   pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
   powerOutput?: number;   // Power output in watts for this module
 }
+
+// New interface for 3D PV module visualization
+export interface PVModuleGridLine {
+  from: Point;
+  to: Point;
+  type: 'module' | 'boundary' | 'availableArea';
+}
+
+export interface PVModulePoint {
+  position: Point;
+  index: number;
+  row: number;
+  column: number;
+}
+
+export interface PVModuleRenderData {
+  modules: {
+    corners: Point[][]; // Array of 4 corner points for each module
+    index: number;
+    row: number;
+    column: number;
+    power: number;
+  }[];
+  gridLines: PVModuleGridLine[];
+  boundaryPoints: Point[];
+  availableAreaPoints: Point[];
+}
+

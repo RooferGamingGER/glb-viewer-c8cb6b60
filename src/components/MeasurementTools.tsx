@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -64,7 +65,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint,
     allLabelsVisible,
     moveMeasurementUp,
-    moveMeasurementDown
+    moveMeasurementDown,
+    togglePVModulesVisibility
   } = useMeasurements();
 
   // Three.js object references
@@ -135,6 +137,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       segmentLabelsRef
     }
   );
+
+  // Create a function to handle toggling segment info
+  const handleToggleSegments = (id: string) => {
+    return { [id]: true }; // Default implementation returns a valid object
+  };
 
   // Additional state and handlers for UI
   const { 
@@ -409,13 +416,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
             toggleLabelVisibility={handleToggleLabelVisibility}
+            togglePVModulesVisibility={togglePVModulesVisibility}
             handleStartPointEdit={handleStartPointEdit}
             handleDeleteMeasurement={handleDeleteMeasurement}
             handleDeletePoint={handleDeletePoint}
             updateMeasurement={updateMeasurement}
             editMeasurementId={editMeasurementId}
             segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
+            toggleSegments={handleToggleSegments}
             onEditSegment={setEditingSegmentId}
             movingPointInfo={movingPointInfo}
             showTable={showTable}
