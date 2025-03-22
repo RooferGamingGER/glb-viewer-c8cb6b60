@@ -1,3 +1,4 @@
+
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
@@ -46,23 +47,6 @@ export const useMeasurements = () => {
   const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisibility: boolean) => {
     visualStateUpdaterRef.current(updatedMeasurements, labelVisibility);
   }, []);
-  
-  // Update measurement with visual refresh
-  const updateMeasurementWithVisuals = useCallback((id: string, data: Partial<Measurement>) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => {
-        if (m.id === id) {
-          return { ...m, ...data };
-        }
-        return m;
-      });
-      
-      // Update visual state after measurement update
-      updateVisualState(updatedMeasurements, allLabelsVisible);
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, updateVisualState, allLabelsVisible]);
   
   // Editing functionality
   const {

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -35,13 +36,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { 
-  calculatePVModulePlacement, 
-  calculatePVPower, 
-  formatPVModuleInfo,
-  DEFAULT_EDGE_DISTANCE,
-  DEFAULT_MODULE_SPACING 
-} from '@/utils/pvCalculations';
+import { calculatePVModulePlacement, calculatePVPower, formatPVModuleInfo } from '@/utils/pvCalculations';
 
 interface MeasurementItemProps {
   measurement: Measurement;
@@ -310,6 +305,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           </span>
         )}
         
+        {/* Display PV module information if available */}
         {hasPVInfo && (
           <div className="mt-2 p-2 bg-green-50/10 border border-green-200/30 rounded-md">
             <div className="flex items-center mb-1">
@@ -321,23 +317,14 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
               <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
               <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount).toFixed(2)} kWp</div>
-              
-              {measurement.pvModuleInfo!.modulesX && measurement.pvModuleInfo!.modulesY && (
-                <div className="col-span-2"><strong>Anordnung:</strong> {measurement.pvModuleInfo!.modulesX} × {measurement.pvModuleInfo!.modulesY} Module</div>
-              )}
               <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
-              <div className="col-span-2"><strong>Randabstand:</strong> {(measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE).toFixed(2)}m</div>
-              <div className="col-span-2"><strong>Modulabstand:</strong> {(measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(2)}m</div>
-              
-              {measurement.pvModuleInfo!.availableArea !== undefined && (
-                <div className="col-span-2"><strong>Nutzbare Fläche:</strong> {measurement.pvModuleInfo!.availableArea.toFixed(2)}m²</div>
-              )}
             </div>
           </div>
         )}
       </div>
       
-      {isAreaMeasurement && (
+      {/* PV Calculate Button for Area Measurements */}
+      {isAreaMeasurement && !hasPVInfo && (
         <Button 
           variant="outline" 
           size="sm" 
@@ -345,7 +332,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           onClick={handleCalculatePV}
         >
           <Zap className="h-4 w-4 mr-2" />
-          {hasPVInfo ? "PV-Module neu berechnen" : "PV-Module berechnen"}
+          PV-Module berechnen
         </Button>
       )}
       
@@ -429,6 +416,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </div>
       )}
       
+      {/* Screenshot capture button */}
       <div className="mt-2">
         <CaptureScreenshotButton 
           measurementId={measurement.id}
@@ -436,6 +424,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         />
       </div>
       
+      {/* Screenshots gallery */}
       {hasCustomScreenshots && (
         <Collapsible
           open={screenshotsOpen}
