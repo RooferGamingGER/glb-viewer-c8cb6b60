@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,8 +12,7 @@ import {
   Cylinder,
   Wind,
   Anchor,
-  Droplet,
-  PanelLeft
+  Droplet
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -62,7 +60,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   useEffect(() => {
     if (activeMode === 'none') return;
     
-    if (['length', 'height', 'area', 'pvmodule'].includes(activeMode)) {
+    if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
     } else if (['solar'].includes(activeMode)) {
       setActiveTab("roof-elements");
@@ -120,17 +118,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               Fläche
             </Button>
           </div>
-          
-          <Button
-            variant={activeMode === 'pvmodule' ? "default" : "outline"} 
-            size="sm"
-            className="w-full"
-            onClick={() => toggleMeasurementTool(activeMode === 'pvmodule' ? 'none' : 'pvmodule')}
-            disabled={!!editMeasurementId}
-          >
-            <PanelLeft className="h-4 w-4 mr-1" />
-            <span>PV-Modul Fläche berechnen</span>
-          </Button>
         </TabsContent>
         
         <TabsContent value="roof-elements">
