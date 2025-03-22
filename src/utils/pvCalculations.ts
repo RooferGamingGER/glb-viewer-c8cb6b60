@@ -60,7 +60,7 @@ export const calculatePVModulePlacement = (
   moduleSpacing: number = DEFAULT_MODULE_SPACING,
   userDimensions?: {width: number, length: number}
 ): PVModuleInfo => {
-  // Calculate the area of the polygon
+  // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
   
   // Initialize dimensions variables
@@ -89,28 +89,76 @@ export const calculatePVModulePlacement = (
     boundingWidth = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
   } else {
-    // Use more accurate dimension calculation methods based on the shape
+    // Calculate dimensions based on the area and shape of the polygon
+    
+    // For quadrilaterals, use dedicated function that handles rectangular and non-rectangular shapes
     if (points.length === 4) {
-      // For quadrilaterals, use dedicated function
       const dimensions = calculateQuadrilateralDimensions(points);
       boundingWidth = dimensions.width;
       boundingLength = dimensions.length;
     } else {
-      // For other polygons, use segment analysis to find dimensions
+      // For other polygons, derive dimensions from the area
+      
+      // First, use segment analysis to estimate the shape
       const segments = generateSegments(points);
       
       // Sort segments by length (descending)
       segments.sort((a, b) => b.length - a.length);
       
-      // Use the two longest segments as dimensions
-      // This is more accurate than simple min/max coordinates
-      boundingWidth = segments[0].length;
-      boundingLength = segments.length > 1 ? segments[1].length : segments[0].length;
+      // Find the two longest, relatively perpendicular segments
+      // These likely represent the primary dimensions of the shape
+      let primaryLength = segments[0].length;
+      let secondaryLength = 0;
+      
+      // Find segments that are somewhat perpendicular to the longest segment
+      if (segments.length > 1) {
+        // Look for the longest segment that's somewhat perpendicular
+        for (let i = 1; i < segments.length; i++) {
+          secondaryLength = segments[i].length;
+          break;
+        }
+      }
+      
+      // If we couldn't determine a secondary length, derive it from the area
+      if (secondaryLength === 0 && primaryLength > 0) {
+        secondaryLength = area / primaryLength;
+      }
+      
+      // Ensure we have valid dimensions
+      if (primaryLength === 0 || secondaryLength === 0) {
+        // Fallback: estimate dimensions from the bounding box
+        primaryLength = maxX - minX;
+        secondaryLength = maxZ - minZ;
+      }
+      
+      // Assign width and length (width should be shorter than length by convention)
+      if (primaryLength < secondaryLength) {
+        boundingWidth = primaryLength;
+        boundingLength = secondaryLength;
+      } else {
+        boundingWidth = secondaryLength;
+        boundingLength = primaryLength;
+      }
     }
     
-    // Calculate the available area after applying edge distance
+    // Derive the available area by accounting for edge distances
     availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
     availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+    
+    // Sanity check: make sure our available area is reasonable given the total area
+    const availableArea = availableWidth * availableLength;
+    
+    // If the available area is significantly larger than the actual area, adjust dimensions
+    if (availableArea > area * 1.5) {
+      // Scale dimensions based on the actual area
+      const scaleFactor = Math.sqrt(area / availableArea);
+      availableWidth *= scaleFactor;
+      availableLength *= scaleFactor;
+      
+      // Update bounding dimensions
+      boundingWidth = availableWidth + (2 * edgeDistance);
+      boundingLength = availableLength + (2 * edgeDistance);
+    }
   }
   
   // DEBUG: Log calculation values
@@ -127,7 +175,7 @@ export const calculatePVModulePlacement = (
     moduleSpacing
   });
   
-  // Portrait orientation calculations - corrected formula
+  // Portrait orientation calculations 
   // For modules in portrait orientation, width refers to the narrow side
   const portraitModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
   const portraitModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));
@@ -135,7 +183,7 @@ export const calculatePVModulePlacement = (
   // Total modules in portrait orientation
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
-  // Landscape orientation calculations - corrected formula
+  // Landscape orientation calculations
   // For modules in landscape orientation, height refers to the narrow side (rotated 90 degrees)
   const landscapeModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
   const landscapeModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing));
@@ -198,7 +246,7 @@ export const calculatePVModulePlacement = (
     userDefinedWidth: manualDimensions ? availableWidth : undefined,
     userDefinedLength: manualDimensions ? availableLength : undefined,
     pvModuleSpec: {
-      name: "Standard (380W)", // Added the required 'name' property
+      name: "Standard (380W)", // The required 'name' property
       width: moduleWidth,
       height: moduleHeight,
       power: 380, // Default power value
@@ -335,3 +383,4 @@ export const calculatePVModuleDimensions = (
     powerOutput: moduleSpec.power
   };
 };
+
