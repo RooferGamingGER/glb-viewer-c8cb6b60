@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -20,7 +21,8 @@ import {
   MoveDown,
   Camera,
   Image,
-  Zap
+  Zap,
+  Info
 } from 'lucide-react';
 import { Measurement } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
@@ -78,6 +80,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
+  const [showPVDetails, setShowPVDetails] = useState(false);
 
   const handleEditStart = (id: string, description: string = '') => {
     setEditingId(id);
@@ -190,12 +193,40 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const hasPVInfo = measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0;
   const isAreaMeasurement = measurement.type === 'area';
 
+  // Get bounding box dimensions if PV info is available
+  const getBoundingBoxDimensions = () => {
+    if (!measurement.points || measurement.points.length < 3) {
+      return null;
+    }
+    
+    // Calculate the minimum and maximum X and Z coordinates
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    
+    measurement.points.forEach(point => {
+      minX = Math.min(minX, point.x);
+      maxX = Math.max(maxX, point.x);
+      minZ = Math.min(minZ, point.z);
+      maxZ = Math.max(maxZ, point.z);
+    });
+    
+    const boundingWidth = maxX - minX;
+    const boundingLength = maxZ - minZ;
+    
+    return {
+      width: boundingWidth,
+      length: boundingLength,
+      area: boundingWidth * boundingLength
+    };
+  };
+
   return (
     <div 
       className={`mb-3 p-2 rounded-md border ${
         measurement.editMode ? 'border-primary bg-secondary/20' : 
         isPenetration ? 'border-orange-300/50 bg-orange-50/10' :  
-        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 'border-border'
+        isRoofElement ? 'border-blue-300/50 bg-blue-50/10' : 
+        measurement.type === 'solar' ? 'border-blue-300/50 bg-blue-50/10' : 
+        'border-border'
       }`}
     >
       <div className="flex justify-between items-center mb-1">
@@ -318,9 +349,19 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         
         {hasPVInfo && (
           <div className="mt-2 p-2 bg-green-50/10 border border-green-200/30 rounded-md">
-            <div className="flex items-center mb-1">
-              <Zap className="h-4 w-4 mr-1 text-green-600" />
-              <span className="font-medium">PV-Planung</span>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center">
+                <Zap className="h-4 w-4 mr-1 text-green-600" />
+                <span className="font-medium">PV-Planung</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={() => setShowPVDetails(!showPVDetails)}
+              >
+                <Info className="h-3 w-3" />
+              </Button>
             </div>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
               <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
@@ -335,6 +376,29 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                 <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing.toFixed(2)}m</div>
               )}
             </div>
+            
+            {showPVDetails && (
+              <div className="mt-2 border-t border-green-200/30 pt-2 text-xs">
+                <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
+                
+                {getBoundingBoxDimensions() && (
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <div><strong>Bounding Box Breite:</strong> {getBoundingBoxDimensions()!.width.toFixed(3)}m</div>
+                    <div><strong>Bounding Box Länge:</strong> {getBoundingBoxDimensions()!.length.toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Bounding Box Fläche:</strong> {getBoundingBoxDimensions()!.area.toFixed(3)}m²</div>
+                    
+                    <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {(getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)}m</div>
+                    <div className="col-span-2"><strong>Verfügbare Länge:</strong> {(getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)).toFixed(3)}m</div>
+                    
+                    <div className="col-span-2 mt-1"><strong>Module pro Reihe (Hochformat):</strong> {Math.floor((getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleWidth + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
+                    <div className="col-span-2"><strong>Reihen (Hochformat):</strong> {Math.floor((getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleHeight + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
+                    
+                    <div className="col-span-2 mt-1"><strong>Module pro Reihe (Querformat):</strong> {Math.floor((getBoundingBoxDimensions()!.width - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleHeight + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
+                    <div className="col-span-2"><strong>Reihen (Querformat):</strong> {Math.floor((getBoundingBoxDimensions()!.length - 2 * (measurement.pvModuleInfo!.edgeDistance || DEFAULT_EDGE_DISTANCE)) / (measurement.pvModuleInfo!.moduleWidth + (measurement.pvModuleInfo!.moduleSpacing || DEFAULT_MODULE_SPACING)))}</div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

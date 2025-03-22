@@ -161,7 +161,7 @@ export function renderCurrentPoints(
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: activeMode === 'length' ? 0x00ff00 : 
              activeMode === 'height' ? 0x0000ff : 
-             activeMode === 'solar' ? 0xffaa00 :
+             activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
              activeMode === 'skylight' ? 0xff8800 :
              activeMode === 'chimney' ? 0xff0000 :
              activeMode === 'vent' ? 0x00ffff :
@@ -187,7 +187,7 @@ export function renderCurrentPoints(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: activeMode === 'length' ? 0x00ff00 : 
                activeMode === 'height' ? 0x0000ff : 
-               activeMode === 'solar' ? 0xffaa00 :
+               activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
                activeMode === 'skylight' ? 0xff8800 :
                activeMode === 'chimney' ? 0xff0000 :
                activeMode === 'vent' ? 0x00ffff :
@@ -215,7 +215,7 @@ export function renderCurrentPoints(
     const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
     // Use a dashed line material with improved visibility
     const closingMaterial = new THREE.LineDashedMaterial({ 
-      color: activeMode === 'solar' ? 0xffaa00 :
+      color: activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
              activeMode === 'skylight' ? 0xff8800 :
              activeMode === 'chimney' ? 0xff0000 :
              0xffaa00,
@@ -443,7 +443,7 @@ function createRoofElementMarker(
       break;
       
     case 'solar':
-      // Thin box for solar panel
+      // Thin box for solar panel - use blue color for solar
       geometry = new THREE.BoxGeometry(size * 1.5, size * 0.1, size * 1.2);
       break;
       
@@ -564,14 +564,17 @@ export function renderMeasurements(
         
         // Add text label at midpoint
         const midpoint = calculateMidpoint(point1, point2);
+        // Raise label position slightly higher for visibility
+        midpoint.y += LABEL_Y_OFFSET;
+        
         const labelText = formatMeasurementLabel(measurement.value, 'length', inclination);
+        const label = createMeasurementLabel(labelText, midpoint, true);
         
-        // Update the existing label
-        const label = existingLabels[0] as THREE.Sprite;
-        updateTextSprite(label, labelText);
+        // Store measurement ID in user data for reference
+        label.userData.measurementId = measurement.id;
         
-        // Update position
-        label.position.copy(midpoint);
+        // Add to labels group
+        labelsRef.add(label);
       }
     } 
     else if (measurement.type === 'height') {
@@ -596,18 +599,18 @@ export function renderMeasurements(
         // Add text label at midpoint of vertical line
         const labelPos = new THREE.Vector3(
           verticalPoint.x + 0.2, // Slightly offset from vertical line
-          (higherPoint.y + verticalPoint.y) / 2,
+          (higherPoint.y + verticalPoint.y) / 2 + LINE_Y_OFFSET,
           verticalPoint.z
         );
         
         const labelText = formatMeasurementLabel(measurement.value, 'height');
+        const label = createMeasurementLabel(labelText, labelPos, true);
         
-        // Update the existing label
-        const label = existingLabels[0] as THREE.Sprite;
-        updateTextSprite(label, labelText);
+        // Store measurement ID in user data for reference
+        label.userData.measurementId = measurement.id;
         
-        // Update position
-        label.position.copy(labelPos);
+        // Add to labels group
+        labelsRef.add(label);
       }
     } 
     else if (measurement.type === 'area' || measurement.type === 'solar') {
@@ -981,6 +984,9 @@ function renderAreaMeasurement(
   // Convert points to THREE.Vector3 with minimal Y offset
   const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
   
+  // Choose color based on measurement type
+  const measurementColor = measurement.type === 'solar' ? 0x1EAEDB : 0xffaa00; // Changed to blue for solar/PV
+  
   // Create outline from points
   for (let i = 0; i < points3D.length; i++) {
     const p1 = points3D[i];
@@ -990,7 +996,7 @@ function renderAreaMeasurement(
     const linePoints = [p1, p2];
     const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
     const lineMaterial = new THREE.LineBasicMaterial({ 
-      color: measurement.type === 'solar' ? 0xffaa00 : 0xffaa00,
+      color: measurementColor,
       linewidth: 3, // Increased from 2
       opacity: 0.9,
       transparent: true
@@ -1002,7 +1008,7 @@ function renderAreaMeasurement(
     // Add small sphere at each vertex with minimal Y offset
     const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: measurement.type === 'solar' ? 0xffaa00 : 0xffaa00,
+      color: measurementColor,
       opacity: 0.9,
       transparent: true
     });
@@ -1058,7 +1064,7 @@ function renderAreaMeasurement(
     const centroid = calculateCentroid(points3D);
     
     // Create a solar panel marker
-    const solarMarker = createRoofElementMarker(centroid, 'solar', 0xffaa00);
+    const solarMarker = createRoofElementMarker(centroid, 'solar', 0x1EAEDB); // Changed to blue
     
     // Store measurement ID in user data
     solarMarker.userData = {
