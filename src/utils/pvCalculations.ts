@@ -48,26 +48,58 @@ export const calculatePVModulePlacement = (
   const availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
   const availableHeight = Math.max(0, boundingHeight - (2 * edgeDistance));
   
-  // Calculate effective module dimensions including spacing
-  // For correct calculation, we need to consider:
-  // - Each module takes its own dimensions
-  // - Each module needs spacing on one side (the last module in each row/column doesn't need extra spacing)
+  // DEBUG: Log calculation values to diagnose the issue
+  console.log("PV Calculation Debug:", {
+    area,
+    boundingWidth,
+    boundingHeight,
+    availableWidth,
+    availableHeight,
+    moduleWidth,
+    moduleHeight,
+    edgeDistance,
+    moduleSpacing
+  });
   
-  // Calculate for portrait orientation (height is the larger dimension)
-  // Number of modules that can fit in the width 
-  const portraitModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
-  // Number of modules that can fit in the height
-  const portraitModulesY = Math.floor(availableHeight / (moduleHeight + moduleSpacing));
-  // Total portrait modules
+  // Calculate how many modules can fit in each direction
+  // For portrait orientation (height > width)
+  // We need to account for spacing between modules, but not after the last module
+  
+  // Portrait orientation calculations
+  // How many complete modules+spacing units fit along width
+  let portraitModulesX = Math.floor((availableWidth + moduleSpacing) / (moduleWidth + moduleSpacing));
+  // How many complete modules+spacing units fit along height
+  let portraitModulesY = Math.floor((availableHeight + moduleSpacing) / (moduleHeight + moduleSpacing));
+  
+  // Ensure we have at least 1 module if there's enough space for it
+  portraitModulesX = Math.max(portraitModulesX, availableWidth >= moduleWidth ? 1 : 0);
+  portraitModulesY = Math.max(portraitModulesY, availableHeight >= moduleHeight ? 1 : 0);
+  
+  // Total modules in portrait orientation
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
-  // Calculate for landscape orientation (width is the larger dimension)
-  // Number of modules that can fit in the width
-  const landscapeModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
-  // Number of modules that can fit in the height
-  const landscapeModulesY = Math.floor(availableHeight / (moduleWidth + moduleSpacing));
-  // Total landscape modules
+  // Landscape orientation calculations
+  // How many complete modules+spacing units fit along width
+  let landscapeModulesX = Math.floor((availableWidth + moduleSpacing) / (moduleHeight + moduleSpacing));
+  // How many complete modules+spacing units fit along height
+  let landscapeModulesY = Math.floor((availableHeight + moduleSpacing) / (moduleWidth + moduleSpacing));
+  
+  // Ensure we have at least 1 module if there's enough space for it
+  landscapeModulesX = Math.max(landscapeModulesX, availableWidth >= moduleHeight ? 1 : 0);
+  landscapeModulesY = Math.max(landscapeModulesY, availableHeight >= moduleWidth ? 1 : 0);
+  
+  // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
+  
+  // DEBUG: Log the module counts to diagnose the issue
+  console.log("PV Module Counts:", {
+    portraitModulesX,
+    portraitModulesY,
+    portraitModuleCount,
+    landscapeModulesX,
+    landscapeModulesY,
+    landscapeModuleCount
+  });
   
   // Choose the orientation that fits more modules
   const usePortrait = portraitModuleCount >= landscapeModuleCount;
