@@ -123,7 +123,7 @@ export const useMeasurements = () => {
     toggleLabelVisibility,
     toggleAllMeasurementsVisibility,
     toggleAllLabelsVisibility,
-    togglePVModulesVisibility, // Neue Funktion exportieren
+    togglePVModulesVisibility,
     toggleEditMode,
     updateMeasurement,
     deleteMeasurement,
