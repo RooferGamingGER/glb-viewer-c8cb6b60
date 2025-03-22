@@ -198,6 +198,7 @@ export const calculatePVModulePlacement = (
     userDefinedWidth: manualDimensions ? availableWidth : undefined,
     userDefinedLength: manualDimensions ? availableLength : undefined,
     pvModuleSpec: {
+      name: "Standard (380W)", // Added the required 'name' property
       width: moduleWidth,
       height: moduleHeight,
       power: 380, // Default power value
