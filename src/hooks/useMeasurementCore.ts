@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -226,7 +227,7 @@ export const useMeasurementCore = () => {
       }
     }
     
-    const area = calculateArea(points);
+    const polygonArea = calculateArea(points);
     const moduleInfo = calculatePVModulePlacement(points);
     const moduleSpec = PV_MODULE_TEMPLATES[0];
     
@@ -239,7 +240,7 @@ export const useMeasurementCore = () => {
         id: nanoid(),
         type: 'pvmodule',
         points: [...points],
-        value: area,
+        value: polygonArea,
         label,
         visible: true,
         labelVisible: allLabelsVisible,
@@ -340,17 +341,17 @@ export const useMeasurementCore = () => {
     switch (type) {
       case 'chimney':
         if (points.length >= 4) {
-          const area = calculateArea(points);
+          const elementArea = calculateArea(points);
           const dimensions = calculateQuadrilateralDimensions(points);
           
           measurementData = {
-            value: area,
+            value: elementArea,
             label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
             subType: 'Kaminausschnitt',
             dimensions: {
               width: dimensions.width,
               length: dimensions.length,
-              area: area,
+              area: elementArea,
               perimeter: dimensions.perimeter
             },
             labelVisible: allLabelsVisible
@@ -360,16 +361,16 @@ export const useMeasurementCore = () => {
         
       case 'skylight':
         if (points.length >= 4) {
-          const area = calculateArea(points);
+          const elementArea = calculateArea(points);
           const dimensions = calculateQuadrilateralDimensions(points);
           
           measurementData = {
-            value: area,
+            value: elementArea,
             label: `${dimensions.width.toFixed(2)} × ${dimensions.length.toFixed(2)} m`,
             dimensions: {
               width: dimensions.width,
               length: dimensions.length,
-              area: area,
+              area: elementArea,
               perimeter: dimensions.perimeter
             },
             labelVisible: allLabelsVisible
@@ -378,15 +379,15 @@ export const useMeasurementCore = () => {
         break;
         
       case 'solar':
-        const area = calculateArea(points);
+        const solarArea = calculateArea(points);
         const segments = generateSegments(points);
         
         measurementData = {
-          value: area,
-          label: formatMeasurement(area, 'area'),
+          value: solarArea,
+          label: formatMeasurement(solarArea, 'area'),
           segments,
           dimensions: {
-            area
+            area: solarArea
           },
           labelVisible: allLabelsVisible
         };
@@ -404,11 +405,11 @@ export const useMeasurementCore = () => {
         }
         
         const moduleSpec = PV_MODULE_TEMPLATES[0];
-        const area = calculatePolygonArea(points);
+        const moduleArea = calculatePolygonArea(points);
         const powerOutput = moduleSpec.power;
         
         measurementData = {
-          value: area,
+          value: moduleArea,
           label: `${moduleSpec.power}W (${moduleSpec.width.toFixed(2)}m × ${moduleSpec.height.toFixed(2)}m)`,
           pvModuleSpec: moduleSpec,
           powerOutput,
