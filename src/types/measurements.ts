@@ -71,25 +71,6 @@ export interface PVModuleInfo {
   userDefinedLength?: number; // User-defined available length in meters
   edgeInfoValid?: boolean;    // Whether the edge measurements are valid
   edgeInfoMessage?: string;   // Validation message for edge measurements
-  isTrapezoid?: boolean;      // Whether the roof is trapezoid-shaped
-  roofPitch?: number;         // Roof pitch/inclination in degrees
-  ridgeLength?: number;       // Length of the ridge (short side of trapezoid)
-  eaveLength?: number;        // Length of the eave (long side of trapezoid)
-  modulePositions?: ModulePosition[]; // Array of module positions for rendering
-  modulesVisible?: boolean;   // Whether to display the modules visually
-}
-
-export interface ModulePosition {
-  position: THREE.Vector3;    // Center position of the module
-  rotation: THREE.Euler;      // Rotation of the module
-  dimensions: {               // Actual dimensions of the module
-    width: number;
-    height: number;
-    depth: number;
-  };
-  index: number;              // Index of the module in the layout
-  row: number;                // Row number (0-based)
-  column: number;             // Column number (0-based)
 }
 
 export interface PVModuleSpec {

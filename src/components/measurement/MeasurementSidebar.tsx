@@ -1,34 +1,46 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Measurement } from '@/hooks/useMeasurements'; 
+import MeasurementList from './MeasurementList';
+import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Eye, EyeOff, Trash2, Tag, LayoutList, SunMedium } from 'lucide-react';
-import { Measurement } from '@/types/measurements';
-import SolarModuleControls from './SolarModuleControls';
+import { Trash2 } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility: (id: string) => void;
-  handleStartPointEdit: (id: string, index: number) => void;
+  toggleLabelVisibility?: (id: string) => void; // Keep for backward compatibility but we won't use it
+  handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
-  handleDeletePoint: (id: string, index: number) => void;
-  updateMeasurement: (id: string, updates: Partial<Measurement>) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
+  updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
-  segmentsOpen: { [key: string]: boolean };
+  segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
-  onEditSegment: (segmentId: string) => void;
-  movingPointInfo: any;
+  onEditSegment: (id: string | null) => void;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   showTable: boolean;
   handleClearMeasurements: () => void;
-  toggleAllLabelsVisibility: () => void;
-  allLabelsVisible: boolean;
-  activeMode: string;
-  handleMoveMeasurementUp: (id: string) => void;
-  handleMoveMeasurementDown: (id: string) => void;
-  togglePVModulesVisibility: (id: string) => void;
+  toggleAllLabelsVisibility?: () => void; // Keep for backward compatibility but we won't use it
+  allLabelsVisible?: boolean; // Keep for backward compatibility but we won't use it
+  activeMode?: string;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
-const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
+const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({ 
   measurements,
   toggleMeasurementVisibility,
   toggleLabelVisibility,
@@ -47,236 +59,92 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   allLabelsVisible,
   activeMode,
   handleMoveMeasurementUp,
-  handleMoveMeasurementDown,
-  togglePVModulesVisibility
+  handleMoveMeasurementDown
 }) => {
-  const editingSegmentId = null;
-  const anyMeasurements = measurements.length > 0;
+  const [activeTab, setActiveTab] = useState<string>("standard");
   
-  // Count of solar measurements for button display
-  const solarMeasurementCount = measurements.filter(m => m.type === 'solar').length;
-  
-  // Filter out measurements by type
-  const standardMeasurements = measurements.filter(m => 
-    m.type === 'length' || m.type === 'height' || m.type === 'area'
-  );
-  
-  const solarMeasurements = measurements.filter(m => m.type === 'solar');
-  
-  const roofElementMeasurements = measurements.filter(m => 
-    m.type === 'chimney' || m.type === 'skylight' || m.type === 'vent' || 
-    m.type === 'hook' || m.type === 'other'
-  );
-  
-  const roofStructureMeasurements = measurements.filter(m => 
-    m.type === 'ridge' || m.type === 'eave' || m.type === 'verge' || 
-    m.type === 'valley' || m.type === 'hip'
-  );
-  
-  // Simplified placeholder for MeasurementDetail (since we haven't implemented it yet)
-  const MeasurementDetail = ({ measurement, ...props }) => {
-    if (measurement.type === 'solar') {
-      return (
-        <div className="mb-2">
-          <div className="bg-secondary/20 p-2 rounded">
-            <div className="text-sm font-medium">{measurement.label}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {measurement.value.toFixed(2)} m²
-            </div>
-          </div>
-          <SolarModuleControls 
-            measurement={measurement} 
-            togglePVModulesVisibility={togglePVModulesVisibility} 
-          />
-        </div>
-      );
+  // Nur Tab wechseln, wenn ein Werkzeug aktiviert wird, nicht beim Beenden der Messung
+  useEffect(() => {
+    if (!activeMode || activeMode === 'none') return;
+    
+    // Prüfen ob sich der Modus geändert hat, um unerwünschte Tab-Wechsel zu vermeiden
+    const lastActiveMode = localStorage.getItem('lastActiveMode');
+    
+    // Nur wenn sich der Modus ändert und es ein neues Werkzeug ist (nicht bei Beendigung)
+    if (lastActiveMode === activeMode) return;
+    
+    // Tab basierend auf dem Werkzeugtyp setzen
+    if (['length', 'height', 'area'].includes(activeMode)) {
+      setActiveTab("standard");
+    } else if (['solar', 'chimney', 'skylight'].includes(activeMode)) {
+      setActiveTab("roofElements");
+    } else if (['vent', 'hook', 'other'].includes(activeMode)) {
+      setActiveTab("penetrations");
     }
     
-    return (
-      <div className="mb-2">
-        <div className="bg-secondary/20 p-2 rounded">
-          <div className="text-sm font-medium">{measurement.label}</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Typ: {measurement.type}, Wert: {measurement.value.toFixed(2)}
-          </div>
-        </div>
-      </div>
-    );
-  };
-  
-  // Simplified placeholder for MeasurementTable (since we haven't implemented it yet)
-  const MeasurementTable = ({ measurements, toggleMeasurementVisibility, handleDeleteMeasurement, toggleLabelVisibility }) => (
-    <div className="mt-2">
-      <p className="text-sm font-medium">Messwerte als Tabelle</p>
-      <div className="mt-2 text-xs text-muted-foreground">
-        (Noch nicht implementiert)
-      </div>
-    </div>
-  );
-  
-  // Simplified placeholder for NoMeasurements (since we haven't implemented it yet)
-  const NoMeasurements = ({ activeMode }) => (
-    <div className="flex flex-col items-center justify-center h-full p-4">
-      <p className="text-sm text-center text-muted-foreground">
-        Keine Messungen vorhanden. Verwende die Werkzeuge, um eine neue Messung zu erstellen.
-      </p>
-    </div>
-  );
+    // Speichern des aktuellen Modus
+    localStorage.setItem('lastActiveMode', activeMode);
+  }, [activeMode]);
   
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border/50 flex flex-wrap justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          className="glass-button mr-1 mb-1"
-          onClick={toggleAllLabelsVisibility}
-          title={allLabelsVisible ? 'Alle Beschriftungen ausblenden' : 'Alle Beschriftungen anzeigen'}
-        >
-          {allLabelsVisible ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-          <span className="text-xs">{allLabelsVisible ? 'Labels aus' : 'Labels an'}</span>
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          className="glass-button mr-1 mb-1"
-          onClick={() => {}}
-          title="Tabelle anzeigen/ausblenden"
-        >
-          <LayoutList className="h-4 w-4 mr-1" />
-          <span className="text-xs">Tabelle</span>
-        </Button>
-        
-        {anyMeasurements && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="glass-button mb-1"
-            onClick={handleClearMeasurements}
-            title="Alle Messungen löschen"
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            <span className="text-xs">Löschen</span>
-          </Button>
-        )}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-3 pt-2 pb-1">
+        <h2 className="text-md font-semibold">Messungen</h2>
+        <div className="flex space-x-1">
+          {measurements.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="h-7 text-xs">
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Alle löschen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Diese Aktion kann nicht rückgängig gemacht werden. Alle Messungen werden dauerhaft gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearMeasurements}>
+                    Alle löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-3">
-        {(!showTable && anyMeasurements) ? (
-          <>
-            {standardMeasurements.length > 0 && (
-              <div className="mb-3">
-                <h3 className="text-sm font-medium mb-2 flex items-center">
-                  <Tag className="h-4 w-4 mr-1" />
-                  Standard-Messungen
-                </h3>
-                {standardMeasurements.map(measurement => (
-                  <MeasurementDetail
-                    key={measurement.id}
-                    measurement={measurement}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    handleStartPointEdit={handleStartPointEdit}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                    handleDeletePoint={handleDeletePoint}
-                    onEditSegment={onEditSegment}
-                    editingSegmentId={editingSegmentId}
-                    updateMeasurement={updateMeasurement}
-                    editMeasurementId={editMeasurementId}
-                    handleMoveMeasurementUp={handleMoveMeasurementUp}
-                    handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    togglePVModulesVisibility={togglePVModulesVisibility}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {solarMeasurements.length > 0 && (
-              <div className="mb-3">
-                <h3 className="text-sm font-medium mb-2 flex items-center">
-                  <SunMedium className="h-4 w-4 mr-1" />
-                  Solarflächen
-                </h3>
-                {solarMeasurements.map(measurement => (
-                  <MeasurementDetail
-                    key={measurement.id}
-                    measurement={measurement}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    handleStartPointEdit={handleStartPointEdit}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                    handleDeletePoint={handleDeletePoint}
-                    onEditSegment={onEditSegment}
-                    editingSegmentId={editingSegmentId}
-                    updateMeasurement={updateMeasurement}
-                    editMeasurementId={editMeasurementId}
-                    handleMoveMeasurementUp={handleMoveMeasurementUp}
-                    handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    togglePVModulesVisibility={togglePVModulesVisibility}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {roofElementMeasurements.length > 0 && (
-              <div className="mb-3">
-                <h3 className="text-sm font-medium mb-2">Dacheinbauten</h3>
-                {roofElementMeasurements.map(measurement => (
-                  <MeasurementDetail
-                    key={measurement.id}
-                    measurement={measurement}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    handleStartPointEdit={handleStartPointEdit}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                    handleDeletePoint={handleDeletePoint}
-                    onEditSegment={onEditSegment}
-                    editingSegmentId={editingSegmentId}
-                    updateMeasurement={updateMeasurement}
-                    editMeasurementId={editMeasurementId}
-                    handleMoveMeasurementUp={handleMoveMeasurementUp}
-                    handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    togglePVModulesVisibility={togglePVModulesVisibility}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {roofStructureMeasurements.length > 0 && (
-              <div className="mb-3">
-                <h3 className="text-sm font-medium mb-2">Dachstruktur</h3>
-                {roofStructureMeasurements.map(measurement => (
-                  <MeasurementDetail
-                    key={measurement.id}
-                    measurement={measurement}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    handleStartPointEdit={handleStartPointEdit}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                    handleDeletePoint={handleDeletePoint}
-                    onEditSegment={onEditSegment}
-                    editingSegmentId={editingSegmentId}
-                    updateMeasurement={updateMeasurement}
-                    editMeasurementId={editMeasurementId}
-                    handleMoveMeasurementUp={handleMoveMeasurementUp}
-                    handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    togglePVModulesVisibility={togglePVModulesVisibility}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : showTable ? (
-          <MeasurementTable 
-            measurements={measurements}
-            toggleMeasurementVisibility={toggleMeasurementVisibility}
-            handleDeleteMeasurement={handleDeleteMeasurement}
-            toggleLabelVisibility={toggleLabelVisibility}
-          />
-        ) : (
-          <NoMeasurements activeMode={activeMode} />
-        )}
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full pr-2">
+          {showTable ? (
+            <MeasurementTable 
+              measurements={measurements} 
+              toggleMeasurementVisibility={toggleMeasurementVisibility} 
+              handleDeleteMeasurement={handleDeleteMeasurement}
+            />
+          ) : (
+            <MeasurementList 
+              measurements={measurements}
+              toggleMeasurementVisibility={toggleMeasurementVisibility}
+              toggleLabelVisibility={toggleLabelVisibility || (() => {})} // Provide an empty function as fallback
+              handleStartPointEdit={handleStartPointEdit}
+              handleDeleteMeasurement={handleDeleteMeasurement}
+              handleDeletePoint={handleDeletePoint}
+              updateMeasurement={updateMeasurement}
+              editMeasurementId={editMeasurementId}
+              segmentsOpen={segmentsOpen}
+              toggleSegments={toggleSegments}
+              onEditSegment={onEditSegment}
+              movingPointInfo={movingPointInfo}
+              handleMoveMeasurementUp={handleMoveMeasurementUp}
+              handleMoveMeasurementDown={handleMoveMeasurementDown}
+            />
+          )}
+        </ScrollArea>
       </div>
     </div>
   );
