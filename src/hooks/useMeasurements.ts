@@ -107,6 +107,7 @@ export const useMeasurements = () => {
     
     // Calculate materials
     const materials = calculatePVMaterials(measurement.pvModuleInfo, inverterDistance);
+    console.log("Calculated PV materials:", materials);
     
     // Update the measurement with the calculated materials
     if (materials) {
