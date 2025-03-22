@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -48,6 +47,18 @@ export interface PVModuleInfo {
   moduleCount: number;      // Number of modules that can fit
   coveragePercent: number;  // Coverage percentage of the roof area
   orientation: 'portrait' | 'landscape'; // Module orientation
+  
+  // Enhanced PV planning data
+  edgeDistance: number;     // Distance from roof edge in meters (default: 0.1m)
+  moduleSpacing: number;    // Spacing between modules in meters (default: 0.05m)
+  modulePositions?: Point2D[];  // Array of module positions (top-left corner)
+  availableArea?: number;   // Available area after subtracting edge distance
+  
+  // Visual data for preview
+  modulesX?: number;        // Number of modules in X direction
+  modulesY?: number;        // Number of modules in Y direction
+  effectiveWidth?: number;  // Effective module width including spacing
+  effectiveHeight?: number; // Effective module height including spacing
 }
 
 export interface Measurement {
