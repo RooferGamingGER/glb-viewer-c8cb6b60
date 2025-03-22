@@ -42,35 +42,6 @@ export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
 ];
 
 /**
- * Find the related roof edge measurements for a given area measurement
- * @param measurements - All measurements
- * @param areaId - ID of the area measurement
- * @returns Object containing ridge, eave, and verge measurements if found
- */
-export const findRoofEdges = (measurements: Measurement[], areaId: string): {
-  ridge: Measurement | null;
-  eave: Measurement | null;
-  verge: Measurement | null;
-} => {
-  const ridge = measurements.find(m => 
-    m.type === 'ridge' && 
-    m.relatedMeasurements?.includes(areaId)
-  ) || null;
-  
-  const eave = measurements.find(m => 
-    m.type === 'eave' && 
-    m.relatedMeasurements?.includes(areaId)
-  ) || null;
-  
-  const verge = measurements.find(m => 
-    m.type === 'verge' && 
-    m.relatedMeasurements?.includes(areaId)
-  ) || null;
-  
-  return { ridge, eave, verge };
-};
-
-/**
  * Calculate the distance between two points in 3D space
  */
 const calculateDistance3D = (p1: Point, p2: Point): number => {
@@ -112,59 +83,6 @@ const findParallelSides = (points: Point[]): {
 };
 
 /**
- * Use detected roof edges to determine optimal PV module placement
- * @param edges - Detected roof edges
- * @returns Object with width and length based on roof edges
- */
-const getDimensionsFromRoofEdges = (edges: {
-  ridge: Measurement | null;
-  eave: Measurement | null;
-  verge: Measurement | null;
-}): { width: number; length: number } | null => {
-  // If we have ridge and eave, use those for length calculation
-  // If we have verge, use that for width calculation
-  
-  let length = 0;
-  let width = 0;
-  let hasValidDimensions = false;
-  
-  // Calculate length based on ridge/eave
-  if (edges.ridge && edges.eave) {
-    // Find the average distance between ridge and eave
-    const ridgeCenter = {
-      x: (edges.ridge.points[0].x + edges.ridge.points[1].x) / 2,
-      y: (edges.ridge.points[0].y + edges.ridge.points[1].y) / 2,
-      z: (edges.ridge.points[0].z + edges.ridge.points[1].z) / 2
-    };
-    
-    const eaveCenter = {
-      x: (edges.eave.points[0].x + edges.eave.points[1].x) / 2,
-      y: (edges.eave.points[0].y + edges.eave.points[1].y) / 2,
-      z: (edges.eave.points[0].z + edges.eave.points[1].z) / 2
-    };
-    
-    length = calculateDistance3D(ridgeCenter, eaveCenter);
-    hasValidDimensions = true;
-  }
-  
-  // Calculate width based on verge
-  if (edges.verge) {
-    width = edges.verge.value;
-    hasValidDimensions = true;
-  } else if (edges.ridge) {
-    // Use ridge length as width if no verge is available
-    width = edges.ridge.value;
-    hasValidDimensions = true;
-  }
-  
-  if (hasValidDimensions) {
-    return { width, length };
-  }
-  
-  return null;
-};
-
-/**
  * Calculates the optimal placement of PV modules on a roof area
  * 
  * @param points - The 3D points defining the roof area polygon
@@ -173,8 +91,6 @@ const getDimensionsFromRoofEdges = (edges: {
  * @param edgeDistance - Distance from the roof edge in meters (default: 0.1m)
  * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
  * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
- * @param allMeasurements - All measurements for the area
- * @param areaId - ID of the area measurement
  * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
@@ -183,9 +99,7 @@ export const calculatePVModulePlacement = (
   moduleHeight: number = DEFAULT_MODULE_HEIGHT,
   edgeDistance: number = DEFAULT_EDGE_DISTANCE,
   moduleSpacing: number = DEFAULT_MODULE_SPACING,
-  userDimensions?: {width: number, length: number},
-  allMeasurements?: Measurement[],
-  areaId?: string
+  userDimensions?: {width: number, length: number}
 ): PVModuleInfo => {
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
@@ -215,74 +129,26 @@ export const calculatePVModulePlacement = (
     // Adjust bounding dimensions to match user values plus edge distance
     boundingWidth = availableWidth + (2 * edgeDistance);
     boundingLength = availableLength + (2 * edgeDistance);
-  }
-  // Try to use roof edge measurements if available
-  else if (allMeasurements && areaId) {
-    const edges = findRoofEdges(allMeasurements, areaId);
-    const edgeDimensions = getDimensionsFromRoofEdges(edges);
-    
-    if (edgeDimensions) {
-      console.log("Using dimensions from roof edges:", edgeDimensions);
-      
-      boundingWidth = edgeDimensions.width;
-      boundingLength = edgeDimensions.length;
-      
-      // Derive the available area by accounting for edge distances
-      availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
-      availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
-    } else {
-      // Fall back to normal calculation if edges don't provide valid dimensions
-      console.log("Detected edges don't provide valid dimensions, falling back to normal calculation");
-      
-      // Use existing calculation logic (parallel sides or quadrilateral dimensions)
-      try {
-        // Find parallel sides using the new approach
-        const parallelSides = findParallelSides(points);
-        
-        // Calculate width and length as average of parallel sides
-        const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
-        const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
-        
-        // Assign width and length (width should be shorter than length by convention)
-        if (width1 < width2) {
-          boundingWidth = width1;
-          boundingLength = width2;
-        } else {
-          boundingWidth = width2;
-          boundingLength = width1;
-        }
-      } catch (error) {
-        console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
-        
-        // Fallback to the quadrilateral dimensions calculation
-        const dimensions = calculateQuadrilateralDimensions(points);
-        boundingWidth = dimensions.width;
-        boundingLength = dimensions.length;
-      }
-      
-      // Derive the available area by accounting for edge distances
-      availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
-      availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
-    }
   } else {
-    // No edges or user dimensions, use existing calculation logic
-    try {
-      // Make sure we're working with a quadrilateral (4 points)
-      // If not, we'll create a representative quadrilateral
-      let quadPoints = [...points];
-      if (points.length !== 4) {
-        console.warn("PV module placement works best with exactly 4 points. Using approximation.");
-        
-        // Create a quadrilateral from the min/max points (bounding box)
-        quadPoints = [
-          { x: minX, y: points[0].y, z: minZ },
-          { x: maxX, y: points[0].y, z: minZ },
-          { x: maxX, y: points[0].y, z: maxZ },
-          { x: minX, y: points[0].y, z: maxZ }
-        ];
-      }
+    // Calculate dimensions based on the shape of the polygon
+    
+    // Make sure we're working with a quadrilateral (4 points)
+    // If not, we'll create a representative quadrilateral
+    let quadPoints = [...points];
+    if (points.length !== 4) {
+      console.warn("PV module placement works best with exactly 4 points. Using approximation.");
       
-      // Find parallel sides
+      // Create a quadrilateral from the min/max points (bounding box)
+      quadPoints = [
+        { x: minX, y: points[0].y, z: minZ },
+        { x: maxX, y: points[0].y, z: minZ },
+        { x: maxX, y: points[0].y, z: maxZ },
+        { x: minX, y: points[0].y, z: maxZ }
+      ];
+    }
+    
+    try {
+      // Find parallel sides using the new approach
       const parallelSides = findParallelSides(quadPoints);
       
       // Calculate width and length as average of parallel sides
@@ -297,41 +163,45 @@ export const calculatePVModulePlacement = (
         boundingWidth = width2;
         boundingLength = width1;
       }
+      
+      console.log("Calculated from parallel sides:", { boundingWidth, boundingLength });
     } catch (error) {
       console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
       
       // Fallback to the quadrilateral dimensions calculation
-      const dimensions = calculateQuadrilateralDimensions(points);
+      const dimensions = calculateQuadrilateralDimensions(quadPoints);
       boundingWidth = dimensions.width;
       boundingLength = dimensions.length;
+      
+      console.log("Fallback dimensions:", dimensions);
     }
     
     // Derive the available area by accounting for edge distances
     availableWidth = Math.max(0, boundingWidth - (2 * edgeDistance));
     availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
-  }
-  
-  // Sanity check for available area (keep this for all calculation paths)
-  const availableArea = availableWidth * availableLength;
-  
-  // If the available area is significantly larger than the actual area, adjust dimensions
-  if (availableArea > area * 1.5) {
-    // Scale dimensions based on the actual area
-    const scaleFactor = Math.sqrt(area / availableArea);
-    availableWidth *= scaleFactor;
-    availableLength *= scaleFactor;
     
-    // Update bounding dimensions
-    boundingWidth = availableWidth + (2 * edgeDistance);
-    boundingLength = availableLength + (2 * edgeDistance);
+    // Sanity check: make sure our available area is reasonable given the total area
+    const availableArea = availableWidth * availableLength;
     
-    console.log("Dimensions adjusted after area sanity check:", {
-      scaleFactor,
-      availableWidth,
-      availableLength,
-      boundingWidth, 
-      boundingLength
-    });
+    // If the available area is significantly larger than the actual area, adjust dimensions
+    if (availableArea > area * 1.5) {
+      // Scale dimensions based on the actual area
+      const scaleFactor = Math.sqrt(area / availableArea);
+      availableWidth *= scaleFactor;
+      availableLength *= scaleFactor;
+      
+      // Update bounding dimensions
+      boundingWidth = availableWidth + (2 * edgeDistance);
+      boundingLength = availableLength + (2 * edgeDistance);
+      
+      console.log("Dimensions adjusted after area sanity check:", {
+        scaleFactor,
+        availableWidth,
+        availableLength,
+        boundingWidth, 
+        boundingLength
+      });
+    }
   }
   
   // DEBUG: Log calculation values
@@ -349,6 +219,7 @@ export const calculatePVModulePlacement = (
   });
   
   // Portrait orientation calculations 
+  // For modules in portrait orientation, width refers to the narrow side
   const portraitModulesX = Math.floor(availableWidth / (moduleWidth + moduleSpacing));
   const portraitModulesY = Math.floor(availableLength / (moduleHeight + moduleSpacing));
   
@@ -356,11 +227,24 @@ export const calculatePVModulePlacement = (
   const portraitModuleCount = portraitModulesX * portraitModulesY;
   
   // Landscape orientation calculations
+  // For modules in landscape orientation, height refers to the narrow side (rotated 90 degrees)
   const landscapeModulesX = Math.floor(availableWidth / (moduleHeight + moduleSpacing));
   const landscapeModulesY = Math.floor(availableLength / (moduleWidth + moduleSpacing));
   
   // Total modules in landscape orientation
   const landscapeModuleCount = landscapeModulesX * landscapeModulesY;
+  
+  // DEBUG: Log the module counts
+  console.log("PV Module Counts:", {
+    portraitModulesX,
+    portraitModulesY,
+    portraitModuleCount,
+    landscapeModulesX,
+    landscapeModulesY,
+    landscapeModuleCount,
+    portraitFormula: `(${availableWidth}) / (${moduleWidth} + ${moduleSpacing}) = ${availableWidth / (moduleWidth + moduleSpacing)}`,
+    landscapeFormula: `(${availableWidth}) / (${moduleHeight} + ${moduleSpacing}) = ${availableWidth / (moduleHeight + moduleSpacing)}`
+  });
   
   // Choose the orientation that fits more modules
   const usePortrait = portraitModuleCount >= landscapeModuleCount;

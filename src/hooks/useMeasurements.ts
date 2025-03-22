@@ -1,10 +1,11 @@
-import { useCallback, useRef } from 'react';
+
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
 import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
 import { MeasurementMode, Point, Measurement, Segment } from '@/types/measurements';
+import { useCallback, useRef } from 'react';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
@@ -31,8 +32,7 @@ export const useMeasurements = () => {
     clearCurrentPoints,
     clearMeasurements,
     updateMeasurementPoint,
-    undoLastPoint,
-    handleCalculatePV
+    undoLastPoint
   } = useMeasurementCore();
   
   // Use a ref to store the visual update function so it can be replaced
@@ -94,21 +94,6 @@ export const useMeasurements = () => {
     setMeasurements
   );
 
-  // Function to calculate PV modules for a specific area measurement
-  const calculatePVModulesForArea = useCallback((areaId: string, userDimensions?: {width: number, length: number}) => {
-    const areaMeasurement = measurements.find(m => m.id === areaId);
-    if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) {
-      return null;
-    }
-    
-    return handleCalculatePV(
-      areaMeasurement.points, 
-      userDimensions, 
-      measurements, // Pass all measurements to allow finding roof edges
-      areaId        // Pass the area ID to identify related roof edges
-    );
-  }, [measurements, handleCalculatePV]);
-
   // Export all functionality and state from the composed hooks
   return {
     // State
@@ -141,7 +126,6 @@ export const useMeasurements = () => {
     cancelEditing,
     moveMeasurementUp,
     moveMeasurementDown,
-    calculatePVModulesForArea, // New function to calculate PV modules for specific area
     
     // Visual state update function - expose this so it can be replaced
     setUpdateVisualState: (fn: typeof updateVisualState) => {
