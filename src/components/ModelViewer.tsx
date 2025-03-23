@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -33,6 +32,7 @@ function Model({
   const { scene } = useGLTF(url);
   const modelRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
+  const isMobile = useIsMobile();
 
   const modelScene = React.useMemo(() => scene.clone(), [scene]);
 
@@ -48,10 +48,11 @@ function Model({
         const fov = camera.fov * (Math.PI / 180);
         let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
         cameraZ = Math.max(cameraZ, 1.0);
-        camera.position.set(center.x, center.y + cameraZ * 0.15, center.z + cameraZ);
+        const mobileFactor = isMobile ? 1.2 : 1.0;
+        camera.position.set(center.x, center.y + cameraZ * 0.15 * mobileFactor, center.z + cameraZ * mobileFactor);
         camera.lookAt(center);
       } else {
-        const distance = maxDim * 1.0;
+        const distance = maxDim * (isMobile ? 1.2 : 1.0);
         camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
         camera.lookAt(center);
       }
@@ -60,14 +61,13 @@ function Model({
       modelRef.current.position.z = -center.z;
       toast.success('Modell erfolgreich geladen');
     }
-  }, [modelScene, camera]);
+  }, [modelScene, camera, isMobile]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
     </group>;
 }
 
-// New export for the ThreeContext
 export interface ThreeContextProps {
   scene: THREE.Scene | null;
   camera: THREE.Camera | null;
@@ -75,7 +75,6 @@ export interface ThreeContextProps {
   canvas: HTMLCanvasElement | null;
 }
 
-// Create a React context to expose Three.js objects
 export const ThreeContext = React.createContext<ThreeContextProps>({
   scene: null,
   camera: null,
@@ -92,11 +91,9 @@ function SceneSetup({
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    // Get the canvas element
     canvasRef.current = gl.domElement;
     
     if (scene && camera && gl && canvasRef.current) {
-      // Name the groups for easier debugging and filtering
       scene.traverse(obj => {
         if (obj instanceof THREE.Group) {
           if (obj.name === '') {
@@ -121,6 +118,8 @@ const ModelCanvas = ({
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
+  const isMobile = useIsMobile();
+  
   return <Canvas shadows style={{
     background: '#222222',
     position: 'absolute', 
@@ -128,7 +127,8 @@ const ModelCanvas = ({
     left: 0,
     width: '100%',
     height: '100%',
-    zIndex: 1
+    zIndex: 1,
+    touchAction: 'none'
   }} className="w-full h-full" ref={canvasRef}>
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
@@ -142,7 +142,23 @@ const ModelCanvas = ({
         
         <Model url={fileUrl} />
         
-        <OrbitControls makeDefault enableDamping dampingFactor={0.1} rotateSpeed={1} zoomSpeed={1} panSpeed={1} minDistance={0.5} maxDistance={100} />
+        <OrbitControls 
+          makeDefault 
+          enableDamping 
+          dampingFactor={0.1} 
+          rotateSpeed={isMobile ? 0.7 : 1} 
+          zoomSpeed={isMobile ? 0.7 : 1} 
+          panSpeed={isMobile ? 0.7 : 1} 
+          minDistance={0.5} 
+          maxDistance={100}
+          enableZoom={true}
+          enablePan={true}
+          screenSpacePanning={true}
+          touches={{
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+          }}
+        />
       </Suspense>
     </Canvas>;
 };
@@ -158,8 +174,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     canvas: null
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isMobile = useIsMobile();
   
-  // Always enable measurements
   const [measurementsEnabled] = useState(true);
   const [measurementToolsEverEnabled] = useState(true);
   
@@ -179,6 +195,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     newRenderer: THREE.WebGLRenderer, 
     canvas: HTMLCanvasElement
   ) => {
+    if (newRenderer) {
+      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
+    }
+    
     setThreeContext({
       scene: newScene,
       camera: newCamera,
@@ -203,7 +223,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
             enabled={measurementsEnabled} 
             scene={threeContext.scene} 
             camera={threeContext.camera} 
-            autoOpenSidebar={measurementToolsEverEnabled} 
+            autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
           />
         )}
       </div>

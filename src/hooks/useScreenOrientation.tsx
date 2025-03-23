@@ -24,9 +24,17 @@ export function useScreenOrientation() {
     window.addEventListener("resize", updateOrientation);
     window.addEventListener("orientationchange", updateOrientation);
 
+    // Add event listener for screen orientation API if available
+    if (screen.orientation) {
+      screen.orientation.addEventListener("change", updateOrientation);
+    }
+
     return () => {
       window.removeEventListener("resize", updateOrientation);
       window.removeEventListener("orientationchange", updateOrientation);
+      if (screen.orientation) {
+        screen.orientation.removeEventListener("change", updateOrientation);
+      }
     };
   }, []);
 

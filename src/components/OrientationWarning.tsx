@@ -1,27 +1,35 @@
 
-import React from "react";
-import { RotateCw } from "lucide-react";
-import { Card, CardContent } from "./ui/card";
-import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
+import React, { useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 
 const OrientationWarning = () => {
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
-      <Card className="mx-4 w-full max-w-md glass-panel animate-pulse">
-        <CardContent className="py-8 flex flex-col items-center text-center space-y-6">
-          <RotateCw className="h-20 w-20 text-primary animate-spin-slow" />
-          
-          <Alert variant="warning" className="mb-4">
-            <AlertTitle className="text-xl font-semibold mb-2">
-              Bitte drehen Sie Ihr Gerät
-            </AlertTitle>
-            <AlertDescription className="text-base">
-              Diese Anwendung funktioniert nur im Querformat.
-              Drehen Sie Ihr Gerät, um fortzufahren.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-background/90 backdrop-blur-md animate-fade-in p-6">
+      <div className="glass-panel max-w-md p-6 rounded-xl flex flex-col items-center shadow-lg border border-primary/20">
+        <RotateCcw className="h-16 w-16 text-primary animate-pulse mb-4" />
+        <h2 className="text-xl font-bold mb-2 text-center">Bitte drehen Sie Ihr Gerät</h2>
+        <p className="text-center text-muted-foreground mb-4">
+          Für die optimale Nutzung des 3D-Viewers wird die Querformat-Ausrichtung empfohlen.
+        </p>
+        <div className="flex space-x-3 w-full">
+          <button 
+            className="w-full py-2 px-4 bg-muted text-muted-foreground rounded-md hover:bg-muted/80 transition-colors"
+            onClick={() => setDismissed(true)}
+          >
+            Ignorieren
+          </button>
+          <button 
+            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            onClick={() => setDismissed(true)}
+          >
+            Verstanden
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
