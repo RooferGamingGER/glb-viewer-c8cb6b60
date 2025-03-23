@@ -47,11 +47,11 @@ import {
   calculateAnnualYield
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
+import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility?: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -84,6 +84,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [editValue, setEditValue] = useState('');
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
   const [showPVDetails, setShowPVDetails] = useState(false);
+  const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
 
   const handleEditStart = (id: string, description: string = '') => {
     setEditingId(id);
@@ -142,6 +143,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const handleCalculatePV = () => {
     if (measurement.type !== 'area') return;
     
+    setShowPVDisclaimer(true);
+  };
+
+  const handlePVDisclaimerConfirm = () => {
+    setShowPVDisclaimer(false);
+    
     const pvModuleInfo = calculatePVModulePlacement(
       measurement.points,
       undefined,
@@ -150,6 +157,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       DEFAULT_MODULE_SPACING
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
+  };
+
+  const handlePVDisclaimerCancel = () => {
+    setShowPVDisclaimer(false);
   };
 
   const handlePVDimensionsChange = (dimensions: { width: number, length: number }) => {
@@ -239,6 +250,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         'border-border'
       }`}
     >
+      <PVPlanningDisclaimer 
+        open={showPVDisclaimer}
+        onConfirm={handlePVDisclaimerConfirm}
+        onCancel={handlePVDisclaimerCancel}
+      />
+      
       <div className="flex justify-between items-center mb-1">
         <div className="font-medium flex items-center">
           {getTypeIcon(measurement.type)}

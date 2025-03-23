@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ import PVMaterialsList from './PVMaterialsList';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
 import { toast } from 'sonner';
+import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
@@ -30,39 +30,34 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const { calculatePVMaterialsForMeasurement, calculatingMaterials } = useMeasurements();
+  const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
+  const [pendingInverterDistance, setPendingInverterDistance] = useState(10);
   
-  // Effect to automatically set the tab to materials if they exist
   useEffect(() => {
     if (measurement.pvModuleInfo?.pvMaterials && activeTab === "overview") {
       setActiveTab("materials");
     }
   }, [measurement.pvModuleInfo?.pvMaterials, activeTab]);
   
-  // Effect to detect roof orientation if not already calculated
   useEffect(() => {
     if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
-      // Check if orientation has not been calculated yet
       if (measurement.pvModuleInfo.roofAzimuth === undefined) {
         console.log("Detecting roof orientation from 3D points");
         
-        // Update PV module info with orientation data
         const updatedPVInfo = updatePVModuleInfoWithOrientation(
           measurement.pvModuleInfo,
           measurement.points
         );
         
-        // Update the measurement with orientation data
         updateMeasurement(measurement.id, {
           pvModuleInfo: updatedPVInfo
         });
         
-        // Notify user
         toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection}`);
       }
     }
   }, [measurement.id, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
   
-  // Debug log when measurement or PV info changes
   useEffect(() => {
     console.log("SolarMeasurementContent: Measurement updated", {
       id: measurement.id,
@@ -80,13 +75,11 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     
     console.log("Module selected:", moduleSpec);
     
-    // Update PV module info with the selected module
     const updatedPVInfo = {
       ...measurement.pvModuleInfo,
       pvModuleSpec: moduleSpec
     };
     
-    // Update the measurement with the new PV info
     updateMeasurement(measurement.id, {
       pvModuleInfo: updatedPVInfo
     });
@@ -97,7 +90,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     
     console.log("Dimensions changed:", dimensions);
     
-    // Create updated PV info with manual dimensions
     const updatedPVInfo = {
       ...measurement.pvModuleInfo,
       manualDimensions: true,
@@ -105,7 +97,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       userDefinedLength: dimensions.length
     };
     
-    // Recalculate PV module placement with the new dimensions
     const recalculatedPVInfo = calculatePVModulePlacement(
       measurement.points,
       measurement.pvModuleInfo.moduleWidth,
@@ -115,7 +106,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       dimensions
     );
     
-    // Merge the recalculated info with our updated info
     const finalPVInfo = {
       ...recalculatedPVInfo,
       manualDimensions: true,
@@ -123,14 +113,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       userDefinedLength: dimensions.length,
       pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
       pvMaterials: measurement.pvModuleInfo.pvMaterials,
-      // Preserve orientation data
       roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
       roofDirection: measurement.pvModuleInfo.roofDirection,
       roofInclination: measurement.pvModuleInfo.roofInclination,
       yieldFactor: measurement.pvModuleInfo.yieldFactor
     };
     
-    // Update the measurement
     updateMeasurement(measurement.id, {
       pvModuleInfo: finalPVInfo
     });
@@ -141,14 +129,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     
     console.log("Spacing changed:", spacing);
     
-    // Update spacing values
     const updatedPVInfo = {
       ...measurement.pvModuleInfo,
       edgeDistance: spacing.edgeDistance,
       moduleSpacing: spacing.moduleSpacing
     };
     
-    // Recalculate with new spacing
     const recalculatedPVInfo = calculatePVModulePlacement(
       measurement.points,
       measurement.pvModuleInfo.moduleWidth,
@@ -161,7 +147,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       } : undefined
     );
     
-    // Merge the updates
     const finalPVInfo = {
       ...recalculatedPVInfo,
       edgeDistance: spacing.edgeDistance,
@@ -171,20 +156,25 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       userDefinedLength: measurement.pvModuleInfo.userDefinedLength,
       pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
       pvMaterials: measurement.pvModuleInfo.pvMaterials,
-      // Preserve orientation data
       roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
       roofDirection: measurement.pvModuleInfo.roofDirection,
       roofInclination: measurement.pvModuleInfo.roofInclination,
       yieldFactor: measurement.pvModuleInfo.yieldFactor
     };
     
-    // Update the measurement
     updateMeasurement(measurement.id, {
       pvModuleInfo: finalPVInfo
     });
   };
   
   const handleCalculateMaterials = async (inverterDistance: number = 10) => {
+    setPendingInverterDistance(inverterDistance);
+    setShowPVDisclaimer(true);
+  };
+  
+  const handlePVDisclaimerConfirm = () => {
+    setShowPVDisclaimer(false);
+    
     if (!measurement.pvModuleInfo) {
       toast.error('Keine PV-Modul-Informationen verfügbar');
       return;
@@ -198,14 +188,16 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     console.log("Starting materials calculation with:", {
       measurementId: measurement.id,
       moduleSpec: measurement.pvModuleInfo.pvModuleSpec,
-      inverterDistance
+      inverterDistance: pendingInverterDistance
     });
     
-    // Call the hook function to calculate materials
-    calculatePVMaterialsForMeasurement(measurement.id, inverterDistance);
+    calculatePVMaterialsForMeasurement(measurement.id, pendingInverterDistance);
     
-    // Switch to the materials tab
     setActiveTab("materials");
+  };
+  
+  const handlePVDisclaimerCancel = () => {
+    setShowPVDisclaimer(false);
   };
   
   if (!measurement.pvModuleInfo) {
@@ -218,7 +210,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     );
   }
   
-  // Calculate annual yield based on orientation if available
   const annualYield = measurement.pvModuleInfo.roofAzimuth && measurement.pvModuleInfo.roofInclination
     ? calculateAnnualYieldWithOrientation(
         calculatePVPower(
@@ -237,6 +228,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   
   return (
     <div className="pt-2">
+      <PVPlanningDisclaimer 
+        open={showPVDisclaimer}
+        onConfirm={handlePVDisclaimerConfirm}
+        onCancel={handlePVDisclaimerCancel}
+      />
+      
       <div className="flex items-center justify-between mb-2 px-2">
         <Label className="text-xs">
           <span className="text-muted-foreground">Layout:</span>{' '}
