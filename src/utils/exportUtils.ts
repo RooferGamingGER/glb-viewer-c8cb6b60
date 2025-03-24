@@ -277,9 +277,9 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   if (measurement.type === 'skylight') {
     const count = measurement.count || 1;
     
-    // If the skylight has width and height dimensions, display them
-    if (measurement.width && measurement.height) {
-      return `${measurement.width.toFixed(2)} × ${measurement.height.toFixed(2)}m`;
+    // If the skylight has dimensions with width and height, display them
+    if (measurement.dimensions && measurement.dimensions.width && measurement.dimensions.height) {
+      return `${measurement.dimensions.width.toFixed(2)} × ${measurement.dimensions.height.toFixed(2)}m`;
     }
     
     // Otherwise fall back to the count display
