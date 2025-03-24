@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
 import earcut from 'earcut';
@@ -125,6 +126,21 @@ function isPointInTriangle(p: Point, a: Point, b: Point, c: Point): boolean {
 }
 
 /**
+ * Calculate the area of a triangle in 3D space
+ */
+export function calculate3DTriangleArea(a: Point, b: Point, c: Point): number {
+  // Create vectors from the points
+  const ab = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+  const ac = new THREE.Vector3(c.x - a.x, c.y - a.y, c.z - a.z);
+  
+  // Cross product gives us 2x area of the triangle as a vector
+  const crossProduct = new THREE.Vector3().crossVectors(ab, ac);
+  
+  // Length of the resulting vector divided by 2 is the area
+  return crossProduct.length() / 2;
+}
+
+/**
  * Triangulate a polygon using earcut
  * @param points - Array of 3D points defining the polygon
  * @returns Array of triangle indices
@@ -143,6 +159,123 @@ export function triangulatePolygon(points: Point[]): number[] {
   
   // Perform triangulation
   return earcut(vertices, undefined, 2);
+}
+
+/**
+ * Direct 3D triangulation using earcut and then mapping back to 3D
+ * More accurate for complex surfaces
+ */
+export function triangulate3D(points: Point[]): { 
+  triangles: number[][], 
+  area: number,
+  triangleAreas: number[],
+  method: string
+} {
+  if (points.length < 3) {
+    return { triangles: [], area: 0, triangleAreas: [], method: "none" };
+  }
+  
+  // Try different methods and use the most reasonable result
+  const results = [
+    triangulate3DWithEarcut(points),
+    triangulate3DWithEarClipping(points)
+  ];
+  
+  // Choose the result with the more plausible area
+  // For now, we'll use the earcut result as default
+  const chosenResult = results[0];
+  
+  return {
+    triangles: chosenResult.triangles,
+    area: chosenResult.area,
+    triangleAreas: chosenResult.triangleAreas,
+    method: chosenResult.method
+  };
+}
+
+/**
+ * Triangulate using earcut and then map back to 3D
+ */
+function triangulate3DWithEarcut(points: Point[]): {
+  triangles: number[][],
+  area: number,
+  triangleAreas: number[],
+  method: string
+} {
+  // Project points to best-fit plane for earcut
+  const { projectedPoints, planeNormal } = projectPointsToPlane(points);
+  
+  // Use earcut to triangulate in 2D
+  const flattenedPoints: number[] = [];
+  projectedPoints.forEach(p => {
+    flattenedPoints.push(p.x, p.z);
+  });
+  
+  const triangleIndices = earcut(flattenedPoints, undefined, 2);
+  
+  // Convert to our triangles format
+  const triangles: number[][] = [];
+  const triangleAreas: number[] = [];
+  let totalArea = 0;
+  
+  for (let i = 0; i < triangleIndices.length; i += 3) {
+    const triangle = [
+      triangleIndices[i],
+      triangleIndices[i + 1],
+      triangleIndices[i + 2]
+    ];
+    
+    triangles.push(triangle);
+    
+    // Calculate true 3D area of this triangle
+    const a = points[triangle[0]];
+    const b = points[triangle[1]];
+    const c = points[triangle[2]];
+    
+    const triangleArea = calculate3DTriangleArea(a, b, c);
+    triangleAreas.push(triangleArea);
+    totalArea += triangleArea;
+  }
+  
+  return {
+    triangles,
+    area: totalArea,
+    triangleAreas,
+    method: "earcut"
+  };
+}
+
+/**
+ * Triangulate using ear clipping directly in 3D
+ */
+function triangulate3DWithEarClipping(points: Point[]): {
+  triangles: number[][],
+  area: number,
+  triangleAreas: number[],
+  method: string
+} {
+  // Use ear clipping to get triangles
+  const triangles = earClip(points);
+  const triangleAreas: number[] = [];
+  let totalArea = 0;
+  
+  // Calculate area for each triangle
+  for (const triangle of triangles) {
+    const a = points[triangle[0]];
+    const b = points[triangle[1]];
+    const c = points[triangle[2]];
+    
+    const triangleArea = calculate3DTriangleArea(a, b, c);
+    triangleAreas.push(triangleArea);
+    totalArea += triangleArea;
+  }
+  
+  return {
+    triangles,
+    area: totalArea,
+    triangleAreas,
+    method: "earclip"
+  };
 }
 
 /**
@@ -361,6 +494,28 @@ function computeEigenVectorsJacobi(matrix: number[][]): {
 }
 
 /**
+ * Calculate the perimeter length of a 3D polygon
+ */
+export function calculate3DPerimeter(points: Point[]): number {
+  if (points.length < 2) return 0;
+  
+  let perimeter = 0;
+  for (let i = 0; i < points.length; i++) {
+    const p1 = points[i];
+    const p2 = points[(i + 1) % points.length];
+    
+    // Euclidean distance in 3D
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const dz = p2.z - p1.z;
+    
+    perimeter += Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  
+  return perimeter;
+}
+
+/**
  * Create visualization objects for triangulation (for debugging)
  */
 export function createTriangulationVisuals(
@@ -396,4 +551,61 @@ export function createTriangulationVisuals(
   }
   
   return group;
+}
+
+/**
+ * Perform a rough sanity check on an area calculation
+ * to catch obviously wrong values
+ */
+export function isAreaPlausible(area: number, points: Point[]): boolean {
+  // Calculate the perimeter - we'll use this to check plausibility
+  const perimeter = calculate3DPerimeter(points);
+  
+  // For a very rough sanity check, we'll compare to a circle
+  // A circle has the maximum area for a given perimeter
+  // This is the isoperimetric inequality: area ≤ perimeter² / 4π
+  const maxPossibleArea = perimeter * perimeter / (4 * Math.PI);
+  
+  // If our area is much larger than what's physically possible for this perimeter,
+  // it's likely an error in calculation
+  if (area > maxPossibleArea * 1.5) {
+    console.warn(`Area sanity check failed: calculated=${area}, max expected=${maxPossibleArea}`);
+    return false;
+  }
+  
+  // Another check: calculate bounding box area as a rough upper limit
+  const bbox = calculateBoundingBox(points);
+  const bboxArea = (bbox.maxX - bbox.minX) * (bbox.maxZ - bbox.minZ);
+  
+  // If our 3D area is much larger than the bounding box projection, something's likely wrong
+  if (area > bboxArea * 3) {
+    console.warn(`Area exceeds bounding box projection by too much: ${area} vs ${bboxArea}`);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Calculate a bounding box for a set of points
+ */
+function calculateBoundingBox(points: Point[]): {
+  minX: number, maxX: number,
+  minY: number, maxY: number,
+  minZ: number, maxZ: number
+} {
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y);
+    maxY = Math.max(maxY, p.y);
+    minZ = Math.min(minZ, p.z);
+    maxZ = Math.max(maxZ, p.z);
+  }
+  
+  return { minX, maxX, minY, maxY, minZ, maxZ };
 }
