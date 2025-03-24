@@ -8,6 +8,7 @@ import {
   sortMeasurementsForExport,
   consolidatePenetrations
 } from './exportUtils';
+import { calculatePVPower } from './pvCalculations';
 
 export interface CoverPageData {
   title: string;
@@ -296,6 +297,41 @@ export const exportMeasurementsToPdf = async (
         margin-top: 8px;
         text-align: center;
       }
+      .pv-disclaimer {
+        background-color: #fff8e6;
+        border-left: 4px solid #f0b429;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+      .pv-disclaimer-title {
+        font-weight: 600;
+        color: #d97706;
+        margin-bottom: 8px;
+      }
+      .pv-disclaimer-text {
+        color: #666;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .pv-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      .pv-info-table th {
+        text-align: left;
+        padding: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #eee;
+        font-weight: 500;
+        width: 40%;
+      }
+      .pv-info-table td {
+        padding: 8px;
+        border: 1px solid #eee;
+        font-weight: 500;
+      }
     `;
     document.head.appendChild(styleElement);
     
@@ -366,6 +402,11 @@ export const exportMeasurementsToPdf = async (
     const ventMeasurements = consolidatedMeasurements.filter(m => m.type === 'vent');
     const hookMeasurements = consolidatedMeasurements.filter(m => m.type === 'hook');
     const otherMeasurements = consolidatedMeasurements.filter(m => m.type === 'other');
+    
+    // Get measurements with PV modules
+    const measurementsWithPV = consolidatedMeasurements.filter(m => 
+      m.pvModuleInfo && m.pvModuleInfo.moduleCount > 0
+    );
     
     // Measurement summary - should start on a new page
     if (measurements.length > 0) {
@@ -440,6 +481,11 @@ export const exportMeasurementsToPdf = async (
     if (measurementsWithCustomScreenshots.length > 0) {
       // Add custom screenshots section
       appendCustomScreenshotsSection(contentWrapper, measurementsWithCustomScreenshots, coverData.title);
+    }
+    
+    // If there are areas with PV modules, add a PV summary section
+    if (measurementsWithPV.length > 0) {
+      appendPVSummarySection(contentWrapper, measurementsWithPV, coverData.title);
     }
     
     // Configure html2pdf options with improved page break handling
@@ -849,6 +895,13 @@ const appendAreaMeasurementSection = (
       segmentContainer.className = 'keep-together section-content';
       segmentContainer.appendChild(createAreaSegmentsTable(measurement, mIndex));
       areaContent.appendChild(segmentContainer);
+    }
+    
+    if (measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
+      const pvInfoContainer = document.createElement('div');
+      pvInfoContainer.className = 'keep-together section-content';
+      pvInfoContainer.appendChild(createPVModuleInfoSection(measurement, mIndex));
+      areaContent.appendChild(pvInfoContainer);
     }
   });
   
@@ -1326,3 +1379,258 @@ const appendCustomScreenshotsSection = (
   
   contentWrapper.appendChild(sectionContent);
 };
+
+/**
+ * Creates a section with PV module information for a specific measurement
+ */
+const createPVModuleInfoSection = (measurement: Measurement, index: number): HTMLElement => {
+  const container = document.createElement('div');
+  container.style.marginTop = '30px';
+  
+  if (!measurement.pvModuleInfo) return container;
+  
+  const pvInfo = measurement.pvModuleInfo;
+  
+  const pvTitle = document.createElement('h3');
+  pvTitle.textContent = `PV-Planung für Fläche ${index + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+  container.appendChild(pvTitle);
+  
+  // Create PV module info table
+  const pvTable = document.createElement('table');
+  pvTable.className = 'pv-info-table';
+  
+  // Helper function to add a row to the table
+  const addRow = (label: string, value: string | number) => {
+    const row = document.createElement('tr');
+    
+    const labelCell = document.createElement('th');
+    labelCell.textContent = label;
+    row.appendChild(labelCell);
+    
+    const valueCell = document.createElement('td');
+    valueCell.textContent = typeof value === 'number' ? value.toString() : value;
+    row.appendChild(valueCell);
+    
+    pvTable.appendChild(row);
+  };
+  
+  // Add rows with PV module information
+  addRow('Anzahl Module', pvInfo.moduleCount);
+  addRow('Modulgröße', `${pvInfo.moduleWidth.toFixed(3)}m × ${pvInfo.moduleHeight.toFixed(3)}m`);
+  addRow('Ausrichtung', pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat');
+  addRow('Dachflächenabdeckung', `${pvInfo.coveragePercent.toFixed(1)}%`);
+  addRow('Gesamtleistung', `${calculatePVPower(pvInfo.moduleCount).toFixed(2)} kWp`);
+  
+  // Add orientation information if available
+  if (pvInfo.roofDirection) {
+    addRow('Dachausrichtung', pvInfo.roofDirection);
+  }
+  
+  if (pvInfo.roofInclination !== undefined) {
+    addRow('Dachneigung', `${pvInfo.roofInclination.toFixed(1)}°`);
+  }
+  
+  if (pvInfo.yieldFactor) {
+    addRow('Ertragsfaktor', `${pvInfo.yieldFactor.toFixed(0)} kWh/kWp pro Jahr`);
+  }
+  
+  container.appendChild(pvTable);
+  
+  // Add PV disclaimer
+  container.appendChild(createPVDisclaimer());
+  
+  return container;
+};
+
+/**
+ * Creates a PV disclaimer section for the PDF
+ */
+const createPVDisclaimer = (): HTMLElement => {
+  const disclaimer = document.createElement('div');
+  disclaimer.className = 'pv-disclaimer';
+  
+  const title = document.createElement('div');
+  title.className = 'pv-disclaimer-title';
+  title.textContent = 'Wichtiger Hinweis zur PV-Planung';
+  disclaimer.appendChild(title);
+  
+  const text = document.createElement('div');
+  text.className = 'pv-disclaimer-text';
+  text.innerHTML = `
+    <p><strong>Vorläufige Planung – Bitte beachten Sie:</strong></p>
+    <p>Die hier dargestellte Planung ist eine erste, unverbindliche Vorplanung. Bei dieser ersten Einschätzung wurden die exakte Ausrichtung der potenziellen PV-Anlage sowie die genaue Dachneigung noch nicht berücksichtigt. Diese Vorplanung dient lediglich einer ersten Orientierung und ersetzt keine detaillierte Fachplanung.</p>
+    <p>Für eine präzise und verbindliche Planung, die alle relevanten Aspekte einbezieht, empfehlen wir Ihnen, ein professionelles Angebot von einem Fachbetrieb einzuholen.</p>
+  `;
+  disclaimer.appendChild(text);
+  
+  return disclaimer;
+};
+
+/**
+ * Adds a summary section for PV planning
+ */
+const appendPVSummarySection = (
+  contentWrapper: HTMLElement,
+  measurementsWithPV: Measurement[],
+  title: string
+) => {
+  if (measurementsWithPV.length === 0) return;
+  
+  const sectionContent = document.createElement('div');
+  sectionContent.className = 'pdf-section force-page-break';
+  
+  // Create section with header that stays with content
+  const section = document.createElement('div');
+  section.className = 'section-with-header';
+  
+  // Add header
+  section.appendChild(createHeader(title));
+  
+  // Create title
+  const sectionTitle = document.createElement('h2');
+  sectionTitle.textContent = 'PV-Planung - Übersicht';
+  sectionTitle.style.marginTop = '20px';
+  sectionTitle.style.marginBottom = '30px';
+  section.appendChild(sectionTitle);
+  
+  // Create description
+  const description = document.createElement('p');
+  description.textContent = `Die Auswertung enthält ${measurementsWithPV.length} Dachflächen mit geplanten PV-Modulen.`;
+  section.appendChild(description);
+  
+  // Add PV disclaimer at the top of the section
+  section.appendChild(createPVDisclaimer());
+  
+  sectionContent.appendChild(section);
+  
+  // Calculate totals
+  const totalModules = measurementsWithPV.reduce((sum, m) => 
+    sum + (m.pvModuleInfo?.moduleCount || 0), 0
+  );
+  
+  const totalPower = calculatePVPower(totalModules);
+  
+  // Create total summary card
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'summary-card';
+  summaryCard.style.marginTop = '30px';
+  
+  const summaryTitle = document.createElement('h3');
+  summaryTitle.textContent = 'Zusammenfassung PV-Planung';
+  summaryTitle.style.marginBottom = '15px';
+  summaryCard.appendChild(summaryTitle);
+  
+  const summaryStats = document.createElement('div');
+  summaryStats.className = 'summary-stats';
+  
+  // Helper function to create stat boxes
+  const createStatBox = (value: string | number, label: string) => {
+    const statBox = document.createElement('div');
+    statBox.className = 'summary-stat';
+    
+    const statValue = document.createElement('div');
+    statValue.className = 'summary-stat-value';
+    statValue.textContent = value.toString();
+    statBox.appendChild(statValue);
+    
+    const statLabel = document.createElement('div');
+    statLabel.className = 'summary-stat-label';
+    statLabel.textContent = label;
+    statBox.appendChild(statLabel);
+    
+    return statBox;
+  };
+  
+  // Add summary stat boxes
+  summaryStats.appendChild(createStatBox(measurementsWithPV.length, 'Dachflächen mit PV'));
+  summaryStats.appendChild(createStatBox(totalModules, 'Gesamtanzahl Module'));
+  summaryStats.appendChild(createStatBox(`${totalPower.toFixed(2)} kWp`, 'Gesamtleistung'));
+  
+  // Add estimated yield if available for any of the measurements
+  const hasYieldInfo = measurementsWithPV.some(m => m.pvModuleInfo?.yieldFactor);
+  if (hasYieldInfo) {
+    // Find the first measurement with yield factor to use as reference
+    const referenceYield = measurementsWithPV.find(m => m.pvModuleInfo?.yieldFactor)?.pvModuleInfo?.yieldFactor;
+    if (referenceYield) {
+      const estimatedYield = (totalPower * referenceYield).toFixed(0);
+      summaryStats.appendChild(createStatBox(`${estimatedYield} kWh`, 'Geschätzter Jahresertrag'));
+    }
+  }
+  
+  summaryCard.appendChild(summaryStats);
+  sectionContent.appendChild(summaryCard);
+  
+  // Create table with PV info for each roof area
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'keep-together table-container';
+  tableContainer.style.marginTop = '30px';
+  
+  const table = document.createElement('table');
+  table.className = 'measurement-table';
+  
+  // Table header
+  const tableHead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Nr.', 'Beschreibung', 'Fläche (m²)', 'Module', 'Ausrichtung', 'Leistung (kWp)'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    headerRow.appendChild(th);
+  });
+  
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  
+  // Table body
+  const tableBody = document.createElement('tbody');
+  
+  measurementsWithPV.forEach((measurement, index) => {
+    const row = document.createElement('tr');
+    
+    // Nr
+    const numCell = document.createElement('td');
+    numCell.textContent = (index + 1).toString();
+    row.appendChild(numCell);
+    
+    // Description
+    const descCell = document.createElement('td');
+    descCell.textContent = measurement.description || '–';
+    row.appendChild(descCell);
+    
+    // Area
+    const areaCell = document.createElement('td');
+    areaCell.textContent = `${measurement.value?.toFixed(2) || '–'} m²`;
+    row.appendChild(areaCell);
+    
+    // Module count
+    const moduleCell = document.createElement('td');
+    moduleCell.textContent = `${measurement.pvModuleInfo?.moduleCount || '–'}`;
+    row.appendChild(moduleCell);
+    
+    // Orientation
+    const orientationCell = document.createElement('td');
+    let orientationText = measurement.pvModuleInfo?.orientation === 'portrait' ? 'Hochformat' : 'Querformat';
+    if (measurement.pvModuleInfo?.roofDirection) {
+      orientationText += `, ${measurement.pvModuleInfo.roofDirection}`;
+    }
+    orientationCell.textContent = orientationText;
+    row.appendChild(orientationCell);
+    
+    // Power
+    const powerCell = document.createElement('td');
+    const power = measurement.pvModuleInfo?.moduleCount 
+      ? calculatePVPower(measurement.pvModuleInfo.moduleCount).toFixed(2)
+      : '–';
+    powerCell.textContent = power;
+    row.appendChild(powerCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  table.appendChild(tableBody);
+  tableContainer.appendChild(table);
+  sectionContent.appendChild(tableContainer);
+  
+  contentWrapper.appendChild(sectionContent);
+};
+
