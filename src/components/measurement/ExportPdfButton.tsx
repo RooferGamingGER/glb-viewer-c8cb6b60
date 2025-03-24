@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import { consolidatePenetrations } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
+import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 import * as THREE from 'three';
 import {
   Dialog,
@@ -31,6 +32,7 @@ import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Toggle } from "@/components/ui/toggle";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -43,6 +45,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [use2DRendering, setUse2DRendering] = useState(true);
+  const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
+  const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const { scene, camera, renderer, canvas } = useThreeContext();
   
@@ -59,9 +63,36 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
     }
   });
 
-  // Check if any measurements have custom screenshots
+  // Auto-generate roof plan when dialog opens or when measurements change
+  useEffect(() => {
+    if (measurements.length > 0 && includeRoofPlan) {
+      generateRoofPlan();
+    }
+  }, [measurements, includeRoofPlan]);
+
+  const generateRoofPlan = () => {
+    if (measurements.length === 0) return;
+    
+    try {
+      // Always use top-down view (useTopDownView=true) for consistent roof plans
+      const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+      setGeneratedRoofPlan(roofPlan);
+    } catch (error) {
+      console.error('Error generating roof plan:', error);
+    }
+  };
+
   const hasCustomScreenshots = measurements.some(m => 
     m.customScreenshots && m.customScreenshots.length > 0
+  );
+
+  const lengthCount = measurements.filter(m => m.type === 'length').length;
+  const heightCount = measurements.filter(m => m.type === 'height').length;
+  const areaCount = measurements.filter(m => m.type === 'area').length;
+  
+  const previewMeasurements = consolidatePenetrations(measurements);
+  const screenshotCount = measurements.reduce((total, m) => 
+    total + (m.customScreenshots?.length || 0), 0
   );
 
   const handleExport = async () => {
@@ -81,12 +112,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       const perspCamera = asPerspectiveCamera(camera);
       setExportProgress(20);
       
-      // Process each area measurement
       for (let i = 0; i < areaMeasurements.length; i++) {
         const measurement = areaMeasurements[i];
         
         if (use2DRendering) {
-          // Generate 2D polygon rendering
           const polygon2D = generatePolygon2D(measurement);
           
           if (polygon2D) {
@@ -95,12 +124,11 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
               measurementsWithVisuals[index] = {
                 ...measurementsWithVisuals[index],
                 polygon2D,
-                screenshot: polygon2D // Use polygon as screenshot for backward compatibility
+                screenshot: polygon2D
               };
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
-          // Fall back to 3D screenshot if 2D rendering is disabled
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
           
           if (screenshot) {
@@ -117,12 +145,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
         setExportProgress(20 + Math.floor((i / areaMeasurements.length) * 30));
       }
 
-      // Process each solar measurement
       for (let i = 0; i < solarMeasurements.length; i++) {
         const measurement = solarMeasurements[i];
         
         if (use2DRendering) {
-          // Generate 2D polygon rendering
           const polygon2D = generatePolygon2D(measurement);
           
           if (polygon2D) {
@@ -131,12 +157,11 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
               measurementsWithVisuals[index] = {
                 ...measurementsWithVisuals[index],
                 polygon2D,
-                screenshot: polygon2D // Use polygon as screenshot for backward compatibility
+                screenshot: polygon2D
               };
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
-          // Fall back to 3D screenshot
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
           
           if (screenshot) {
@@ -152,6 +177,22 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       }
       
       setExportProgress(50);
+      
+      if (includeRoofPlan) {
+        // Use the pre-generated roof plan or generate it if needed
+        if (!generatedRoofPlan) {
+          // Always use top-down view for the roof plan
+          const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+          if (roofPlan) {
+            (measurementsWithVisuals as any).roofPlan = roofPlan;
+          }
+        } else {
+          // Use the pre-generated roof plan
+          (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
+        }
+      }
+      
+      setExportProgress(70);
       
       const coverData = form.getValues();
       const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
@@ -175,15 +216,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       }, 1000);
     }
   };
-
-  const lengthCount = measurements.filter(m => m.type === 'length').length;
-  const heightCount = measurements.filter(m => m.type === 'height').length;
-  const areaCount = measurements.filter(m => m.type === 'area').length;
-  
-  const previewMeasurements = consolidatePenetrations(measurements);
-  const screenshotCount = measurements.reduce((total, m) => 
-    total + (m.customScreenshots?.length || 0), 0
-  );
 
   return (
     <Dialog>
@@ -329,18 +361,39 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                   )}
                 />
                 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="use-2d-rendering"
-                    checked={use2DRendering}
-                    onCheckedChange={setUse2DRendering}
-                  />
-                  <label
-                    htmlFor="use-2d-rendering"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    2D-Rendering für Flächendarstellung verwenden
-                  </label>
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="use-2d-rendering"
+                      checked={use2DRendering}
+                      onCheckedChange={setUse2DRendering}
+                    />
+                    <label
+                      htmlFor="use-2d-rendering"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      2D-Rendering für Flächendarstellung verwenden
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="include-roof-plan"
+                      checked={includeRoofPlan}
+                      onCheckedChange={(value) => {
+                        setIncludeRoofPlan(value);
+                        if (value && !generatedRoofPlan) {
+                          generateRoofPlan();
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="include-roof-plan"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Dachplan als Draufsicht hinzufügen
+                    </label>
+                  </div>
                 </div>
               </div>
             </Form>
@@ -417,23 +470,22 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
         </Tabs>
         
         {isExporting && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs mb-1">
-              <span>Exportiere PDF...</span>
-              <span>{exportProgress}%</span>
-            </div>
-            <Progress value={exportProgress} className="h-2" />
+          <div className="mt-4">
+            <Progress value={exportProgress} className="w-full" />
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              {exportProgress < 100 ? 'PDF wird erstellt...' : 'PDF fertiggestellt!'}
+            </p>
           </div>
         )}
         
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" disabled={isExporting} ref={dialogCloseRef}>
+            <Button ref={dialogCloseRef} variant="outline" disabled={isExporting}>
               Abbrechen
             </Button>
           </DialogClose>
-          <Button disabled={isExporting} onClick={handleExport}>
-            {isExporting ? 'Exportiere...' : 'Exportieren'}
+          <Button onClick={handleExport} disabled={isExporting}>
+            {isExporting ? 'Wird exportiert...' : 'PDF exportieren'}
           </Button>
         </DialogFooter>
       </DialogContent>

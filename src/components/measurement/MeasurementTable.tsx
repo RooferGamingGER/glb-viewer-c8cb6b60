@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Table,
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Measurement } from '@/hooks/useMeasurements';
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, EyeIcon, BookmarkX, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, EyeIcon, BookmarkX, Trash2, MoveUp, MoveDown, Pencil } from 'lucide-react';
 import { formatMeasurementValue } from '@/utils/exportUtils';
 
 interface MeasurementTableProps {
@@ -20,6 +21,10 @@ interface MeasurementTableProps {
   toggleMeasurementVisibility?: (id: string) => void;
   toggleLabelVisibility?: (id: string) => void;
   handleDeleteMeasurement?: (id: string) => void;
+  handleStartPointEdit?: (id: string) => void;
+  editMeasurementId?: string | null;
+  onMoveUp?: (id: string) => void;
+  onMoveDown?: (id: string) => void;
 }
 
 const MeasurementTable: React.FC<MeasurementTableProps> = ({
@@ -28,7 +33,11 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
   showTableHeaders = true,
   toggleMeasurementVisibility,
   toggleLabelVisibility,
-  handleDeleteMeasurement
+  handleDeleteMeasurement,
+  handleStartPointEdit,
+  editMeasurementId,
+  onMoveUp,
+  onMoveDown
 }) => {
   if (measurements.length === 0) {
     return (
@@ -58,8 +67,8 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Wert</TableHead>
                 <TableHead>Neigung</TableHead>
                 <TableHead>Beschreibung</TableHead>
-                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
-                  <TableHead className="w-24">Aktionen</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
+                  <TableHead className="w-28">Aktionen</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -74,7 +83,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                       : '–'}
                   </TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
-                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
                     <TableCell>
                       <div className="flex space-x-1 justify-end">
                         {toggleMeasurementVisibility && (
@@ -105,6 +114,16 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             )}
                           </Button>
                         )}
+                        {handleStartPointEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                         {handleDeleteMeasurement && (
                           <Button 
                             variant="ghost" 
@@ -113,6 +132,26 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             onClick={() => handleDeleteMeasurement(measurement.id)}
                           >
                             <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveUp && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveUp(measurement.id)}
+                          >
+                            <MoveUp className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveDown && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveDown(measurement.id)}
+                          >
+                            <MoveDown className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -134,8 +173,8 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Nr.</TableHead>
                 <TableHead>Wert</TableHead>
                 <TableHead>Beschreibung</TableHead>
-                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
-                  <TableHead className="w-24">Aktionen</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
+                  <TableHead className="w-28">Aktionen</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -145,7 +184,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
-                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
                     <TableCell>
                       <div className="flex space-x-1 justify-end">
                         {toggleMeasurementVisibility && (
@@ -176,6 +215,16 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             )}
                           </Button>
                         )}
+                        {handleStartPointEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                         {handleDeleteMeasurement && (
                           <Button 
                             variant="ghost" 
@@ -184,6 +233,26 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             onClick={() => handleDeleteMeasurement(measurement.id)}
                           >
                             <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveUp && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveUp(measurement.id)}
+                          >
+                            <MoveUp className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveDown && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveDown(measurement.id)}
+                          >
+                            <MoveDown className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -205,8 +274,8 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Nr.</TableHead>
                 <TableHead>Wert</TableHead>
                 <TableHead>Beschreibung</TableHead>
-                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
-                  <TableHead className="w-24">Aktionen</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
+                  <TableHead className="w-28">Aktionen</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -216,7 +285,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{formatMeasurementValue(measurement)}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
-                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
                     <TableCell>
                       <div className="flex space-x-1 justify-end">
                         {toggleMeasurementVisibility && (
@@ -247,6 +316,16 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             )}
                           </Button>
                         )}
+                        {handleStartPointEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                         {handleDeleteMeasurement && (
                           <Button 
                             variant="ghost" 
@@ -255,6 +334,26 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             onClick={() => handleDeleteMeasurement(measurement.id)}
                           >
                             <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveUp && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveUp(measurement.id)}
+                          >
+                            <MoveUp className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveDown && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveDown(measurement.id)}
+                          >
+                            <MoveDown className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -276,8 +375,8 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Nr.</TableHead>
                 <TableHead>Wert</TableHead>
                 <TableHead>Beschreibung</TableHead>
-                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
-                  <TableHead className="w-24">Aktionen</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
+                  <TableHead className="w-28">Aktionen</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -287,7 +386,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
-                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
                     <TableCell>
                       <div className="flex space-x-1 justify-end">
                         {toggleMeasurementVisibility && (
@@ -318,6 +417,16 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             )}
                           </Button>
                         )}
+                        {handleStartPointEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                         {handleDeleteMeasurement && (
                           <Button 
                             variant="ghost" 
@@ -326,6 +435,26 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             onClick={() => handleDeleteMeasurement(measurement.id)}
                           >
                             <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveUp && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveUp(measurement.id)}
+                          >
+                            <MoveUp className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveDown && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveDown(measurement.id)}
+                          >
+                            <MoveDown className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -374,8 +503,8 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                 <TableHead>Typ</TableHead>
                 <TableHead>Anzahl</TableHead>
                 <TableHead>Beschreibung</TableHead>
-                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
-                  <TableHead className="w-24">Aktionen</TableHead>
+                {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
+                  <TableHead className="w-28">Aktionen</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -397,7 +526,7 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                   </TableCell>
                   <TableCell>{formatMeasurementValue(measurement)}</TableCell>
                   <TableCell>{measurement.description || '–'}</TableCell>
-                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement) && (
+                  {(toggleMeasurementVisibility || toggleLabelVisibility || handleDeleteMeasurement || handleStartPointEdit || onMoveUp || onMoveDown) && (
                     <TableCell>
                       <div className="flex space-x-1 justify-end">
                         {toggleMeasurementVisibility && (
@@ -428,6 +557,16 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             )}
                           </Button>
                         )}
+                        {handleStartPointEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => handleStartPointEdit(measurement.id)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                         {handleDeleteMeasurement && (
                           <Button 
                             variant="ghost" 
@@ -436,6 +575,26 @@ const MeasurementTable: React.FC<MeasurementTableProps> = ({
                             onClick={() => handleDeleteMeasurement(measurement.id)}
                           >
                             <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveUp && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveUp(measurement.id)}
+                          >
+                            <MoveUp className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onMoveDown && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => onMoveDown(measurement.id)}
+                          >
+                            <MoveDown className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
