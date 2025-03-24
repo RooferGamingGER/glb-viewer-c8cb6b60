@@ -122,7 +122,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               toggleMeasurementVisibility={toggleMeasurementVisibility} 
               handleDeleteMeasurement={handleDeleteMeasurement}
               handleStartPointEdit={handleStartPointEdit}
-              editMeasurementId={editMeasurementId || null}
+              editMeasurementId={editMeasurementId}
               onMoveUp={handleMoveMeasurementUp}
               onMoveDown={handleMoveMeasurementDown}
             />
