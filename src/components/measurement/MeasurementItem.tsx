@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -53,7 +52,7 @@ import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 interface MeasurementItemProps {
   measurement: Measurement;
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility: (id: string) => void; // Added this missing prop
+  toggleLabelVisibility: (id: string) => void;
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -143,7 +142,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   };
 
   const handleCalculatePV = () => {
-    if (measurement.type !== 'area') return;
+    if (measurement.type !== 'solar') return;
     
     setShowPVDisclaimer(true);
   };
@@ -240,7 +239,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const hasCustomScreenshots = measurement.customScreenshots && measurement.customScreenshots.length > 0;
   
   const hasPVInfo = measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0;
-  const isAreaMeasurement = measurement.type === 'area';
+  const isSolarMeasurement = measurement.type === 'solar';
 
   return (
     <div 
@@ -352,7 +351,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         {measurement.dimensions && (
           <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
             {measurement.dimensions.length !== undefined && (
-              <div><strong>L��nge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
+              <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
             )}
             {measurement.dimensions.width !== undefined && (
               <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
@@ -556,7 +555,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         )}
       </div>
       
-      {isAreaMeasurement && !hasPVInfo && (
+      {isSolarMeasurement && !hasPVInfo && (
         <Button 
           variant="outline" 
           size="sm" 
