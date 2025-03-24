@@ -33,7 +33,8 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     setIsGenerating(true);
     
     try {
-      const plan = createCombinedRoofPlan(measurements);
+      // Specify that we want a true top-down view
+      const plan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -8,9 +7,13 @@ import { getMeasurementTypeDisplayName } from '@/constants/measurements';
 /**
  * Projects all measurements to a common 2D coordinate system
  * @param measurements - Array of measurements to project
+ * @param useTopDownView - If true, use a strict top-down projection (ignoring Y axis)
  * @returns Object with projected points and global bounds
  */
-export const projectMeasurementsTo2D = (measurements: Measurement[]): {
+export const projectMeasurementsTo2D = (
+  measurements: Measurement[], 
+  useTopDownView = false
+): {
   projectedMeasurements: Array<{
     measurement: Measurement;
     points2D: Point2D[];
@@ -37,6 +40,12 @@ export const projectMeasurementsTo2D = (measurements: Measurement[]): {
     };
   }
   
+  // If using top-down view, we'll simply use X and Z coordinates directly
+  if (useTopDownView) {
+    return projectMeasurementsTopDown(relevantMeasurements);
+  }
+  
+  // Otherwise use the original projection method
   // Get the common normal vector for all measurements (assume they're on the same plane)
   // Use the first three points of the first measurement to determine the plane
   const firstMeasurement = relevantMeasurements[0];
@@ -116,18 +125,84 @@ export const projectMeasurementsTo2D = (measurements: Measurement[]): {
 };
 
 /**
+ * Projects all measurements to a true top-down view (X, Z coordinates)
+ * This ignores the Y axis completely for a strict overhead view
+ */
+const projectMeasurementsTopDown = (measurements: Measurement[]): {
+  projectedMeasurements: Array<{
+    measurement: Measurement;
+    points2D: Point2D[];
+    centroid: Point2D;
+  }>;
+  bounds: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  };
+} => {
+  const projectedMeasurements: Array<{
+    measurement: Measurement;
+    points2D: Point2D[];
+    centroid: Point2D;
+  }> = [];
+  
+  let minX = Number.MAX_VALUE;
+  let minZ = Number.MAX_VALUE;
+  let maxX = Number.MIN_VALUE;
+  let maxZ = Number.MIN_VALUE;
+  
+  // First pass: get the global bounds across all measurements
+  for (const measurement of measurements) {
+    for (const point of measurement.points) {
+      minX = Math.min(minX, point.x);
+      minZ = Math.min(minZ, point.z);
+      maxX = Math.max(maxX, point.x);
+      maxZ = Math.max(maxZ, point.z);
+    }
+  }
+  
+  // Now project each measurement to 2D by using X and Z coordinates directly
+  for (const measurement of measurements) {
+    const points2D: Point2D[] = [];
+    
+    // For each point, use X as X and Z as Y in the 2D space
+    for (const point of measurement.points) {
+      points2D.push({ x: point.x, y: point.z });
+    }
+    
+    // Calculate centroid of the 2D points
+    const centroidX = points2D.reduce((sum, p) => sum + p.x, 0) / points2D.length;
+    const centroidY = points2D.reduce((sum, p) => sum + p.y, 0) / points2D.length;
+    
+    projectedMeasurements.push({
+      measurement,
+      points2D,
+      centroid: { x: centroidX, y: centroidY }
+    });
+  }
+  
+  return {
+    projectedMeasurements,
+    bounds: { minX, minY: minZ, maxX, maxY: maxZ }
+  };
+};
+
+/**
  * Creates a combined 2D roof plan of all measurements
  * @param measurements - Array of measurements to include in the plan
  * @param width - Width of the output canvas in pixels
  * @param height - Height of the output canvas in pixels
  * @param padding - Padding around the plan in percentage (0-1)
+ * @param useTopDownView - If true, use a strict top-down projection (ignoring Y axis)
  * @returns Base64 data URL of the rendered plan
  */
 export const createCombinedRoofPlan = (
   measurements: Measurement[],
   width = 1200,
   height = 900,
-  padding = 0.1
+  padding = 0.1,
+  useTopDownView = false
 ): string => {
   if (measurements.length === 0) {
     console.warn('No measurements to create roof plan');
@@ -151,7 +226,7 @@ export const createCombinedRoofPlan = (
     ctx.fillRect(0, 0, width, height);
     
     // Project all measurements to a common 2D coordinate system
-    const { projectedMeasurements, bounds } = projectMeasurementsTo2D(measurements);
+    const { projectedMeasurements, bounds } = projectMeasurementsTo2D(measurements, useTopDownView);
     
     if (projectedMeasurements.length === 0) {
       console.warn('No valid measurements to render in roof plan');
@@ -233,16 +308,23 @@ export const createCombinedRoofPlan = (
       ctx.fill();
       
       // Draw the outline
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3; // Increased line width for better visibility
       ctx.strokeStyle = colorSet.stroke;
       ctx.stroke();
       
       // Draw the vertices
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 4, 0, Math.PI * 2);
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2); // Increased point size
         ctx.fillStyle = colorSet.stroke;
         ctx.fill();
+        
+        // Add index numbers to vertices for clearer identification
+        ctx.font = 'bold 10px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((index + 1).toString(), toCanvasX(point.x), toCanvasY(point.y));
       });
       
       // Draw the measurement ID/label in the center
@@ -256,6 +338,57 @@ export const createCombinedRoofPlan = (
       ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y));
       ctx.font = '12px Arial';
       ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 20);
+      
+      // Draw length for each segment
+      if (measurement.segments) {
+        for (let i = 0; i < measurement.segments.length; i++) {
+          const segment = measurement.segments[i];
+          
+          // Find the points in the 2D array
+          const p1Index = measurement.points.findIndex(p => 
+            p.x === segment.points[0].x && 
+            p.y === segment.points[0].y && 
+            p.z === segment.points[0].z
+          );
+          
+          const p2Index = measurement.points.findIndex(p => 
+            p.x === segment.points[1].x && 
+            p.y === segment.points[1].y && 
+            p.z === segment.points[1].z
+          );
+          
+          if (p1Index >= 0 && p2Index >= 0 && p1Index < points2D.length && p2Index < points2D.length) {
+            const p1 = points2D[p1Index];
+            const p2 = points2D[p2Index];
+            
+            // Calculate the midpoint of the segment
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2;
+            
+            // Draw the length value with a background for better readability
+            const lengthText = `${segment.length.toFixed(2)}m`;
+            
+            ctx.font = '12px Arial';
+            const textMetrics = ctx.measureText(lengthText);
+            const textWidth = textMetrics.width;
+            
+            // Draw white background box for text
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillRect(
+              toCanvasX(midX) - textWidth / 2 - 4, 
+              toCanvasY(midY) - 8, 
+              textWidth + 8, 
+              16
+            );
+            
+            // Draw text
+            ctx.fillStyle = '#333333';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY));
+          }
+        }
+      }
     });
     
     // Add a legend
