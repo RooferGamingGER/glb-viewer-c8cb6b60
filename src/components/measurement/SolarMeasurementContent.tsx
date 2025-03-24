@@ -70,6 +70,16 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     });
   }, [measurement]);
   
+  useEffect(() => {
+    if (measurement.type === 'solar' && !measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
+      const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+      if (pvModuleInfo.moduleCount > 0) {
+        updateMeasurement(measurement.id, { pvModuleInfo });
+        toast.success(`PV-Module automatisch berechnet: ${pvModuleInfo.moduleCount} Module`);
+      }
+    }
+  }, [measurement.id, measurement.type, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
+  
   const handleModuleSelect = (moduleSpec: any) => {
     if (!measurement.pvModuleInfo) return;
     
@@ -203,9 +213,22 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   if (!measurement.pvModuleInfo) {
     return (
       <div className="p-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mb-3">
           Keine PV-Modul-Informationen verfügbar. Bitte neu berechnen.
         </p>
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="w-full"
+          onClick={() => {
+            const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+            updateMeasurement(measurement.id, { pvModuleInfo });
+            toast.success(`PV-Module berechnet: ${pvModuleInfo.moduleCount} Module`);
+          }}
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          PV-Module berechnen
+        </Button>
       </div>
     );
   }

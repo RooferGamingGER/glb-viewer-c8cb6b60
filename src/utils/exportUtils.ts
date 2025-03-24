@@ -1,3 +1,4 @@
+
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -273,9 +274,30 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
  * Format the value display for a measurement based on its type
  */
 export const formatMeasurementValue = (measurement: Measurement): string => {
-  // Special formatting for skylights, vents, hooks, and other penetrations
-  if (measurement.type === 'skylight' || measurement.type === 'vent' || 
-      measurement.type === 'hook' || measurement.type === 'other') {
+  // Special formatting for skylights - updated to match chimney display format
+  if (measurement.type === 'skylight') {
+    // If the skylight has a label, prioritize using that
+    if (measurement.label) {
+      return measurement.label;
+    }
+    
+    // If we have dimensions with width and height, display as width × height
+    if (measurement.dimensions && measurement.dimensions.width && measurement.dimensions.height) {
+      return `${measurement.dimensions.width.toFixed(2)} × ${measurement.dimensions.height.toFixed(2)}m`;
+    }
+    
+    // Fall back to count display
+    const count = measurement.count || 1;
+    return `${count} ${measurement.unit || 'Stk'}`;
+  }
+  
+  // Special formatting for chimneys
+  if (measurement.type === 'chimney') {
+    return measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
+  }
+  
+  // Special formatting for vents, hooks, and other penetrations
+  if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
     const count = measurement.count || 1;
     return `${count} ${measurement.unit || 'Stk'}`;
   }
@@ -283,11 +305,6 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   // Format for solar measurements
   if (measurement.type === 'solar') {
     return `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
-  }
-  
-  // Format for chimney measurements
-  if (measurement.type === 'chimney') {
-    return measurement.label || `${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`;
   }
   
   // PV module information for area measurements
@@ -311,11 +328,6 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
 
 /**
  * Sort measurements in the specified order for PDF export
- * 
- * Sort order:
- * 1. Standard measurements: length, area, height
- * 2. Roof elements: skylight, chimney, solar
- * 3. Installations: vent, hook, other
  */
 export const sortMeasurementsForExport = (measurements: Measurement[]): Measurement[] => {
   // Define type order for sorting
