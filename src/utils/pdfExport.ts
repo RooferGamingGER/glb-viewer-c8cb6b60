@@ -52,6 +52,9 @@ export const exportMeasurementsToPdf = async (
     const sortedMeasurements = sortMeasurementsForExport(measurements);
     const consolidatedMeasurements = consolidatePenetrations(sortedMeasurements);
     
+    // Extract roof plan if included
+    const roofPlan = (measurements as any).roofPlan;
+    
     // Create a container for the PDF content
     const container = document.createElement('div');
     container.className = 'pdf-container';
@@ -309,6 +312,49 @@ export const exportMeasurementsToPdf = async (
     coverPage.className = 'pdf-section';
     coverPage.appendChild(createCoverPage(coverData));
     contentWrapper.appendChild(coverPage);
+    
+    // Add roof plan if available
+    if (roofPlan) {
+      const roofPlanSection = document.createElement('div');
+      roofPlanSection.className = 'pdf-section force-page-break';
+      
+      // Create section with header that stays with content
+      const roofPlanContent = document.createElement('div');
+      roofPlanContent.className = 'section-with-header';
+      
+      // Add header
+      roofPlanContent.appendChild(createHeader(coverData.title));
+      
+      // Create title
+      const sectionTitle = document.createElement('h2');
+      sectionTitle.textContent = 'Dachplan (Draufsicht)';
+      sectionTitle.style.marginTop = '20px';
+      sectionTitle.style.marginBottom = '30px';
+      roofPlanContent.appendChild(sectionTitle);
+      
+      // Create description
+      const description = document.createElement('p');
+      description.textContent = 'Dieser Plan zeigt alle vermessenen Dachflächen und Elemente in der Draufsicht.';
+      roofPlanContent.appendChild(description);
+      
+      roofPlanSection.appendChild(roofPlanContent);
+      
+      // Add the roof plan image
+      const screenshotContainer = document.createElement('div');
+      screenshotContainer.className = 'screenshot-container keep-together';
+      screenshotContainer.style.marginTop = '20px';
+      
+      const roofPlanImage = document.createElement('img');
+      roofPlanImage.src = roofPlan;
+      roofPlanImage.className = 'area-screenshot';
+      roofPlanImage.style.maxWidth = '100%';
+      roofPlanImage.alt = 'Dachplan';
+      
+      screenshotContainer.appendChild(roofPlanImage);
+      roofPlanSection.appendChild(screenshotContainer);
+      
+      contentWrapper.appendChild(roofPlanSection);
+    }
     
     // Filter measurements by type using the consolidated measurements
     const lengthMeasurements = consolidatedMeasurements.filter(m => m.type === 'length');

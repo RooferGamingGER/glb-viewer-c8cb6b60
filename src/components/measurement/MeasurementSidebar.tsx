@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
@@ -6,6 +5,8 @@ import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
+import ExportPdfButton from './ExportPdfButton';
+import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -63,17 +64,13 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
   
-  // Nur Tab wechseln, wenn ein Werkzeug aktiviert wird, nicht beim Beenden der Messung
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
     
-    // Prüfen ob sich der Modus geändert hat, um unerwünschte Tab-Wechsel zu vermeiden
     const lastActiveMode = localStorage.getItem('lastActiveMode');
     
-    // Nur wenn sich der Modus ändert und es ein neues Werkzeug ist (nicht bei Beendigung)
     if (lastActiveMode === activeMode) return;
     
-    // Tab basierend auf dem Werkzeugtyp setzen
     if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
     } else if (['solar', 'chimney', 'skylight'].includes(activeMode)) {
@@ -82,7 +79,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       setActiveTab("penetrations");
     }
     
-    // Speichern des aktuellen Modus
     localStorage.setItem('lastActiveMode', activeMode);
   }, [activeMode]);
   
@@ -125,6 +121,10 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               measurements={measurements} 
               toggleMeasurementVisibility={toggleMeasurementVisibility} 
               handleDeleteMeasurement={handleDeleteMeasurement}
+              handleStartPointEdit={handleStartPointEdit}
+              editMeasurementId={editMeasurementId || null}
+              onMoveUp={handleMoveMeasurementUp}
+              onMoveDown={handleMoveMeasurementDown}
             />
           ) : (
             <MeasurementList 
@@ -143,6 +143,13 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               handleMoveMeasurementUp={handleMoveMeasurementUp}
               handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
+          )}
+          
+          {measurements.length > 0 && (
+            <div className="mt-4 space-y-2 px-2">
+              <ExportPdfButton measurements={measurements} />
+              <GenerateRoofPlanButton measurements={measurements} />
+            </div>
           )}
         </ScrollArea>
       </div>
