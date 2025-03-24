@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Magnet } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import { 
@@ -18,6 +19,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Toggle } from "@/components/ui/toggle";
+import { useToast } from "@/components/ui/use-toast";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -63,6 +66,26 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   handleMoveMeasurementDown
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+  const { toast } = useToast();
+  
+  // Store snap setting in localStorage
+  useEffect(() => {
+    localStorage.setItem('snapEnabled', snapEnabled ? 'true' : 'false');
+    
+    // Dispatch custom event so other components can react to the change
+    document.dispatchEvent(new CustomEvent('snapSettingChanged', { 
+      detail: { enabled: snapEnabled } 
+    }));
+  }, [snapEnabled]);
+  
+  // Load snap setting from localStorage on init
+  useEffect(() => {
+    const savedSnap = localStorage.getItem('snapEnabled');
+    if (savedSnap !== null) {
+      setSnapEnabled(savedSnap === 'true');
+    }
+  }, []);
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
@@ -82,11 +105,36 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
     localStorage.setItem('lastActiveMode', activeMode);
   }, [activeMode]);
   
+  const handleToggleSnap = () => {
+    const newValue = !snapEnabled;
+    setSnapEnabled(newValue);
+    toast({
+      title: newValue ? "Punktfang aktiviert" : "Punktfang deaktiviert",
+      description: newValue 
+        ? "Punkte rasten automatisch ein wenn sie sich in der Nähe vorhandener Punkte befinden" 
+        : "Punkte werden exakt an der geklickten Position platziert",
+      duration: 3000
+    });
+  };
+  
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <h2 className="text-md font-semibold">Messungen</h2>
         <div className="flex space-x-1">
+          <Toggle
+            pressed={snapEnabled}
+            onPressedChange={handleToggleSnap}
+            size="sm"
+            variant="outline"
+            aria-label="Punktfang ein/aus"
+            title="Punktfang ein/aus"
+            className="h-7 text-xs"
+          >
+            <Magnet className="h-3.5 w-3.5 mr-1" />
+            Punktfang
+          </Toggle>
+          
           {measurements.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

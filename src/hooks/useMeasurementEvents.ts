@@ -1,9 +1,9 @@
-
 import { useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
 import { Point } from '@/types/measurements';
 import { useMeasurementRaycasting } from './useMeasurementRaycasting';
+import { usePointSnapping } from './usePointSnapping';
 
 /**
  * Hook für Ereignisbehandlung bei Messinteraktionen
@@ -43,6 +43,37 @@ export const useMeasurementEvents = (
     filterMeasurementObjects,
     getPointFromIntersection 
   } = useMeasurementRaycasting();
+  
+  // Use our new snapping hook
+  const {
+    applySnap,
+    findSnapPoint,
+    clearSnapIndicator
+  } = usePointSnapping(scene);
+
+  // Process mouse movement for point snapping preview
+  const handlePointerMoveForSnapping = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!enabled || !open || !scene || !camera || handlers.movingPointInfo) return;
+    
+    // Skip snapping preview if we're not in a measurement mode
+    if (activeMode === 'none' || !['length', 'height', 'area', 'solar'].includes(activeMode)) {
+      clearSnapIndicator();
+      return;
+    }
+    
+    const canvasElement = event.target as HTMLCanvasElement;
+    if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
+    
+    // Get current mouse position as a 3D point
+    const point = getPointFromIntersection(event, camera, scene, canvasElement);
+    if (!point) {
+      clearSnapIndicator();
+      return;
+    }
+    
+    // Find snap point but don't apply it yet - just show indicator
+    findSnapPoint(point, measurements, editMeasurementId);
+  }, [enabled, open, scene, camera, activeMode, editMeasurementId, getPointFromIntersection, findSnapPoint, clearSnapIndicator, handlers.movingPointInfo, measurements]);
 
   // Process user interaction (adds a point or edits existing point)
   const processInteraction = useCallback((event: MouseEvent | TouchEvent) => {
@@ -55,7 +86,15 @@ export const useMeasurementEvents = (
     // Handle moving point case - finish the movement
     if (handlers.movingPointInfo) {
       const newPoint = handlers.updateMovingPoint(event, canvasElement);
-      handlers.finishPointMovement(newPoint);
+      
+      // Apply snapping when finishing point movement
+      let finalPoint = newPoint;
+      if (newPoint) {
+        finalPoint = applySnap(newPoint, measurements, handlers.movingPointInfo.measurementId);
+      }
+      
+      handlers.finishPointMovement(finalPoint);
+      clearSnapIndicator();
       return;
     }
     
@@ -69,6 +108,7 @@ export const useMeasurementEvents = (
     
     // Check if we clicked on an add point indicator (plus sign)
     if (refs.addPointIndicatorsRef.current && editMeasurementId) {
+      // Handle adding point indicators
       const addPointIntersects = raycaster.intersectObjects(refs.addPointIndicatorsRef.current.children, true);
       
       for (const intersect of addPointIntersects) {
@@ -155,22 +195,27 @@ export const useMeasurementEvents = (
       }
     }
     
-    // General intersections for adding points - should work regardless of whether edit mode is active
+    // General intersections for adding points
     if (activeMode !== 'none') {
       const point = getPointFromIntersection(event, camera, scene, canvasElement);
       
       if (point) {
+        // Apply point snapping
+        const snappedPoint = applySnap(point, measurements, editMeasurementId);
+        
         // Handle editing case
         if (editMeasurementId !== null && editingPointIndex !== null) {
-          handlers.addPoint(point);
+          handlers.addPoint(snappedPoint);
           toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
+          clearSnapIndicator();
           return;
         }
         
         // Handle adding new measurement points
         const currentCount = currentPoints.length;
         
-        handlers.addPoint(point);
+        handlers.addPoint(snappedPoint);
+        clearSnapIndicator();
         
         if (activeMode === 'length') {
           if (currentCount === 0) {
@@ -192,21 +237,27 @@ export const useMeasurementEvents = (
   }, [
     enabled, open, scene, camera, activeMode, editMeasurementId, editingPointIndex,
     measurements, currentPoints, handlers, refs, calculateMousePosition,
-    filterMeasurementObjects, getPointFromIntersection
+    filterMeasurementObjects, getPointFromIntersection, applySnap, clearSnapIndicator
   ]);
 
   // Update preview point when moving
   const handlePointerMove = useCallback((event: MouseEvent | TouchEvent) => {
-    if (!handlers.movingPointInfo || !scene || !camera) return;
+    if (!handlers.movingPointInfo || !scene || !camera) {
+      // If not moving a point, check for snapping
+      handlePointerMoveForSnapping(event);
+      return;
+    }
     
     const canvasElement = event.target as HTMLCanvasElement;
     if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
     
     const newPoint = handlers.updateMovingPoint(event, canvasElement);
     if (newPoint) {
-      handlers.setPreviewPoint(newPoint);
+      // When moving an existing point, show snapping preview
+      const snapPoint = findSnapPoint(newPoint, measurements, handlers.movingPointInfo.measurementId);
+      handlers.setPreviewPoint(snapPoint || newPoint);
     }
-  }, [handlers, scene, camera]);
+  }, [handlers, scene, camera, handlePointerMoveForSnapping, findSnapPoint, measurements]);
 
   // Separate mouse event handler
   const handleMouseDown = useCallback((event: MouseEvent) => {
@@ -284,11 +335,15 @@ export const useMeasurementEvents = (
       canvasElement.removeEventListener('touchstart', handleTouchStart);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);
+      
+      // Clean up snap indicator
+      clearSnapIndicator();
     };
   }, [
     enabled, scene, camera, 
     handleMouseDown, handleMouseMove, 
-    handleTouchStart, handleTouchMove, handleTouchEnd
+    handleTouchStart, handleTouchMove, handleTouchEnd,
+    clearSnapIndicator
   ]);
 
   return {
