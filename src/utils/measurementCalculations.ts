@@ -1,9 +1,15 @@
-
 import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
 import earcut from 'earcut';
-import { triangulatePolygon, projectPointsToPlane, earClip } from './triangulation';
+import { 
+  triangulatePolygon, 
+  projectPointsToPlane, 
+  earClip, 
+  triangulate3D, 
+  calculate3DTriangleArea,
+  isAreaPlausible 
+} from './triangulation';
 
 /**
  * Calculate the distance between two 3D points
@@ -42,7 +48,7 @@ export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): numb
   
   // Avoid division by zero
   if (distanceXZ === 0) {
-    return 0; // Or another appropriate value/logic
+    return 0;
   }
   
   const inclinationRad = Math.atan(dy / distanceXZ);
@@ -92,7 +98,7 @@ export const generateSegments = (points: Point[]): Segment[] => {
 };
 
 /**
- * Calculate the area of a polygon defined by 3D points using triangulation
+ * Calculate the area of a polygon defined by 3D points using improved triangulation
  * @param points - Array of 3D points defining the polygon
  * @returns Area in square meters
  */
@@ -100,69 +106,242 @@ export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
   try {
-    // Create vectors for each point
-    const vectors = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    console.log("Starting area calculation for polygon with", points.length, "points");
     
-    // Find the best-fit plane for these points
-    const { projectedPoints, planeNormal } = projectPointsToPlane(points);
+    // Use enhanced 3D triangulation for more accurate results
+    const { area, triangles, triangleAreas, method } = triangulate3D(points);
     
-    console.log("Projected points for area calculation:", projectedPoints);
+    console.log(`Area calculation result using ${method}:`, area);
+    console.log("Triangulation created", triangles.length, "triangles");
     
-    // Apply triangulation (Ear clipping algorithm)
-    const triangles = earClip(projectedPoints);
+    // Perform plausibility check
+    if (!isAreaPlausible(area, points)) {
+      console.warn("Area calculation failed plausibility check, trying fallback method");
+      return calculateAreaFallback(points);
+    }
     
-    console.log("Triangles after ear clipping:", triangles);
-    
+    return area;
+  } catch (error) {
+    console.error("Error in primary area calculation:", error);
+    return calculateAreaFallback(points);
+  }
+};
+
+/**
+ * Fallback method for area calculation when the primary method fails
+ */
+function calculateAreaFallback(points: Point[]): number {
+  console.log("Using fallback area calculation method");
+  
+  try {
+    // Method 1: Calculate direct 3D area by manually triangulating
     let totalArea = 0;
     
-    // Calculate area using the cross product method - this preserves the actual 3D area
-    for (const triangle of triangles) {
-      const p0 = vectors[triangle[0]];
-      const p1 = vectors[triangle[1]];
-      const p2 = vectors[triangle[2]];
-      
-      // Calculate vectors between points
-      const v1 = new THREE.Vector3().subVectors(p1, p0);
-      const v2 = new THREE.Vector3().subVectors(p2, p0);
-      
-      // Calculate cross product - the length is 2x the area
-      const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
-      
-      // The area is half the length of the cross product
-      const triangleArea = crossProduct.length() * 0.5;
+    // Triangulate using the first point as a common vertex
+    const basePoint = points[0];
+    for (let i = 1; i < points.length - 1; i++) {
+      const triangleArea = calculate3DTriangleArea(
+        basePoint,
+        points[i],
+        points[i + 1]
+      );
       
       totalArea += triangleArea;
     }
     
-    console.log("Total calculated area:", totalArea);
+    console.log("Fallback direct triangulation area:", totalArea);
     
-    // Return the total area of all triangles in the polygon
-    return totalArea;
+    // Method 2: Project to best fit plane and use earcut
+    const { projectedPoints } = projectPointsToPlane(points);
+    
+    // Flatten for earcut
+    const vertices: number[] = [];
+    for (const point of projectedPoints) {
+      vertices.push(point.x, point.z);
+    }
+    
+    // Get earcut triangulation
+    const indices = earcut(vertices, undefined, 2);
+    
+    // Calculate area of each triangle in 3D
+    let earcutArea = 0;
+    for (let i = 0; i < indices.length; i += 3) {
+      const a = points[indices[i]];
+      const b = points[indices[i + 1]];
+      const c = points[indices[i + 2]];
+      
+      earcutArea += calculate3DTriangleArea(a, b, c);
+    }
+    
+    console.log("Fallback earcut-based area:", earcutArea);
+    
+    // Choose the more reasonable result
+    if (isAreaPlausible(totalArea, points)) {
+      return totalArea;
+    } else if (isAreaPlausible(earcutArea, points)) {
+      return earcutArea;
+    }
+    
+    // Last resort: simple 2D projection to XZ plane
+    return calculateSimple2DArea(points);
   } catch (error) {
-    console.error("Error in area calculation:", error);
+    console.error("Fallback area calculation also failed:", error);
+    return calculateSimple2DArea(points);
+  }
+}
+
+/**
+ * Very simple 2D area calculation using the shoelace formula on XZ projection
+ * This is the last resort if all 3D methods fail
+ */
+function calculateSimple2DArea(points: Point[]): number {
+  try {
+    console.log("Using simple 2D projection (shoelace formula) as last resort");
     
-    // Fallback to a simpler 3D area calculation
-    try {
-      // Project points to XZ plane for 2D area calculation
-      const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
-      
-      // Calculate area using shoelace formula (Gauss's area formula)
-      let area = 0;
-      for (let i = 0; i < flatPoints.length; i++) {
-        const j = (i + 1) % flatPoints.length;
-        area += flatPoints[i].x * flatPoints[j].z;
-        area -= flatPoints[j].x * flatPoints[i].z;
-      }
-      area = Math.abs(area) / 2;
-      
-      console.log("Fallback area calculation (shoelace formula):", area);
-      
-      return area;
-    } catch (fallbackError) {
-      console.error("Fallback area calculation also failed:", fallbackError);
-      return 0; // Return 0 if all calculations fail
+    // Project points to XZ plane for 2D area calculation
+    const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
+    
+    // Calculate area using shoelace formula (Gauss's area formula)
+    let area = 0;
+    for (let i = 0; i < flatPoints.length; i++) {
+      const j = (i + 1) % flatPoints.length;
+      area += flatPoints[i].x * flatPoints[j].z;
+      area -= flatPoints[j].x * flatPoints[i].z;
+    }
+    area = Math.abs(area) / 2;
+    
+    console.log("Emergency fallback 2D area calculation result:", area);
+    
+    return area;
+  } catch (fallbackError) {
+    console.error("All area calculations failed. Returning 0:", fallbackError);
+    return 0;
+  }
+}
+
+/**
+ * Calculate the nearest point index on a list of points
+ * @param point - The reference point
+ * @param points - Array of points to search
+ * @returns The index of the nearest point
+ */
+export const getNearestPointIndex = (point: Point, points: Point[]): number => {
+  let nearestIndex = -1;
+  let minDistance = Infinity;
+  
+  for (let i = 0; i < points.length; i++) {
+    const distance = calculateDistance(point, points[i]);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = i;
     }
   }
+  
+  return nearestIndex;
+};
+
+/**
+ * Calculate the length of a segment
+ */
+export const calculateSegmentLength = (segment: Segment): number => {
+  return calculateDistance(segment.points[0], segment.points[1]);
+};
+
+/**
+ * Calculate dimensions (width, length, area, perimeter) of a quadrilateral
+ * @param points - Array of 4 points defining the quadrilateral
+ * @returns Object with dimensions
+ */
+export const calculateQuadrilateralDimensions = (points: Point[]): {
+  width: number;
+  length: number;
+  area: number;
+  perimeter: number;
+} => {
+  if (points.length !== 4) {
+    return { width: 0, length: 0, area: 0, perimeter: 0 };
+  }
+  
+  // Calculate the lengths of the sides
+  const side1 = calculateDistance(points[0], points[1]);
+  const side2 = calculateDistance(points[1], points[2]);
+  const side3 = calculateDistance(points[2], points[3]);
+  const side4 = calculateDistance(points[3], points[0]);
+  
+  // Instead of taking average of opposite sides, take minimum for width (height)
+  // and minimum for length to be more conservative in estimates
+  const width = Math.min(side1, side3);
+  const length = Math.min(side2, side4);
+  
+  // Calculate area using full 3D calculation
+  const area = calculateArea(points);
+  
+  // Calculate perimeter
+  const perimeter = side1 + side2 + side3 + side4;
+  
+  return { width, length, area, perimeter };
+};
+
+/**
+ * Calculate the bounding box of a set of points
+ * @param points - Array of 3D points
+ * @returns Object with min and max coordinates
+ */
+export const calculateBoundingBox = (points: Point[]): {
+  minX: number;
+  minY: number;
+  minZ: number;
+  maxX: number;
+  maxY: number;
+  maxZ: number;
+} => {
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    minZ = Math.min(minZ, point.z);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+    maxZ = Math.max(maxZ, point.z);
+  }
+  
+  return { minX, minY, minZ, maxX, maxY, maxZ };
+};
+
+/**
+ * Calculate the centroid (center point) of a set of points
+ * @param points - Array of 3D points
+ * @returns Object with centroid coordinates
+ */
+export const calculateCentroid = (points: Point[]): { x: number; y: number; z: number } => {
+  let sumX = 0, sumY = 0, sumZ = 0;
+  
+  for (const point of points) {
+    sumX += point.x;
+    sumY += point.y;
+    sumZ += point.z;
+  }
+  
+  const count = points.length;
+  return {
+    x: sumX / count,
+    y: sumY / count,
+    z: sumZ / count
+  };
+};
+
+/**
+ * Calculate the area of a polygon defined by 3D points using projection
+ * This is kept for compatibility with existing code
+ * @param points - Array of 3D points defining the polygon
+ * @returns Area in square meters
+ */
+export const calculatePolygonArea = (points: Point[]): number => {
+  if (points.length < 3) return 0;
+  
+  return calculateArea(points);
 };
 
 /**
@@ -245,7 +424,7 @@ const doIntersect = (p1: Point, p2: Point, p3: Point, p4: Point): boolean => {
  */
 const onSegment = (p: Point, q: Point, r: Point): boolean => {
   if (q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) &&
-      q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y))
+      q.z <= Math.max(p.z, r.z) && q.z >= Math.min(p.z, r.z))
     return true;
   
   return false;
@@ -259,161 +438,11 @@ const onSegment = (p: Point, q: Point, r: Point): boolean => {
  * @returns 0 if p, q and r are collinear, 1 if Clockwise, 2 if Counterclockwise
  */
 const orientation = (p: Point, q: Point, r: Point): number => {
-  const val = (q.y - p.y) * (r.x - q.x) -
-              (q.x - p.x) * (r.y - q.y);
+  // Using XZ plane for 2D orientation test
+  const val = (q.z - p.z) * (r.x - q.x) -
+              (q.x - p.x) * (r.z - q.z);
   
   if (val === 0) return 0;  // collinear
   
   return (val > 0) ? 1 : 2; // clock or counterclock wise
-};
-
-/**
- * Calculate the nearest point index on a list of points
- * @param point - The reference point
- * @param points - Array of points to search
- * @returns The index of the nearest point
- */
-export const getNearestPointIndex = (point: Point, points: Point[]): number => {
-  let nearestIndex = -1;
-  let minDistance = Infinity;
-  
-  for (let i = 0; i < points.length; i++) {
-    const distance = calculateDistance(point, points[i]);
-    if (distance < minDistance) {
-      minDistance = distance;
-      nearestIndex = i;
-    }
-  }
-  
-  return nearestIndex;
-};
-
-/**
- * Calculate the length of a segment
- */
-export const calculateSegmentLength = (segment: Segment): number => {
-  return calculateDistance(segment.points[0], segment.points[1]);
-};
-
-/**
- * Calculate dimensions (width, length, area, perimeter) of a quadrilateral
- * @param points - Array of 4 points defining the quadrilateral
- * @returns Object with dimensions
- */
-export const calculateQuadrilateralDimensions = (points: Point[]): {
-  width: number;
-  length: number;
-  area: number;
-  perimeter: number;
-} => {
-  if (points.length !== 4) {
-    return { width: 0, length: 0, area: 0, perimeter: 0 };
-  }
-  
-  // Calculate the lengths of the sides
-  const side1 = calculateDistance(points[0], points[1]);
-  const side2 = calculateDistance(points[1], points[2]);
-  const side3 = calculateDistance(points[2], points[3]);
-  const side4 = calculateDistance(points[3], points[0]);
-  
-  // Instead of taking average of opposite sides, take minimum for width (height)
-  // and minimum for length to be more conservative in estimates
-  const width = Math.min(side1, side3);
-  const length = Math.min(side2, side4);
-  
-  // Calculate area (approximation for non-rectangles)
-  const area = width * length;
-  
-  // Calculate perimeter
-  const perimeter = side1 + side2 + side3 + side4;
-  
-  return { width, length, area, perimeter };
-};
-
-/**
- * Calculate the bounding box of a set of points
- * @param points - Array of 3D points
- * @returns Object with min and max coordinates
- */
-export const calculateBoundingBox = (points: Point[]): {
-  minX: number;
-  minY: number;
-  minZ: number;
-  maxX: number;
-  maxY: number;
-  maxZ: number;
-} => {
-  let minX = Infinity, minY = Infinity, minZ = Infinity;
-  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-  
-  for (const point of points) {
-    minX = Math.min(minX, point.x);
-    minY = Math.min(minY, point.y);
-    minZ = Math.min(minZ, point.z);
-    maxX = Math.max(maxX, point.x);
-    maxY = Math.max(maxY, point.y);
-    maxZ = Math.max(maxZ, point.z);
-  }
-  
-  return { minX, minY, minZ, maxX, maxY, maxZ };
-};
-
-/**
- * Calculate the centroid (center point) of a set of points
- * @param points - Array of 3D points
- * @returns Object with centroid coordinates
- */
-export const calculateCentroid = (points: Point[]): { x: number; y: number; z: number } => {
-  let sumX = 0, sumY = 0, sumZ = 0;
-  
-  for (const point of points) {
-    sumX += point.x;
-    sumY += point.y;
-    sumZ += point.z;
-  }
-  
-  const count = points.length;
-  return {
-    x: sumX / count,
-    y: sumY / count,
-    z: sumZ / count
-  };
-};
-
-/**
- * Calculate the area of a polygon defined by 3D points using projection
- * This is kept for compatibility with existing code
- * @param points - Array of 3D points defining the polygon
- * @returns Area in square meters
- */
-export const calculatePolygonArea = (points: Point[]): number => {
-  if (points.length < 3) return 0;
-  
-  try {
-    return calculateArea(points);
-  } catch (error) {
-    console.error("Error in polygon area calculation:", error);
-    
-    // Extreme fallback - use shoelace formula on XZ plane
-    try {
-      // Project points to XZ plane for 2D area calculation
-      const flatPoints = points.map(p => ({ x: p.x, z: p.z }));
-      
-      // Calculate area using shoelace formula (Gauss's area formula)
-      let area = 0;
-      for (let i = 0; i < flatPoints.length; i++) {
-        const j = (i + 1) % flatPoints.length;
-        area += flatPoints[i].x * flatPoints[j].z;
-        area -= flatPoints[j].x * flatPoints[i].z;
-      }
-      area = Math.abs(area) / 2;
-      
-      console.log("Emergency fallback area calculation:", area);
-      
-      return area;
-    } catch (fallbackError) {
-      console.error("All area calculations failed:", fallbackError);
-      return 0; // Return 0 if all calculations fail
-    }
-  }
 };
