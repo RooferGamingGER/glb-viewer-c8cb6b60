@@ -273,9 +273,21 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
  * Format the value display for a measurement based on its type
  */
 export const formatMeasurementValue = (measurement: Measurement): string => {
-  // Special formatting for skylights, vents, hooks, and other penetrations
-  if (measurement.type === 'skylight' || measurement.type === 'vent' || 
-      measurement.type === 'hook' || measurement.type === 'other') {
+  // Special formatting for skylights
+  if (measurement.type === 'skylight') {
+    const count = measurement.count || 1;
+    
+    // If the skylight has width and height dimensions, display them
+    if (measurement.width && measurement.height) {
+      return `${measurement.width.toFixed(2)} × ${measurement.height.toFixed(2)}m`;
+    }
+    
+    // Otherwise fall back to the count display
+    return `${count} ${measurement.unit || 'Stk'}`;
+  }
+  
+  // Special formatting for vents, hooks, and other penetrations
+  if (measurement.type === 'vent' || measurement.type === 'hook' || measurement.type === 'other') {
     const count = measurement.count || 1;
     return `${count} ${measurement.unit || 'Stk'}`;
   }
@@ -311,11 +323,6 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
 
 /**
  * Sort measurements in the specified order for PDF export
- * 
- * Sort order:
- * 1. Standard measurements: length, area, height
- * 2. Roof elements: skylight, chimney, solar
- * 3. Installations: vent, hook, other
  */
 export const sortMeasurementsForExport = (measurements: Measurement[]): Measurement[] => {
   // Define type order for sorting
