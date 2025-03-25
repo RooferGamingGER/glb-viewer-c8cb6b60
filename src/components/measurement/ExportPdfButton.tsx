@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -10,23 +9,9 @@ import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 import * as THREE from 'three';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,20 +21,24 @@ import { Toggle } from "@/components/ui/toggle";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
 interface ExportPdfButtonProps {
   measurements: Measurement[];
 }
-
-const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
+const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
+  measurements
+}) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [use2DRendering, setUse2DRendering] = useState(true);
   const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
   const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
-  const { scene, camera, renderer, canvas } = useThreeContext();
-  
+  const {
+    scene,
+    camera,
+    renderer,
+    canvas
+  } = useThreeContext();
   const form = useForm<CoverPageData>({
     defaultValues: {
       title: 'Vermessungsbericht',
@@ -69,10 +58,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       generateRoofPlan();
     }
   }, [measurements, includeRoofPlan]);
-
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
-    
     try {
       // Always use top-down view (useTopDownView=true) for consistent roof plans
       const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
@@ -81,43 +68,29 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       console.error('Error generating roof plan:', error);
     }
   };
-
-  const hasCustomScreenshots = measurements.some(m => 
-    m.customScreenshots && m.customScreenshots.length > 0
-  );
-
+  const hasCustomScreenshots = measurements.some(m => m.customScreenshots && m.customScreenshots.length > 0);
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
-  
   const previewMeasurements = consolidatePenetrations(measurements);
-  const screenshotCount = measurements.reduce((total, m) => 
-    total + (m.customScreenshots?.length || 0), 0
-  );
-
+  const screenshotCount = measurements.reduce((total, m) => total + (m.customScreenshots?.length || 0), 0);
   const handleExport = async () => {
     if (measurements.length === 0) {
       toast.error('Keine Messungen zum Exportieren vorhanden');
       return;
     }
-
     setIsExporting(true);
     setExportProgress(10);
-    
     try {
       const areaMeasurements = measurements.filter(m => m.type === 'area');
       const solarMeasurements = measurements.filter(m => m.type === 'solar');
       const measurementsWithVisuals = [...measurements];
-      
       const perspCamera = asPerspectiveCamera(camera);
       setExportProgress(20);
-      
       for (let i = 0; i < areaMeasurements.length; i++) {
         const measurement = areaMeasurements[i];
-        
         if (use2DRendering) {
           const polygon2D = generatePolygon2D(measurement);
-          
           if (polygon2D) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -130,7 +103,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           }
         } else if (scene && perspCamera && renderer && canvas) {
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
-          
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -141,16 +113,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             }
           }
         }
-        
-        setExportProgress(20 + Math.floor((i / areaMeasurements.length) * 30));
+        setExportProgress(20 + Math.floor(i / areaMeasurements.length * 30));
       }
-
       for (let i = 0; i < solarMeasurements.length; i++) {
         const measurement = solarMeasurements[i];
-        
         if (use2DRendering) {
           const polygon2D = generatePolygon2D(measurement);
-          
           if (polygon2D) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -163,7 +131,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           }
         } else if (scene && perspCamera && renderer && canvas) {
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
-          
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -175,9 +142,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           }
         }
       }
-      
       setExportProgress(50);
-      
       if (includeRoofPlan) {
         // Use the pre-generated roof plan or generate it if needed
         if (!generatedRoofPlan) {
@@ -191,13 +156,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
         }
       }
-      
       setExportProgress(70);
-      
       const coverData = form.getValues();
       const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
       setExportProgress(100);
-      
       if (success) {
         toast.success('PDF wurde erfolgreich erstellt');
         setTimeout(() => {
@@ -216,13 +178,11 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
       }, 1000);
     }
   };
-
-  return (
-    <Dialog>
+  return <Dialog>
       <DialogTrigger asChild>
         <Button className="w-full flex items-center gap-2">
           <FileDown className="h-4 w-4" />
-          <span>Als PDF exportieren</span>
+          <span>PDF </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
@@ -239,158 +199,106 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             <TabsTrigger value="preview">
               Messungen ({measurements.length})
             </TabsTrigger>
-            {hasCustomScreenshots && (
-              <TabsTrigger value="screenshots">
+            {hasCustomScreenshots && <TabsTrigger value="screenshots">
                 Screenshots ({screenshotCount})
-              </TabsTrigger>
-            )}
+              </TabsTrigger>}
           </TabsList>
           
           <TabsContent value="info">
             <Form {...form}>
               <div className="grid gap-4 py-2">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="title" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Berichtstitel</FormLabel>
                       <FormControl>
                         <Input placeholder="Vermessungsbericht" {...field} />
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="projectNumber"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="projectNumber" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Projektnummer</FormLabel>
                         <FormControl>
                           <Input placeholder="z.B. P2023-001" {...field} />
                         </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  <FormField
-                    control={form.control}
-                    name="creationDate"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="creationDate" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Erstellungsdatum</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
                 
-                <FormField
-                  control={form.control}
-                  name="projectAddress"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="projectAddress" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Objektadresse</FormLabel>
                       <FormControl>
                         <Input placeholder="Straße, PLZ Ort" {...field} />
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="clientName"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="clientName" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Auftraggeber</FormLabel>
                         <FormControl>
                           <Input placeholder="Name des Auftraggebers" {...field} />
                         </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  <FormField
-                    control={form.control}
-                    name="contactPerson"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="contactPerson" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Ansprechpartner</FormLabel>
                         <FormControl>
                           <Input placeholder="Name des Ansprechpartners" {...field} />
                         </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
                 
-                <FormField
-                  control={form.control}
-                  name="companyName"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="companyName" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Ausführender Betrieb</FormLabel>
                       <FormControl>
                         <Input placeholder="Name des Betriebs" {...field} />
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
                 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="notes" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Bemerkungen</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Zusätzliche Informationen zum Projekt..." 
-                          className="resize-none h-20"
-                          {...field} 
-                        />
+                        <Textarea placeholder="Zusätzliche Informationen zum Projekt..." className="resize-none h-20" {...field} />
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
                 
                 <div className="flex flex-col space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="use-2d-rendering"
-                      checked={use2DRendering}
-                      onCheckedChange={setUse2DRendering}
-                    />
-                    <label
-                      htmlFor="use-2d-rendering"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
+                    <Switch id="use-2d-rendering" checked={use2DRendering} onCheckedChange={setUse2DRendering} />
+                    <label htmlFor="use-2d-rendering" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       2D-Rendering für Flächendarstellung verwenden
                     </label>
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="include-roof-plan"
-                      checked={includeRoofPlan}
-                      onCheckedChange={(value) => {
-                        setIncludeRoofPlan(value);
-                        if (value && !generatedRoofPlan) {
-                          generateRoofPlan();
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="include-roof-plan"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
+                    <Switch id="include-roof-plan" checked={includeRoofPlan} onCheckedChange={value => {
+                    setIncludeRoofPlan(value);
+                    if (value && !generatedRoofPlan) {
+                      generateRoofPlan();
+                    }
+                  }} />
+                    <label htmlFor="include-roof-plan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       Dachplan als Draufsicht hinzufügen
                     </label>
                   </div>
@@ -424,8 +332,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
             </Card>
           </TabsContent>
           
-          {hasCustomScreenshots && (
-            <TabsContent value="screenshots">
+          {hasCustomScreenshots && <TabsContent value="screenshots">
               <Card>
                 <CardContent className="pt-4">
                   <div className="mb-4">
@@ -436,47 +343,35 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                     
                     <ScrollArea className="h-[300px] border rounded-md p-4">
                       <div className="grid grid-cols-2 gap-4">
-                        {measurements.map((measurement) => {
-                          if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
-                            return null;
-                          }
-                          
-                          return (
-                            <div key={measurement.id} className="space-y-2">
+                        {measurements.map(measurement => {
+                      if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
+                        return null;
+                      }
+                      return <div key={measurement.id} className="space-y-2">
                               <h4 className="text-xs font-medium">
                                 {measurement.description || `Messung ${measurement.id.substring(0, 5)}`}
                               </h4>
                               <div className="grid grid-cols-1 gap-2">
-                                {measurement.customScreenshots.map((screenshot, index) => (
-                                  <div key={index} className="border rounded-md overflow-hidden">
-                                    <img 
-                                      src={screenshot} 
-                                      alt={`Screenshot ${index + 1}`} 
-                                      className="w-full h-32 object-cover"
-                                    />
-                                  </div>
-                                ))}
+                                {measurement.customScreenshots.map((screenshot, index) => <div key={index} className="border rounded-md overflow-hidden">
+                                    <img src={screenshot} alt={`Screenshot ${index + 1}`} className="w-full h-32 object-cover" />
+                                  </div>)}
                               </div>
-                            </div>
-                          );
-                        })}
+                            </div>;
+                    })}
                       </div>
                     </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          )}
+            </TabsContent>}
         </Tabs>
         
-        {isExporting && (
-          <div className="mt-4">
+        {isExporting && <div className="mt-4">
             <Progress value={exportProgress} className="w-full" />
             <p className="text-xs text-muted-foreground text-center mt-2">
               {exportProgress < 100 ? 'PDF wird erstellt...' : 'PDF fertiggestellt!'}
             </p>
-          </div>
-        )}
+          </div>}
         
         <DialogFooter>
           <DialogClose asChild>
@@ -489,8 +384,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default ExportPdfButton;
