@@ -116,9 +116,7 @@ const Index = () => {
                 <Layers className="w-5 h-5 text-primary" />
               </div>
               <h3 className="text-base font-medium mb-1">Präzise Messungen</h3>
-              <p className="text-sm text-muted-foreground">
-                Messen Sie Abstände, Flächen und Winkel mit professionellen Werkzeugen direkt im 3D-Raum.
-              </p>
+              <p className="text-sm text-muted-foreground">Messen Sie Abstände, Flächen und Neigungen mit professionellen Werkzeugen direkt im 3D-Raum.</p>
             </div>
 
             <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
