@@ -1,15 +1,11 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-
 const Index = () => {
   const navigate = useNavigate();
-  
-  return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
+  return <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
@@ -33,12 +29,7 @@ const Index = () => {
           </p>
           
           <div className="mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/test')}
-              className="animate-fade-in"
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate('/test')} className="animate-fade-in">
               Demo-Modell ansehen
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -107,9 +98,7 @@ const Index = () => {
                 <Box className="w-5 h-5 text-primary" />
               </div>
               <h3 className="text-base font-medium mb-1">GLB-Format</h3>
-              <p className="text-sm text-muted-foreground">
-                Unterstützung für das gängige GLB-Format, das von den meisten 3D-Programmen exportiert werden kann.
-              </p>
+              <p className="text-sm text-muted-foreground">Unterstützung für das gängige GLB-Format, das direkt vom Server als Textured Modell (glTF) zur Verfügung gestellt wird.</p>
             </div>
             
             <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
@@ -159,8 +148,6 @@ const Index = () => {
           <p className="text-xs mt-1 hidden md:block">Unterstützt GLB-Dateien bis zu 100MB</p>
         </footer>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
