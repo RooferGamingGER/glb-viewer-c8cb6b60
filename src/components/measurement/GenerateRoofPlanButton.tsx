@@ -91,9 +91,14 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="w-full flex items-center gap-2">
-          <Maximize className="h-4 w-4" />
-          <span>Dachplan generieren</span>
+        <Button
+          variant="outline" 
+          size="sm"
+          className="w-full"
+          disabled={measurements.length === 0}
+        >
+          <Maximize className="h-4 w-4 mr-1" />
+          Dachplan
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[800px]">
