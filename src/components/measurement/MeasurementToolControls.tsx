@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -5,7 +6,6 @@ import {
   ArrowUpDown, 
   X, 
   Square, 
-  Table, 
   Download,
   Sun,
   SplitSquareVertical,
@@ -18,6 +18,7 @@ import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
 import { exportMeasurementsToCSV } from '@/utils/exportUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 
 interface MeasurementToolControlsProps {
   activeMode: MeasurementMode;
@@ -197,15 +198,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       
       {measurements.length > 0 && (
         <div className="grid grid-cols-3 gap-2 mt-2">
-          <Button
-            variant="outline" 
-            size="sm"
-            className="w-full"
-            onClick={() => setShowTable(!showTable)}
-          >
-            <Table className="h-4 w-4 mr-1" />
-            {showTable ? "Liste" : "Tabelle"}
-          </Button>
+          <GenerateRoofPlanButton measurements={measurements} />
           
           <ExportPdfButton measurements={measurements} />
           
