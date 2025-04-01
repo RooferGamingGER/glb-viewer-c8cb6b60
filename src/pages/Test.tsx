@@ -1,13 +1,21 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '@/components/ModelViewer';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Upload, Menu, X } from 'lucide-react';
+import { ArrowLeft, Upload, Menu, X, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import PerformanceSettings from '@/components/PerformanceSettings';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const Test = () => {
   const navigate = useNavigate();
@@ -15,11 +23,9 @@ const Test = () => {
   const { isPortrait } = useScreenOrientation();
   const [menuOpen, setMenuOpen] = useState(false);
   
-  // Use a permanent GLB model path - this should be placed in public/models/
   const testModelUrl = '/models/test-model.glb';
   const testModelName = 'Demo Modell';
 
-  // Close mobile menu when orientation changes
   useEffect(() => {
     setMenuOpen(false);
   }, [isPortrait]);
@@ -56,19 +62,40 @@ const Test = () => {
           </h1>
         </div>
         
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => navigate('/')}
-          className="glass-button"
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          <span className={isMobile ? "sr-only" : ""}>Eigenes Modell hochladen</span>
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Einstellungen</SheetTitle>
+                <SheetDescription>
+                  Passen Sie die Performance und Qualität an Ihr Gerät an.
+                </SheetDescription>
+              </SheetHeader>
+              
+              <div className="mt-6">
+                <PerformanceSettings />
+              </div>
+            </SheetContent>
+          </Sheet>
+          
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="glass-button"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            <span className={isMobile ? "sr-only" : ""}>Eigenes Modell hochladen</span>
+          </Button>
+        </div>
       </header>
       
       <div className="flex-1 relative flex overflow-hidden">
-        {/* Mobile menu overlay */}
         {isMobile && menuOpen && (
           <div 
             className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20"
@@ -97,13 +124,17 @@ const Test = () => {
                   Eigenes Modell hochladen
                 </Button>
               </div>
+              
+              <div className="mt-6 border-t border-border pt-4">
+                <h4 className="text-sm font-medium mb-3">Leistungseinstellungen</h4>
+                <PerformanceSettings />
+              </div>
             </div>
           </div>
         )}
         
         <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
           <main className="flex-1 relative w-full h-full">
-            {/* Display the permanent test model with touch-friendly controls */}
             <ModelViewer 
               fileUrl={testModelUrl} 
               fileName={testModelName} 
