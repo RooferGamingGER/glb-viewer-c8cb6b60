@@ -154,6 +154,50 @@
   .drag-active {
     @apply border-primary bg-primary/5 scale-[1.01] shadow-md;
   }
+  
+  /* Add specific styles for improved label visibility in PDF exports */
+  .pdf-export-label {
+    font-weight: bold !important;
+    font-size: 14pt !important;
+    text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white;
+    color: black !important;
+  }
+  
+  .roof-plan-container {
+    page-break-before: always;
+    page-break-after: always;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .roof-plan-title {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+  
+  .roof-plan-image {
+    flex: 1;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    min-height: 0;
+    max-height: 100%;
+  }
+  
+  /* Enlarged text for measurement labels in exports */
+  .export-measurement-text {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    background-color: rgba(255, 255, 255, 0.7) !important;
+    padding: 2px 4px !important;
+    border-radius: 2px !important;
+  }
 }
 
 @keyframes spin-slow {

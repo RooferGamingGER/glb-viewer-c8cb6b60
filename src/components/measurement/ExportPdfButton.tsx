@@ -63,7 +63,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      const roofPlan = createCombinedRoofPlan(measurements, 1800, 1300, 0.05, true);
+      const roofPlan = createCombinedRoofPlan(measurements, 2200, 1600, 0.08, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
@@ -105,7 +105,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -133,7 +133,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -148,7 +148,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
-          const roofPlan = createCombinedRoofPlan(measurements, 1800, 1300, 0.05, true);
+          const roofPlan = createCombinedRoofPlan(measurements, 2200, 1600, 0.08, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
           }
