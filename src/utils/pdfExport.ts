@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
@@ -55,6 +56,7 @@ export const exportMeasurementsToPdf = async (
     
     // Extract roof plan if included
     const roofPlan = (measurements as any).roofPlan;
+    const showRoofPlanWithoutHeader = (measurements as any).showRoofPlanWithoutHeader;
     
     // Create a container for the PDF content
     const container = document.createElement('div');
@@ -82,6 +84,15 @@ export const exportMeasurementsToPdf = async (
         flex-grow: 1;
         display: flex;
         flex-direction: column;
+      }
+      .roof-plan-fullpage {
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        padding: 10mm;
       }
       .roof-plan-header {
         text-align: center;
@@ -380,44 +391,58 @@ export const exportMeasurementsToPdf = async (
     coverPage.appendChild(createCoverPage(coverData));
     contentWrapper.appendChild(coverPage);
     
-    // Add roof plan if available - give it its own full page with minimal margins
+    // Add roof plan if available - give it its own full page without header when showRoofPlanWithoutHeader is true
     if (roofPlan) {
       const roofPlanSection = document.createElement('div');
-      roofPlanSection.className = 'roof-plan-section force-page-break';
+      roofPlanSection.className = showRoofPlanWithoutHeader 
+        ? 'roof-plan-fullpage force-page-break' 
+        : 'roof-plan-section force-page-break';
       
-      // Create a more compact header for the roof plan that's always visible
-      const compactHeader = document.createElement('div');
-      compactHeader.className = 'roof-plan-header';
-      
-      // Add title to header (more compact)
-      const headerTitle = document.createElement('div');
-      headerTitle.style.fontSize = '20px';
-      headerTitle.style.fontWeight = 'bold';
-      headerTitle.style.color = '#333';
-      headerTitle.textContent = coverData.title || 'Vermessungsbericht';
-      compactHeader.appendChild(headerTitle);
-      
-      // Create roof plan content container (for better layout control)
-      const roofPlanContent = document.createElement('div');
-      roofPlanContent.className = 'roof-plan-content';
-      
-      // Add the compact header
-      roofPlanContent.appendChild(compactHeader);
-      
-      // Add the roof plan container for better sizing
-      const roofPlanContainer = document.createElement('div');
-      roofPlanContainer.className = 'roof-plan-container';
-      roofPlanContainer.style.marginTop = '10px'; // Add some spacing after header
-      
-      // Add the roof plan image with proper sizing
-      const roofPlanImage = document.createElement('img');
-      roofPlanImage.src = roofPlan;
-      roofPlanImage.className = 'roof-plan-image';
-      roofPlanImage.alt = 'Dachplan';
-      
-      roofPlanContainer.appendChild(roofPlanImage);
-      roofPlanContent.appendChild(roofPlanContainer);
-      roofPlanSection.appendChild(roofPlanContent);
+      if (!showRoofPlanWithoutHeader) {
+        // Create a more compact header for the roof plan that's always visible
+        const compactHeader = document.createElement('div');
+        compactHeader.className = 'roof-plan-header';
+        
+        // Add title to header (more compact)
+        const headerTitle = document.createElement('div');
+        headerTitle.style.fontSize = '20px';
+        headerTitle.style.fontWeight = 'bold';
+        headerTitle.style.color = '#333';
+        headerTitle.textContent = coverData.title || 'Vermessungsbericht';
+        compactHeader.appendChild(headerTitle);
+        
+        // Create roof plan content container (for better layout control)
+        const roofPlanContent = document.createElement('div');
+        roofPlanContent.className = 'roof-plan-content';
+        
+        // Add the compact header
+        roofPlanContent.appendChild(compactHeader);
+        
+        // Add the roof plan container for better sizing
+        const roofPlanContainer = document.createElement('div');
+        roofPlanContainer.className = 'roof-plan-container';
+        roofPlanContainer.style.marginTop = '10px'; // Add some spacing after header
+        
+        // Add the roof plan image with proper sizing
+        const roofPlanImage = document.createElement('img');
+        roofPlanImage.src = roofPlan;
+        roofPlanImage.className = 'roof-plan-image';
+        roofPlanImage.alt = 'Dachplan';
+        
+        roofPlanContainer.appendChild(roofPlanImage);
+        roofPlanContent.appendChild(roofPlanContainer);
+        roofPlanSection.appendChild(roofPlanContent);
+      } else {
+        // Full page roof plan without header
+        const roofPlanImage = document.createElement('img');
+        roofPlanImage.src = roofPlan;
+        roofPlanImage.className = 'roof-plan-image';
+        roofPlanImage.alt = 'Dachplan';
+        roofPlanImage.style.maxWidth = '100%';
+        roofPlanImage.style.maxHeight = '100%';
+        
+        roofPlanSection.appendChild(roofPlanImage);
+      }
       
       contentWrapper.appendChild(roofPlanSection);
     }
