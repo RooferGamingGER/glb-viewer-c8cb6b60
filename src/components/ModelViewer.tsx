@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -196,7 +197,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     canvas: HTMLCanvasElement
   ) => {
     if (newRenderer) {
-      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
+      // Reduzierte Pixel-Ratio für geringere RAM-Nutzung
+      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+      
+      // Weitere Optimierungen
+      newRenderer.shadowMap.enabled = true;
+      newRenderer.shadowMap.type = THREE.PCFSoftShadowMap; // Weichere Schatten
+      newRenderer.outputColorSpace = THREE.SRGBColorSpace; // Korrekte Farbdarstellung
     }
     
     setThreeContext({
