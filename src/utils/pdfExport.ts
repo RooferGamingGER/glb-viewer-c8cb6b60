@@ -85,8 +85,8 @@ export const exportMeasurementsToPdf = async (
       }
       .roof-plan-header {
         text-align: center;
-        padding-bottom: 5px;
-        margin-bottom: 10px;
+        padding-bottom: 8px;
+        margin-bottom: 15px;
         border-bottom: 1px solid #eaeaea;
       }
       .roof-plan-container {
@@ -385,13 +385,13 @@ export const exportMeasurementsToPdf = async (
       const roofPlanSection = document.createElement('div');
       roofPlanSection.className = 'roof-plan-section force-page-break';
       
-      // Create a more compact header for the roof plan
+      // Create a more compact header for the roof plan that's always visible
       const compactHeader = document.createElement('div');
       compactHeader.className = 'roof-plan-header';
       
       // Add title to header (more compact)
       const headerTitle = document.createElement('div');
-      headerTitle.style.fontSize = '18px';
+      headerTitle.style.fontSize = '20px';
       headerTitle.style.fontWeight = 'bold';
       headerTitle.style.color = '#333';
       headerTitle.textContent = coverData.title || 'Vermessungsbericht';
@@ -404,18 +404,10 @@ export const exportMeasurementsToPdf = async (
       // Add the compact header
       roofPlanContent.appendChild(compactHeader);
       
-      // Create title
-      const sectionTitle = document.createElement('h2');
-      sectionTitle.textContent = 'Dachplan (Draufsicht)';
-      sectionTitle.style.textAlign = 'center';
-      sectionTitle.style.marginTop = '5px';
-      sectionTitle.style.marginBottom = '10px';
-      sectionTitle.style.fontSize = '22px';
-      roofPlanContent.appendChild(sectionTitle);
-      
       // Add the roof plan container for better sizing
       const roofPlanContainer = document.createElement('div');
       roofPlanContainer.className = 'roof-plan-container';
+      roofPlanContainer.style.marginTop = '10px'; // Add some spacing after header
       
       // Add the roof plan image with proper sizing
       const roofPlanImage = document.createElement('img');
