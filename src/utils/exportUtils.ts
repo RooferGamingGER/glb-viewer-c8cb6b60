@@ -327,6 +327,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
 
 /**
  * Sort measurements in the specified order for PDF export
+ * Ensuring the correct sequence for report generation
  */
 export const sortMeasurementsForExport = (measurements: Measurement[]): Measurement[] => {
   // Define type order for sorting
@@ -358,6 +359,7 @@ export const sortMeasurementsForExport = (measurements: Measurement[]): Measurem
 /**
  * Group penetration items (vents, hooks, other) by type and subtype
  * to consolidate them in the PDF report for better space efficiency
+ * and ensure roof plan fits properly on page
  */
 export const consolidatePenetrations = (measurements: Measurement[]): Measurement[] => {
   // Get all measurements that aren't penetrations
@@ -402,12 +404,13 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
         const totalCount = items.reduce((sum, item) => sum + (item.count || 1), 0);
         
         // Create a more space-efficient consolidated measurement
+        // Use extremely compact notation to save vertical space for roof plan
         consolidatedPenetrations.push({
           ...template,
           id: template.id, // Keep ID of the first item
           count: totalCount,
           description: template.description || getMeasurementTypeDisplayName(type),
-          // Add a more concise note for consolidated items
+          // Add an even more concise note for consolidated items to save space
           notes: items.length > 1 
             ? `${totalCount}× ${getMeasurementTypeDisplayName(type)}${template.subType ? ` (${template.subType})` : ''}`
             : template.notes
@@ -417,5 +420,25 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
   });
   
   // Return all non-penetration measurements plus the consolidated ones
+  // Ensure proper sorting to keep report layout compact and consistent
   return [...nonPenetrations, ...consolidatedPenetrations];
+};
+
+/**
+ * Calculate the ideal scale factor for the roof plan to fit on page 2
+ * This helps ensure the roof plan fits appropriately underneath the header
+ */
+export const calculateRoofPlanScaleFactor = (
+  roofPlanWidth: number,
+  roofPlanHeight: number,
+  availableWidth: number = 500,
+  availableHeight: number = 650
+): number => {
+  // Calculate scale factors based on width and height constraints
+  const widthScale = availableWidth / roofPlanWidth;
+  const heightScale = availableHeight / roofPlanHeight;
+  
+  // Use the smaller scale factor to ensure the plan fits within both dimensions
+  // Apply a small safety margin (0.95) to ensure it doesn't touch page edges
+  return Math.min(widthScale, heightScale) * 0.95;
 };

@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown, Image } from 'lucide-react';
+import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
-import { consolidatePenetrations } from '@/utils/exportUtils';
+import { consolidatePenetrations, calculateRoofPlanScaleFactor } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
-import * as THREE from 'three';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,9 +16,8 @@ import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Toggle } from "@/components/ui/toggle";
-import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
+import MeasurementTable from './MeasurementTable';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ExportPdfButtonProps {
@@ -63,7 +61,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      const roofPlan = createCombinedRoofPlan(measurements, 2200, 1600, 0.08, true);
+      const roofPlan = createCombinedRoofPlan(measurements, 2000, 1400, 0.09, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
@@ -148,7 +146,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
-          const roofPlan = createCombinedRoofPlan(measurements, 2200, 1600, 0.08, true);
+          const roofPlan = createCombinedRoofPlan(measurements, 2000, 1400, 0.09, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
           }
