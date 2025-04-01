@@ -21,9 +21,11 @@ import { Toggle } from "@/components/ui/toggle";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 interface ExportPdfButtonProps {
   measurements: Measurement[];
 }
+
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   measurements
 }) => {
@@ -52,28 +54,29 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     }
   });
 
-  // Auto-generate roof plan when dialog opens or when measurements change
   useEffect(() => {
     if (measurements.length > 0 && includeRoofPlan) {
       generateRoofPlan();
     }
   }, [measurements, includeRoofPlan]);
+
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      // Always use top-down view (useTopDownView=true) for consistent roof plans
-      const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+      const roofPlan = createCombinedRoofPlan(measurements, 1800, 1300, 0.05, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
     }
   };
+
   const hasCustomScreenshots = measurements.some(m => m.customScreenshots && m.customScreenshots.length > 0);
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
   const previewMeasurements = consolidatePenetrations(measurements);
   const screenshotCount = measurements.reduce((total, m) => total + (m.customScreenshots?.length || 0), 0);
+
   const handleExport = async () => {
     if (measurements.length === 0) {
       toast.error('Keine Messungen zum Exportieren vorhanden');
@@ -144,15 +147,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       }
       setExportProgress(50);
       if (includeRoofPlan) {
-        // Use the pre-generated roof plan or generate it if needed
         if (!generatedRoofPlan) {
-          // Always use top-down view for the roof plan
-          const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+          const roofPlan = createCombinedRoofPlan(measurements, 1800, 1300, 0.05, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
           }
         } else {
-          // Use the pre-generated roof plan
           (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
         }
       }
@@ -178,6 +178,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       }, 1000);
     }
   };
+
   return <Dialog>
       <DialogTrigger asChild>
         <Button className="w-full flex items-center gap-2">
@@ -386,4 +387,5 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default ExportPdfButton;

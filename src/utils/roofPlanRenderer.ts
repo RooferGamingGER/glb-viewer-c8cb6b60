@@ -199,9 +199,9 @@ const projectMeasurementsTopDown = (measurements: Measurement[]): {
  */
 export const createCombinedRoofPlan = (
   measurements: Measurement[],
-  width = 1200,
-  height = 900,
-  padding = 0.1,
+  width = 1800,
+  height = 1300,
+  padding = 0.05,
   useTopDownView = false
 ): string => {
   if (measurements.length === 0) {
@@ -266,14 +266,14 @@ export const createCombinedRoofPlan = (
     const toCanvasX = (x: number) => offsetX + (x - paddedMinX) * scale;
     const toCanvasY = (y: number) => offsetY + (y - paddedMinY) * scale;
     
-    // Add a title
-    ctx.font = 'bold 24px Arial';
+    // Add a title - made smaller for PDF export
+    ctx.font = 'bold 20px Arial';
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('Dachplan (Draufsicht)', width / 2, 20);
+    ctx.fillText('Dachplan (Draufsicht)', width / 2, 10);
     
-    // Draw scale indicator
+    // Draw scale indicator - made more compact for PDF export
     drawScaleIndicator(ctx, width, height, scale, rangeX);
     
     // Define colors for different measurement types
@@ -308,14 +308,14 @@ export const createCombinedRoofPlan = (
       ctx.fill();
       
       // Draw the outline
-      ctx.lineWidth = 3; // Increased line width for better visibility
+      ctx.lineWidth = 3.5;
       ctx.strokeStyle = colorSet.stroke;
       ctx.stroke();
       
       // Draw the vertices
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2); // Increased point size
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2);
         ctx.fillStyle = colorSet.stroke;
         ctx.fill();
         
@@ -391,11 +391,11 @@ export const createCombinedRoofPlan = (
       }
     });
     
-    // Add a legend
+    // Add a legend - more compact for PDF export
     drawLegend(ctx, width, height, colors);
     
-    // Convert to base64
-    return canvas.toDataURL('image/png');
+    // Convert to base64 with high quality
+    return canvas.toDataURL('image/png', 1.0);
   } catch (error) {
     console.error('Error creating combined roof plan:', error);
     return '';
@@ -439,18 +439,18 @@ function drawScaleIndicator(
   
   const scaleBarPixelLength = niceScaleLength * pixelsPerMeter;
   
-  // Draw the scale bar
-  const scaleBarX = 50;
-  const scaleBarY = height - 50;
+  // Draw the scale bar - positioned in bottom left corner with less space
+  const scaleBarX = 40; // Reduced from 50 to 40
+  const scaleBarY = height - 30; // Reduced from 50 to 30
   
   // Draw background
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.fillRect(scaleBarX - 10, scaleBarY - 30, scaleBarPixelLength + 20, 50);
+  ctx.fillRect(scaleBarX - 10, scaleBarY - 25, scaleBarPixelLength + 20, 40); // More compact
   
   // Draw border
   ctx.strokeStyle = '#333333';
   ctx.lineWidth = 1;
-  ctx.strokeRect(scaleBarX - 10, scaleBarY - 30, scaleBarPixelLength + 20, 50);
+  ctx.strokeRect(scaleBarX - 10, scaleBarY - 25, scaleBarPixelLength + 20, 40);
   
   // Draw scale bar
   ctx.beginPath();
@@ -476,17 +476,17 @@ function drawScaleIndicator(
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 10);
+  ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 8);
   
   // Add "Maßstab" label
   ctx.font = 'bold 12px Arial';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 10);
+  ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 8);
 }
 
 /**
- * Draw a legend for the different measurement types
+ * Draw a legend for the different measurement types - more compact for PDF export
  */
 function drawLegend(
   ctx: CanvasRenderingContext2D,
@@ -494,10 +494,10 @@ function drawLegend(
   height: number,
   colors: Record<string, { fill: string; stroke: string }>
 ): void {
-  const legendX = width - 200;
-  const legendY = 60;
-  const itemHeight = 25;
-  const legendWidth = 180;
+  const legendX = width - 180; // More compact, moved left
+  const legendY = 40; // Moved up from 60 to 40
+  const itemHeight = 20; // Reduced from 25 to 20
+  const legendWidth = 160; // Reduced from 180 to 160
   
   // Define legend items
   const legendItems = [
@@ -507,7 +507,7 @@ function drawLegend(
     { type: 'chimney', label: 'Kamin' }
   ];
   
-  const legendHeight = legendItems.length * itemHeight + 40;
+  const legendHeight = legendItems.length * itemHeight + 30; // Reduced padding
   
   // Draw legend background
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -519,14 +519,14 @@ function drawLegend(
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
   
   // Draw legend title
-  ctx.font = 'bold 14px Arial';
+  ctx.font = 'bold 13px Arial'; // Reduced from 14px to 13px
   ctx.fillStyle = '#333333';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText('Legende', legendX + legendWidth / 2, legendY + 10);
+  ctx.fillText('Legende', legendX + legendWidth / 2, legendY + 8); // Reduced top padding
   
   // Draw legend items
-  let currentY = legendY + 35;
+  let currentY = legendY + 28; // Reduced spacing
   
   legendItems.forEach(item => {
     const colorSet = colors[item.type] || colors.default;
@@ -536,15 +536,15 @@ function drawLegend(
     ctx.strokeStyle = colorSet.stroke;
     ctx.lineWidth = 1;
     
-    ctx.fillRect(legendX + 15, currentY, 20, 15);
-    ctx.strokeRect(legendX + 15, currentY, 20, 15);
+    ctx.fillRect(legendX + 10, currentY, 18, 14); // Smaller color boxes
+    ctx.strokeRect(legendX + 10, currentY, 18, 14);
     
     // Draw label
-    ctx.font = '12px Arial';
+    ctx.font = '11px Arial'; // Smaller font
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(item.label, legendX + 45, currentY + 7);
+    ctx.fillText(item.label, legendX + 38, currentY + 7);
     
     currentY += itemHeight;
   });

@@ -72,6 +72,37 @@ export const exportMeasurementsToPdf = async (
       .pdf-section {
         padding: 10mm 15mm 10mm 15mm;
       }
+      .roof-plan-section {
+        padding: 5mm;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .roof-plan-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .roof-plan-header {
+        text-align: center;
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #eaeaea;
+      }
+      .roof-plan-container {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+      }
+      .roof-plan-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
       .keep-together {
         page-break-inside: avoid;
       }
@@ -122,7 +153,7 @@ export const exportMeasurementsToPdf = async (
         text-align: center;
         padding-bottom: 10px;
         margin-bottom: 20px;
-        border-bottom: 1px solid #eaeaea;
+        border-bottom: 1px solid #e0e0e0;
       }
       .header-title {
         font-size: 20px;
@@ -349,45 +380,52 @@ export const exportMeasurementsToPdf = async (
     coverPage.appendChild(createCoverPage(coverData));
     contentWrapper.appendChild(coverPage);
     
-    // Add roof plan if available
+    // Add roof plan if available - give it its own full page with minimal margins
     if (roofPlan) {
       const roofPlanSection = document.createElement('div');
-      roofPlanSection.className = 'pdf-section force-page-break';
+      roofPlanSection.className = 'roof-plan-section force-page-break';
       
-      // Create section with header that stays with content
+      // Create a more compact header for the roof plan
+      const compactHeader = document.createElement('div');
+      compactHeader.className = 'roof-plan-header';
+      
+      // Add title to header (more compact)
+      const headerTitle = document.createElement('div');
+      headerTitle.style.fontSize = '18px';
+      headerTitle.style.fontWeight = 'bold';
+      headerTitle.style.color = '#333';
+      headerTitle.textContent = coverData.title || 'Vermessungsbericht';
+      compactHeader.appendChild(headerTitle);
+      
+      // Create roof plan content container (for better layout control)
       const roofPlanContent = document.createElement('div');
-      roofPlanContent.className = 'section-with-header';
+      roofPlanContent.className = 'roof-plan-content';
       
-      // Add header
-      roofPlanContent.appendChild(createHeader(coverData.title));
+      // Add the compact header
+      roofPlanContent.appendChild(compactHeader);
       
       // Create title
       const sectionTitle = document.createElement('h2');
       sectionTitle.textContent = 'Dachplan (Draufsicht)';
-      sectionTitle.style.marginTop = '20px';
-      sectionTitle.style.marginBottom = '30px';
+      sectionTitle.style.textAlign = 'center';
+      sectionTitle.style.marginTop = '5px';
+      sectionTitle.style.marginBottom = '10px';
+      sectionTitle.style.fontSize = '22px';
       roofPlanContent.appendChild(sectionTitle);
       
-      // Create description
-      const description = document.createElement('p');
-      description.textContent = 'Dieser Plan zeigt alle vermessenen Dachflächen und Elemente in der Draufsicht.';
-      roofPlanContent.appendChild(description);
+      // Add the roof plan container for better sizing
+      const roofPlanContainer = document.createElement('div');
+      roofPlanContainer.className = 'roof-plan-container';
       
-      roofPlanSection.appendChild(roofPlanContent);
-      
-      // Add the roof plan image
-      const screenshotContainer = document.createElement('div');
-      screenshotContainer.className = 'screenshot-container keep-together';
-      screenshotContainer.style.marginTop = '20px';
-      
+      // Add the roof plan image with proper sizing
       const roofPlanImage = document.createElement('img');
       roofPlanImage.src = roofPlan;
-      roofPlanImage.className = 'area-screenshot';
-      roofPlanImage.style.maxWidth = '100%';
+      roofPlanImage.className = 'roof-plan-image';
       roofPlanImage.alt = 'Dachplan';
       
-      screenshotContainer.appendChild(roofPlanImage);
-      roofPlanSection.appendChild(screenshotContainer);
+      roofPlanContainer.appendChild(roofPlanImage);
+      roofPlanContent.appendChild(roofPlanContainer);
+      roofPlanSection.appendChild(roofPlanContent);
       
       contentWrapper.appendChild(roofPlanSection);
     }
@@ -488,13 +526,13 @@ export const exportMeasurementsToPdf = async (
       appendPVSummarySection(contentWrapper, measurementsWithPV, coverData.title);
     }
     
-    // Configure html2pdf options with improved page break handling
+    // Configure html2pdf options with improved page break handling and higher quality for roof plan
     const pdfOptions = {
-      margin: [15, 15, 15, 15], // [top, right, bottom, left] in mm - increased margins
+      margin: [15, 15, 15, 15], // [top, right, bottom, left] in mm
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 1.0 }, // Increased quality
       html2canvas: { 
-        scale: 2, 
+        scale: 2.5, // Increased scale for better resolution
         useCORS: true,
         logging: false,
         letterRendering: true
@@ -1633,4 +1671,3 @@ const appendPVSummarySection = (
   
   contentWrapper.appendChild(sectionContent);
 };
-
