@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -266,12 +267,12 @@ export const createCombinedRoofPlan = (
     const toCanvasX = (x: number) => offsetX + (x - paddedMinX) * scale;
     const toCanvasY = (y: number) => offsetY + (y - paddedMinY) * scale;
     
-    // Add a title - made smaller for PDF export
-    ctx.font = 'bold 20px Arial';
+    // Add a title - increased font size from 20px to 30px for better readability
+    ctx.font = 'bold 30px Arial';
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('Dachplan (Draufsicht)', width / 2, 10);
+    ctx.fillText('Dachplan (Draufsicht)', width / 2, 20);
     
     // Draw scale indicator - made more compact for PDF export
     drawScaleIndicator(ctx, width, height, scale, rangeX);
