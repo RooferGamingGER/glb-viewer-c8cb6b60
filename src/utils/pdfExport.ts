@@ -92,7 +92,8 @@ export const exportMeasurementsToPdf = async (
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        padding: 10mm;
+        padding: 0;
+        margin: 0;
       }
       .roof-plan-header {
         text-align: center;
@@ -434,14 +435,26 @@ export const exportMeasurementsToPdf = async (
         roofPlanSection.appendChild(roofPlanContent);
       } else {
         // Full page roof plan without header
+        const roofPlanContainer = document.createElement('div');
+        roofPlanContainer.style.width = '100%';
+        roofPlanContainer.style.height = '100%';
+        roofPlanContainer.style.display = 'flex';
+        roofPlanContainer.style.alignItems = 'center';
+        roofPlanContainer.style.justifyContent = 'center';
+        roofPlanContainer.style.overflow = 'hidden';
+        roofPlanContainer.style.padding = '0';
+        roofPlanContainer.style.margin = '0';
+        
         const roofPlanImage = document.createElement('img');
         roofPlanImage.src = roofPlan;
         roofPlanImage.className = 'roof-plan-image';
         roofPlanImage.alt = 'Dachplan';
         roofPlanImage.style.maxWidth = '100%';
         roofPlanImage.style.maxHeight = '100%';
+        roofPlanImage.style.objectFit = 'contain';
         
-        roofPlanSection.appendChild(roofPlanImage);
+        roofPlanContainer.appendChild(roofPlanImage);
+        roofPlanSection.appendChild(roofPlanContainer);
       }
       
       contentWrapper.appendChild(roofPlanSection);
@@ -545,7 +558,7 @@ export const exportMeasurementsToPdf = async (
     
     // Configure html2pdf options with improved page break handling and higher quality for roof plan
     const pdfOptions = {
-      margin: [15, 15, 15, 15], // [top, right, bottom, left] in mm
+      margin: showRoofPlanWithoutHeader && roofPlan ? [0, 0, 0, 0] : [15, 15, 15, 15], // No margins for roof plan page
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 1.0 }, // Increased quality
       html2canvas: { 
