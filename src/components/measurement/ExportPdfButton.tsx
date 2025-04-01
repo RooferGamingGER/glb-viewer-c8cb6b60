@@ -64,15 +64,16 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      // Optimize dimensions for full page display without header
-      // Using larger dimensions since we now have more space (full page)
-      const width = 2000;
-      const height = 1600;
+      // Increase dimensions for a larger roof plan that better fills the page
+      // Using A4 dimensions as reference (210mm x 297mm) with higher pixel density
+      const width = 2480; // ~210mm at 300dpi
+      const height = 3508; // ~297mm at 300dpi
       
       setOptimizedRoofPlanDimensions({width, height});
       
-      // Generate the roof plan with optimized dimensions
-      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.08, true);
+      // Generate the roof plan with optimized dimensions and reduced padding
+      // Reduced padding to 0.05 (was 0.08) to allow more space for the content
+      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
@@ -158,10 +159,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
-          // Generate with optimized dimensions for full page
-          const width = 2000;
-          const height = 1600;
-          const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.08, true);
+          // Generate with larger dimensions for full page
+          const width = 2480; // ~210mm at 300dpi
+          const height = 3508; // ~297mm at 300dpi
+          const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
             (measurementsWithVisuals as any).roofPlanDimensions = {width, height};

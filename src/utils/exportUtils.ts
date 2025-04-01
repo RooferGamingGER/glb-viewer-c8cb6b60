@@ -1,4 +1,3 @@
-
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -431,7 +430,6 @@ export const calculateRoofPlanScaleFactor = (width: number, height: number, maxW
   const heightScale = maxHeight / height;
   
   // Use the smaller scale factor to ensure it fits completely within the available space
-  // Reduce slightly to provide margin
-  return Math.min(widthScale, heightScale) * 0.95;
+  // Using a higher factor (0.98 instead of 0.95) to maximize the roof plan size
+  return Math.min(widthScale, heightScale) * 0.98;
 };
-
