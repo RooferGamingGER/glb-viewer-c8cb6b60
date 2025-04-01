@@ -344,7 +344,7 @@ export const createCombinedRoofPlan = (
       });
       
       // Draw the measurement ID/label in the center - increased font sizes
-      const labelText = measurement.name || getMeasurementTypeDisplayName(measurement.type);
+      const labelText = measurement.label || getMeasurementTypeDisplayName(measurement.type);
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
       ctx.font = 'bold 18px Arial'; // Increased from 14px to 18px
