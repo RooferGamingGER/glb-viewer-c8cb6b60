@@ -1,3 +1,4 @@
+
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -419,3 +420,18 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
   // Return all non-penetration measurements plus the consolidated ones
   return [...nonPenetrations, ...consolidatedPenetrations];
 };
+
+/**
+ * Calculate the optimal scale factor for roof plan display on page 2
+ * This is used to ensure the roof plan is properly sized for the available space
+ */
+export const calculateRoofPlanScaleFactor = (width: number, height: number, maxWidth: number, maxHeight: number): number => {
+  // Calculate how much we need to scale down to fit the width and height constraints
+  const widthScale = maxWidth / width;
+  const heightScale = maxHeight / height;
+  
+  // Use the smaller scale factor to ensure it fits completely within the available space
+  // Reduce slightly to provide margin
+  return Math.min(widthScale, heightScale) * 0.95;
+};
+

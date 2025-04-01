@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
-import { consolidatePenetrations } from '@/utils/exportUtils';
+import { consolidatePenetrations, calculateRoofPlanScaleFactor } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
@@ -34,6 +35,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [use2DRendering, setUse2DRendering] = useState(true);
   const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
   const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
+  const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const {
     scene,
@@ -63,7 +65,15 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      const roofPlan = createCombinedRoofPlan(measurements, 2200, 1600, 0.08, true);
+      // Use optimized dimensions for page 2 integration - width set to about 480px (for A4 width with margins)
+      // Height set to a value that ensures it fits under the header on page 2
+      const width = 1800;
+      const height = 1200;
+      
+      setOptimizedRoofPlanDimensions({width, height});
+      
+      // Generate the roof plan with optimized dimensions
+      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.09, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
@@ -148,13 +158,21 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
-          const roofPlan = createCombinedRoofPlan(measurements, 2200, 1600, 0.08, true);
+          // Generate with optimized dimensions for page 2
+          const width = 1800;
+          const height = 1200;
+          const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.09, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
+            (measurementsWithVisuals as any).roofPlanDimensions = {width, height};
           }
         } else {
           (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
+          (measurementsWithVisuals as any).roofPlanDimensions = optimizedRoofPlanDimensions;
         }
+        
+        // Pass flag to place roof plan on page 2
+        (measurementsWithVisuals as any).placeRoofPlanOnPage2 = true;
       }
       setExportProgress(70);
       const coverData = form.getValues();
@@ -300,7 +318,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                     }
                   }} />
                     <label htmlFor="include-roof-plan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Dachplan als Draufsicht hinzufügen
+                      Dachplan auf Seite 2 platzieren
                     </label>
                   </div>
                 </div>
