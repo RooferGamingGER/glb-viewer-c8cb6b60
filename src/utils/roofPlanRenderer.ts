@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -254,25 +253,34 @@ export const createCombinedRoofPlan = (
     const paddedRangeX = paddedMaxX - paddedMinX;
     const paddedRangeY = paddedMaxY - paddedMinY;
     
+    // Define title area height (space for the title)
+    const titleAreaHeight = 60; // Increased from ~30px to give more space for larger title
+    
+    // Adjust the available height for the plan (subtract title area)
+    const availableHeight = height - titleAreaHeight;
+    
     // Determine the scale factor to fit the plan to the canvas while maintaining aspect ratio
+    // Only use the available height after subtracting the title area
     const scaleX = width / paddedRangeX;
-    const scaleY = height / paddedRangeY;
-    const scale = Math.min(scaleX, scaleY);
+    const scaleY = availableHeight / paddedRangeY;
+    const scale = Math.min(scaleX, scaleY) * 0.90; // Keep 90% scale factor
     
     // Calculate the centered position
+    // For X: center horizontally
+    // For Y: push down by titleAreaHeight and then center in remaining space
     const offsetX = (width - paddedRangeX * scale) / 2;
-    const offsetY = (height - paddedRangeY * scale) / 2;
+    const offsetY = titleAreaHeight + (availableHeight - paddedRangeY * scale) / 2;
     
     // Helper function to convert 2D coordinates to canvas coordinates
     const toCanvasX = (x: number) => offsetX + (x - paddedMinX) * scale;
     const toCanvasY = (y: number) => offsetY + (y - paddedMinY) * scale;
     
-    // Add a title - increased font size from 20px to 30px for better readability
-    ctx.font = 'bold 30px Arial';
+    // Add a title - increased font size for better readability
+    ctx.font = 'bold 40px Arial'; // Increased from 30px to 40px
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('Dachplan (Draufsicht)', width / 2, 20);
+    ctx.fillText('Dachplan (Draufsicht)', width / 2, 15); // Positioned at top with margin
     
     // Draw scale indicator - made more compact for PDF export
     drawScaleIndicator(ctx, width, height, scale, rangeX);
