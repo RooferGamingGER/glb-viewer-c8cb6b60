@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
@@ -55,6 +56,7 @@ export const exportMeasurementsToPdf = async (
     
     // Extract roof plan if included
     const roofPlan = (measurements as any).roofPlan;
+    const showRoofPlanWithoutHeader = (measurements as any).showRoofPlanWithoutHeader;
     
     // Create a container for the PDF content
     const container = document.createElement('div');
@@ -71,6 +73,47 @@ export const exportMeasurementsToPdf = async (
       }
       .pdf-section {
         padding: 10mm 15mm 10mm 15mm;
+      }
+      .roof-plan-section {
+        padding: 5mm;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .roof-plan-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .roof-plan-fullpage {
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+      }
+      .roof-plan-header {
+        text-align: center;
+        padding-bottom: 8px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eaeaea;
+      }
+      .roof-plan-container {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+      }
+      .roof-plan-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
       }
       .keep-together {
         page-break-inside: avoid;
@@ -122,7 +165,7 @@ export const exportMeasurementsToPdf = async (
         text-align: center;
         padding-bottom: 10px;
         margin-bottom: 20px;
-        border-bottom: 1px solid #eaeaea;
+        border-bottom: 1px solid #e0e0e0;
       }
       .header-title {
         font-size: 20px;
@@ -349,45 +392,70 @@ export const exportMeasurementsToPdf = async (
     coverPage.appendChild(createCoverPage(coverData));
     contentWrapper.appendChild(coverPage);
     
-    // Add roof plan if available
+    // Add roof plan if available - give it its own full page without header when showRoofPlanWithoutHeader is true
     if (roofPlan) {
       const roofPlanSection = document.createElement('div');
-      roofPlanSection.className = 'pdf-section force-page-break';
+      roofPlanSection.className = showRoofPlanWithoutHeader 
+        ? 'roof-plan-fullpage force-page-break' 
+        : 'roof-plan-section force-page-break';
       
-      // Create section with header that stays with content
-      const roofPlanContent = document.createElement('div');
-      roofPlanContent.className = 'section-with-header';
-      
-      // Add header
-      roofPlanContent.appendChild(createHeader(coverData.title));
-      
-      // Create title
-      const sectionTitle = document.createElement('h2');
-      sectionTitle.textContent = 'Dachplan (Draufsicht)';
-      sectionTitle.style.marginTop = '20px';
-      sectionTitle.style.marginBottom = '30px';
-      roofPlanContent.appendChild(sectionTitle);
-      
-      // Create description
-      const description = document.createElement('p');
-      description.textContent = 'Dieser Plan zeigt alle vermessenen Dachflächen und Elemente in der Draufsicht.';
-      roofPlanContent.appendChild(description);
-      
-      roofPlanSection.appendChild(roofPlanContent);
-      
-      // Add the roof plan image
-      const screenshotContainer = document.createElement('div');
-      screenshotContainer.className = 'screenshot-container keep-together';
-      screenshotContainer.style.marginTop = '20px';
-      
-      const roofPlanImage = document.createElement('img');
-      roofPlanImage.src = roofPlan;
-      roofPlanImage.className = 'area-screenshot';
-      roofPlanImage.style.maxWidth = '100%';
-      roofPlanImage.alt = 'Dachplan';
-      
-      screenshotContainer.appendChild(roofPlanImage);
-      roofPlanSection.appendChild(screenshotContainer);
+      if (!showRoofPlanWithoutHeader) {
+        // Create a more compact header for the roof plan that's always visible
+        const compactHeader = document.createElement('div');
+        compactHeader.className = 'roof-plan-header';
+        
+        // Add title to header (more compact)
+        const headerTitle = document.createElement('div');
+        headerTitle.style.fontSize = '20px';
+        headerTitle.style.fontWeight = 'bold';
+        headerTitle.style.color = '#333';
+        headerTitle.textContent = coverData.title || 'Vermessungsbericht';
+        compactHeader.appendChild(headerTitle);
+        
+        // Create roof plan content container (for better layout control)
+        const roofPlanContent = document.createElement('div');
+        roofPlanContent.className = 'roof-plan-content';
+        
+        // Add the compact header
+        roofPlanContent.appendChild(compactHeader);
+        
+        // Add the roof plan container for better sizing
+        const roofPlanContainer = document.createElement('div');
+        roofPlanContainer.className = 'roof-plan-container';
+        roofPlanContainer.style.marginTop = '10px'; // Add some spacing after header
+        
+        // Add the roof plan image with proper sizing
+        const roofPlanImage = document.createElement('img');
+        roofPlanImage.src = roofPlan;
+        roofPlanImage.className = 'roof-plan-image';
+        roofPlanImage.alt = 'Dachplan';
+        
+        roofPlanContainer.appendChild(roofPlanImage);
+        roofPlanContent.appendChild(roofPlanContainer);
+        roofPlanSection.appendChild(roofPlanContent);
+      } else {
+        // Full page roof plan without header
+        const roofPlanContainer = document.createElement('div');
+        roofPlanContainer.style.width = '100%';
+        roofPlanContainer.style.height = '100%';
+        roofPlanContainer.style.display = 'flex';
+        roofPlanContainer.style.alignItems = 'center';
+        roofPlanContainer.style.justifyContent = 'center';
+        roofPlanContainer.style.overflow = 'hidden';
+        roofPlanContainer.style.padding = '0';
+        roofPlanContainer.style.margin = '0';
+        
+        const roofPlanImage = document.createElement('img');
+        roofPlanImage.src = roofPlan;
+        roofPlanImage.className = 'roof-plan-image';
+        roofPlanImage.alt = 'Dachplan';
+        roofPlanImage.style.maxWidth = '100%';
+        roofPlanImage.style.maxHeight = '100%';
+        roofPlanImage.style.objectFit = 'contain';
+        
+        roofPlanContainer.appendChild(roofPlanImage);
+        roofPlanSection.appendChild(roofPlanContainer);
+      }
       
       contentWrapper.appendChild(roofPlanSection);
     }
@@ -488,13 +556,13 @@ export const exportMeasurementsToPdf = async (
       appendPVSummarySection(contentWrapper, measurementsWithPV, coverData.title);
     }
     
-    // Configure html2pdf options with improved page break handling
+    // Configure html2pdf options with improved page break handling and higher quality for roof plan
     const pdfOptions = {
-      margin: [15, 15, 15, 15], // [top, right, bottom, left] in mm - increased margins
+      margin: showRoofPlanWithoutHeader && roofPlan ? [0, 0, 0, 0] : [15, 15, 15, 15], // No margins for roof plan page
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 1.0 }, // Increased quality
       html2canvas: { 
-        scale: 2, 
+        scale: 2.5, // Increased scale for better resolution
         useCORS: true,
         logging: false,
         letterRendering: true
@@ -1633,4 +1701,3 @@ const appendPVSummarySection = (
   
   contentWrapper.appendChild(sectionContent);
 };
-

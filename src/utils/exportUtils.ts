@@ -235,7 +235,7 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
   
-  // Updated: Count each penetration as 1 by default
+  // Count each penetration as 1 by default
   const vents = measurements.filter(m => m.type === 'vent')
     .reduce((sum, m) => sum + (m.count || 1), 0);
   
@@ -358,7 +358,7 @@ export const sortMeasurementsForExport = (measurements: Measurement[]): Measurem
 
 /**
  * Group penetration items (vents, hooks, other) by type and subtype
- * to consolidate them in the PDF report
+ * to consolidate them in the PDF report for better space efficiency
  */
 export const consolidatePenetrations = (measurements: Measurement[]): Measurement[] => {
   // Get all measurements that aren't penetrations
@@ -375,6 +375,7 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
         penetrationGroups[m.type] = {};
       }
       
+      // Use a more specific grouping key to better consolidate items
       // Group by subType if available, otherwise use description or a default key
       const groupKey = m.subType || m.description || 'default';
       
@@ -390,21 +391,26 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
   const consolidatedPenetrations: Measurement[] = [];
   
   Object.entries(penetrationGroups).forEach(([type, subtypeGroups]) => {
-    Object.entries(subtypeGroups).forEach(([subtype, items]) => {
+    // Sort subtypes for consistent ordering
+    const sortedSubtypes = Object.keys(subtypeGroups).sort();
+    
+    // Process each subtype group
+    sortedSubtypes.forEach(subtype => {
+      const items = subtypeGroups[subtype];
       if (items.length > 0) {
         // Use the first item as a template
         const template = items[0];
         const totalCount = items.reduce((sum, item) => sum + (item.count || 1), 0);
         
-        // Create a consolidated measurement
+        // Create a more space-efficient consolidated measurement
         consolidatedPenetrations.push({
           ...template,
           id: template.id, // Keep ID of the first item
           count: totalCount,
           description: template.description || getMeasurementTypeDisplayName(type),
-          // Add a note about consolidated items if multiple
+          // Add a more concise note for consolidated items
           notes: items.length > 1 
-            ? `${totalCount} Stück ${getMeasurementTypeDisplayName(type)}${template.subType ? ` (${template.subType})` : ''}`
+            ? `${totalCount}× ${getMeasurementTypeDisplayName(type)}${template.subType ? ` (${template.subType})` : ''}`
             : template.notes
         });
       }
@@ -413,4 +419,18 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
   
   // Return all non-penetration measurements plus the consolidated ones
   return [...nonPenetrations, ...consolidatedPenetrations];
+};
+
+/**
+ * Calculate the optimal scale factor for roof plan display on page 2
+ * This is used to ensure the roof plan is properly sized for the available space
+ */
+export const calculateRoofPlanScaleFactor = (width: number, height: number, maxWidth: number, maxHeight: number): number => {
+  // Calculate how much we need to scale down to fit the width and height constraints
+  const widthScale = maxWidth / width;
+  const heightScale = maxHeight / height;
+  
+  // Use the smaller scale factor to ensure it fits completely within the available space
+  // Using 0.90 to provide more space for the header/title at the top of the page
+  return Math.min(widthScale, heightScale) * 0.90;
 };

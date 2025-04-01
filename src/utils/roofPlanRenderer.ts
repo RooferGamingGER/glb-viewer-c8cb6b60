@@ -1,8 +1,15 @@
+
 import * as THREE from 'three';
-import { Measurement, Point, Point2D } from '@/types/measurements';
+import { Measurement, Point } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
 import { calculateBoundingBox, calculateCentroid } from './measurementCalculations';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
+
+// Define a Point2D interface for 2D projected points
+interface Point2D {
+  x: number;
+  y: number;
+}
 
 /**
  * Projects all measurements to a common 2D coordinate system
@@ -199,9 +206,9 @@ const projectMeasurementsTopDown = (measurements: Measurement[]): {
  */
 export const createCombinedRoofPlan = (
   measurements: Measurement[],
-  width = 1200,
-  height = 900,
-  padding = 0.1,
+  width = 1800,
+  height = 1300,
+  padding = 0.05,
   useTopDownView = false
 ): string => {
   if (measurements.length === 0) {
@@ -253,27 +260,36 @@ export const createCombinedRoofPlan = (
     const paddedRangeX = paddedMaxX - paddedMinX;
     const paddedRangeY = paddedMaxY - paddedMinY;
     
+    // Define title area height (space for the title)
+    const titleAreaHeight = 60; // Increased from ~30px to give more space for larger title
+    
+    // Adjust the available height for the plan (subtract title area)
+    const availableHeight = height - titleAreaHeight;
+    
     // Determine the scale factor to fit the plan to the canvas while maintaining aspect ratio
+    // Only use the available height after subtracting the title area
     const scaleX = width / paddedRangeX;
-    const scaleY = height / paddedRangeY;
-    const scale = Math.min(scaleX, scaleY);
+    const scaleY = availableHeight / paddedRangeY;
+    const scale = Math.min(scaleX, scaleY) * 0.90; // Keep 90% scale factor
     
     // Calculate the centered position
+    // For X: center horizontally
+    // For Y: push down by titleAreaHeight and then center in remaining space
     const offsetX = (width - paddedRangeX * scale) / 2;
-    const offsetY = (height - paddedRangeY * scale) / 2;
+    const offsetY = titleAreaHeight + (availableHeight - paddedRangeY * scale) / 2;
     
     // Helper function to convert 2D coordinates to canvas coordinates
     const toCanvasX = (x: number) => offsetX + (x - paddedMinX) * scale;
     const toCanvasY = (y: number) => offsetY + (y - paddedMinY) * scale;
     
-    // Add a title
-    ctx.font = 'bold 24px Arial';
+    // Add a title - increased font size for better readability
+    ctx.font = 'bold 40px Arial'; // Increased from 30px to 40px
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('Dachplan (Draufsicht)', width / 2, 20);
+    ctx.fillText('Dachplan (Draufsicht)', width / 2, 15); // Positioned at top with margin
     
-    // Draw scale indicator
+    // Draw scale indicator - made more compact for PDF export
     drawScaleIndicator(ctx, width, height, scale, rangeX);
     
     // Define colors for different measurement types
@@ -308,36 +324,36 @@ export const createCombinedRoofPlan = (
       ctx.fill();
       
       // Draw the outline
-      ctx.lineWidth = 3; // Increased line width for better visibility
+      ctx.lineWidth = 3.5;
       ctx.strokeStyle = colorSet.stroke;
       ctx.stroke();
       
       // Draw the vertices
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2); // Increased point size
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 6, 0, Math.PI * 2); // Increased from 5 to 6
         ctx.fillStyle = colorSet.stroke;
         ctx.fill();
         
-        // Add index numbers to vertices for clearer identification
-        ctx.font = 'bold 10px Arial';
+        // Add index numbers to vertices for clearer identification - increased font size
+        ctx.font = 'bold 14px Arial'; // Increased from 10px to 14px
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText((index + 1).toString(), toCanvasX(point.x), toCanvasY(point.y));
       });
       
-      // Draw the measurement ID/label in the center
-      const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
+      // Draw the measurement ID/label in the center - increased font sizes
+      const labelText = measurement.label || getMeasurementTypeDisplayName(measurement.type);
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
-      ctx.font = 'bold 14px Arial';
+      ctx.font = 'bold 18px Arial'; // Increased from 14px to 18px
       ctx.fillStyle = '#333333';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y));
-      ctx.font = '12px Arial';
-      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 20);
+      ctx.font = '16px Arial'; // Increased from 12px to 16px
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 24); // Adjusted spacing
       
       // Draw length for each segment
       if (measurement.segments) {
@@ -368,17 +384,17 @@ export const createCombinedRoofPlan = (
             // Draw the length value with a background for better readability
             const lengthText = `${segment.length.toFixed(2)}m`;
             
-            ctx.font = '12px Arial';
+            ctx.font = '16px Arial'; // Increased from 12px to 16px
             const textMetrics = ctx.measureText(lengthText);
             const textWidth = textMetrics.width;
             
-            // Draw white background box for text
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            // Draw white background box for text - made larger
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; // Increased opacity
             ctx.fillRect(
-              toCanvasX(midX) - textWidth / 2 - 4, 
-              toCanvasY(midY) - 8, 
-              textWidth + 8, 
-              16
+              toCanvasX(midX) - textWidth / 2 - 6, // Increased padding
+              toCanvasY(midY) - 10, // Increased height
+              textWidth + 12, // Increased padding
+              20 // Increased height
             );
             
             // Draw text
@@ -391,11 +407,11 @@ export const createCombinedRoofPlan = (
       }
     });
     
-    // Add a legend
+    // Add a legend - more compact for PDF export
     drawLegend(ctx, width, height, colors);
     
-    // Convert to base64
-    return canvas.toDataURL('image/png');
+    // Convert to base64 with high quality
+    return canvas.toDataURL('image/png', 1.0);
   } catch (error) {
     console.error('Error creating combined roof plan:', error);
     return '';
@@ -439,18 +455,18 @@ function drawScaleIndicator(
   
   const scaleBarPixelLength = niceScaleLength * pixelsPerMeter;
   
-  // Draw the scale bar
-  const scaleBarX = 50;
-  const scaleBarY = height - 50;
+  // Draw the scale bar - positioned in bottom left corner with less space
+  const scaleBarX = 40; // Reduced from 50 to 40
+  const scaleBarY = height - 30; // Reduced from 50 to 30
   
   // Draw background
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.fillRect(scaleBarX - 10, scaleBarY - 30, scaleBarPixelLength + 20, 50);
+  ctx.fillRect(scaleBarX - 10, scaleBarY - 25, scaleBarPixelLength + 20, 40); // More compact
   
   // Draw border
   ctx.strokeStyle = '#333333';
   ctx.lineWidth = 1;
-  ctx.strokeRect(scaleBarX - 10, scaleBarY - 30, scaleBarPixelLength + 20, 50);
+  ctx.strokeRect(scaleBarX - 10, scaleBarY - 25, scaleBarPixelLength + 20, 40);
   
   // Draw scale bar
   ctx.beginPath();
@@ -471,22 +487,22 @@ function drawScaleIndicator(
     ctx.stroke();
   }
   
-  // Add label
-  ctx.font = '12px Arial';
+  // Add label - increased font size
+  ctx.font = '16px Arial'; // Increased from 12px to 16px
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 10);
+  ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 8);
   
-  // Add "Maßstab" label
-  ctx.font = 'bold 12px Arial';
+  // Add "Maßstab" label - increased font size
+  ctx.font = 'bold 16px Arial'; // Increased from 12px to 16px
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 10);
+  ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 8);
 }
 
 /**
- * Draw a legend for the different measurement types
+ * Draw a legend for the different measurement types - more compact for PDF export
  */
 function drawLegend(
   ctx: CanvasRenderingContext2D,
@@ -494,10 +510,10 @@ function drawLegend(
   height: number,
   colors: Record<string, { fill: string; stroke: string }>
 ): void {
-  const legendX = width - 200;
-  const legendY = 60;
-  const itemHeight = 25;
-  const legendWidth = 180;
+  const legendX = width - 180; // More compact, moved left
+  const legendY = 40; // Moved up from 60 to 40
+  const itemHeight = 20; // Reduced from 25 to 20
+  const legendWidth = 160; // Reduced from 180 to 160
   
   // Define legend items
   const legendItems = [
@@ -507,7 +523,7 @@ function drawLegend(
     { type: 'chimney', label: 'Kamin' }
   ];
   
-  const legendHeight = legendItems.length * itemHeight + 40;
+  const legendHeight = legendItems.length * itemHeight + 30; // Reduced padding
   
   // Draw legend background
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -518,15 +534,15 @@ function drawLegend(
   ctx.lineWidth = 1;
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
   
-  // Draw legend title
-  ctx.font = 'bold 14px Arial';
+  // Draw legend title - increased font size
+  ctx.font = 'bold 16px Arial'; // Increased from 13px to 16px
   ctx.fillStyle = '#333333';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText('Legende', legendX + legendWidth / 2, legendY + 10);
+  ctx.fillText('Legende', legendX + legendWidth / 2, legendY + 8); // Reduced top padding
   
-  // Draw legend items
-  let currentY = legendY + 35;
+  // Draw legend items - increased font size
+  let currentY = legendY + 28; // Reduced spacing
   
   legendItems.forEach(item => {
     const colorSet = colors[item.type] || colors.default;
@@ -536,15 +552,15 @@ function drawLegend(
     ctx.strokeStyle = colorSet.stroke;
     ctx.lineWidth = 1;
     
-    ctx.fillRect(legendX + 15, currentY, 20, 15);
-    ctx.strokeRect(legendX + 15, currentY, 20, 15);
+    ctx.fillRect(legendX + 10, currentY, 18, 14); // Smaller color boxes
+    ctx.strokeRect(legendX + 10, currentY, 18, 14);
     
-    // Draw label
-    ctx.font = '12px Arial';
+    // Draw label - increased font size
+    ctx.font = '14px Arial'; // Increased from 11px to 14px
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(item.label, legendX + 45, currentY + 7);
+    ctx.fillText(item.label, legendX + 38, currentY + 7);
     
     currentY += itemHeight;
   });

@@ -9,7 +9,8 @@ import { updateLabelScale } from '@/utils/textSprite';
 export const useLabelScaling = (
   camera: THREE.Camera | null,
   labelsRef: React.RefObject<THREE.Group>,
-  segmentLabelsRef: React.RefObject<THREE.Group>
+  segmentLabelsRef: React.RefObject<THREE.Group>,
+  exportMode: boolean = false
 ) => {
   useEffect(() => {
     if (!camera || !labelsRef.current || !segmentLabelsRef.current) return;
@@ -20,7 +21,9 @@ export const useLabelScaling = (
         labelsRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
             // Regular labels use standard scaling
-            updateLabelScale(child, camera, 0.5);
+            // Use larger scale when in export mode
+            const scaleFactor = exportMode ? 0.8 : 0.5;
+            updateLabelScale(child, camera, scaleFactor);
             
             // Ensure labels render on top
             child.renderOrder = 100;
@@ -36,8 +39,10 @@ export const useLabelScaling = (
       if (segmentLabelsRef.current && camera) {
         segmentLabelsRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
-            // Segment labels are made smaller for less visual clutter
-            updateLabelScale(child, camera, 0.35);
+            // Segment labels are adjusted for better readability
+            // Use larger scale when in export mode
+            const scaleFactor = exportMode ? 0.7 : 0.35;
+            updateLabelScale(child, camera, scaleFactor);
             
             // Ensure labels render on top
             child.renderOrder = 100;
@@ -64,5 +69,5 @@ export const useLabelScaling = (
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [camera, labelsRef, segmentLabelsRef]);
+  }, [camera, labelsRef, segmentLabelsRef, exportMode]);
 };

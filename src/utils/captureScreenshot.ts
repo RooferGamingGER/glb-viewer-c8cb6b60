@@ -14,7 +14,8 @@ export const captureAreaMeasurement = async (
   renderer: THREE.WebGLRenderer,
   measurement: Measurement,
   canvas: HTMLCanvasElement,
-  use2DRendering: boolean = true
+  use2DRendering: boolean = true,
+  enhanceText: boolean = false // Added parameter for text enhancement
 ): Promise<string | null> => {
   if (!measurement || !scene || !camera || !renderer || !canvas) {
     console.error('Missing required parameters for screenshot capture');
@@ -136,6 +137,21 @@ export const captureAreaMeasurement = async (
     renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better tone mapping
     renderer.toneMappingExposure = 1.2; // Slightly brighter
     
+    // Handle text enhancement if requested
+    if (enhanceText) {
+      scene.traverse((object) => {
+        if (object instanceof THREE.Sprite && object.userData && object.userData.isLabel) {
+          // Store original scale
+          if (!object.userData.originalScale) {
+            object.userData.originalScale = object.scale.clone();
+          }
+          
+          // Increase scale for text readability
+          object.scale.multiplyScalar(1.5); // Make text 50% larger
+        }
+      });
+    }
+    
     // Make sure all materials are properly visible
     scene.traverse((object) => {
       if (object instanceof THREE.Mesh && object.material) {
@@ -162,6 +178,15 @@ export const captureAreaMeasurement = async (
     
     // Capture the rendered image
     const dataUrl = canvas.toDataURL('image/png');
+    
+    // Restore text scales if enhanced
+    if (enhanceText) {
+      scene.traverse((object) => {
+        if (object instanceof THREE.Sprite && object.userData && object.userData.isLabel && object.userData.originalScale) {
+          object.scale.copy(object.userData.originalScale);
+        }
+      });
+    }
     
     // Restore original camera settings
     camera.position.copy(originalPosition);

@@ -4,7 +4,7 @@ import { FileDown, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/hooks/useMeasurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
-import { consolidatePenetrations } from '@/utils/exportUtils';
+import { consolidatePenetrations, calculateRoofPlanScaleFactor } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
@@ -21,9 +21,11 @@ import { Toggle } from "@/components/ui/toggle";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 interface ExportPdfButtonProps {
   measurements: Measurement[];
 }
+
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   measurements
 }) => {
@@ -32,6 +34,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [use2DRendering, setUse2DRendering] = useState(true);
   const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
   const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
+  const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const {
     scene,
@@ -52,28 +55,38 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     }
   });
 
-  // Auto-generate roof plan when dialog opens or when measurements change
   useEffect(() => {
     if (measurements.length > 0 && includeRoofPlan) {
       generateRoofPlan();
     }
   }, [measurements, includeRoofPlan]);
+
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      // Always use top-down view (useTopDownView=true) for consistent roof plans
-      const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+      // Increase dimensions for a larger roof plan that better fills the page
+      // Using A4 dimensions as reference (210mm x 297mm) with higher pixel density
+      const width = 2480; // ~210mm at 300dpi
+      const height = 3508; // ~297mm at 300dpi
+      
+      setOptimizedRoofPlanDimensions({width, height});
+      
+      // Generate the roof plan with optimized dimensions and reduced padding
+      // Reduced padding to 0.05 (was 0.08) to allow more space for the content
+      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
     }
   };
+
   const hasCustomScreenshots = measurements.some(m => m.customScreenshots && m.customScreenshots.length > 0);
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
   const previewMeasurements = consolidatePenetrations(measurements);
   const screenshotCount = measurements.reduce((total, m) => total + (m.customScreenshots?.length || 0), 0);
+
   const handleExport = async () => {
     if (measurements.length === 0) {
       toast.error('Keine Messungen zum Exportieren vorhanden');
@@ -87,6 +100,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       const measurementsWithVisuals = [...measurements];
       const perspCamera = asPerspectiveCamera(camera);
       setExportProgress(20);
+      
       for (let i = 0; i < areaMeasurements.length; i++) {
         const measurement = areaMeasurements[i];
         if (use2DRendering) {
@@ -102,7 +116,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -130,7 +144,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false);
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
             if (index !== -1) {
@@ -144,17 +158,23 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       }
       setExportProgress(50);
       if (includeRoofPlan) {
-        // Use the pre-generated roof plan or generate it if needed
         if (!generatedRoofPlan) {
-          // Always use top-down view for the roof plan
-          const roofPlan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+          // Generate with larger dimensions for full page
+          const width = 2480; // ~210mm at 300dpi
+          const height = 3508; // ~297mm at 300dpi
+          const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
+            (measurementsWithVisuals as any).roofPlanDimensions = {width, height};
           }
         } else {
-          // Use the pre-generated roof plan
           (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
+          (measurementsWithVisuals as any).roofPlanDimensions = optimizedRoofPlanDimensions;
         }
+        
+        // Pass flag to place roof plan on page 2 without header
+        (measurementsWithVisuals as any).placeRoofPlanOnPage2 = true;
+        (measurementsWithVisuals as any).showRoofPlanWithoutHeader = true;
       }
       setExportProgress(70);
       const coverData = form.getValues();
@@ -178,6 +198,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       }, 1000);
     }
   };
+
   return <Dialog>
       <DialogTrigger asChild>
         <Button className="w-full flex items-center gap-2">
@@ -299,7 +320,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                     }
                   }} />
                     <label htmlFor="include-roof-plan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Dachplan als Draufsicht hinzufügen
+                      Dachplan auf eigener Seite darstellen
                     </label>
                   </div>
                 </div>
@@ -386,4 +407,5 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default ExportPdfButton;
