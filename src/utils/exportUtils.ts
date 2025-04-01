@@ -431,6 +431,6 @@ export const calculateRoofPlanScaleFactor = (width: number, height: number, maxW
   const heightScale = maxHeight / height;
   
   // Use the smaller scale factor to ensure it fits completely within the available space
-  // Reduced back to 0.95 to provide a bit more margin around the roof plan
-  return Math.min(widthScale, heightScale) * 0.95;
+  // Using 0.90 to provide more space for the header/title at the top of the page
+  return Math.min(widthScale, heightScale) * 0.90;
 };
