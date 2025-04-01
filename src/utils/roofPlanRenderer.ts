@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Measurement, Point, Point2D } from '@/types/measurements';
+import { Measurement, Point, Point2D, Segment } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
 import { calculatePolygonArea } from './measurementCalculations';
 
@@ -189,24 +189,26 @@ export function render2DPolygonToCanvas(
     for (let i = 0; i < measurement.segments.length; i++) {
       const segment = measurement.segments[i];
       
-      // Only continue if segment has exactly 2 points
-      if (segment.pointIndices.length !== 2) continue;
+      // Check if we have points in this segment
+      if (!segment.points || segment.points.length !== 2) continue;
       
-      const startIdx = segment.pointIndices[0];
-      const endIdx = segment.pointIndices[1];
+      // Get the start and end points
+      const start2D = points2D.find(
+        p => p.x === segment.points[0].x && p.y === segment.points[0].y
+      );
+      const end2D = points2D.find(
+        p => p.x === segment.points[1].x && p.y === segment.points[1].y
+      );
       
-      // Skip if indices are out of bounds
-      if (startIdx >= points2D.length || endIdx >= points2D.length) continue;
+      // Skip if we can't find the points
+      if (!start2D || !end2D) continue;
       
-      const start = points2D[startIdx];
-      const end = points2D[endIdx];
-      
-      const midX = toCanvasX((start.x + end.x) / 2);
-      const midY = toCanvasY((start.y + end.y) / 2);
+      const midX = toCanvasX((start2D.x + end2D.x) / 2);
+      const midY = toCanvasY((start2D.y + end2D.y) / 2);
       
       // Calculate offset direction to prevent labels from appearing directly on the line
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
+      const dx = end2D.x - start2D.x;
+      const dy = end2D.y - start2D.y;
       const length = Math.sqrt(dx * dx + dy * dy);
       
       if (length === 0) continue; // Skip zero-length segments
@@ -220,14 +222,14 @@ export function render2DPolygonToCanvas(
       if (segment.length) {
         // Use provided segment length if available
         labelText = `${segment.length.toFixed(2)}m`;
-      } else if (segment.measurement) {
-        // Otherwise calculate from points
-        labelText = `${segment.measurement.toFixed(2)}m`;
+      } else if (segment.length !== undefined) {
+        // Otherwise use the calculated length
+        labelText = `${segment.length.toFixed(2)}m`;
       } else {
         // Fallback to calculating distance
         const distance = calculateDistanceBetweenPoints(
-          measurement.points[startIdx],
-          measurement.points[endIdx]
+          segment.points[0],
+          segment.points[1]
         );
         labelText = `${distance.toFixed(2)}m`;
       }
@@ -248,9 +250,9 @@ export function render2DPolygonToCanvas(
   if (options.drawAreaLabel) {
     let labelText = '';
     
-    // Use the measurement's area if available
-    if (measurement.area !== undefined) {
-      labelText = `Fläche: ${measurement.area.toFixed(2)}m²`;
+    // Use the measurement's value if available
+    if (measurement.value !== undefined) {
+      labelText = `Fläche: ${measurement.value.toFixed(2)}m²`;
     } else {
       // Calculate area from 3D points
       const area = calculatePolygonArea(measurement.points);
@@ -258,8 +260,8 @@ export function render2DPolygonToCanvas(
     }
     
     // Add material information for solar measurements
-    if (measurement.type === 'solar' && measurement.material) {
-      labelText += `\nMaterial: ${measurement.material}`;
+    if (measurement.type === 'solar' && measurement.label) {
+      labelText += `\nMaterial: ${measurement.label}`;
     }
     
     const centerX = points2D.reduce((sum, p) => sum + p.x, 0) / points2D.length;
@@ -475,6 +477,28 @@ export function renderRoofPlanToDataURL(
   measurements: Measurement[],
   width: number = 800,
   height: number = 600
+): string {
+  // Create a canvas element
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  
+  // Render the roof plan to the canvas
+  renderRoofPlanToCanvas(canvas, measurements);
+  
+  // Convert the canvas to a data URL
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Creates a combined roof plan image with optimized dimensions for PDF export
+ */
+export function createCombinedRoofPlan(
+  measurements: Measurement[],
+  width: number = 1200,
+  height: number = 900,
+  padding: number = 0.1,
+  topDown: boolean = true
 ): string {
   // Create a canvas element
   const canvas = document.createElement('canvas');

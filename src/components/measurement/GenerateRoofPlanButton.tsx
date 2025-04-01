@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Maximize, Download, ExternalLink } from 'lucide-react';
@@ -83,7 +82,6 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
-  // Count the number of roof surfaces available
   const areaCount = measurements.filter(m => 
     ['area', 'solar'].includes(m.type) && m.points && m.points.length >= 3
   ).length;
