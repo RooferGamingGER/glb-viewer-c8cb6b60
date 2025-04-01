@@ -5,11 +5,6 @@ export interface Point {
   z: number;
 }
 
-export interface Point2D {
-  x: number;
-  y: number;
-}
-
 export interface Segment {
   id: string;
   points: [Point, Point];
@@ -20,7 +15,7 @@ export interface Segment {
 
 export interface Measurement {
   id: string;
-  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar' | 'skylight' | 'chimney';
+  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar';
   name?: string;
   points: Point[];
   segments?: Segment[];
