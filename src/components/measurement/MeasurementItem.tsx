@@ -24,7 +24,7 @@ import {
   Info,
   Ruler
 } from 'lucide-react';
-import { Measurement } from '@/types/measurements';
+import { Measurement, Segment } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';
