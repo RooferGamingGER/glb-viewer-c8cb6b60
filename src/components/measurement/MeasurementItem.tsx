@@ -24,7 +24,7 @@ import {
   Info,
   Ruler
 } from 'lucide-react';
-import { Measurement } from '@/types/measurements';
+import { Measurement, Segment } from '@/types/measurements';
 import { Input } from "@/components/ui/input";
 import SegmentList from './SegmentList';
 import PointEditList from './PointEditList';
@@ -69,6 +69,7 @@ interface MeasurementItemProps {
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
   measurement,
   toggleMeasurementVisibility,
+  toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
@@ -86,6 +87,16 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
   const [showPVDetails, setShowPVDetails] = useState(false);
   const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
+
+  const updateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
+    if (!measurement.segments) return;
+    
+    const updatedSegments = measurement.segments.map(segment => 
+      segment.id === segmentId ? { ...segment, ...data } : segment
+    );
+    
+    updateMeasurement(measurementId, { segments: updatedSegments });
+  };
 
   const handleEditStart = (id: string, description: string = '') => {
     setEditingId(id);
@@ -697,6 +708,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           isOpen={segmentsOpen[measurement.id] || false}
           toggleSegments={toggleSegments}
           onEditSegment={onEditSegment}
+          updateSegment={updateSegment}
         />
       )}
     </div>

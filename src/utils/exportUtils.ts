@@ -1,4 +1,3 @@
-
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -111,10 +110,12 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
       if (m.segments && m.segments.length > 0) {
         csvContent += '\n';
         csvContent += `;Teilmessungen für Fläche ${index + 1};\n`;
-        csvContent += `;Teilmessung;Länge (m);\n`;
+        csvContent += `;Teilmessung;Länge (m);Bezeichnung;\n`;
         
         m.segments.forEach((segment, sIndex) => {
-          csvContent += `;${sIndex + 1};${segment.length.toFixed(2)};\n`;
+          const segmentLabel = segment.label || '';
+          const segmentType = segment.type ? ` (${segment.type})` : '';
+          csvContent += `;${sIndex + 1};${segment.length.toFixed(2)};${segmentLabel}${segmentType};\n`;
         });
         
         csvContent += '\n';
@@ -197,7 +198,7 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
 /**
  * Group measurements by their type for report generation
  */
-export const groupMeasurementsByType = (measurements: Measurement[]) => {
+export const groupMeasurementsByType = (measurements: Measurement[]): Record<string, Measurement[]> => {
   const groups: Record<string, Measurement[]> = {};
   
   measurements.forEach(measurement => {
@@ -423,7 +424,6 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
 
 /**
  * Calculate the optimal scale factor for roof plan display on page 2
- * This is used to ensure the roof plan is properly sized for the available space
  */
 export const calculateRoofPlanScaleFactor = (width: number, height: number, maxWidth: number, maxHeight: number): number => {
   // Calculate how much we need to scale down to fit the width and height constraints
@@ -433,4 +433,86 @@ export const calculateRoofPlanScaleFactor = (width: number, height: number, maxW
   // Use the smaller scale factor to ensure it fits completely within the available space
   // Using 0.90 to provide more space for the header/title at the top of the page
   return Math.min(widthScale, heightScale) * 0.90;
+};
+
+/**
+ * Calculate the total area from all area measurements
+ */
+export const calculateTotalArea = (measurements: Measurement[]): number => {
+  return measurements
+    .filter(m => m.type === 'area')
+    .reduce((sum, m) => sum + m.value, 0);
+};
+
+/**
+ * Group all segments from area measurements by their type
+ * Used for generating the summary table of segment types
+ */
+export const groupSegmentsByType = (measurements: Measurement[]): Record<string, {count: number, totalLength: number}> => {
+  const segmentGroups: Record<string, {count: number, totalLength: number}> = {};
+  
+  // Initialize common roof segment types
+  const commonTypes = ['ridge', 'hip', 'valley', 'eave', 'verge'];
+  commonTypes.forEach(type => {
+    segmentGroups[type] = { count: 0, totalLength: 0 };
+  });
+  
+  // Add custom types that might not be in the common list
+  measurements.forEach(measurement => {
+    if (measurement.segments) {
+      measurement.segments.forEach(segment => {
+        if (segment.type) {
+          if (!segmentGroups[segment.type]) {
+            segmentGroups[segment.type] = { count: 0, totalLength: 0 };
+          }
+          
+          segmentGroups[segment.type].count += 1;
+          segmentGroups[segment.type].totalLength += segment.length;
+        }
+      });
+    }
+  });
+  
+  return segmentGroups;
+};
+
+/**
+ * Get German display name for segment type
+ */
+export const getSegmentTypeDisplayName = (type: string): string => {
+  const normalizedType = type.toLowerCase();
+  
+  const typeMapping: Record<string, string> = {
+    'ridge': 'First',
+    'hip': 'Grat',
+    'valley': 'Kehle',
+    'eave': 'Traufe',
+    'verge': 'Ortgang',
+    'custom': 'Dachkante',
+    'first': 'First',
+    'grat': 'Grat',
+    'kehle': 'Kehle',
+    'traufe': 'Traufe',
+    'ortgang': 'Ortgang'
+  };
+  
+  const mappedName = typeMapping[normalizedType];
+  if (mappedName) {
+    return mappedName;
+  }
+  
+  if (type && type.length > 0) {
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+  
+  return type;
+};
+
+/**
+ * Count total segments in all measurements
+ */
+export const countTotalSegments = (measurements: Measurement[]): number => {
+  return measurements.reduce((total, m) => {
+    return total + (m.segments?.length || 0);
+  }, 0);
 };

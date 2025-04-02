@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { Measurement, Point } from '@/types/measurements';
+import { Measurement, Point, Segment } from '@/types/measurements';
 import { calculateArea, generateSegments } from '@/utils/measurementCalculations';
 import { formatMeasurement } from '@/constants/measurements';
 
@@ -52,6 +52,19 @@ export const useMeasurementEditing = (
     setMeasurements(prev => prev.map(m => 
       m.id === id ? { ...m, ...data } : m
     ));
+  }, [setMeasurements]);
+
+  // Update a specific segment in a measurement
+  const updateSegment = useCallback((measurementId: string, segmentId: string, data: Partial<Segment>) => {
+    setMeasurements(prev => prev.map(m => {
+      if (m.id !== measurementId || !m.segments) return m;
+      
+      const updatedSegments = m.segments.map(segment =>
+        segment.id === segmentId ? { ...segment, ...data } : segment
+      );
+      
+      return { ...m, segments: updatedSegments };
+    }));
   }, [setMeasurements]);
 
   // Delete a measurement
@@ -121,6 +134,7 @@ export const useMeasurementEditing = (
     toggleEditMode,
     startPointEdit,
     updateMeasurement,
+    updateSegment,
     deleteMeasurement,
     deletePoint,
     cancelEditing

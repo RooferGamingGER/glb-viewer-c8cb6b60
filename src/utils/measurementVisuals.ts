@@ -1049,8 +1049,11 @@ function renderAreaMeasurement(
       // Offset midpoint slightly to avoid overlap with lines
       midpoint.y += LABEL_Y_OFFSET;
       
+      // Zeige immer den Messwert im 3D-Modell an, unabhängig vom benutzerdefinierten Label
+      const segmentLabelText = `${segment.length.toFixed(2)}m`;
+      
       // Create label with smaller size
-      const segmentLabelSprite = createMeasurementLabel(segment.label || "", midpoint, true, '#' + measurementColor.toString(16).padStart(6, '0'));
+      const segmentLabelSprite = createMeasurementLabel(segmentLabelText, midpoint, true, '#' + measurementColor.toString(16).padStart(6, '0'));
       
       // Adjust the scale to make it slightly smaller than area labels
       segmentLabelSprite.scale.multiplyScalar(0.75);

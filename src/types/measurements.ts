@@ -35,6 +35,7 @@ export interface Segment {
   length: number;
   label?: string;
   inclination?: number;
+  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
 }
 
 export interface Point2D {
