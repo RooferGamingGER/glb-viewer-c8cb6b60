@@ -24,11 +24,11 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
   const segmentsTable = document.createElement('table');
   segmentsTable.className = 'segment-table';
   
-  // Segments table header
+  // Segments table header - Removed "Bezeichnung" column as requested
   const segmentsTableHead = document.createElement('thead');
   const segmentsHeaderRow = document.createElement('tr');
   
-  ['Teilmessung', 'Länge (m)', 'Bezeichnung', 'Typ'].forEach(column => {
+  ['Teilmessung', 'Länge (m)', 'Typ'].forEach(column => {
     const th = document.createElement('th');
     th.textContent = column;
     segmentsHeaderRow.appendChild(th);
@@ -54,15 +54,11 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
       segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
       segmentRow.appendChild(segmentLengthCell);
       
-      // Segment label column
-      const segmentLabelCell = document.createElement('td');
-      segmentLabelCell.textContent = segment.label || '–';
-      segmentRow.appendChild(segmentLabelCell);
-      
-      // Segment type column
+      // Segment type column - Capitalized first letter
       const segmentTypeCell = document.createElement('td');
       if (segment.type) {
-        segmentTypeCell.textContent = getSegmentTypeDisplayName(segment.type);
+        const typeName = getSegmentTypeDisplayName(segment.type);
+        segmentTypeCell.textContent = typeName;
       } else {
         segmentTypeCell.textContent = '–';
       }
@@ -160,7 +156,7 @@ const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
 };
 
 /**
- * Creates a segment summary section for the PDF
+ * Creates a segment summary section for the PDF grouped by segment type
  */
 const createSegmentSummary = (measurements: Measurement[]): HTMLElement => {
   const segmentGroups = groupSegmentsByType(measurements);
@@ -172,89 +168,156 @@ const createSegmentSummary = (measurements: Measurement[]): HTMLElement => {
   summaryTitle.textContent = 'Dachkanten-Auswertung';
   container.appendChild(summaryTitle);
   
-  const segmentTable = document.createElement('table');
-  segmentTable.className = 'summary-table';
+  // Define the order for segment types
+  const segmentTypeOrder = ['ridge', 'hip', 'valley', 'eave', 'verge'];
   
-  // Table header
-  const tableHead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  
-  ['Kantentyp', 'Anzahl', 'Gesamtlänge (m)'].forEach(column => {
-    const th = document.createElement('th');
-    th.textContent = column;
-    headerRow.appendChild(th);
-  });
-  
-  tableHead.appendChild(headerRow);
-  segmentTable.appendChild(tableHead);
-  
-  // Table body
-  const tableBody = document.createElement('tbody');
-  
-  // Sort segment types for consistent display
-  const segmentTypes = Object.keys(segmentGroups).sort((a, b) => {
-    // Custom sorting order for common types
-    const order = {
-      'ridge': 1,  // First
-      'hip': 2,    // Grat
-      'valley': 3, // Kehle
-      'eave': 4,   // Traufe
-      'verge': 5   // Ortgang
-    };
-    return (order[a] || 99) - (order[b] || 99);
-  });
-  
-  // Add each segment type
-  segmentTypes.forEach(type => {
-    const group = segmentGroups[type];
-    if (group.count > 0) {
+  // Create tables for each segment type instead of a single table
+  segmentTypeOrder.forEach(type => {
+    if (segmentGroups[type] && segmentGroups[type].count > 0) {
+      const typeInfo = segmentGroups[type];
+      const typeName = getSegmentTypeDisplayName(type);
+      
+      const typeTitle = document.createElement('h4');
+      typeTitle.textContent = typeName;
+      typeTitle.style.marginTop = '15px';
+      typeTitle.style.marginBottom = '5px';
+      container.appendChild(typeTitle);
+      
+      const typeTable = document.createElement('table');
+      typeTable.className = 'summary-table';
+      
+      // Table header
+      const tableHead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      
+      ['Anzahl', 'Gesamtlänge (m)'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+      });
+      
+      tableHead.appendChild(headerRow);
+      typeTable.appendChild(tableHead);
+      
+      // Table body with a single row for this type
+      const tableBody = document.createElement('tbody');
       const row = document.createElement('tr');
       
-      // Segment type column
-      const typeCell = document.createElement('td');
-      typeCell.textContent = getSegmentTypeDisplayName(type);
-      row.appendChild(typeCell);
-      
-      // Segment count column
+      // Count column
       const countCell = document.createElement('td');
-      countCell.textContent = `${group.count}`;
+      countCell.textContent = `${typeInfo.count}`;
       row.appendChild(countCell);
       
       // Total length column
       const lengthCell = document.createElement('td');
-      lengthCell.textContent = `${group.totalLength.toFixed(2)} m`;
+      lengthCell.textContent = `${typeInfo.totalLength.toFixed(2)} m`;
       row.appendChild(lengthCell);
       
       tableBody.appendChild(row);
+      typeTable.appendChild(tableBody);
+      
+      container.appendChild(typeTable);
     }
   });
   
-  // Add total length row
-  const totalLength = segmentTypes.reduce((total, type) => total + segmentGroups[type].totalLength, 0);
-  const totalCount = segmentTypes.reduce((total, type) => total + segmentGroups[type].count, 0);
+  // Add other segment types that are not in the predefined order
+  Object.keys(segmentGroups).forEach(type => {
+    if (!segmentTypeOrder.includes(type) && segmentGroups[type].count > 0) {
+      const typeInfo = segmentGroups[type];
+      const typeName = getSegmentTypeDisplayName(type);
+      
+      const typeTitle = document.createElement('h4');
+      typeTitle.textContent = typeName;
+      typeTitle.style.marginTop = '15px';
+      typeTitle.style.marginBottom = '5px';
+      container.appendChild(typeTitle);
+      
+      const typeTable = document.createElement('table');
+      typeTable.className = 'summary-table';
+      
+      // Table header
+      const tableHead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      
+      ['Anzahl', 'Gesamtlänge (m)'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+      });
+      
+      tableHead.appendChild(headerRow);
+      typeTable.appendChild(tableHead);
+      
+      // Table body with a single row for this type
+      const tableBody = document.createElement('tbody');
+      const row = document.createElement('tr');
+      
+      // Count column
+      const countCell = document.createElement('td');
+      countCell.textContent = `${typeInfo.count}`;
+      row.appendChild(countCell);
+      
+      // Total length column
+      const lengthCell = document.createElement('td');
+      lengthCell.textContent = `${typeInfo.totalLength.toFixed(2)} m`;
+      row.appendChild(lengthCell);
+      
+      tableBody.appendChild(row);
+      typeTable.appendChild(tableBody);
+      
+      container.appendChild(typeTable);
+    }
+  });
   
+  // Add total row as a separate summary
+  const totalLength = Object.values(segmentGroups).reduce((total, group) => total + group.totalLength, 0);
+  const totalCount = Object.values(segmentGroups).reduce((total, group) => total + group.count, 0);
+  
+  const totalSummary = document.createElement('div');
+  totalSummary.style.marginTop = '20px';
+  
+  const totalTitle = document.createElement('h4');
+  totalTitle.textContent = 'Gesamtübersicht Dachkanten';
+  totalSummary.appendChild(totalTitle);
+  
+  const totalTable = document.createElement('table');
+  totalTable.className = 'summary-table';
+  
+  // Table header
+  const totalTableHead = document.createElement('thead');
+  const totalHeaderRow = document.createElement('tr');
+  
+  ['Anzahl', 'Gesamtlänge (m)'].forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    totalHeaderRow.appendChild(th);
+  });
+  
+  totalTableHead.appendChild(totalHeaderRow);
+  totalTable.appendChild(totalTableHead);
+  
+  // Table body with totals
+  const totalTableBody = document.createElement('tbody');
   const totalRow = document.createElement('tr');
   totalRow.className = 'total-row';
   
-  const totalLabelCell = document.createElement('td');
-  totalLabelCell.textContent = 'Gesamt';
-  totalLabelCell.style.fontWeight = 'bold';
-  totalRow.appendChild(totalLabelCell);
-  
+  // Total count column
   const totalCountCell = document.createElement('td');
   totalCountCell.textContent = `${totalCount}`;
   totalCountCell.style.fontWeight = 'bold';
   totalRow.appendChild(totalCountCell);
   
+  // Total length column
   const totalLengthCell = document.createElement('td');
   totalLengthCell.textContent = `${totalLength.toFixed(2)} m`;
   totalLengthCell.style.fontWeight = 'bold';
   totalRow.appendChild(totalLengthCell);
   
-  tableBody.appendChild(totalRow);
-  segmentTable.appendChild(tableBody);
+  totalTableBody.appendChild(totalRow);
+  totalTable.appendChild(totalTableBody);
   
-  container.appendChild(segmentTable);
+  totalSummary.appendChild(totalTable);
+  container.appendChild(totalSummary);
   
   return container;
 };
@@ -341,6 +404,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         width: 100%;
         border-collapse: collapse;
         margin-top: 20px;
+        margin-bottom: 20px;
       }
       .measurement-table th,
       .measurement-table td,
@@ -361,12 +425,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
+        margin-bottom: 30px;
         font-size: 0.9em;
       }
       .summary-table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
+        margin-bottom: 20px;
       }
       .total-row {
         background-color: #f9f9f9;
@@ -380,8 +446,13 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       h2 {
         border-bottom: 1px solid #ddd;
         padding-bottom: 10px;
+        margin-top: 40px;
       }
       h3 {
+        margin-top: 30px;
+        margin-bottom: 10px;
+      }
+      h4 {
         margin-top: 20px;
         margin-bottom: 10px;
       }
@@ -395,6 +466,12 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         font-size: 10px;
         color: #999;
         margin-top: 10px;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+      .area-detail {
+        page-break-inside: avoid;
       }
     `;
     container.appendChild(style);
@@ -494,7 +571,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // === Roof Plan (Page 2) ===
     if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
       const roofPlanPage = document.createElement('div');
-      roofPlanPage.style.pageBreakBefore = 'always';
+      roofPlanPage.className = 'page-break';
       roofPlanPage.style.padding = '20px';
       
       // Only add title if not showing the roof plan in full page mode
@@ -611,14 +688,16 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // Process area measurements (with visuals if available)
     if (areaMeasurements.length > 0) {
       const areaSection = document.createElement('div');
-      areaSection.style.pageBreakBefore = 'always';
+      areaSection.className = 'page-break';
       
       const areaTitle = document.createElement('h2');
       areaTitle.textContent = 'Flächenmessungen';
       areaSection.appendChild(areaTitle);
       
       areaMeasurements.forEach((measurement, index) => {
+        // Create a container that avoids page breaks inside
         const areaContainer = document.createElement('div');
+        areaContainer.className = 'area-detail';
         areaContainer.style.marginBottom = '30px';
         
         const areaHeading = document.createElement('h3');
@@ -684,7 +763,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // Process length measurements
     if (lengthMeasurements.length > 0) {
       const lengthSection = document.createElement('div');
-      lengthSection.style.pageBreakBefore = 'always';
+      lengthSection.className = 'page-break';
       
       const lengthTitle = document.createElement('h2');
       lengthTitle.textContent = 'Längenmessungen';
@@ -748,7 +827,13 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // Process height measurements
     if (heightMeasurements.length > 0) {
       const heightSection = document.createElement('div');
-      heightSection.style.marginTop = '40px';
+      
+      // Only add page break if there was already a section before
+      if (lengthMeasurements.length > 0) {
+        heightSection.className = 'page-break';
+      } else {
+        heightSection.style.marginTop = '40px';
+      }
       
       const heightTitle = document.createElement('h2');
       heightTitle.textContent = 'Höhenmessungen';
@@ -803,7 +888,13 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // Process other measurements (skylights, chimneys, vents, etc.)
     if (otherMeasurements.length > 0) {
       const otherSection = document.createElement('div');
-      otherSection.style.marginTop = '40px';
+      
+      // Only add page break if there were already other sections
+      if (lengthMeasurements.length > 0 || heightMeasurements.length > 0) {
+        otherSection.className = 'page-break';
+      } else {
+        otherSection.style.marginTop = '40px';
+      }
       
       const otherTitle = document.createElement('h2');
       otherTitle.textContent = 'Dacheinbauten und Sonstiges';
