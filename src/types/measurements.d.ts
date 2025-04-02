@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -11,6 +10,7 @@ export interface Segment {
   length: number;
   inclination?: number;
   label?: string;
+  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
 }
 
 export interface Measurement {
@@ -93,7 +93,6 @@ export interface PVModuleInfo {
   edgeInfoMessage?: string;
   pvModuleSpec?: PVModuleSpec;
   pvMaterials?: PVMaterials;
-  // New properties for orientation
   roofAzimuth?: number;       // Azimuth angle in degrees (0=North, 90=East, 180=South, 270=West)
   roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
   roofInclination?: number;   // Roof inclination in degrees
