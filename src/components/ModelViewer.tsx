@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -196,7 +197,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     canvas: HTMLCanvasElement
   ) => {
     if (newRenderer) {
-      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 1.5));
+      // Reduzierte Pixel-Ratio für geringere RAM-Nutzung
+      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     }
     
     setThreeContext({
