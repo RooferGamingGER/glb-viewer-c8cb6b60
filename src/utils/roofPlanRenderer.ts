@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -276,7 +277,7 @@ export const createCombinedRoofPlan = (
     const toCanvasY = (y: number) => offsetY + (y - paddedMinY) * scale;
     
     // Add a title - increased font size for better readability
-    ctx.font = 'bold 40px Arial'; // Increased from 30px to 40px
+    ctx.font = 'bold 44px Arial'; // Increased from 40px to 44px
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -329,7 +330,7 @@ export const createCombinedRoofPlan = (
         ctx.fill();
         
         // Add index numbers to vertices for clearer identification
-        ctx.font = 'bold 10px Arial';
+        ctx.font = 'bold 12px Arial'; // Increased from 10px to 12px
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -340,13 +341,44 @@ export const createCombinedRoofPlan = (
       const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
-      ctx.font = 'bold 14px Arial';
-      ctx.fillStyle = '#333333';
+      // IMPROVED: Increase font size for better readability
+      ctx.font = 'bold 18px Arial'; // Increased from 14px to 18px
+      ctx.fillStyle = '#222222'; // Darker color for better contrast
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      
+      // Add a white background behind text for better readability
+      const labelWidth = ctx.measureText(labelText).width;
+      const valueWidth = ctx.measureText(valueText).width;
+      const maxWidth = Math.max(labelWidth, valueWidth);
+      
+      // Draw white background for label text
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(
+        toCanvasX(centroid.x) - maxWidth / 2 - 5,
+        toCanvasY(centroid.y) - 15,
+        maxWidth + 10,
+        30
+      );
+      
+      // Draw label text
+      ctx.font = 'bold 18px Arial';
+      ctx.fillStyle = '#222222';
       ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y));
-      ctx.font = '12px Arial';
-      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 20);
+      
+      // Draw white background for value text
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(
+        toCanvasX(centroid.x) - maxWidth / 2 - 5,
+        toCanvasY(centroid.y) + 15,
+        maxWidth + 10,
+        24
+      );
+      
+      // Draw value text
+      ctx.font = 'bold 16px Arial'; // Increased from 12px to 16px
+      ctx.fillStyle = '#222222';
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 26);
       
       // Draw length for each segment
       if (measurement.segments) {
@@ -377,21 +409,22 @@ export const createCombinedRoofPlan = (
             // Draw the length value with a background for better readability
             const lengthText = `${segment.length.toFixed(2)}m`;
             
-            ctx.font = '12px Arial';
+            // IMPROVED: Increase font size for better readability
+            ctx.font = 'bold 14px Arial'; // Increased from 12px to 14px
             const textMetrics = ctx.measureText(lengthText);
             const textWidth = textMetrics.width;
             
-            // Draw white background box for text
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            // Draw white background box for text with improved opacity
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Increased opacity from 0.7 to 0.9
             ctx.fillRect(
-              toCanvasX(midX) - textWidth / 2 - 4, 
-              toCanvasY(midY) - 8, 
-              textWidth + 8, 
-              16
+              toCanvasX(midX) - textWidth / 2 - 6, 
+              toCanvasY(midY) - 10, 
+              textWidth + 12, 
+              20
             );
             
-            // Draw text
-            ctx.fillStyle = '#333333';
+            // Draw text with improved contrast
+            ctx.fillStyle = '#111111'; // Darker for better contrast
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY));
@@ -452,8 +485,8 @@ function drawScaleIndicator(
   const scaleBarX = 40; // Reduced from 50 to 40
   const scaleBarY = height - 30; // Reduced from 50 to 30
   
-  // Draw background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  // Draw background with improved opacity
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Increased opacity from 0.8 to 0.9
   ctx.fillRect(scaleBarX - 10, scaleBarY - 25, scaleBarPixelLength + 20, 40); // More compact
   
   // Draw border
@@ -480,15 +513,15 @@ function drawScaleIndicator(
     ctx.stroke();
   }
   
-  // Add label
-  ctx.font = '12px Arial';
+  // Add label with increased font size
+  ctx.font = 'bold 14px Arial'; // Increased from 12px to 14px
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 8);
   
-  // Add "Maßstab" label
-  ctx.font = 'bold 12px Arial';
+  // Add "Maßstab" label with increased font size
+  ctx.font = 'bold 14px Arial'; // Increased from 12px to 14px
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 8);
@@ -518,8 +551,8 @@ function drawLegend(
   
   const legendHeight = legendItems.length * itemHeight + 30; // Reduced padding
   
-  // Draw legend background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  // Draw legend background with better opacity
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Increased opacity from 0.8 to 0.9
   ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
   
   // Draw border
@@ -527,8 +560,8 @@ function drawLegend(
   ctx.lineWidth = 1;
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
   
-  // Draw legend title
-  ctx.font = 'bold 13px Arial'; // Reduced from 14px to 13px
+  // Draw legend title with increased font size
+  ctx.font = 'bold 14px Arial'; // Increased from 13px to 14px
   ctx.fillStyle = '#333333';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -548,8 +581,8 @@ function drawLegend(
     ctx.fillRect(legendX + 10, currentY, 18, 14); // Smaller color boxes
     ctx.strokeRect(legendX + 10, currentY, 18, 14);
     
-    // Draw label
-    ctx.font = '11px Arial'; // Smaller font
+    // Draw label with increased font size
+    ctx.font = '12px Arial'; // Increased from 11px to 12px
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
