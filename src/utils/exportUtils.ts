@@ -480,16 +480,27 @@ export const groupSegmentsByType = (measurements: Measurement[]): Record<string,
  * Get German display name for segment type
  */
 export const getSegmentTypeDisplayName = (type: string): string => {
+  const normalizedType = type.toLowerCase();
+  
   const typeMapping: Record<string, string> = {
     'ridge': 'First',
     'hip': 'Grat',
     'valley': 'Kehle',
     'eave': 'Traufe',
     'verge': 'Ortgang',
-    'custom': 'Benutzerdefiniert'
+    'custom': 'Dachkante'
   };
   
-  return typeMapping[type] || type;
+  const mappedName = typeMapping[normalizedType];
+  if (mappedName) {
+    return mappedName;
+  }
+  
+  if (type && type.length > 0) {
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+  
+  return type;
 };
 
 /**
