@@ -101,15 +101,19 @@ const Test = () => {
           </div>
         )}
         
-        <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
-          <main className="flex-1 relative w-full h-full">
-            {/* Display the permanent test model with touch-friendly controls */}
-            <ModelViewer 
-              fileUrl={testModelUrl} 
-              fileName={testModelName} 
-            />
-          </main>
-        </SidebarProvider>
+        {/* Modified SidebarProvider to use a container with flex-1 and pb-0, 
+            ensuring it doesn't overlap with the footer */}
+        <div className="flex flex-col flex-1 w-full overflow-hidden">
+          <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
+            <main className="flex-1 relative w-full h-full">
+              {/* Display the permanent test model with touch-friendly controls */}
+              <ModelViewer 
+                fileUrl={testModelUrl} 
+                fileName={testModelName} 
+              />
+            </main>
+          </SidebarProvider>
+        </div>
       </div>
       
       <footer className="glass-panel w-full py-2 px-4 border-t border-border/50 z-10 text-center text-xs text-muted-foreground">

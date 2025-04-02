@@ -351,9 +351,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Break up the component into logical sections
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
-      <div className="w-full h-full">
+      <div className="w-full h-full flex flex-col">
         <div 
-          className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          className={`absolute top-0 right-0 bottom-[2.75rem] glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          style={{ width: '20rem', maxHeight: 'calc(100% - 2.75rem)' }}
         >
           {/* Fixed Header - Tools Section */}
           <div className="flex-shrink-0 border-b border-border/50">
