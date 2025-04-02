@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -407,16 +408,22 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         display: inline-block;
         width: 150px;
       }
-      .footer {
+      .promo-section {
         position: absolute;
         bottom: 40px;
         left: 0;
         right: 0;
         text-align: center;
       }
-      .footer-text {
+      .promo-item {
         font-size: 14px;
         line-height: 1.5;
+        margin-bottom: 5px;
+      }
+      .promo-highlight {
+        font-weight: bold;
+        font-size: 16px;
+        margin-bottom: 10px;
       }
       .measurement-section {
         margin-top: 40px;
@@ -568,16 +575,26 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     coverPage.appendChild(projectInfo);
     
-    // Footer with text instead of promotional image
-    const footer = document.createElement('div');
-    footer.className = 'footer';
+    // Create promotional section instead of footer
+    const promoSection = document.createElement('div');
+    promoSection.className = 'promo-section';
     
-    const footerText = document.createElement('div');
-    footerText.className = 'footer-text';
-    footerText.innerHTML = 'DrohnenGLB by RooferGaming<sup>®</sup><br>kostenloser GLB Viewer: www.drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: www.drohnenvermessung-roofergaming.de';
-    footer.appendChild(footerText);
+    const addPromoItem = (text: string, isHighlight: boolean = false) => {
+      const item = document.createElement('div');
+      item.className = 'promo-item';
+      if (isHighlight) {
+        item.classList.add('promo-highlight');
+      }
+      item.textContent = text;
+      promoSection.appendChild(item);
+    };
     
-    coverPage.appendChild(footer);
+    addPromoItem('DrohnenGLB by RooferGaming', true);
+    addPromoItem('Kostenloser GLB Viewer: drohnenglb.de');
+    addPromoItem('Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de');
+    
+    coverPage.appendChild(promoSection);
+    
     container.appendChild(coverPage);
     
     // === Roof Plan (Page 2) ===
