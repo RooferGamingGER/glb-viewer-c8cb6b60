@@ -391,17 +391,17 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         font-size: 28px;
         font-weight: bold;
         margin-top: 40px;
-        margin-bottom: 60px;
+        margin-bottom: 40px;
         text-align: center;
       }
       .project-info {
-        margin: 60px auto;
+        margin: 40px auto;
         text-align: left;
         width: 80%;
         max-width: 500px;
       }
       .project-info div {
-        margin-bottom: 15px;
+        margin-bottom: 10px;
       }
       .info-label {
         font-weight: bold;
@@ -410,20 +410,20 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .promo-section {
         position: absolute;
-        bottom: 40px;
+        bottom: 30px;
         left: 0;
         right: 0;
         text-align: center;
       }
       .promo-item {
         font-size: 14px;
-        line-height: 1.5;
-        margin-bottom: 5px;
+        line-height: 1.3;
+        margin-bottom: 4px;
       }
       .promo-highlight {
         font-weight: bold;
         font-size: 16px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
       .measurement-section {
         margin-top: 40px;
@@ -530,6 +530,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // Project Information
     const projectInfo = document.createElement('div');
     projectInfo.className = 'project-info';
+    projectInfo.style.marginBottom = '80px'; // Add extra bottom margin to prevent overlap
     
     // Create info rows in a logical list
     const infoFields = [
