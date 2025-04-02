@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -985,12 +984,12 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           if (type === 'skylight') {
             // Width column
             const widthCell = document.createElement('td');
-            widthCell.textContent = measurement.width ? `${measurement.width.toFixed(2)} m` : '-';
+            widthCell.textContent = measurement.dimensions?.width ? `${measurement.dimensions.width.toFixed(2)} m` : '-';
             row.appendChild(widthCell);
             
             // Height column
             const heightCell = document.createElement('td');
-            heightCell.textContent = measurement.height ? `${measurement.height.toFixed(2)} m` : '-';
+            heightCell.textContent = measurement.dimensions?.height ? `${measurement.dimensions.height.toFixed(2)} m` : '-';
             row.appendChild(heightCell);
             
             // Area column
@@ -1000,7 +999,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           } else if (type === 'chimney' || type === 'vent') {
             // Diameter/width column
             const diameterCell = document.createElement('td');
-            diameterCell.textContent = measurement.width ? `${measurement.width.toFixed(2)} m` : '-';
+            diameterCell.textContent = measurement.dimensions?.width ? `${measurement.dimensions.width.toFixed(2)} m` : '-';
             row.appendChild(diameterCell);
             
             // Area column
@@ -1015,7 +1014,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
             
             // Module count column
             const moduleCell = document.createElement('td');
-            moduleCell.textContent = measurement.pvModuleCount?.toString() || '-';
+            moduleCell.textContent = measurement.pvModuleInfo?.moduleCount?.toString() || '-';
             row.appendChild(moduleCell);
           } else {
             // Generic value column
