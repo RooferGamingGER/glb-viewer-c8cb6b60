@@ -47,24 +47,11 @@ const SegmentList: React.FC<SegmentListProps> = ({
   if (!segments || segments.length === 0) return null;
   
   const handleEditStart = (segment: Segment) => {
-    // Extract type from label if it exists
-    const existingType = SEGMENT_TYPES.find(type => 
-      segment.label?.startsWith(type.label)
-    )?.value || 'custom';
+    // Set the selected type from the segment's type field
+    setSelectedType(segment.type || 'custom');
     
-    setSelectedType(existingType);
-    
-    if (existingType === 'custom') {
-      setCustomLabel(segment.label || '');
-    } else {
-      // If it's not custom but has additional text after the type
-      const labelParts = segment.label?.split(':');
-      if (labelParts && labelParts.length > 1) {
-        setCustomLabel(labelParts[1].trim());
-      } else {
-        setCustomLabel('');
-      }
-    }
+    // Set custom label if it exists
+    setCustomLabel(segment.label || '');
     
     setEditingSegmentId(segment.id);
   };
@@ -72,16 +59,12 @@ const SegmentList: React.FC<SegmentListProps> = ({
   const handleSaveLabel = (segmentId: string) => {
     if (!updateSegment) return;
     
-    let newLabel;
+    // Update both type and label separately
+    updateSegment(measurementId, segmentId, { 
+      type: selectedType as Segment['type'],  // Cast to the correct type
+      label: customLabel
+    });
     
-    if (selectedType === 'custom') {
-      newLabel = customLabel;
-    } else {
-      const typeLabel = SEGMENT_TYPES.find(type => type.value === selectedType)?.label || '';
-      newLabel = typeLabel + (customLabel ? ': ' + customLabel : '');
-    }
-    
-    updateSegment(measurementId, segmentId, { label: newLabel });
     setEditingSegmentId(null);
     setSelectedType('');
     setCustomLabel('');
@@ -93,6 +76,23 @@ const SegmentList: React.FC<SegmentListProps> = ({
     setEditingSegmentId(null);
     setSelectedType('');
     setCustomLabel('');
+  };
+  
+  // Hilfsfunktion, um den Anzeigenamen für Segment zu generieren
+  const getSegmentDisplayName = (segment: Segment, index: number) => {
+    if (segment.type && segment.type !== 'custom') {
+      // Zeige Typ-Label aus SEGMENT_TYPES
+      const typeLabel = SEGMENT_TYPES.find(t => t.value === segment.type)?.label;
+      
+      if (segment.label) {
+        // Wenn zusätzliches Label vorhanden ist, kombiniere sie
+        return `${typeLabel}: ${segment.label}`;
+      }
+      return typeLabel;
+    }
+    
+    // Fallback auf benutzerdefiniertes Label oder Länge
+    return segment.label || `${segment.length.toFixed(2)}m`;
   };
   
   return (
@@ -121,10 +121,6 @@ const SegmentList: React.FC<SegmentListProps> = ({
                     value={selectedType}
                     onValueChange={(value) => {
                       setSelectedType(value);
-                      // Reset custom label if not custom type
-                      if (value !== 'custom') {
-                        setCustomLabel('');
-                      }
                     }}
                   >
                     <SelectTrigger className="h-7 text-xs">
@@ -139,14 +135,12 @@ const SegmentList: React.FC<SegmentListProps> = ({
                     </SelectContent>
                   </Select>
                   
-                  {(selectedType === 'custom' || customLabel) && (
-                    <Input
-                      className="text-xs h-7"
-                      placeholder={selectedType === 'custom' ? "Beschreibung" : "Zusätzliche Beschreibung (optional)"}
-                      value={customLabel}
-                      onChange={(e) => setCustomLabel(e.target.value)}
-                    />
-                  )}
+                  <Input
+                    className="text-xs h-7"
+                    placeholder="Zusätzliche Beschreibung (optional)"
+                    value={customLabel}
+                    onChange={(e) => setCustomLabel(e.target.value)}
+                  />
                   
                   <div className="flex space-x-2">
                     <Button
@@ -172,7 +166,7 @@ const SegmentList: React.FC<SegmentListProps> = ({
               ) : (
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-medium">Teilmessung {index + 1}:</span> {segment.label || `${segment.length.toFixed(2)}m`}
+                    <span className="font-medium">Teilmessung {index + 1}:</span> {getSegmentDisplayName(segment, index)}
                   </div>
                   <div className="flex space-x-1">
                     <Button
