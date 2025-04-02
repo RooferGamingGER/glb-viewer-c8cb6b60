@@ -1,8 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
 import { toast } from 'sonner';
-import { Measurement } from '@/hooks/useMeasurements';
+import { Measurement } from '@/types/measurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import { consolidatePenetrations, calculateRoofPlanScaleFactor } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
