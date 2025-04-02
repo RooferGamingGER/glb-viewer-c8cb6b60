@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -382,33 +381,26 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         position: relative;
       }
       .company-header {
-        margin-bottom: 20px;
-        font-size: 18px;
+        margin-bottom: 40px;
+        font-size: 24px;
         font-weight: bold;
-      }
-      .company-logo {
-        width: 200px;
-        max-width: 80%;
-        height: auto;
-        margin: 0 auto 30px;
-        display: block;
+        text-align: center;
       }
       .cover-title {
-        font-size: 26px;
+        font-size: 28px;
         font-weight: bold;
-        margin-top: 60px;
+        margin-top: 40px;
         margin-bottom: 60px;
+        text-align: center;
       }
       .project-info {
-        margin-top: 40px;
+        margin: 60px auto;
         text-align: left;
-        padding: 20px 40px;
-        border: 1px solid #eee;
-        border-radius: 8px;
-        background-color: #f9f9f9;
+        width: 80%;
+        max-width: 500px;
       }
       .project-info div {
-        margin-bottom: 10px;
+        margin-bottom: 15px;
       }
       .info-label {
         font-weight: bold;
@@ -421,7 +413,11 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         left: 0;
         right: 0;
         text-align: center;
-        font-size: 12px;
+      }
+      .footer-img {
+        max-width: 80%;
+        max-height: 150px;
+        margin: 0 auto;
       }
       .measurement-section {
         margin-top: 40px;
@@ -503,18 +499,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       .area-detail {
         page-break-inside: avoid;
       }
-      .company-slogan {
-        font-style: italic;
-        color: #666;
-        margin-top: 10px;
-        font-size: 14px;
-      }
-      .branding-banner {
-        margin-top: 20px;
-        padding: 15px;
-        background-color: #f5f5f5;
-        border-top: 2px solid #ddd;
-        border-bottom: 2px solid #ddd;
+      .type-section {
+        page-break-inside: avoid;
       }
     `;
     container.appendChild(style);
@@ -523,109 +509,78 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const coverPage = document.createElement('div');
     coverPage.className = 'cover-page';
     
-    // Logo placeholder
-    const logo = document.createElement('img');
-    logo.src = '/logo.png'; // Use the logo from public folder
-    logo.alt = coverData.companyName;
-    logo.className = 'company-logo';
-    coverPage.appendChild(logo);
-    
+    // Company Header - DrohnenGLB by RooferGaming®
     const companyHeader = document.createElement('div');
     companyHeader.className = 'company-header';
-    companyHeader.textContent = coverData.companyName;
+    companyHeader.innerHTML = 'DrohnenGLB by RooferGaming<sup>®</sup>';
     coverPage.appendChild(companyHeader);
     
-    const companySlogan = document.createElement('div');
-    companySlogan.className = 'company-slogan';
-    companySlogan.textContent = 'Professionelle Dachvermessung mit Drohnen';
-    coverPage.appendChild(companySlogan);
-    
-    const brandingBanner = document.createElement('div');
-    brandingBanner.className = 'branding-banner';
-    brandingBanner.innerHTML = 'Präzise Messungen für Ihre Projekte';
-    coverPage.appendChild(brandingBanner);
-    
+    // Report Title (centered)
     const title = document.createElement('h1');
     title.className = 'cover-title';
     title.textContent = coverData.title;
     coverPage.appendChild(title);
     
+    // Project Information
     const projectInfo = document.createElement('div');
     projectInfo.className = 'project-info';
     
-    // Add project details with enhanced visibility
-    if (coverData.projectNumber) {
-      const projectNumberDiv = document.createElement('div');
-      const projectNumberLabel = document.createElement('span');
-      projectNumberLabel.className = 'info-label';
-      projectNumberLabel.textContent = 'Projektnummer:';
-      projectNumberDiv.appendChild(projectNumberLabel);
-      projectNumberDiv.appendChild(document.createTextNode(coverData.projectNumber));
-      projectInfo.appendChild(projectNumberDiv);
-    }
+    // Create info rows in a logical list
+    const infoFields = [
+      { label: 'Projektnummer:', value: coverData.projectNumber },
+      { label: 'Erstellungsdatum:', value: coverData.creationDate },
+      { label: 'Objektadresse:', value: coverData.projectAddress },
+      { label: 'Auftraggeber:', value: coverData.clientName },
+      { label: 'Ansprechpartner:', value: coverData.contactPerson },
+      { label: 'Ausführender Betrieb:', value: coverData.companyName }
+    ];
     
-    if (coverData.projectAddress) {
-      const addressDiv = document.createElement('div');
-      const addressLabel = document.createElement('span');
-      addressLabel.className = 'info-label';
-      addressLabel.textContent = 'Adresse:';
-      addressDiv.appendChild(addressLabel);
-      addressDiv.appendChild(document.createTextNode(coverData.projectAddress));
-      projectInfo.appendChild(addressDiv);
-    }
+    infoFields.forEach(field => {
+      if (field.value) {
+        const infoRow = document.createElement('div');
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'info-label';
+        labelSpan.textContent = field.label;
+        infoRow.appendChild(labelSpan);
+        
+        infoRow.appendChild(document.createTextNode(field.value));
+        projectInfo.appendChild(infoRow);
+      }
+    });
     
-    if (coverData.clientName) {
-      const clientDiv = document.createElement('div');
-      const clientLabel = document.createElement('span');
-      clientLabel.className = 'info-label';
-      clientLabel.textContent = 'Auftraggeber:';
-      clientDiv.appendChild(clientLabel);
-      clientDiv.appendChild(document.createTextNode(coverData.clientName));
-      projectInfo.appendChild(clientDiv);
+    // Add notes if present
+    if (coverData.notes) {
+      const notesRow = document.createElement('div');
+      notesRow.style.marginTop = '20px';
+      
+      const notesLabel = document.createElement('div');
+      notesLabel.style.fontWeight = 'bold';
+      notesLabel.textContent = 'Bemerkungen:';
+      notesRow.appendChild(notesLabel);
+      
+      const notesContent = document.createElement('div');
+      notesContent.style.marginTop = '5px';
+      notesContent.textContent = coverData.notes;
+      notesRow.appendChild(notesContent);
+      
+      projectInfo.appendChild(notesRow);
     }
-    
-    if (coverData.contactPerson) {
-      const contactDiv = document.createElement('div');
-      const contactLabel = document.createElement('span');
-      contactLabel.className = 'info-label';
-      contactLabel.textContent = 'Ansprechpartner:';
-      contactDiv.appendChild(contactLabel);
-      contactDiv.appendChild(document.createTextNode(coverData.contactPerson));
-      projectInfo.appendChild(contactDiv);
-    }
-    
-    const dateDiv = document.createElement('div');
-    const dateLabel = document.createElement('span');
-    dateLabel.className = 'info-label';
-    dateLabel.textContent = 'Datum:';
-    dateDiv.appendChild(dateLabel);
-    dateDiv.appendChild(document.createTextNode(coverData.creationDate));
-    projectInfo.appendChild(dateDiv);
     
     coverPage.appendChild(projectInfo);
     
-    if (coverData.notes) {
-      const notesDiv = document.createElement('div');
-      notesDiv.style.marginTop = '40px';
-      notesDiv.style.textAlign = 'left';
-      notesDiv.style.padding = '0 40px';
-      
-      const notesTitle = document.createElement('h3');
-      notesTitle.textContent = 'Bemerkungen:';
-      notesDiv.appendChild(notesTitle);
-      
-      const notesContent = document.createElement('p');
-      notesContent.textContent = coverData.notes;
-      notesDiv.appendChild(notesContent);
-      
-      coverPage.appendChild(notesDiv);
-    }
-    
+    // Footer with promotional image (always visible)
     const footer = document.createElement('div');
     footer.className = 'footer';
-    footer.innerHTML = `Erstellt am ${coverData.creationDate} • ${coverData.companyName}<br>www.drohnenglb.de • Tel: +49 12345 67890`;
-    coverPage.appendChild(footer);
     
+    // Add the promotional image from public folder
+    const footerImg = document.createElement('img');
+    footerImg.src = '/lovable-uploads/2656e45c-bc18-44f7-8506-199c2edee8a2.png'; 
+    footerImg.className = 'footer-img';
+    footerImg.alt = 'DrohnenGLB Promotion';
+    footer.appendChild(footerImg);
+    
+    coverPage.appendChild(footer);
     container.appendChild(coverPage);
     
     // === Roof Plan (Page 2) ===
@@ -950,92 +905,4 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     if (otherMeasurements.length > 0) {
       const otherSection = document.createElement('div');
       
-      // Only add page break if there were already other sections
-      if (lengthMeasurements.length > 0 || heightMeasurements.length > 0) {
-        otherSection.className = 'page-break';
-      } else {
-        otherSection.style.marginTop = '40px';
-      }
-      
-      const otherTitle = document.createElement('h2');
-      otherTitle.textContent = 'Dacheinbauten und Sonstiges';
-      otherSection.appendChild(otherTitle);
-      
-      const otherTable = document.createElement('table');
-      otherTable.className = 'measurement-table';
-      
-      // Table header
-      const otherTableHead = document.createElement('thead');
-      const otherHeaderRow = document.createElement('tr');
-      
-      ['Nr.', 'Beschreibung', 'Typ', 'Wert'].forEach(column => {
-        const th = document.createElement('th');
-        th.textContent = column;
-        otherHeaderRow.appendChild(th);
-      });
-      
-      otherTableHead.appendChild(otherHeaderRow);
-      otherTable.appendChild(otherTableHead);
-      
-      // Table body
-      const otherTableBody = document.createElement('tbody');
-      
-      otherMeasurements.forEach((measurement, index) => {
-        const row = document.createElement('tr');
-        
-        // Measurement number column
-        const numCell = document.createElement('td');
-        numCell.textContent = (index + 1).toString();
-        row.appendChild(numCell);
-        
-        // Measurement description column
-        const descriptionCell = document.createElement('td');
-        descriptionCell.textContent = measurement.description || '';
-        row.appendChild(descriptionCell);
-        
-        // Measurement type column
-        const typeCell = document.createElement('td');
-        typeCell.textContent = getMeasurementTypeDisplayName(measurement.type);
-        row.appendChild(typeCell);
-        
-        // Measurement value column
-        const valueCell = document.createElement('td');
-        valueCell.textContent = formatMeasurementValue(measurement);
-        row.appendChild(valueCell);
-        
-        otherTableBody.appendChild(row);
-      });
-      
-      otherTable.appendChild(otherTableBody);
-      otherSection.appendChild(otherTable);
-      
-      container.appendChild(otherSection);
-    }
-    
-    // === Add Summary Section at the end ===
-    // Total Area Summary
-    const areaSummary = createTotalAreaSummary(measurements);
-    container.appendChild(areaSummary);
-    
-    // Segment Summary
-    const segmentSummary = createSegmentSummary(measurements);
-    container.appendChild(segmentSummary);
-    
-    // Generate PDF
-    const element = container;
-    const opt = {
-      margin: [15, 15], // [top & bottom, left & right]
-      filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    
-    await html2pdf().from(element).set(opt).save();
-    
-    return true;
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    return false;
-  }
-};
+      // Only add page break if there were already

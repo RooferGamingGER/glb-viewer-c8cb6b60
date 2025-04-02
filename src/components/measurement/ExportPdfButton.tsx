@@ -287,7 +287,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
               }) => <FormItem>
                       <FormLabel>Ausführender Betrieb</FormLabel>
                       <FormControl>
-                        <Input placeholder="Name des Betriebs" {...field} />
+                        <Input placeholder="DrohnenGLB by RooferGaming" {...field} />
                       </FormControl>
                     </FormItem>} />
                 
