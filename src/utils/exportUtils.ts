@@ -488,7 +488,12 @@ export const getSegmentTypeDisplayName = (type: string): string => {
     'valley': 'Kehle',
     'eave': 'Traufe',
     'verge': 'Ortgang',
-    'custom': 'Dachkante'
+    'custom': 'Dachkante',
+    'first': 'First',
+    'grat': 'Grat',
+    'kehle': 'Kehle',
+    'traufe': 'Traufe',
+    'ortgang': 'Ortgang'
   };
   
   const mappedName = typeMapping[normalizedType];

@@ -24,11 +24,11 @@ interface SegmentListProps {
 }
 
 const SEGMENT_TYPES = [
-  { value: 'first', label: 'First' },
-  { value: 'grat', label: 'Grat' },
-  { value: 'kehle', label: 'Kehle' },
-  { value: 'traufe', label: 'Traufe' },
-  { value: 'ortgang', label: 'Ortgang' },
+  { value: 'ridge', label: 'First' },
+  { value: 'hip', label: 'Grat' },
+  { value: 'valley', label: 'Kehle' },
+  { value: 'eave', label: 'Traufe' },
+  { value: 'verge', label: 'Ortgang' },
   { value: 'custom', label: 'Dachkante' }
 ];
 
@@ -89,6 +89,12 @@ const SegmentList: React.FC<SegmentListProps> = ({
         return `${typeLabel}: ${segment.label}`;
       }
       return typeLabel;
+    } else if (segment.type === 'custom') {
+      // Explizit "Dachkante" für custom zeigen
+      if (segment.label) {
+        return `Dachkante: ${segment.label}`;
+      }
+      return 'Dachkante';
     }
     
     // Fallback auf benutzerdefiniertes Label oder Länge
