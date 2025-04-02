@@ -1,4 +1,3 @@
-
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -111,10 +110,12 @@ export const exportMeasurementsToCSV = (measurements: Measurement[]): void => {
       if (m.segments && m.segments.length > 0) {
         csvContent += '\n';
         csvContent += `;Teilmessungen für Fläche ${index + 1};\n`;
-        csvContent += `;Teilmessung;Länge (m);\n`;
+        csvContent += `;Teilmessung;Länge (m);Bezeichnung;\n`;
         
         m.segments.forEach((segment, sIndex) => {
-          csvContent += `;${sIndex + 1};${segment.length.toFixed(2)};\n`;
+          const segmentLabel = segment.label || '';
+          const segmentType = segment.type ? ` (${segment.type})` : '';
+          csvContent += `;${sIndex + 1};${segment.length.toFixed(2)};${segmentLabel}${segmentType};\n`;
         });
         
         csvContent += '\n';
