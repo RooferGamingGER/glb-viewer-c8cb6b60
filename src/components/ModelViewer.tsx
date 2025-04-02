@@ -196,7 +196,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     canvas: HTMLCanvasElement
   ) => {
     if (newRenderer) {
-      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 3));
+      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 1.5));
     }
     
     setThreeContext({
