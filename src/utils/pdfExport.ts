@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/hooks/useMeasurements';
 import { getMeasurementTypeDisplayName } from '@/constants/measurements';
@@ -97,8 +96,8 @@ export const exportMeasurementsToPdf = async (
       }
       .roof-plan-header {
         text-align: center;
-        padding-bottom: 8px;
-        margin-bottom: 15px;
+        padding-bottom: 5px;
+        margin-bottom: 10px;
         border-bottom: 1px solid #eaeaea;
       }
       .roof-plan-container {
@@ -109,6 +108,7 @@ export const exportMeasurementsToPdf = async (
         overflow: hidden;
         margin: 0;
         padding: 0;
+        height: calc(100% - 40px); /* Give more space to plan by reducing header impact */
       }
       .roof-plan-image {
         max-width: 100%;
@@ -406,10 +406,21 @@ export const exportMeasurementsToPdf = async (
         
         // Add title to header (more compact)
         const headerTitle = document.createElement('div');
-        headerTitle.style.fontSize = '20px';
+        headerTitle.style.fontSize = '24px'; // Increased from 20px to 24px
         headerTitle.style.fontWeight = 'bold';
         headerTitle.style.color = '#333';
         headerTitle.textContent = coverData.title || 'Vermessungsbericht';
+        
+        // Add address subtitle if available
+        if (coverData.projectAddress) {
+          const addressSubtitle = document.createElement('div');
+          addressSubtitle.style.fontSize = '16px';
+          addressSubtitle.style.color = '#555';
+          addressSubtitle.style.marginTop = '5px';
+          addressSubtitle.textContent = coverData.projectAddress;
+          compactHeader.appendChild(addressSubtitle);
+        }
+        
         compactHeader.appendChild(headerTitle);
         
         // Create roof plan content container (for better layout control)
@@ -422,7 +433,7 @@ export const exportMeasurementsToPdf = async (
         // Add the roof plan container for better sizing
         const roofPlanContainer = document.createElement('div');
         roofPlanContainer.className = 'roof-plan-container';
-        roofPlanContainer.style.marginTop = '10px'; // Add some spacing after header
+        roofPlanContainer.style.marginTop = '5px'; // Reduced from 10px to 5px to give more space to the plan
         
         // Add the roof plan image with proper sizing
         const roofPlanImage = document.createElement('img');
@@ -562,7 +573,7 @@ export const exportMeasurementsToPdf = async (
       filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
       image: { type: 'jpeg', quality: 1.0 }, // Increased quality
       html2canvas: { 
-        scale: 2.5, // Increased scale for better resolution
+        scale: 3.0, // Increased scale for better resolution (from 2.5 to 3.0)
         useCORS: true,
         logging: false,
         letterRendering: true
