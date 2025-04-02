@@ -43,6 +43,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     renderer,
     canvas
   } = useThreeContext();
+  
   const form = useForm<CoverPageData>({
     defaultValues: {
       title: 'Vermessungsbericht',
