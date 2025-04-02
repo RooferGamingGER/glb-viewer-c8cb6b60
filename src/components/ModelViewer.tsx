@@ -199,11 +199,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     if (newRenderer) {
       // Reduzierte Pixel-Ratio für geringere RAM-Nutzung
       newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
-      
-      // Weitere Optimierungen
-      newRenderer.shadowMap.enabled = true;
-      newRenderer.shadowMap.type = THREE.PCFSoftShadowMap; // Weichere Schatten
-      newRenderer.outputColorSpace = THREE.SRGBColorSpace; // Korrekte Farbdarstellung
     }
     
     setThreeContext({
