@@ -29,7 +29,7 @@ const SEGMENT_TYPES = [
   { value: 'kehle', label: 'Kehle' },
   { value: 'traufe', label: 'Traufe' },
   { value: 'ortgang', label: 'Ortgang' },
-  { value: 'custom', label: 'Benutzerdefiniert' }
+  { value: 'custom', label: 'Dachkante' }
 ];
 
 const SegmentList: React.FC<SegmentListProps> = ({

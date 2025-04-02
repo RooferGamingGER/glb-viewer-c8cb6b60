@@ -414,10 +414,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         right: 0;
         text-align: center;
       }
-      .footer-img {
-        max-width: 80%;
-        max-height: 150px;
-        margin: 0 auto;
+      .footer-text {
+        font-size: 14px;
+        line-height: 1.5;
       }
       .measurement-section {
         margin-top: 40px;
@@ -569,16 +568,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     coverPage.appendChild(projectInfo);
     
-    // Footer with promotional image (always visible)
+    // Footer with text instead of promotional image
     const footer = document.createElement('div');
     footer.className = 'footer';
     
-    // Add the promotional image from public folder
-    const footerImg = document.createElement('img');
-    footerImg.src = '/lovable-uploads/2656e45c-bc18-44f7-8506-199c2edee8a2.png'; 
-    footerImg.className = 'footer-img';
-    footerImg.alt = 'DrohnenGLB Promotion';
-    footer.appendChild(footerImg);
+    const footerText = document.createElement('div');
+    footerText.className = 'footer-text';
+    footerText.innerHTML = 'DrohnenGLB by RooferGaming<sup>®</sup><br>kostenloser GLB Viewer: www.drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: www.drohnenvermessung-roofergaming.de';
+    footer.appendChild(footerText);
     
     coverPage.appendChild(footer);
     container.appendChild(coverPage);
