@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -95,8 +94,8 @@
     input,
     select,
     .touch-target {
-      min-height: 40px;
-      min-width: 40px;
+      min-height: 44px;
+      min-width: 44px;
     }
   }
 }
@@ -294,4 +293,38 @@
   .container {
     max-width: 1400px;
   }
+}
+
+@media (min-width: 600px) and (max-width: 1024px) {
+  .touch-friendly-control {
+    @apply p-4 min-h-[50px] min-w-[50px];
+  }
+  
+  .tablet-sidebar {
+    @apply w-80;
+  }
+  
+  .tablet-button {
+    @apply px-4 py-3 text-base;
+  }
+}
+
+.touch-friendly {
+  @apply touch-action-manipulation;
+}
+
+.touch-friendly button,
+.touch-friendly [role="button"],
+.touch-friendly a.clickable {
+  @apply p-3 min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+
+.touch-friendly input,
+.touch-friendly select,
+.touch-friendly textarea {
+  @apply min-h-[44px];
+}
+
+.touch-action-manipulation {
+  touch-action: manipulation;
 }

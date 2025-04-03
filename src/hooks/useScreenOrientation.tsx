@@ -38,10 +38,14 @@ export function useScreenOrientation() {
     };
   }, []);
 
-  // Only return orientation status if it's a mobile device
+  // Determine if the device is a tablet (not a phone but still mobile)
+  const isTablet = isMobile && Math.min(window.innerWidth, window.innerHeight) > 600;
+
   return {
     orientation: isMobile ? orientation : "landscape",
     isPortrait: isMobile && orientation === "portrait",
     isLandscape: !isMobile || orientation === "landscape",
+    isTablet,
+    isPhone: isMobile && !isTablet,
   };
 }
