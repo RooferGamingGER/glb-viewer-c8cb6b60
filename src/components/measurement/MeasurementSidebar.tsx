@@ -100,6 +100,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       description: newValue 
         ? "Punkte rasten automatisch ein wenn sie sich in der Nähe vorhandener Punkte befinden" 
         : "Punkte werden exakt an der geklickten Position platziert",
+      variant: newValue ? "default" : "destructive",
       duration: 3000
     });
   };
@@ -113,10 +114,10 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             pressed={snapEnabled}
             onPressedChange={handleToggleSnap}
             size="sm"
-            variant="outline"
+            variant={snapEnabled ? "default" : "outline"}
             aria-label="Punktfang ein/aus"
             title="Punktfang ein/aus"
-            className="h-7 text-xs"
+            className={`h-7 text-xs ${snapEnabled ? 'bg-green-500 text-white hover:bg-green-600' : ''}`}
           >
             <Magnet className="h-3.5 w-3.5 mr-1" />
             Punktfang

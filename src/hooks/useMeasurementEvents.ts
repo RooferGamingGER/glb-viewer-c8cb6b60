@@ -37,6 +37,9 @@ export const useMeasurementEvents = (
   const lastTouchTimeRef = useRef<number>(0);
   // Touch event cooldown in milliseconds
   const TOUCH_COOLDOWN = 300;
+  // Add throttle for mouse move events
+  const lastMoveTimeRef = useRef<number>(0);
+  const MOVE_THROTTLE = 30; // 30ms throttle for mouse move (about 33fps)
 
   const { 
     calculateMousePosition, 
@@ -52,13 +55,18 @@ export const useMeasurementEvents = (
     snapEnabled
   } = usePointSnapping(scene);
 
-  // Process mouse movement for point snapping preview
+  // Process mouse movement for point snapping preview with throttling
   const handlePointerMoveForSnapping = useCallback((event: MouseEvent | TouchEvent) => {
     if (!enabled || !open || !scene || !camera || handlers.movingPointInfo || !snapEnabled) return;
     
+    // Throttle mouse move events to prevent too many calculations
+    const now = performance.now();
+    if (now - lastMoveTimeRef.current < MOVE_THROTTLE) return;
+    lastMoveTimeRef.current = now;
+    
     // Skip snapping preview if we're not in a measurement mode
     if (activeMode === 'none' || !['length', 'height', 'area', 'solar', 'skylight', 'chimney'].includes(activeMode)) {
-      clearSnapIndicator();
+      clearSnapIndicator(true);
       return;
     }
     
@@ -68,12 +76,12 @@ export const useMeasurementEvents = (
     // Get current mouse position as a 3D point
     const point = getPointFromIntersection(event, camera, scene, canvasElement);
     if (!point) {
-      clearSnapIndicator();
-      return;
+      return; // Don't clear indicator immediately to avoid flickering
     }
     
     // Find snap point but don't apply it yet - just show indicator
-    findSnapPoint(point, measurements, editMeasurementId);
+    // Pass the current mouse position point for line visualization
+    findSnapPoint(point, measurements, editMeasurementId, point);
   }, [enabled, open, scene, camera, activeMode, editMeasurementId, getPointFromIntersection, findSnapPoint, clearSnapIndicator, handlers.movingPointInfo, measurements, snapEnabled]);
 
   // Process user interaction (adds a point or edits existing point)
@@ -95,7 +103,7 @@ export const useMeasurementEvents = (
       }
       
       handlers.finishPointMovement(finalPoint);
-      clearSnapIndicator();
+      clearSnapIndicator(true); // Clear immediately when placing a point
       return;
     }
     
@@ -209,7 +217,7 @@ export const useMeasurementEvents = (
         if (editMeasurementId !== null && editingPointIndex !== null) {
           handlers.addPoint(finalPoint);
           toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
-          clearSnapIndicator();
+          clearSnapIndicator(true); // Clear immediately when placing a point
           return;
         }
         
@@ -217,7 +225,7 @@ export const useMeasurementEvents = (
         const currentCount = currentPoints.length;
         
         handlers.addPoint(finalPoint);
-        clearSnapIndicator();
+        clearSnapIndicator(true); // Clear immediately when placing a point
         
         if (activeMode === 'length') {
           if (currentCount === 0) {
@@ -252,6 +260,11 @@ export const useMeasurementEvents = (
       return;
     }
     
+    // Apply throttling to reduce frequency of updates
+    const now = performance.now();
+    if (now - lastMoveTimeRef.current < MOVE_THROTTLE) return;
+    lastMoveTimeRef.current = now;
+    
     const canvasElement = event.target as HTMLCanvasElement;
     if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
     
@@ -259,7 +272,8 @@ export const useMeasurementEvents = (
     if (newPoint) {
       // When moving an existing point, show snapping preview if enabled
       if (snapEnabled) {
-        const snapPoint = findSnapPoint(newPoint, measurements, handlers.movingPointInfo.measurementId);
+        // Pass current point position for line visualization
+        const snapPoint = findSnapPoint(newPoint, measurements, handlers.movingPointInfo.measurementId, newPoint);
         handlers.setPreviewPoint(snapPoint || newPoint);
       } else {
         handlers.setPreviewPoint(newPoint);
