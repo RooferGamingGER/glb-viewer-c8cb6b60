@@ -193,7 +193,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         }
         
         (measurementsWithVisuals as any).placeRoofPlanOnPage2 = true;
-        (measurementsWithVisuals as any).roofPlanPageNumber = 2;
         (measurementsWithVisuals as any).showRoofPlanWithoutHeader = true;
       }
       

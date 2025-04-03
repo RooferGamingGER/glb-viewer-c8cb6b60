@@ -22,10 +22,6 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
 import { usePointSnapping } from '@/hooks/usePointSnapping';
-import { Separator } from "@/components/ui/separator";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -74,7 +70,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const { toast } = useToast();
   
   // Use our improved snapping hook
-  const { snapEnabled, setSnapEnabled, snapMode, setSnapMode } = usePointSnapping(null);
+  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
@@ -111,47 +107,18 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <h2 className="text-md font-semibold">Messungen</h2>
         <div className="flex space-x-1">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Toggle
-                pressed={snapEnabled}
-                onPressedChange={handleToggleSnap}
-                size="sm"
-                variant="outline"
-                aria-label="Punktfang ein/aus"
-                title="Punktfang ein/aus"
-                className="h-7 text-xs"
-              >
-                <Magnet className="h-3.5 w-3.5 mr-1" />
-                Punktfang
-              </Toggle>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-3" align="end">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Punktfang-Modus</h4>
-                <Separator />
-                <RadioGroup 
-                  value={snapMode} 
-                  onValueChange={(value) => setSnapMode(value as 'all' | 'points' | 'midpoints')}
-                  className="space-y-1.5"
-                  disabled={!snapEnabled}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="all" id="all" />
-                    <Label htmlFor="all" className="text-xs cursor-pointer">Alle Punkte (Ecken & Mitten)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="points" id="points" />
-                    <Label htmlFor="points" className="text-xs cursor-pointer">Nur Eckpunkte</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="midpoints" id="midpoints" />
-                    <Label htmlFor="midpoints" className="text-xs cursor-pointer">Nur Mittelpunkte</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <Toggle
+            pressed={snapEnabled}
+            onPressedChange={handleToggleSnap}
+            size="sm"
+            variant="outline"
+            aria-label="Punktfang ein/aus"
+            title="Punktfang ein/aus"
+            className="h-7 text-xs"
+          >
+            <Magnet className="h-3.5 w-3.5 mr-1" />
+            Punktfang
+          </Toggle>
           
           {measurements.length > 0 && (
             <AlertDialog>
