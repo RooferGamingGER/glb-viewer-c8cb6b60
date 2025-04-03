@@ -1,9 +1,10 @@
+
 import { useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { toast } from 'sonner';
 import { Point } from '@/types/measurements';
 import { useMeasurementRaycasting } from './useMeasurementRaycasting';
-import { usePointSnapping } from './usePointSnapping';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 /**
  * Hook für Ereignisbehandlung bei Messinteraktionen
@@ -53,7 +54,7 @@ export const useMeasurementEvents = (
     findSnapPoint,
     clearSnapIndicator,
     snapEnabled
-  } = usePointSnapping(scene);
+  } = usePointSnapping();
 
   // Process mouse movement for point snapping preview with throttling
   const handlePointerMoveForSnapping = useCallback((event: MouseEvent | TouchEvent) => {

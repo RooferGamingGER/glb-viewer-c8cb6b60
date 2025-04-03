@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
@@ -68,14 +69,6 @@ export const useMeasurementInteraction = (
     updateAddPointIndicators
   } = useAddPointIndicators(scene);
 
-  // Hook for point snapping with enhanced functionality
-  const {
-    clearSnapIndicator,
-    snapEnabled,
-    isSnapping,
-    snapTarget
-  } = usePointSnapping(scene);
-
   // Hook for point movement
   const {
     movingPointInfo,
@@ -125,7 +118,7 @@ export const useMeasurementInteraction = (
     if (!enabled) {
       clearPreviewGroup();
       clearAddPointIndicators();
-      clearSnapIndicator(true);
+      clearSnapIndicator();
       setMovingPointInfo(null);
     }
   }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
