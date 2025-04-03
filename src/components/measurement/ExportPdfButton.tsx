@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -230,7 +231,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
           <span>PDF </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] fixed max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Vermessungsbericht exportieren</DialogTitle>
           <DialogDescription>
@@ -429,7 +430,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             </p>
           </div>}
         
-        <DialogFooter>
+        <DialogFooter className="mt-4">
           <DialogClose asChild>
             <Button ref={dialogCloseRef} variant="outline" disabled={isExporting}>
               Abbrechen

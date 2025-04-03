@@ -1,3 +1,6 @@
+
+// Modifying only the part with the cover page layout and removing the empty page issue
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -656,13 +659,16 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       .cover-header {
         margin-bottom: 30px;
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
+        text-align: center;
       }
       .company-name {
         font-size: 24px;
         font-weight: bold;
         color: #222;
+        text-align: center;
+        width: 100%;
       }
       .cover-title {
         font-size: 28px;
@@ -676,10 +682,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         margin-bottom: 20px;
         gap: 40px;
       }
-      .left-info {
-        flex: 1;
-      }
-      .right-info {
+      .left-info, .right-info {
         flex: 1;
       }
       .info-table {
@@ -730,15 +733,15 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         font-size: 18px;
         font-weight: bold;
         color: #333;
-        margin-bottom: 5px;
+        margin-bottom: 10px;
       }
       .promo-secondary {
         font-size: 14px;
         color: #555;
-        margin-bottom: 3px;
+        margin-bottom: 5px;
       }
       .measurement-section {
-        margin-top: 40px;
+        margin-top: 20px;
         page-break-before: always;
       }
       .measurement-table {
@@ -788,7 +791,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       h2 {
         border-bottom: 1px solid #ddd;
         padding-bottom: 10px;
-        margin-top: 40px;
+        margin-top: 20px;
       }
       h3 {
         margin-top: 20px;
@@ -983,9 +986,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     container.appendChild(coverPage);
     
+    // Roof Plan Page - no page break after this to fix the empty page issue
     if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
       const roofPlanPage = document.createElement('div');
-      roofPlanPage.className = 'page-break';
       roofPlanPage.style.padding = '20px';
       
       if (!(measurements as any).showRoofPlanWithoutHeader) {
