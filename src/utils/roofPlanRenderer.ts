@@ -456,64 +456,43 @@ export const createCombinedRoofPlan = (
           ctx.textBaseline = 'middle';
           ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
           
-          // Only show inclination if it's 2 degrees or higher (absolute value)
-          if (segment.inclination !== undefined && Math.abs(segment.inclination) >= 2.0) {
-            // Include inclination for segments that have it and are >= 2°
-            const lengthWithIncl = `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`;
-            
-            ctx.font = 'bold 14px Arial';
-            const textWidth = ctx.measureText(lengthWithIncl).width;
-            
-            // White background for text
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.fillRect(
-              toCanvasX(midX) - textWidth / 2 - 6, 
-              toCanvasY(midY) + 4, 
-              textWidth + 12,
-              20
-            );
-            
-            // Draw text with segment color for better visibility
-            ctx.fillStyle = '#000000';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(lengthWithIncl, toCanvasX(midX), toCanvasY(midY) + 14);
-          } else {
-            // Just the length for segments without inclination or small inclination
-            const lengthText = `${segment.length.toFixed(2)}m`;
-            ctx.font = 'bold 14px Arial';
-            const textWidth = ctx.measureText(lengthText).width;
-            
-            // White background for text
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.fillRect(
-              toCanvasX(midX) - textWidth / 2 - 6, 
-              toCanvasY(midY) + 4, 
-              textWidth + 12,
-              20
-            );
-            
-            // Draw text
-            ctx.fillStyle = '#000000';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY) + 14);
-          }
+          // Always show length, even if no inclination
+          const lengthText = segment.inclination !== undefined && Math.abs(segment.inclination) >= 2.0
+            ? `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`
+            : `${segment.length.toFixed(2)}m`;
+          
+          ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px for better readability
+          const textWidth = ctx.measureText(lengthText).width;
+          
+          // White background for text
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillRect(
+            toCanvasX(midX) - textWidth / 2 - 6, 
+            toCanvasY(midY) + 4, 
+            textWidth + 12,
+            24 // Increased height for larger font
+          );
+          
+          // Draw text with segment color for better visibility
+          ctx.fillStyle = '#000000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY) + 16); // Adjusted y position
         }
       }
     });
     
     // Fourth pass: Draw measurement labels, points and areas in the center
     sortedMeasurements.forEach(({ measurement, points2D, centroid }) => {
-      // Draw the vertices - INCREASED SIZE for better visibility
+      // Draw the vertices - FURTHER INCREASED SIZE for better visibility
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 6, 0, Math.PI * 2); // Increased from 5 to 6
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 8, 0, Math.PI * 2); // Increased from 6 to 8
         ctx.fillStyle = '#666666';
         ctx.fill();
         
-        // Add index numbers to vertices - INCREASED SIZE
-        ctx.font = 'bold 16px Arial'; // Increased from 12px to 16px
+        // Add index numbers to vertices - FURTHER INCREASED SIZE
+        ctx.font = 'bold 20px Arial'; // Increased from 16px to 20px
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -525,7 +504,7 @@ export const createCombinedRoofPlan = (
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
       // INCREASED font size for better readability
-      ctx.font = 'bold 22px Arial'; // Increased from 18px to 22px
+      ctx.font = 'bold 24px Arial'; // Increased from 22px to 24px
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
@@ -535,12 +514,12 @@ export const createCombinedRoofPlan = (
       const maxWidth = Math.max(labelWidth, valueWidth);
       
       // Draw white background for label text
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(
         toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) - 18,
+        toCanvasY(centroid.y) - 20,
         maxWidth + 10,
-        36  // Increased height for larger font
+        40  // Increased height for larger font
       );
       
       // Draw label text
@@ -548,22 +527,19 @@ export const createCombinedRoofPlan = (
       ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y));
       
       // Draw white background for value text
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(
         toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) + 18,
+        toCanvasY(centroid.y) + 20,
         maxWidth + 10,
-        28  // Increased height for larger font
+        32  // Increased height for larger font
       );
       
       // Draw value text - INCREASED SIZE
-      ctx.font = 'bold 20px Arial'; // Increased from 16px to 20px
+      ctx.font = 'bold 22px Arial'; // Increased from 20px to 22px
       ctx.fillStyle = '#222222';
-      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 30); // Adjusted position for larger text
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 34); // Adjusted position for larger text
     });
-    
-    // Add a segment type legend
-    drawSegmentLegend(ctx, width, height, segmentColors, Array.from(usedSegmentTypes));
     
     // Add a disclaimer below the plan
     drawDisclaimer(ctx, width, height);
@@ -712,6 +688,7 @@ function drawScaleIndicator(
 
 /**
  * Draw a legend for the different roof segment types
+ * NOTE: This function is kept but not called as requested by the user
  */
 function drawSegmentLegend(
   ctx: CanvasRenderingContext2D,
@@ -783,6 +760,7 @@ function drawSegmentLegend(
 
 /**
  * Draw a legend for the different measurement types
+ * NOTE: This function is kept but not called as requested by the user
  */
 function drawMeasurementTypeLegend(
   ctx: CanvasRenderingContext2D,
@@ -872,6 +850,7 @@ function drawDisclaimer(
 
 /**
  * Draw a legend for the different measurement types - more compact for PDF export
+ * NOTE: This function is kept but not called as requested by the user
  */
 function drawLegend(
   ctx: CanvasRenderingContext2D,
