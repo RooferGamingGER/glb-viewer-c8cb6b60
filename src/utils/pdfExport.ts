@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -991,7 +992,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2))) {
       const roofPlanPage = document.createElement('div');
-      roofPlanPage.style.pageBreakBefore = 'always';
+      // Remove the pageBreakBefore style to prevent duplicate page breaks
+      // Since the cover page already has page-break-after: always
       roofPlanPage.style.pageBreakAfter = 'always';
       roofPlanPage.style.padding = '20px';
       roofPlanPage.style.height = '270mm';
