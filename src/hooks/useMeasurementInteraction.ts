@@ -46,7 +46,8 @@ export const useMeasurementInteraction = (
     clearAddPointIndicators,
     updateAddPointIndicators,
     clearPreviewGroup,
-    createPreviewGroup
+    createPreviewGroup,
+    getPointFromIntersection
   } = useMeasurementRaycasting(scene, camera);
 
   // Hook for point snapping with enhanced functionality
@@ -57,17 +58,63 @@ export const useMeasurementInteraction = (
     snapTarget,
     setSnapping,
     checkPointForSnapping,
-    clearSnapIndicator
+    clearSnapIndicator,
+    applySnap,
+    findSnapPoint
   } = usePointSnapping(scene);
 
-  // Hook for point movement
+  // Hook for point movement with adapted interfaces
   const {
     movingPointInfo,
     setMovingPointInfo,
-    startPointMovement,
-    updateMovingPoint,
-    finishPointMovement
+    startPointMovement: originalStartPointMovement,
+    updateMovingPoint: originalUpdateMovingPoint,
+    finishPointMovement: originalFinishPointMovement
   } = usePointMovement(scene, camera, handlers.updateMeasurementPoint);
+
+  // Wrapper functions to match expected interfaces
+  const updateMovingPoint = useCallback((
+    event: MouseEvent | TouchEvent, 
+    canvasElement: HTMLCanvasElement
+  ): Point | null => {
+    if (!camera || !scene || !movingPointInfo) return null;
+    
+    const point = getPointFromIntersection(event, camera, scene, canvasElement);
+    
+    if (point) {
+      originalUpdateMovingPoint(
+        movingPointInfo.measurementId, 
+        movingPointInfo.pointIndex, 
+        point
+      );
+      return point;
+    }
+    
+    return null;
+  }, [camera, scene, movingPointInfo, originalUpdateMovingPoint, getPointFromIntersection]);
+
+  const finishPointMovement = useCallback((
+    newPoint: Point | null
+  ): boolean => {
+    if (!movingPointInfo || !newPoint) return false;
+    
+    originalFinishPointMovement(
+      movingPointInfo.measurementId, 
+      movingPointInfo.pointIndex, 
+      newPoint
+    );
+    
+    return true;
+  }, [movingPointInfo, originalFinishPointMovement]);
+
+  const startPointMovement = useCallback((
+    measurementId: string, 
+    pointIndex: number, 
+    initialPoint: Point
+  ): Point => {
+    const info = originalStartPointMovement(measurementId, pointIndex, initialPoint);
+    return initialPoint; // Return the point, not the info object
+  }, [originalStartPointMovement]);
 
   // Update the plus symbols for area measurements in edit mode
   useEffect(() => {

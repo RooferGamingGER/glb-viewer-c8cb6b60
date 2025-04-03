@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Measurement, Point, Segment } from '@/types/measurements';
@@ -7,9 +8,12 @@ import {
   DialogContent, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+  DialogTrigger
 } from "@/components/ui/dialog";
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Maximize, Download, ExternalLink } from 'lucide-react';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 
@@ -20,10 +24,15 @@ interface GenerateRoofPlanButtonProps {
 const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measurements }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [roofPlan, setRoofPlan] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const handleGenerateRoofPlan = () => {
     if (measurements.length === 0) {
-      toast.error('Keine Messungen für den Dachplan vorhanden');
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: 'Keine Messungen für den Dachplan vorhanden'
+      });
       return;
     }
     
@@ -35,13 +44,24 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
       setRoofPlan(plan);
       
       if (!plan) {
-        toast.error('Fehler beim Erstellen des Dachplans');
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: 'Fehler beim Erstellen des Dachplans'
+        });
       } else {
-        toast.success('Dachplan erfolgreich erstellt');
+        toast({
+          title: "Erfolg",
+          description: 'Dachplan erfolgreich erstellt'
+        });
       }
     } catch (error) {
       console.error('Error generating roof plan:', error);
-      toast.error('Ein Fehler ist beim Erstellen des Dachplans aufgetreten');
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: 'Ein Fehler ist beim Erstellen des Dachplans aufgetreten'
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -57,7 +77,10 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     link.click();
     document.body.removeChild(link);
     
-    toast.success('Dachplan wurde heruntergeladen');
+    toast({
+      title: "Erfolg",
+      description: 'Dachplan wurde heruntergeladen'
+    });
   };
   
   const handleOpenInNewTab = () => {

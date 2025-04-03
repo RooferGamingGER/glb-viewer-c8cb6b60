@@ -375,7 +375,7 @@ export const useMeasurements = () => {
     setMeasurements(finalMeasurements);
     updateVisualState(finalMeasurements, allLabelsVisible);
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-  
+
   // Enhance the initial finalization to detect shared segments
   const finalizeWithSharedSegments = useCallback(() => {
     // First, call the original finalize

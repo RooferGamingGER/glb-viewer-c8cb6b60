@@ -1,111 +1,179 @@
 
-import { useRef, useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { Point, Measurement } from '@/types/measurements';
 
 /**
- * Hook for raycasting and add point indicators
+ * Enhanced hook for raycasting and point indicators in 3D measurements
  */
-export const useMeasurementRaycasting = (
-  scene: THREE.Scene | null,
-  camera: THREE.Camera | null
-) => {
-  // References for raycaster and add point indicators
-  const raycasterRef = useRef(new THREE.Raycaster());
-  const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
+export const useMeasurementRaycasting = (scene?: THREE.Scene | null, camera?: THREE.Camera | null) => {
+  // Reference to the add point indicators group
+  const addPointIndicatorsRef = useRef<THREE.Group>(new THREE.Group());
+  
+  // Preview group reference
   const previewGroupRef = useRef<THREE.Group | null>(null);
   
-  // Create a reusable raycaster
-  const raycast = useCallback((event: MouseEvent) => {
-    if (!scene || !camera) return null;
-    
-    // Convert mouse position to normalized device coordinates
-    const canvas = document.getElementById('three-canvas') as HTMLCanvasElement;
-    if (!canvas) return null;
-    
+  // Calculate mouse position from event
+  const calculateMousePosition = useCallback((event: MouseEvent | TouchEvent, canvasElement: HTMLCanvasElement) => {
+    const canvas = canvasElement;
     const rect = canvas.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
-    // Set up the raycaster
-    const raycaster = raycasterRef.current;
-    raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+    let clientX: number, clientY: number;
     
-    // Find intersections with scene objects (excluding UI elements)
-    const intersects = raycaster.intersectObjects(scene.children, true)
-      .filter(hit => !hit.object.userData.isUI);
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      // Handle touch events
+      if (event.touches.length === 0) return null;
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    }
+    
+    // Calculate normalized device coordinates (-1 to +1)
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    
+    return new THREE.Vector2(x, y);
+  }, []);
+  
+  // Get a 3D point from mouse intersection
+  const getPointFromIntersection = useCallback((
+    event: MouseEvent | TouchEvent, 
+    camera: THREE.Camera, 
+    scene: THREE.Scene,
+    canvasElement: HTMLCanvasElement
+  ): Point | null => {
+    if (!camera || !scene) return null;
+    
+    const mousePosition = calculateMousePosition(event, canvasElement);
+    if (!mousePosition) return null;
+    
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    
+    // Intersect with all objects in the scene that should be measured
+    const intersects = raycaster.intersectObjects(
+      filterMeasurementObjects(scene.children), 
+      true
+    );
     
     if (intersects.length > 0) {
-      const hit = intersects[0];
-      const point: Point = {
-        x: hit.point.x,
-        y: hit.point.y,
-        z: hit.point.z
-      };
-      
+      const intersect = intersects[0];
       return {
-        point,
-        object: hit.object,
-        normal: hit.face?.normal
+        x: intersect.point.x,
+        y: intersect.point.y,
+        z: intersect.point.z
       };
     }
     
     return null;
-  }, [scene, camera]);
+  }, [calculateMousePosition]);
   
-  // Create preview group
+  // Filter objects that can be measured
+  const filterMeasurementObjects = useCallback((objects: THREE.Object3D[]) => {
+    return objects.filter(object => {
+      // Skip invisible objects
+      if (!object.visible) return false;
+      
+      // Skip objects marked as non-measurable
+      if (object.userData && object.userData.nonMeasurable) return false;
+      
+      // Skip UI objects and helpers
+      if (
+        object.name.includes('helper') || 
+        object.name.includes('indicator') || 
+        object.name.includes('label') ||
+        object.name.includes('UI') ||
+        object.name.includes('grid')
+      ) return false;
+      
+      return true;
+    });
+  }, []);
+  
+  // Main raycast function
+  const raycast = useCallback((event: MouseEvent) => {
+    if (!scene || !camera) {
+      throw new Error('Scene or camera is not available');
+    }
+    
+    const canvas = event.target as HTMLCanvasElement;
+    const mousePosition = calculateMousePosition(event, canvas);
+    
+    if (!mousePosition) {
+      throw new Error('Could not calculate mouse position');
+    }
+    
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    
+    const intersects = raycaster.intersectObjects(
+      filterMeasurementObjects(scene.children), 
+      true
+    );
+    
+    if (intersects.length > 0) {
+      const intersection = intersects[0];
+      return {
+        point: {
+          x: intersection.point.x,
+          y: intersection.point.y,
+          z: intersection.point.z
+        },
+        object: intersection.object,
+        normal: intersection.face?.normal || new THREE.Vector3(0, 1, 0)
+      };
+    }
+    
+    throw new Error('No intersection found');
+  }, [scene, camera, calculateMousePosition, filterMeasurementObjects]);
+  
+  // Clear add point indicators
+  const clearAddPointIndicators = useCallback(() => {
+    if (addPointIndicatorsRef.current) {
+      while (addPointIndicatorsRef.current.children.length > 0) {
+        const child = addPointIndicatorsRef.current.children[0];
+        addPointIndicatorsRef.current.remove(child);
+      }
+    }
+  }, []);
+  
+  // Create preview group if it doesn't exist
   const createPreviewGroup = useCallback(() => {
-    if (!scene) return null;
+    if (!scene) return;
     
-    // Clean up existing preview
-    clearPreviewGroup();
+    // Clear existing preview group if it exists
+    if (previewGroupRef.current) {
+      clearPreviewGroup();
+    }
     
-    // Create a group to hold the preview
-    const group = new THREE.Group();
-    group.name = 'previewGroup';
-    scene.add(group);
+    // Create a new group
+    previewGroupRef.current = new THREE.Group();
+    previewGroupRef.current.name = 'previewGroup';
+    scene.add(previewGroupRef.current);
     
-    previewGroupRef.current = group;
-    
-    return group;
+    return previewGroupRef.current;
   }, [scene]);
   
   // Clear preview group
   const clearPreviewGroup = useCallback(() => {
-    if (previewGroupRef.current && scene) {
-      scene.remove(previewGroupRef.current);
-      previewGroupRef.current = null;
+    if (!scene || !previewGroupRef.current) return;
+    
+    // Remove all children
+    while (previewGroupRef.current.children.length > 0) {
+      const child = previewGroupRef.current.children[0];
+      previewGroupRef.current.remove(child);
     }
+    
+    // Remove the group itself
+    scene.remove(previewGroupRef.current);
+    previewGroupRef.current = null;
   }, [scene]);
   
-  // Create add point indicators
-  const createAddPointIndicators = useCallback(() => {
-    if (!scene) return;
-    
-    // Clean up existing indicators
-    clearAddPointIndicators();
-    
-    // Create a group to hold the indicators
-    const group = new THREE.Group();
-    group.name = 'addPointIndicators';
-    scene.add(group);
-    
-    addPointIndicatorsRef.current = group;
-    
-    return group;
-  }, [scene]);
-  
-  // Clear add point indicators
-  const clearAddPointIndicators = useCallback(() => {
-    if (addPointIndicatorsRef.current && scene) {
-      scene.remove(addPointIndicatorsRef.current);
-      addPointIndicatorsRef.current = null;
-    }
-  }, [scene]);
-  
-  // Update add point indicators
+  // Update add point indicators for area measurements
   const updateAddPointIndicators = useCallback((
-    editMeasurementId: string | null,
+    editMeasurementId: string | null, 
     measurements: Measurement[]
   ) => {
     if (!scene || !editMeasurementId) {
@@ -115,81 +183,86 @@ export const useMeasurementRaycasting = (
     
     // Find the measurement being edited
     const measurement = measurements.find(m => m.id === editMeasurementId);
-    if (!measurement || measurement.type !== 'area') {
+    if (!measurement || !measurement.points || measurement.points.length < 3) {
       clearAddPointIndicators();
       return;
     }
     
-    // Create indicators if they don't exist
-    if (!addPointIndicatorsRef.current) {
-      createAddPointIndicators();
+    // Only show add point indicators for area-like measurements
+    if (!['area', 'solar', 'skylight', 'chimney'].includes(measurement.type)) {
+      clearAddPointIndicators();
+      return;
     }
     
     // Clear existing indicators
-    if (addPointIndicatorsRef.current) {
-      while (addPointIndicatorsRef.current.children.length > 0) {
-        addPointIndicatorsRef.current.remove(addPointIndicatorsRef.current.children[0]);
-      }
+    clearAddPointIndicators();
+    
+    // Make sure the indicators group is in the scene
+    if (!scene.getObjectByName('addPointIndicators')) {
+      addPointIndicatorsRef.current.name = 'addPointIndicators';
+      scene.add(addPointIndicatorsRef.current);
     }
     
-    // Add indicators for each segment to allow adding points
-    const points = measurement.points;
-    if (points.length < 3) return;
-    
-    for (let i = 0; i < points.length; i++) {
-      const p1 = points[i];
-      const p2 = points[(i + 1) % points.length];
+    // Add a plus sign at the midpoint of each segment
+    for (let i = 0; i < measurement.points.length; i++) {
+      const startPoint = measurement.points[i];
+      const endPoint = measurement.points[(i + 1) % measurement.points.length];
       
-      // Calculate midpoint for the indicator
+      // Calculate midpoint
       const midpoint = {
-        x: (p1.x + p2.x) / 2,
-        y: (p1.y + p2.y) / 2,
-        z: (p1.z + p2.z) / 2
+        x: (startPoint.x + endPoint.x) / 2,
+        y: (startPoint.y + endPoint.y) / 2,
+        z: (startPoint.z + endPoint.z) / 2
       };
       
-      // Create a plus symbol indicator
-      const plusGroup = createPlusSymbol(midpoint, 0.1, 0x00ff00);
+      // Create plus sign indicator using LineSegments
+      const material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
       
-      // Add metadata to identify it when clicked
+      // Horizontal line
+      const hGeometry = new THREE.BufferGeometry();
+      const hVertices = new Float32Array([
+        midpoint.x - 0.1, midpoint.y, midpoint.z,
+        midpoint.x + 0.1, midpoint.y, midpoint.z
+      ]);
+      hGeometry.setAttribute('position', new THREE.BufferAttribute(hVertices, 3));
+      const horizontalLine = new THREE.Line(hGeometry, material);
+      
+      // Vertical line
+      const vGeometry = new THREE.BufferGeometry();
+      const vVertices = new Float32Array([
+        midpoint.x, midpoint.y - 0.1, midpoint.z,
+        midpoint.x, midpoint.y + 0.1, midpoint.z
+      ]);
+      vGeometry.setAttribute('position', new THREE.BufferAttribute(vVertices, 3));
+      const verticalLine = new THREE.Line(vGeometry, material);
+      
+      // Group for the plus sign
+      const plusGroup = new THREE.Group();
+      plusGroup.add(horizontalLine);
+      plusGroup.add(verticalLine);
+      
+      // Store metadata in userData
       plusGroup.userData = {
         isAddPointIndicator: true,
-        measurementId: editMeasurementId,
+        measurementId: measurement.id,
         segmentIndex: i,
-        pointIndex: i + 1
+        midpoint: midpoint
       };
       
-      addPointIndicatorsRef.current?.add(plusGroup);
+      // Add to indicators
+      addPointIndicatorsRef.current.add(plusGroup);
     }
-  }, [scene, clearAddPointIndicators, createAddPointIndicators]);
-  
-  // Helper to create a plus symbol
-  const createPlusSymbol = (point: Point, size: number, color: number) => {
-    const group = new THREE.Group();
-    
-    // Horizontal line
-    const horizontalGeometry = new THREE.BoxGeometry(size, size / 5, size / 5);
-    const material = new THREE.MeshBasicMaterial({ color });
-    const horizontalLine = new THREE.Mesh(horizontalGeometry, material);
-    
-    // Vertical line
-    const verticalGeometry = new THREE.BoxGeometry(size / 5, size, size / 5);
-    const verticalLine = new THREE.Mesh(verticalGeometry, material);
-    
-    group.add(horizontalLine);
-    group.add(verticalLine);
-    
-    group.position.set(point.x, point.y, point.z);
-    
-    return group;
-  };
+  }, [scene, clearAddPointIndicators]);
   
   return {
     raycast,
     addPointIndicatorsRef,
     clearAddPointIndicators,
     updateAddPointIndicators,
-    previewGroupRef,
+    clearPreviewGroup,
     createPreviewGroup,
-    clearPreviewGroup
+    calculateMousePosition,
+    filterMeasurementObjects,
+    getPointFromIntersection
   };
 };

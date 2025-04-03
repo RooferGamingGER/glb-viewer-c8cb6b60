@@ -318,8 +318,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handleCancelEditing();
     setMovingPointInfo(null);
     
-    // Clear preview displays
-    if (clearPreviewGroup) {
+    // Only call clearPreviewGroup if it exists
+    if (typeof clearPreviewGroup === 'function') {
       clearPreviewGroup();
     }
     
