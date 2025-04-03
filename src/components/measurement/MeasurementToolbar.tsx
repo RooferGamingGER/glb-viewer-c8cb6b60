@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Ruler, 
@@ -21,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import ExportPdfButton from './ExportPdfButton';
 import { Toggle } from "@/components/ui/toggle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { usePointSnapping } from '@/hooks/usePointSnapping';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
@@ -40,8 +39,8 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   handleClearMeasurements,
   measurements
 }) => {
-  // Use our point snapping hook
-  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
+  // Use the centralized point snapping context
+  const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
-import { usePointSnapping } from '@/hooks/usePointSnapping';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -72,8 +71,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const [activeTab, setActiveTab] = useState<string>("standard");
   const { toast } = useToast();
   
-  // Use our improved snapping hook
-  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
+  // Use our centralized point snapping hook
+  const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;

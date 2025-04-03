@@ -21,7 +21,7 @@ import { exportMeasurementsToCSV } from '@/utils/exportUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import { Toggle } from "@/components/ui/toggle";
-import { usePointSnapping } from '@/hooks/usePointSnapping';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { toast } from 'sonner';
 
 interface MeasurementToolControlsProps {
@@ -47,7 +47,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   onCategoryChange
 }) => {
   const [activeTab, setActiveTab] = useState("standard");
-  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
+  // Use the centralized point snapping context instead of the hook
+  const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   const handleDownload = () => {
     if (measurements.length === 0) return;
