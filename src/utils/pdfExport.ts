@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -880,6 +881,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     `;
     container.appendChild(style);
     
+    // Create the cover page
     const coverPage = document.createElement('div');
     coverPage.className = 'cover-page';
     
@@ -1012,11 +1014,18 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     summarySection.appendChild(coverSummary);
     contentContainer.appendChild(summarySection);
     
+    coverPage.appendChild(contentContainer);
+    
+    // CRITICAL FIX: Add the cover page to the container FIRST!
+    container.appendChild(coverPage);
+    
+    // Then add notes page if there are notes
     if (coverData.notes) {
       const notesPage = createNotesPage(coverData.notes);
       container.appendChild(notesPage);
     }
     
+    // Continue with the rest of the pages
     if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
       const roofPlanPage = document.createElement('div');
       roofPlanPage.style.pageBreakAfter = 'always';
