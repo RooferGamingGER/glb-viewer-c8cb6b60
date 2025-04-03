@@ -857,8 +857,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         page-break-after: always;
       }
       .measurement-section {
-        margin-top: 20px;
-        page-break-before: always;
+        margin-top: 40px;
       }
       .measurement-table {
         width: 100%;
