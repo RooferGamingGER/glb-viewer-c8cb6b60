@@ -649,6 +649,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .cover-page {
         padding: 30px;
+        min-height: 1100px;
         height: 100%;
         position: relative;
         background-color: #fafafa;
@@ -934,61 +935,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       coverPage.appendChild(modelView);
     }
     
-    // Only add table of contents if not skipped
-    if (!(measurements as any).skipTableOfContents) {
-      const toc = createTableOfContents(measurements);
-      coverPage.appendChild(toc);
-    }
-    
-    const coverSummary = createCoverPageSummary(summaryData);
-    coverPage.appendChild(coverSummary);
-    
-    if (coverData.notes) {
-      const notesSection = document.createElement('div');
-      notesSection.style.marginTop = '20px';
-      
-      const notesTitle = document.createElement('h3');
-      notesTitle.textContent = 'Bemerkungen';
-      notesTitle.style.color = '#444';
-      notesTitle.style.marginBottom = '10px';
-      notesSection.appendChild(notesTitle);
-      
-      const notesContent = document.createElement('div');
-      notesContent.style.padding = '10px';
-      notesContent.style.backgroundColor = '#f9f9f9';
-      notesContent.style.borderRadius = '4px';
-      notesContent.style.border = '1px solid #eee';
-      notesContent.textContent = coverData.notes;
-      notesSection.appendChild(notesContent);
-      
-      coverPage.appendChild(notesSection);
-    }
-    
-    const promoFooter = document.createElement('div');
-    promoFooter.className = 'promo-footer';
-    
-    const promoPrimary = document.createElement('div');
-    promoPrimary.className = 'promo-primary';
-    promoPrimary.textContent = 'DrohnenGLB by RooferGaming';
-    promoFooter.appendChild(promoPrimary);
-    
-    const promoSecondary1 = document.createElement('div');
-    promoSecondary1.className = 'promo-secondary';
-    promoSecondary1.textContent = 'Kostenloser GLB Viewer: drohnenglb.de';
-    promoFooter.appendChild(promoSecondary1);
-    
-    const promoSecondary2 = document.createElement('div');
-    promoSecondary2.className = 'promo-secondary';
-    promoSecondary2.textContent = 'Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
-    promoFooter.appendChild(promoSecondary2);
-    
-    coverPage.appendChild(promoFooter);
-    
-    container.appendChild(coverPage);
-    
-    // Roof Plan Page - no page break after this to fix the empty page issue
+    // Now let's fix the roof plan page by explicitly forcing a page break before the roof plan
     if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
       const roofPlanPage = document.createElement('div');
+      roofPlanPage.className = 'page-break';
       roofPlanPage.style.padding = '20px';
       
       if (!(measurements as any).showRoofPlanWithoutHeader) {
