@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -735,6 +734,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .measurement-section {
         margin-top: 20px;
+        page-break-before: always;
       }
       .measurement-table {
         width: 100%;
@@ -989,11 +989,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     container.appendChild(coverPage);
     
-    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
+    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2))) {
       const roofPlanPage = document.createElement('div');
-      // Remove the page-break-before style that's causing the empty page
-      // We're removing this since the cover page already has page-break-after
-      // roofPlanPage.style.pageBreakBefore = 'always';
+      roofPlanPage.style.pageBreakBefore = 'always';
       roofPlanPage.style.pageBreakAfter = 'always';
       roofPlanPage.style.padding = '20px';
       roofPlanPage.style.height = '270mm';
@@ -1046,10 +1044,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     const measurementSection = document.createElement('div');
     measurementSection.className = 'measurement-section';
-    // Now we need to ensure this section has a page break if it comes after the roof plan
-    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
-      measurementSection.classList.add('page-break');
-    }
     
     const measurementTitle = document.createElement('h2');
     measurementTitle.textContent = 'Messungen - Übersicht';

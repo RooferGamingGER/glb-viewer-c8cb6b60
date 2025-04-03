@@ -79,7 +79,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     if (measurements.length === 0) return;
     try {
       const width = 3000; // Increased from 2480
-      const height = 2400; // Adjusted for appropriate aspect ratio
+      const height = 2400; // Adjusted from 3508 for more appropriate aspect ratio
       
       setOptimizedRoofPlanDimensions({width, height});
       
