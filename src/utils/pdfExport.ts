@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -627,6 +626,60 @@ const createCoverPageSummary = (summary: any): HTMLElement => {
 };
 
 /**
+ * Creates a dedicated info page with notes and summary
+ */
+const createInfoPage = (notes: string, summary: any): HTMLElement => {
+  const container = document.createElement('div');
+  container.className = 'info-page';
+  container.style.padding = '20px';
+  container.style.position = 'relative';
+  container.style.height = '270mm';
+  container.style.pageBreakAfter = 'always';
+  
+  // Add summary section first
+  const summaryContainer = document.createElement('div');
+  summaryContainer.style.marginBottom = '30px';
+  
+  const summaryTitle = document.createElement('h2');
+  summaryTitle.textContent = 'Zusammenfassung';
+  summaryTitle.style.marginBottom = '20px';
+  summaryContainer.appendChild(summaryTitle);
+  
+  const summaryContent = createCoverPageSummary(summary);
+  summaryContainer.appendChild(summaryContent);
+  
+  container.appendChild(summaryContainer);
+  
+  // Add notes section if notes exist
+  if (notes && notes.trim().length > 0) {
+    const notesContainer = document.createElement('div');
+    notesContainer.style.marginTop = '30px';
+    
+    const notesTitle = document.createElement('h2');
+    notesTitle.textContent = 'Bemerkungen';
+    notesTitle.style.marginBottom = '20px';
+    notesContainer.appendChild(notesTitle);
+    
+    const notesContent = document.createElement('div');
+    notesContent.style.padding = '15px';
+    notesContent.style.backgroundColor = '#f9f9f9';
+    notesContent.style.border = '1px solid #eee';
+    notesContent.style.borderRadius = '4px';
+    notesContent.style.fontSize = '14px';
+    notesContent.style.lineHeight = '1.6';
+    notesContent.style.whiteSpace = 'pre-wrap';
+    
+    const formattedNotes = notes.split('\n').join('<br>');
+    notesContent.innerHTML = formattedNotes;
+    
+    notesContainer.appendChild(notesContent);
+    container.appendChild(notesContainer);
+  }
+  
+  return container;
+};
+
+/**
  * Creates a dedicated notes page
  */
 const createNotesPage = (notes: string): HTMLElement => {
@@ -758,13 +811,17 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         color: #555;
       }
       .model-view {
-        margin: 10px auto;
+        margin: 20px auto;
         text-align: center;
         max-width: 100%;
+        height: calc(100% - 250px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .model-image {
-        width: 100%;
-        max-height: 150px;
+        max-width: 100%;
+        max-height: 100%;
         object-fit: contain;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -782,6 +839,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         padding: 2px 0;
         border-bottom: 1px solid #eee;
         font-size: 10px;
+      }
+      .info-page {
+        padding: 20px;
+        height: 270mm;
+        position: relative;
+        background-color: #fafafa;
+        box-sizing: border-box;
+        page-break-after: always;
       }
       .notes-page {
         padding: 20px;
@@ -1000,32 +1065,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       coverPage.appendChild(modelView);
     }
     
-    const contentContainer = document.createElement('div');
-    contentContainer.className = 'content-container';
-    
-    if (!(measurements as any).skipTableOfContents) {
-      const toc = createTableOfContents(measurements);
-      contentContainer.appendChild(toc);
-    }
-    
-    const summarySection = document.createElement('div');
-    summarySection.className = 'summary-section';
-    const coverSummary = createCoverPageSummary(summaryData);
-    summarySection.appendChild(coverSummary);
-    contentContainer.appendChild(summarySection);
-    
-    coverPage.appendChild(contentContainer);
-    
-    // CRITICAL FIX: Add the cover page to the container FIRST!
+    // Add the cover page to the container first
     container.appendChild(coverPage);
     
-    // Then add notes page if there are notes
-    if (coverData.notes) {
-      const notesPage = createNotesPage(coverData.notes);
-      container.appendChild(notesPage);
-    }
+    // Create and add the info page with summary and notes
+    const infoPage = createInfoPage(coverData.notes, summaryData);
+    container.appendChild(infoPage);
     
-    // Continue with the rest of the pages
+    // Continue with the roof plan (now on page 3)
     if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
       const roofPlanPage = document.createElement('div');
       roofPlanPage.style.pageBreakAfter = 'always';
