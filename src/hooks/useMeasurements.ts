@@ -25,9 +25,11 @@ export const useMeasurements = () => {
       if (context.updateVisualState) {
         context.updateVisualState(measurementsWithSharedSegments, context.allLabelsVisible);
       }
+      
+      return newMeasurement;
     }
     
-    return newMeasurement;
+    return undefined;
   }, [context]);
 
   return {

@@ -1,272 +1,236 @@
 
 import * as THREE from 'three';
-import { Point, Measurement, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
+import { Point, Segment, Measurement } from '@/types/measurements';
 
-// Calculate the distance between two points
+// Calculate the distance between two points in 3D space
 export const calculateDistance = (p1: Point, p2: Point): number => {
-  const a = p2.x - p1.x;
-  const b = p2.y - p1.y;
-  const c = p2.z - p1.z;
-  
-  return Math.sqrt(a * a + b * b + c * c);
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const dz = p2.z - p1.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 };
 
-// Calculate the height difference between two points
+// Calculate the height difference between two points (y-axis)
 export const calculateHeight = (p1: Point, p2: Point): number => {
   return Math.abs(p2.y - p1.y);
 };
 
-// Calculate area of a polygon
+// Calculate the area of a polygon defined by a set of points
 export const calculateArea = (points: Point[]): number => {
   if (points.length < 3) return 0;
   
-  // Use three.js to calculate the area
-  const shape = new THREE.Shape();
-  
-  // Project points to a 2D plane for area calculation
-  // Choose the dominant plane based on model orientation
-  const projectedPoints = projectPointsToPlane(points);
-  
-  shape.moveTo(projectedPoints[0].x, projectedPoints[0].y);
-  
-  for (let i = 1; i < projectedPoints.length; i++) {
-    shape.lineTo(projectedPoints[i].x, projectedPoints[i].y);
-  }
-  
-  shape.closePath();
-  
-  return shape.getArea();
-};
-
-// Project points to the plane with the largest area
-export const projectPointsToPlane = (points: Point[]): { x: number, y: number }[] => {
-  // Determine which plane to project to based on the normal vector
-  const normal = calculateNormalVector(points);
-  
-  // Find the dominant axis of the normal (largest absolute component)
-  const absX = Math.abs(normal.x);
-  const absY = Math.abs(normal.y);
-  const absZ = Math.abs(normal.z);
-  
-  // Project onto the plane perpendicular to the dominant axis
-  if (absX >= absY && absX >= absZ) {
-    // Project onto YZ plane (X is dominant)
-    return points.map(p => ({ x: p.z, y: p.y }));
-  } else if (absY >= absX && absY >= absZ) {
-    // Project onto XZ plane (Y is dominant)
-    return points.map(p => ({ x: p.x, y: p.z }));
-  } else {
-    // Project onto XY plane (Z is dominant)
-    return points.map(p => ({ x: p.x, y: p.y }));
+  try {
+    // Project points onto dominant plane for area calculation
+    // First determine dominant plane
+    const vectors = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    
+    // Create a shape from the points
+    const shape = new THREE.Shape();
+    shape.moveTo(vectors[0].x, vectors[0].z);
+    
+    for (let i = 1; i < vectors.length; i++) {
+      shape.lineTo(vectors[i].x, vectors[i].z);
+    }
+    
+    // Close the shape
+    shape.lineTo(vectors[0].x, vectors[0].z);
+    
+    // Calculate area
+    const area = THREE.ShapeUtils.area(shape.getPoints());
+    
+    return Math.abs(area);
+  } catch (error) {
+    console.error('Error calculating area:', error);
+    return 0;
   }
 };
 
-// Calculate a normal vector for a set of points
-export const calculateNormalVector = (points: Point[]): THREE.Vector3 => {
-  if (points.length < 3) {
-    // Default to Z-up if not enough points
-    return new THREE.Vector3(0, 0, 1);
-  }
-  
-  // Use three.js to calculate the normal
-  const v1 = new THREE.Vector3(
-    points[1].x - points[0].x,
-    points[1].y - points[0].y,
-    points[1].z - points[0].z
-  );
-  
-  const v2 = new THREE.Vector3(
-    points[2].x - points[0].x,
-    points[2].y - points[0].y,
-    points[2].z - points[0].z
-  );
-  
-  const normal = new THREE.Vector3();
-  normal.crossVectors(v1, v2).normalize();
-  
-  return normal;
-};
-
-// Generate segments from an array of points
+// Generate segments between consecutive points
 export const generateSegments = (points: Point[]): Segment[] => {
   if (points.length < 2) return [];
   
   const segments: Segment[] = [];
   
   for (let i = 0; i < points.length; i++) {
+    const nextIndex = (i + 1) % points.length;
     const p1 = points[i];
-    const p2 = points[(i + 1) % points.length];
+    const p2 = points[nextIndex];
+    const length = calculateDistance(p1, p2);
     
-    const segment: Segment = {
+    segments.push({
       id: nanoid(),
       points: [p1, p2],
-      length: calculateDistance(p1, p2),
-      isOriginal: true
-    };
-    
-    segments.push(segment);
+      length
+    });
   }
   
   return segments;
 };
 
-// Calculate inclination of a segment
-export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  const dz = p2.z - p1.z;
-  
-  // Calculate the horizontal distance
-  const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-  
-  // Calculate the angle in radians
-  const angleRadians = Math.atan2(dy, horizontalDistance);
-  
-  // Convert to degrees
-  return angleRadians * (180 / Math.PI);
-};
-
-// Validate a polygon 
-export const validatePolygon = (points: Point[]): { valid: boolean; message?: string } => {
-  if (points.length < 3) {
-    return { valid: false, message: 'Mindestens 3 Punkte erforderlich' };
-  }
-  
-  // Check if any points are duplicates
-  for (let i = 0; i < points.length; i++) {
-    for (let j = i + 1; j < points.length; j++) {
-      const p1 = points[i];
-      const p2 = points[j];
-      
-      const distance = calculateDistance(p1, p2);
-      
-      if (distance < 0.001) {
-        return { valid: false, message: 'Überlappende Punkte gefunden' };
-      }
-    }
-  }
-  
-  return { valid: true };
-};
-
-// Find and link shared segments between measurements
+// Find segments that are shared between different measurements
 export const findAndLinkSharedSegments = (measurements: Measurement[]): Measurement[] => {
-  // Clone measurements to avoid mutating the original array
-  const result = JSON.parse(JSON.stringify(measurements)) as Measurement[];
+  if (measurements.length < 2) return measurements;
   
-  // First, collect all segments
-  const allSegments: Array<{
-    measurementId: string;
-    segmentId: string;
-    segment: Segment;
-    segmentIndex: number;
-  }> = [];
+  const updatedMeasurements = [...measurements];
   
-  result.forEach(measurement => {
-    if (!measurement.segments) return;
+  // Loop through each measurement
+  for (let i = 0; i < updatedMeasurements.length; i++) {
+    const measurement1 = updatedMeasurements[i];
     
-    measurement.segments.forEach((segment, index) => {
-      // Reset any previous sharing info
-      segment.shared = false;
-      segment.sharedWithSegmentId = undefined;
-      segment.isOriginal = true;
-      
-      allSegments.push({
-        measurementId: measurement.id,
-        segmentId: segment.id,
-        segment,
-        segmentIndex: index
-      });
-    });
-  });
-  
-  // Now look for matching segments
-  for (let i = 0; i < allSegments.length; i++) {
-    const s1 = allSegments[i];
+    if (!measurement1.segments) continue;
     
-    // Skip if this segment is already shared
-    if (s1.segment.shared) continue;
-    
-    for (let j = i + 1; j < allSegments.length; j++) {
-      const s2 = allSegments[j];
+    // Loop through each segment of the current measurement
+    for (let j = 0; j < measurement1.segments.length; j++) {
+      const segment1 = measurement1.segments[j];
       
-      // Skip if second segment is already shared
-      if (s2.segment.shared) continue;
+      // Skip if this segment is already marked as shared
+      if (segment1.shared) continue;
       
-      // Check if these segments are from different measurements
-      if (s1.measurementId === s2.measurementId) continue;
-      
-      // Check if segments match (points are same or reversed)
-      if (areSegmentsMatching(s1.segment, s2.segment)) {
-        // Mark both segments as shared
-        s1.segment.shared = true;
-        s1.segment.isOriginal = true;
-        s1.segment.sharedWithSegmentId = s2.segmentId;
+      // Loop through other measurements to find matching segments
+      for (let k = i + 1; k < updatedMeasurements.length; k++) {
+        const measurement2 = updatedMeasurements[k];
         
-        s2.segment.shared = true;
-        s2.segment.isOriginal = false;
-        s2.segment.sharedWithSegmentId = s1.segmentId;
+        if (!measurement2.segments) continue;
         
-        // Update the segments in the measurements
-        const m1 = result.find(m => m.id === s1.measurementId);
-        const m2 = result.find(m => m.id === s2.measurementId);
-        
-        if (m1 && m1.segments) {
-          m1.segments[s1.segmentIndex] = s1.segment;
+        // Loop through each segment of the other measurement
+        for (let l = 0; l < measurement2.segments.length; l++) {
+          const segment2 = measurement2.segments[l];
+          
+          // Skip if this segment is already marked as shared
+          if (segment2.shared) continue;
+          
+          // Check if segments are nearly identical (either in same or reverse order)
+          if (areSegmentsMatching(segment1, segment2)) {
+            // Mark segments as shared
+            segment1.shared = true;
+            segment1.isOriginal = true;
+            segment1.sharedWithSegmentId = segment2.id;
+            
+            segment2.shared = true;
+            segment2.isOriginal = false;
+            segment2.sharedWithSegmentId = segment1.id;
+            
+            break;
+          }
         }
         
-        if (m2 && m2.segments) {
-          m2.segments[s2.segmentIndex] = s2.segment;
-        }
+        // If we found a match, no need to check other measurements
+        if (segment1.shared) break;
       }
     }
   }
   
-  return result;
+  return updatedMeasurements;
 };
 
-// Check if two segments are matching (same endpoints, possibly in reverse order)
-const areSegmentsMatching = (s1: Segment, s2: Segment): boolean => {
-  const s1p1 = s1.points[0];
-  const s1p2 = s1.points[1];
-  const s2p1 = s2.points[0];
-  const s2p2 = s2.points[1];
+// Helper function to check if two segments match
+const areSegmentsMatching = (segment1: Segment, segment2: Segment): boolean => {
+  const DISTANCE_THRESHOLD = 0.05; // Points within 5cm are considered the same
   
-  // Check if points match in order
+  const s1p1 = segment1.points[0];
+  const s1p2 = segment1.points[1];
+  const s2p1 = segment2.points[0];
+  const s2p2 = segment2.points[1];
+  
+  // Check if points match in same order
   const forwardMatch = 
-    Math.abs(s1p1.x - s2p1.x) < 0.001 &&
-    Math.abs(s1p1.y - s2p1.y) < 0.001 &&
-    Math.abs(s1p1.z - s2p1.z) < 0.001 &&
-    Math.abs(s1p2.x - s2p2.x) < 0.001 &&
-    Math.abs(s1p2.y - s2p2.y) < 0.001 &&
-    Math.abs(s1p2.z - s2p2.z) < 0.001;
+    calculateDistance(s1p1, s2p1) < DISTANCE_THRESHOLD && 
+    calculateDistance(s1p2, s2p2) < DISTANCE_THRESHOLD;
   
   // Check if points match in reverse order
   const reverseMatch = 
-    Math.abs(s1p1.x - s2p2.x) < 0.001 &&
-    Math.abs(s1p1.y - s2p2.y) < 0.001 &&
-    Math.abs(s1p1.z - s2p2.z) < 0.001 &&
-    Math.abs(s1p2.x - s2p1.x) < 0.001 &&
-    Math.abs(s1p2.y - s2p1.y) < 0.001 &&
-    Math.abs(s1p2.z - s2p1.z) < 0.001;
+    calculateDistance(s1p1, s2p2) < DISTANCE_THRESHOLD && 
+    calculateDistance(s1p2, s2p1) < DISTANCE_THRESHOLD;
   
   return forwardMatch || reverseMatch;
 };
 
-// Calculate average inclination from segments
-export const calculateAverageInclination = (segments: Segment[]): number => {
-  if (!segments || segments.length === 0) return 0;
+// Calculate bounding box for a set of points
+export const calculateBoundingBox = (points: Point[]): {
+  min: Point;
+  max: Point;
+} => {
+  if (points.length === 0) {
+    return {
+      min: { x: 0, y: 0, z: 0 },
+      max: { x: 0, y: 0, z: 0 }
+    };
+  }
   
-  let sum = 0;
-  let count = 0;
+  const min = { ...points[0] };
+  const max = { ...points[0] };
   
-  segments.forEach(segment => {
-    if (segment.inclination !== undefined) {
-      sum += segment.inclination;
-      count++;
-    }
-  });
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i];
+    
+    min.x = Math.min(min.x, p.x);
+    min.y = Math.min(min.y, p.y);
+    min.z = Math.min(min.z, p.z);
+    
+    max.x = Math.max(max.x, p.x);
+    max.y = Math.max(max.y, p.y);
+    max.z = Math.max(max.z, p.z);
+  }
   
-  return count > 0 ? sum / count : 0;
+  return { min, max };
+};
+
+// Calculate centroid (center point) of a polygon
+export const calculateCentroid = (points: Point[]): Point => {
+  if (points.length === 0) {
+    return { x: 0, y: 0, z: 0 };
+  }
+  
+  let sumX = 0, sumY = 0, sumZ = 0;
+  
+  for (const point of points) {
+    sumX += point.x;
+    sumY += point.y;
+    sumZ += point.z;
+  }
+  
+  return {
+    x: sumX / points.length,
+    y: sumY / points.length,
+    z: sumZ / points.length
+  };
+};
+
+// Calculate dimensions (width, length) of a quadrilateral
+export const calculateQuadrilateralDimensions = (points: Point[]): {
+  width: number;
+  length: number;
+} => {
+  if (points.length !== 4) {
+    return { width: 0, length: 0 };
+  }
+  
+  // Calculate lengths of all sides
+  const side1 = calculateDistance(points[0], points[1]);
+  const side2 = calculateDistance(points[1], points[2]);
+  const side3 = calculateDistance(points[2], points[3]);
+  const side4 = calculateDistance(points[3], points[0]);
+  
+  // For simplicity, we'll use average of opposite sides
+  const width = (side1 + side3) / 2;
+  const length = (side2 + side4) / 2;
+  
+  return { width, length };
+};
+
+// Calculate the polygon area in 2D (useful for flatter structures)
+export const calculatePolygonArea = (points: Point[]): number => {
+  if (points.length < 3) return 0;
+  
+  // Project points onto XZ plane (ignoring Y) for simplicity
+  let area = 0;
+  
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    area += points[i].x * points[j].z;
+    area -= points[j].x * points[i].z;
+  }
+  
+  return Math.abs(area) / 2;
 };

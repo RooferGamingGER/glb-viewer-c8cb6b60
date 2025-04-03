@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useCallback, useEffect, ReactNode, useContext } from 'react';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
 import { 
@@ -36,7 +36,7 @@ interface MeasurementContextProps {
   toggleMeasurementVisibility: (id: string) => void;
   toggleLabelVisibility: (id: string) => void;
   toggleAllMeasurementsVisibility: () => void;
-  toggleAllLabelsVisibility: () => void;
+  toggleAllLabelsVisibility: () => boolean;
   toggleEditMode: (id: string) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   deleteMeasurement: (id: string) => void;
@@ -54,6 +54,15 @@ interface MeasurementContextProps {
 }
 
 export const MeasurementContext = createContext<MeasurementContextProps | null>(null);
+
+// Export a hook for using the context
+export const useMeasurementContext = () => {
+  const context = useContext(MeasurementContext);
+  if (!context) {
+    throw new Error('useMeasurementContext must be used within a MeasurementProvider');
+  }
+  return context;
+};
 
 interface MeasurementProviderProps {
   children: ReactNode;
@@ -110,21 +119,18 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ childr
           visible: true,
           labelVisible: true
         };
-      } else if ((activeMode === 'area' || activeMode === 'solar' || 
-                  activeMode === 'skylight' || activeMode === 'chimney' || 
-                  activeMode === 'vent' || activeMode === 'hook' || 
-                  activeMode === 'other' || activeMode === 'pvmodule' as unknown as MeasurementMode) && 
+      } else if (['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other', 'pvmodule'].includes(activeMode) && 
                   currentPoints.length >= 3) {
         const area = calculateArea(currentPoints);
         const segments = generateSegments(currentPoints);
         
         newMeasurement = {
           id: nanoid(),
-          type: activeMode,
+          type: activeMode as MeasurementMode,
           points: [...currentPoints],
           value: area,
           segments,
-          label: formatMeasurement(area, activeMode as 'area'),
+          label: formatMeasurement(area, activeMode as MeasurementMode),
           visible: true,
           labelVisible: true
         };
@@ -239,7 +245,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ childr
             points: newPoints,
             value: area,
             segments,
-            label: formatMeasurement(area, m.type as 'area')
+            label: formatMeasurement(area, m.type as MeasurementMode)
           };
         }
       })
@@ -297,10 +303,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ childr
             value: height,
             label: formatMeasurement(height, 'height')
           };
-        } else if (m.type === 'area' || m.type === 'solar' || 
-                   m.type === 'skylight' || m.type === 'chimney' || 
-                   m.type === 'vent' || m.type === 'hook' || 
-                   m.type === 'other' || m.type === 'pvmodule' as unknown as MeasurementMode) {
+        } else {
           const area = calculateArea(newPoints);
           const segments = generateSegments(newPoints);
           
@@ -309,11 +312,9 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ childr
             points: newPoints,
             value: area,
             segments,
-            label: formatMeasurement(area, m.type as 'area')
+            label: formatMeasurement(area, m.type as MeasurementMode)
           };
         }
-        
-        return m;
       });
     });
   }, []);

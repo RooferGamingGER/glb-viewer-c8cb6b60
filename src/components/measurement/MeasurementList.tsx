@@ -5,7 +5,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-import { Measurement } from '@/hooks/useMeasurements';
+import { Measurement } from '@/types/measurements';
 import MeasurementItem from './MeasurementItem';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -1,241 +1,132 @@
 
-import { Point, PVModuleInfo, PVModuleSpec, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
+import { Measurement, PVModuleInfo, PVMaterials, PVModuleSpec } from '@/types/measurements';
 import * as THREE from 'three';
-import { calculateArea, projectPointsToPlane } from './measurementCalculations';
 
-// Default edge distance in meters
-export const DEFAULT_EDGE_DISTANCE = 0.3;
-
-// Default module spacing in meters
-export const DEFAULT_MODULE_SPACING = 0.02;
-
-// Standard PV module templates
-export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
-  {
-    name: 'Standard 400W Modul',
-    width: 1.038,
-    height: 1.755,
-    power: 400,
-    efficiency: 20.4
-  },
-  {
-    name: 'Hochleistungsmodul 450W',
-    width: 1.134,
-    height: 2.094,
-    power: 450,
-    efficiency: 21.5
-  },
-  {
-    name: 'Kompaktmodul 380W',
-    width: 1.032,
-    height: 1.726,
-    power: 380,
-    efficiency: 20.1
-  }
-];
-
-// Calculate PV module placement on a roof area
-export const calculatePVModulePlacement = (points: Point[]): PVModuleInfo => {
-  if (points.length < 3) {
-    return {
-      moduleWidth: 0,
-      moduleHeight: 0,
-      moduleCount: 0,
-      coveragePercent: 0,
-      orientation: 'landscape'
-    };
-  }
-
-  const moduleSpec = PV_MODULE_TEMPLATES[0];
-  const moduleWidth = moduleSpec.width;
-  const moduleHeight = moduleSpec.height;
+// Calculate PV power output based on module info and measurement
+export const calculatePVPower = (measurement: Measurement): number => {
+  if (!measurement.pvModuleInfo) return 0;
   
-  // Calculate the bounding box of the area
-  const bbox = calculateBoundingBox(points);
+  const { moduleCount } = measurement.pvModuleInfo;
+  const modulePower = measurement.pvModuleInfo.pvModuleSpec?.power || 300; // Default 300W if not specified
   
-  // Define the edge distance
-  const edgeDistance = DEFAULT_EDGE_DISTANCE;
-  
-  // Calculate the available area dimensions accounting for edge distance
-  const availableWidth = bbox.width - (edgeDistance * 2);
-  const availableLength = bbox.height - (edgeDistance * 2);
-  
-  if (availableWidth <= 0 || availableLength <= 0) {
-    return {
-      moduleWidth,
-      moduleHeight,
-      moduleCount: 0,
-      coveragePercent: 0,
-      orientation: 'landscape',
-      edgeDistance,
-      moduleSpacing: DEFAULT_MODULE_SPACING,
-      boundingWidth: bbox.width,
-      boundingLength: bbox.height,
-      minX: bbox.minX,
-      maxX: bbox.maxX,
-      minZ: bbox.minZ,
-      maxZ: bbox.maxZ,
-      actualArea: calculateArea(points)
-    };
-  }
-  
-  // Try both orientations and pick the one that fits more modules
-  const landscapeModules = calculateModuleLayout(
-    availableWidth, 
-    availableLength, 
-    moduleWidth, 
-    moduleHeight,
-    DEFAULT_MODULE_SPACING
-  );
-  
-  const portraitModules = calculateModuleLayout(
-    availableWidth, 
-    availableLength, 
-    moduleHeight, 
-    moduleWidth,
-    DEFAULT_MODULE_SPACING
-  );
-  
-  let moduleCount, orientation, rows, columns;
-  
-  if (landscapeModules.count >= portraitModules.count) {
-    moduleCount = landscapeModules.count;
-    orientation = 'landscape';
-    rows = landscapeModules.rows;
-    columns = landscapeModules.columns;
-  } else {
-    moduleCount = portraitModules.count;
-    orientation = 'portrait';
-    rows = portraitModules.rows;
-    columns = portraitModules.columns;
-  }
-  
-  // Calculate the coverage percentage
-  const totalArea = calculateArea(points);
-  const moduleArea = moduleWidth * moduleHeight * moduleCount;
-  const coveragePercent = totalArea > 0 ? (moduleArea / totalArea) * 100 : 0;
-  
-  return {
-    moduleWidth,
-    moduleHeight,
-    moduleCount,
-    coveragePercent,
-    orientation,
-    edgeDistance,
-    moduleSpacing: DEFAULT_MODULE_SPACING,
-    rows,
-    columns,
-    boundingWidth: bbox.width,
-    boundingLength: bbox.height,
-    availableWidth,
-    availableLength,
-    minX: bbox.minX,
-    maxX: bbox.maxX,
-    minZ: bbox.minZ,
-    maxZ: bbox.maxZ,
-    actualArea: totalArea,
-    pvModuleSpec: moduleSpec
-  };
+  return (moduleCount * modulePower) / 1000; // Return in kWp
 };
 
-// Calculate module layout based on available space
-export const calculateModuleLayout = (
-  availableWidth: number,
-  availableLength: number,
-  moduleWidth: number,
-  moduleHeight: number,
-  spacing: number
-) => {
-  // How many modules fit across the width (including spacing)
-  const columnsWithoutSpacing = Math.floor(availableWidth / moduleWidth);
-  const columnsWithSpacing = Math.floor(availableWidth / (moduleWidth + spacing));
-  const columns = Math.max(0, spacing > 0 ? columnsWithSpacing : columnsWithoutSpacing);
+// Format PV module info for display
+export const formatPVModuleInfo = (pvModuleInfo?: PVModuleInfo): string => {
+  if (!pvModuleInfo) return 'Keine Angaben';
   
-  // How many modules fit along the length (including spacing)
-  const rowsWithoutSpacing = Math.floor(availableLength / moduleHeight);
-  const rowsWithSpacing = Math.floor(availableLength / (moduleHeight + spacing));
-  const rows = Math.max(0, spacing > 0 ? rowsWithSpacing : rowsWithoutSpacing);
+  const { moduleCount, orientation, moduleWidth, moduleHeight } = pvModuleInfo;
+  const orientationText = orientation === 'portrait' ? 'Hochformat' : 'Querformat';
   
-  return {
-    columns,
-    rows,
-    count: columns * rows
-  };
+  return `${moduleCount} Module (${orientationText}, ${moduleWidth.toFixed(2)}m × ${moduleHeight.toFixed(2)}m)`;
 };
 
-// Calculate the bounding box of a roof area
-export const calculateBoundingBox = (points: Point[]) => {
-  if (points.length === 0) {
-    return { minX: 0, maxX: 0, minZ: 0, maxZ: 0, width: 0, height: 0 };
-  }
+// Format PV materials for display
+export const formatPVMaterials = (pvMaterials?: PVMaterials): string => {
+  if (!pvMaterials) return 'Keine Angaben';
   
-  // Project the points to get the 2D representation
-  const projectedPoints = projectPointsToPlane(points);
-  
-  let minX = projectedPoints[0].x;
-  let maxX = projectedPoints[0].x;
-  let minZ = projectedPoints[0].y;
-  let maxZ = projectedPoints[0].y;
-  
-  for (let i = 1; i < projectedPoints.length; i++) {
-    minX = Math.min(minX, projectedPoints[i].x);
-    maxX = Math.max(maxX, projectedPoints[i].x);
-    minZ = Math.min(minZ, projectedPoints[i].y);
-    maxZ = Math.max(maxZ, projectedPoints[i].y);
-  }
-  
-  return {
-    minX,
-    maxX,
-    minZ,
-    maxZ,
-    width: maxX - minX,
-    height: maxZ - minZ
-  };
+  return `${pvMaterials.totalModuleCount} Module, ${pvMaterials.totalPower.toFixed(2)} kWp`;
 };
 
-// Extract roof edge measurements to determine roof geometry
-export const extractRoofEdgeMeasurements = (points: Point[]) => {
-  if (points.length < 3) {
-    return {
-      valid: false,
-      message: 'Nicht genügend Punkte für eine gültige Dachfläche'
-    };
-  }
+// Calculate annual yield based on kWp and location factor
+export const calculateAnnualYield = (kWp: number, yieldFactor: number = 950): number => {
+  return kWp * yieldFactor;
+};
+
+// Calculate roof orientation based on normal vector
+export const calculateRoofOrientation = (points: THREE.Vector3[]): { azimuth: number; direction: string } => {
+  // Default values if calculation fails
+  const defaultResult = { azimuth: 180, direction: 'S' };
   
-  // Compute edge vectors
-  const edges: Array<{
-    start: Point,
-    end: Point,
-    length: number,
-    vector: THREE.Vector3,
-    normalized: THREE.Vector3
-  }> = [];
+  if (points.length < 3) return defaultResult;
   
-  for (let i = 0; i < points.length; i++) {
-    const start = points[i];
-    const end = points[(i + 1) % points.length];
+  try {
+    // Calculate normal vector of the roof plane
+    const edge1 = new THREE.Vector3().subVectors(points[1], points[0]);
+    const edge2 = new THREE.Vector3().subVectors(points[2], points[0]);
+    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
     
-    const vector = new THREE.Vector3(
-      end.x - start.x,
-      end.y - start.y,
-      end.z - start.z
-    );
+    // Project normal vector onto XZ plane (ignore Y component)
+    const projectedNormal = new THREE.Vector2(normal.x, normal.z).normalize();
     
-    const length = vector.length();
-    const normalized = vector.clone().normalize();
+    // Calculate angle in degrees (0° is north, 90° is east, 180° is south, 270° is west)
+    let azimuth = Math.atan2(projectedNormal.x, -projectedNormal.y) * (180 / Math.PI);
+    if (azimuth < 0) azimuth += 360;
     
-    edges.push({
-      start,
-      end,
-      length,
-      vector,
-      normalized
-    });
+    // Determine cardinal direction
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = Math.round(azimuth / 45) % 8;
+    const direction = directions[index];
+    
+    return { azimuth, direction };
+  } catch (error) {
+    console.error('Error calculating roof orientation:', error);
+    return defaultResult;
   }
+};
+
+// Calculate annual yield with orientation factor
+export const calculateAnnualYieldWithOrientation = (
+  kWp: number, 
+  azimuth: number, 
+  inclination: number = 30,
+  baseYieldFactor: number = 1000
+): number => {
+  // Simplified orientation factor calculation
+  // Best yield at azimuth = 180° (south) and inclination around 30-35°
+  
+  // Azimuth factor (1.0 for south, decreasing towards east/west)
+  const azimuthDiff = Math.abs(180 - azimuth);
+  const azimuthFactor = 1 - (azimuthDiff / 180) * 0.2; // 20% reduction at north
+  
+  // Inclination factor (1.0 at optimal angle, decreasing for flat or steep)
+  const optimalInclination = 35;
+  const inclinationDiff = Math.abs(optimalInclination - inclination);
+  const inclinationFactor = 1 - (inclinationDiff / 90) * 0.3; // 30% reduction at 0° or 90°
+  
+  // Combined factor
+  const combinedFactor = azimuthFactor * inclinationFactor;
+  
+  // Apply to base yield factor
+  const adjustedYieldFactor = baseYieldFactor * combinedFactor;
+  
+  return kWp * adjustedYieldFactor;
+};
+
+// Update PV module info with orientation data
+export const updatePVModuleInfoWithOrientation = (
+  measurement: Measurement
+): Measurement => {
+  if (!measurement.points || measurement.points.length < 3) return measurement;
+  
+  // Convert points to Vector3 for calculations
+  const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  
+  // Calculate orientation
+  const { azimuth, direction } = calculateRoofOrientation(points3D);
+  
+  // Calculate inclination (angle from horizontal)
+  const edge1 = new THREE.Vector3().subVectors(points3D[1], points3D[0]);
+  const edge2 = new THREE.Vector3().subVectors(points3D[2], points3D[0]);
+  const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+  const inclination = Math.acos(normal.dot(new THREE.Vector3(0, 1, 0))) * (180 / Math.PI);
+  
+  // Calculate yield factor based on orientation and inclination
+  const baseYieldFactor = 1000; // Default annual yield factor in kWh/kWp for ideal conditions
+  const yieldFactor = calculateAnnualYieldWithOrientation(1, azimuth, inclination, baseYieldFactor);
+  
+  // Update PV module info
+  const updatedPvModuleInfo = {
+    ...measurement.pvModuleInfo,
+    roofAzimuth: azimuth,
+    roofDirection: direction,
+    roofInclination: inclination,
+    yieldFactor
+  };
   
   return {
-    valid: true,
-    edges
+    ...measurement,
+    pvModuleInfo: updatedPvModuleInfo
   };
 };
