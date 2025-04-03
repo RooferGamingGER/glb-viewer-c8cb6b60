@@ -1,3 +1,4 @@
+
 export interface Point {
   x: number;
   y: number;
@@ -18,8 +19,8 @@ export interface Segment {
 
 export interface Measurement {
   id: string;
-  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar';
-  name?: string;
+  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar' | 'valley' | 'hip';
+  name?: string; // Adding name property to the interface
   points: Point[];
   segments?: Segment[];
   value?: number;
@@ -27,6 +28,8 @@ export interface Measurement {
   visible?: boolean;
   labelVisible?: boolean;
   powerOutput?: number;
+  totalLength?: number; // Adding property for pdfExport.ts
+  count?: number; // Adding property for pdfExport.ts
 }
 
 export interface PVModuleSpec {

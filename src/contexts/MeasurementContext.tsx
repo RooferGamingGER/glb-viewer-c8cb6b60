@@ -16,7 +16,7 @@ interface MeasurementContextProps {
   setCalculatingMaterials: (calculating: boolean) => void;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
   addPoint: (point: Point) => void;
-  undoLastPoint: () => void;
+  undoLastPoint: () => boolean;
   clearCurrentPoints: () => void;
   finalizeMeasurement: () => Measurement | undefined;
   setMeasurements: (measurements: Measurement[]) => void;
@@ -34,8 +34,8 @@ interface MeasurementContextProps {
   deletePoint: (id: string, pointIndex: number) => void;
   moveMeasurementUp: (id: string) => void;
   moveMeasurementDown: (id: string) => void;
-  updateVisualState?: (measurements: Measurement[], labelsVisible: boolean) => void;
-  setUpdateVisualState: (fn: (measurements: Measurement[], labelsVisible: boolean) => void) => void;
+  updateVisualState?: (measurements: Measurement[], labelsVisible: boolean) => boolean;
+  setUpdateVisualState: (fn: (measurements: Measurement[], labelsVisible: boolean) => boolean) => void;
 }
 
 // Create the context with an undefined initial value
@@ -50,7 +50,7 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
   const [allLabelsVisible, setAllLabelsVisible] = useState<boolean>(true);
   const [calculatingMaterials, setCalculatingMaterials] = useState<boolean>(false);
-  const [updateVisualState, setUpdateVisualStateFn] = useState<((measurements: Measurement[], labelsVisible: boolean) => void) | undefined>(undefined);
+  const [updateVisualState, setUpdateVisualStateFn] = useState<((measurements: Measurement[], labelsVisible: boolean) => boolean) | undefined>(undefined);
 
   // Toggle which measurement tool is active
   const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
@@ -72,14 +72,17 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setCurrentPoints(prev => [...prev, point]);
   }, []);
 
-  // Undo the last point
-  const undoLastPoint = useCallback(() => {
+  // Undo the last point - Must return boolean!
+  const undoLastPoint = useCallback((): boolean => {
+    let success = false;
     setCurrentPoints(prev => {
       if (prev.length > 0) {
+        success = true;
         return prev.slice(0, -1);
       }
       return prev;
     });
+    return success;
   }, []);
 
   // Clear all current points
@@ -124,7 +127,7 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       value = calculateArea(currentPoints);
       label = `${value.toFixed(2)}m²`;
       name = `PV-Anlage ${measurements.filter(m => m.type === 'solar').length + 1}`;
-    } else if (activeMode === 'ridge' || activeMode === 'eave' || activeMode === 'verge') {
+    } else if (activeMode === 'ridge' || activeMode === 'eave' || activeMode === 'verge' || activeMode === 'valley' || activeMode === 'hip') {
       // For roof elements, calculate the length
       value = calculateDistance(currentPoints[0], currentPoints[currentPoints.length - 1]);
       label = `${value.toFixed(2)}m`;
@@ -134,8 +137,12 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         name = `First ${measurements.filter(m => m.type === 'ridge').length + 1}`;
       } else if (activeMode === 'eave') {
         name = `Traufe ${measurements.filter(m => m.type === 'eave').length + 1}`;
-      } else {
+      } else if (activeMode === 'verge') {
         name = `Ortgang ${measurements.filter(m => m.type === 'verge').length + 1}`;
+      } else if (activeMode === 'valley') {
+        name = `Kehle ${measurements.filter(m => m.type === 'valley').length + 1}`;
+      } else {
+        name = `Grat ${measurements.filter(m => m.type === 'hip').length + 1}`;
       }
     }
     
@@ -146,7 +153,7 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const newMeasurement: Measurement = {
       id: nanoid(),
       type: activeMode,
-      name,
+      name, // Now a valid property
       points: [...currentPoints],
       segments,
       value,
@@ -361,7 +368,7 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   // Update the visual state function
-  const setUpdateVisualState = useCallback((fn: (measurements: Measurement[], labelsVisible: boolean) => void) => {
+  const setUpdateVisualState = useCallback((fn: (measurements: Measurement[], labelsVisible: boolean) => boolean) => {
     setUpdateVisualStateFn(() => fn);
   }, []);
 
@@ -381,20 +388,160 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     clearCurrentPoints,
     finalizeMeasurement,
     setMeasurements,
-    clearMeasurements,
-    deleteMeasurement,
-    updateMeasurement,
-    toggleMeasurementVisibility,
-    toggleLabelVisibility,
-    toggleAllMeasurementsVisibility,
-    toggleAllLabelsVisibility,
-    toggleEditMode,
-    startPointEdit,
-    updateMeasurementPoint,
-    cancelEditing,
-    deletePoint,
-    moveMeasurementUp,
-    moveMeasurementDown,
+    clearMeasurements: () => setMeasurements([]),
+    deleteMeasurement: (id: string) => setMeasurements(prev => prev.filter(m => m.id !== id)),
+    updateMeasurement: (id: string, data: Partial<Measurement>) => {
+      setMeasurements(prev => 
+        prev.map(m => m.id === id ? { ...m, ...data } : m)
+      );
+    },
+    toggleMeasurementVisibility: (id: string) => {
+      setMeasurements(prev => 
+        prev.map(m => m.id === id ? { ...m, visible: !m.visible } : m)
+      );
+    },
+    toggleLabelVisibility: (id: string) => {
+      setMeasurements(prev => 
+        prev.map(m => m.id === id ? { ...m, labelVisible: !m.labelVisible } : m)
+      );
+    },
+    toggleAllMeasurementsVisibility: () => {
+      const allVisible = measurements.every(m => m.visible);
+      setMeasurements(prev => 
+        prev.map(m => ({ ...m, visible: !allVisible }))
+      );
+    },
+    toggleAllLabelsVisibility: () => {
+      setAllLabelsVisible(prev => !prev);
+      setMeasurements(prev => 
+        prev.map(m => ({ ...m, labelVisible: !allLabelsVisible }))
+      );
+    },
+    toggleEditMode: (id: string) => {
+      if (editMeasurementId === id) {
+        setEditMeasurementId(null);
+        setEditingPointIndex(null);
+      } else {
+        setEditMeasurementId(id);
+        setEditingPointIndex(null);
+        setCurrentPoints([]);
+        setActiveMode('none');
+      }
+    },
+    startPointEdit: (id: string, pointIndex: number) => {
+      setEditMeasurementId(id);
+      setEditingPointIndex(pointIndex);
+    },
+    updateMeasurementPoint: (id: string, index: number, point: Point) => {
+      setMeasurements(prev => 
+        prev.map(m => {
+          if (m.id !== id) return m;
+          
+          // Create a new points array with the updated point
+          const newPoints = [...m.points];
+          newPoints[index] = point;
+          
+          // Recalculate segments and value based on measurement type
+          const segments = generateSegments(newPoints);
+          let value = 0;
+          let label = '';
+          
+          if (m.type === 'length' || m.type === 'ridge' || m.type === 'eave' || m.type === 'verge' || m.type === 'valley' || m.type === 'hip') {
+            value = calculateDistance(newPoints[0], newPoints[newPoints.length - 1]);
+            label = `${value.toFixed(2)}m`;
+          } else if (m.type === 'height') {
+            value = calculateHeight(newPoints[0], newPoints[newPoints.length - 1]);
+            label = `${value.toFixed(2)}m`;
+          } else if (m.type === 'area' || m.type === 'solar') {
+            value = calculateArea(newPoints);
+            label = `${value.toFixed(2)}m²`;
+          }
+          
+          return {
+            ...m,
+            points: newPoints,
+            segments,
+            value,
+            label
+          };
+        })
+      );
+    },
+    cancelEditing: () => {
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+    },
+    deletePoint: (id: string, pointIndex: number) => {
+      setMeasurements(prev => 
+        prev.map(m => {
+          if (m.id !== id) return m;
+          
+          // For area measurements, need at least 3 points
+          if (m.type === 'area' && m.points.length <= 3) {
+            return m;
+          }
+          
+          // For linear measurements, need at least 2 points
+          if ((m.type === 'length' || m.type === 'height') && m.points.length <= 2) {
+            return m;
+          }
+          
+          // Create a new points array without the deleted point
+          const newPoints = [...m.points];
+          newPoints.splice(pointIndex, 1);
+          
+          // Recalculate segments and value
+          const segments = generateSegments(newPoints);
+          let value = 0;
+          let label = '';
+          
+          if (m.type === 'length' || m.type === 'ridge' || m.type === 'eave' || m.type === 'verge' || m.type === 'valley' || m.type === 'hip') {
+            value = calculateDistance(newPoints[0], newPoints[newPoints.length - 1]);
+            label = `${value.toFixed(2)}m`;
+          } else if (m.type === 'height') {
+            value = calculateHeight(newPoints[0], newPoints[newPoints.length - 1]);
+            label = `${value.toFixed(2)}m`;
+          } else if (m.type === 'area' || m.type === 'solar') {
+            value = calculateArea(newPoints);
+            label = `${value.toFixed(2)}m²`;
+          }
+          
+          return {
+            ...m,
+            points: newPoints,
+            segments,
+            value,
+            label
+          };
+        })
+      );
+    },
+    moveMeasurementUp: (id: string) => {
+      setMeasurements(prev => {
+        const index = prev.findIndex(m => m.id === id);
+        if (index <= 0) return prev;
+        
+        const result = [...prev];
+        const temp = result[index - 1];
+        result[index - 1] = result[index];
+        result[index] = temp;
+        
+        return result;
+      });
+    },
+    moveMeasurementDown: (id: string) => {
+      setMeasurements(prev => {
+        const index = prev.findIndex(m => m.id === id);
+        if (index === -1 || index === prev.length - 1) return prev;
+        
+        const result = [...prev];
+        const temp = result[index + 1];
+        result[index + 1] = result[index];
+        result[index] = temp;
+        
+        return result;
+      });
+    },
     updateVisualState,
     setUpdateVisualState
   };

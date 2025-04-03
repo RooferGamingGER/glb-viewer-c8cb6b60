@@ -122,6 +122,7 @@ export interface PVMaterials {
 export interface Measurement {
   id: string;
   type: MeasurementMode;
+  name: string;  // Now required for type-checking
   points: Point[];
   value: number;
   label?: string;
@@ -132,6 +133,8 @@ export interface Measurement {
   description?: string;
   segments?: Segment[];
   inclination?: number;
+  totalLength?: number;
+  count?: number;
   
   subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
   dimensions?: {         // Specific dimensions for roof elements
@@ -147,7 +150,6 @@ export interface Measurement {
     y: number;
     z: number;
   };
-  count?: number;        // For elements that need counting (e.g., vents)
   relatedMeasurements?: string[]; // IDs of related measurements
   penetrationType?: 'vent' | 'hook' | 'other'; // Type of penetration
   notes?: string;        // Additional notes for the measurement

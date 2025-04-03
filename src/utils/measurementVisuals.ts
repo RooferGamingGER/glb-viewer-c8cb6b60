@@ -1,7 +1,8 @@
-
 import * as THREE from 'three';
-import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
-import { Point, Measurement, MeasurementMode } from '@/types/measurements';
+import { Point, Measurement, MeasurementMode, Segment } from '@/types/measurements';
+import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { createTextSprite } from './textSprite';
+import { nanoid } from 'nanoid';
 
 // Colors for different measurement types
 const COLORS = {
@@ -64,6 +65,95 @@ const createLabelObject = (text: string, position: THREE.Vector3, type: Measurem
   };
   
   return labelObject;
+};
+
+// Helper function to create a label for a measurement
+const createMeasurementLabel = (
+  measurement: Measurement, 
+  showDimensions = false
+): CSS2DObject => {
+  const { points, label, name } = measurement;
+  
+  // Calculate centroid for label placement
+  const centroid = calculateCentroid(points);
+  
+  // Create a div for the label
+  const labelDiv = document.createElement('div');
+  labelDiv.className = 'measurement-label';
+  labelDiv.innerHTML = showDimensions ? 
+    `<div class="label-text">${name || 'Measurement'}: ${label}</div>` :
+    `<div class="label-text">${label}</div>`;
+  
+  // Style the label
+  labelDiv.style.color = 'white';
+  labelDiv.style.padding = '2px 6px';
+  labelDiv.style.borderRadius = '4px';
+  labelDiv.style.fontSize = '14px';
+  labelDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  labelDiv.style.pointerEvents = 'none';
+  
+  // Create the CSS2D object
+  const labelObject = new CSS2DObject(labelDiv);
+  labelObject.position.set(centroid.x, centroid.y, centroid.z);
+  
+  // Store measurement ID in userData for later reference
+  labelObject.userData = {
+    measurementId: measurement.id,
+    type: 'label'
+  };
+  
+  return labelObject;
+};
+
+// Create segment labels for a measurement
+const createSegmentLabels = (
+  measurement: Measurement, 
+  color = 0xFFFFFF
+): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = `segmentLabels-${measurement.id}`;
+  
+  if (!measurement.segments) return group;
+  
+  measurement.segments.forEach(segment => {
+    // Calculate midpoint for label placement
+    const midpoint = {
+      x: (segment.points[0].x + segment.points[1].x) / 2,
+      y: (segment.points[0].y + segment.points[1].y) / 2,
+      z: (segment.points[0].z + segment.points[1].z) / 2
+    };
+    
+    // Create label text
+    const labelText = `${segment.length.toFixed(2)}m`;
+    
+    // Create a div for the label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'segment-label';
+    labelDiv.innerHTML = `<div class="label-text">${labelText}</div>`;
+    
+    // Style the label
+    labelDiv.style.color = 'white';
+    labelDiv.style.padding = '1px 4px';
+    labelDiv.style.borderRadius = '2px';
+    labelDiv.style.fontSize = '12px';
+    labelDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    labelDiv.style.pointerEvents = 'none';
+    
+    // Create the CSS2D object
+    const labelObject = new CSS2DObject(labelDiv);
+    labelObject.position.set(midpoint.x, midpoint.y, midpoint.z);
+    
+    // Store segment and measurement ID in userData for later reference
+    labelObject.userData = {
+      segmentId: segment.id,
+      measurementId: measurement.id,
+      type: 'segmentLabel'
+    };
+    
+    group.add(labelObject);
+  });
+  
+  return group;
 };
 
 // Render the current measurement points and lines
@@ -251,21 +341,24 @@ export const renderMeasurement = (
   }
 };
 
-// Calculate centroid of a set of points
-const calculateCentroid = (points: Point[]): THREE.Vector3 => {
-  let sumX = 0, sumY = 0, sumZ = 0;
+// Calculate the centroid of a set of points
+const calculateCentroid = (points: Point[]): Point => {
+  if (points.length === 0) return { x: 0, y: 0, z: 0 };
   
-  points.forEach(point => {
-    sumX += point.x;
-    sumY += point.y;
-    sumZ += point.z;
-  });
-  
-  return new THREE.Vector3(
-    sumX / points.length,
-    sumY / points.length,
-    sumZ / points.length
+  const sum = points.reduce(
+    (acc, point) => ({
+      x: acc.x + point.x,
+      y: acc.y + point.y,
+      z: acc.z + point.z
+    }),
+    { x: 0, y: 0, z: 0 }
   );
+  
+  return {
+    x: sum.x / points.length,
+    y: sum.y / points.length,
+    z: sum.z / points.length
+  };
 };
 
 // Render all measurements

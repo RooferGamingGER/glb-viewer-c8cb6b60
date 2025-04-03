@@ -12,7 +12,7 @@ export const useMeasurements = () => {
     throw new Error('useMeasurements must be used within a MeasurementProvider');
   }
   
-  // Add the finalizeWithSharedSegments function
+  // Add the finalizeWithSharedSegments function - must return a boolean
   const finalizeWithSharedSegments = useCallback(() => {
     // First, call the original finalize
     const newMeasurement = context.finalizeMeasurement();
@@ -27,10 +27,10 @@ export const useMeasurements = () => {
         context.updateVisualState(measurementsWithSharedSegments, context.allLabelsVisible);
       }
       
-      return newMeasurement;
+      return true;
     }
     
-    return undefined;
+    return false;
   }, [context]);
 
   // Add the calculatePVMaterialsForMeasurement function
@@ -116,6 +116,14 @@ export const useMeasurements = () => {
   };
 };
 
+// Create and export a hook for using the measurement context
+export const useMeasurementContext = () => {
+  const context = useContext(MeasurementContext);
+  if (!context) {
+    throw new Error("useMeasurementContext must be used within a MeasurementProvider");
+  }
+  return context;
+};
+
 // Re-export the types from the types folder for backward compatibility
 export type { Point, Measurement, MeasurementMode, Segment } from '@/types/measurements';
-

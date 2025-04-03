@@ -297,4 +297,3 @@ export const calculatePolygonArea = (points: Point[]): number => {
   
   return Math.abs(area) / 2;
 };
-

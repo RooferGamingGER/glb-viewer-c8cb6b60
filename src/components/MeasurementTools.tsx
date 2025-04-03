@@ -177,8 +177,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   );
 
-  // Define the update visual state handler
-  const updateVisualState = (updatedMeasurements: any[], labelsVisible: boolean) => {
+  // Define the update visual state handler that returns a boolean
+  const updateVisualState = (updatedMeasurements: any[], labelsVisible: boolean): boolean => {
     updateAllLabelsVisibility(labelsVisible);
     updateMeasurementMarkers();
     renderMeasurements(
@@ -453,5 +453,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     </div>
   );
 };
+
+// Check if current mode is a roof element mode
+const isRoofElementMode = (mode: string) => ![
+  'length', 'height', 'area', 'none'
+].includes(mode);
 
 export default MeasurementTools;

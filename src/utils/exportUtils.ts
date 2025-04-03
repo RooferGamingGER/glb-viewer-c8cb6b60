@@ -5,6 +5,177 @@ import { calculatePVPower, calculateAnnualYield } from '@/utils/pvCalculations';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+// Format measurement value based on type
+export const formatMeasurementValue = (measurement: Measurement): string => {
+  if (!measurement.value && measurement.value !== 0) return '-';
+  
+  if (measurement.type === 'length' || measurement.type === 'height' || 
+      measurement.type === 'ridge' || measurement.type === 'eave' || 
+      measurement.type === 'verge' || measurement.type === 'valley' || 
+      measurement.type === 'hip') {
+    return `${measurement.value.toFixed(2)} m`;
+  } else if (measurement.type === 'area' || measurement.type === 'solar') {
+    return `${measurement.value.toFixed(2)} m²`;
+  }
+  
+  return `${measurement.value.toFixed(2)}`;
+};
+
+// Calculate total area for measurements
+export const calculateTotalArea = (measurements: Measurement[]): number => {
+  return measurements
+    .filter(m => m.type === 'area' || m.type === 'solar')
+    .reduce((total, m) => total + (m.value || 0), 0);
+};
+
+// Group segments by type
+export const groupSegmentsByType = (
+  measurements: Measurement[]
+): Record<string, { totalLength: number; count: number }> => {
+  const result: Record<string, { totalLength: number; count: number }> = {};
+  
+  measurements.forEach(measurement => {
+    if (!measurement.segments) return;
+    
+    measurement.segments.forEach(segment => {
+      const type = segment.type || 'custom';
+      
+      if (!result[type]) {
+        result[type] = { totalLength: 0, count: 0 };
+      }
+      
+      result[type].totalLength += segment.length;
+      result[type].count += 1;
+    });
+  });
+  
+  return result;
+};
+
+// Get display name for measurement type
+export const getMeasurementTypeDisplayName = (type: string): string => {
+  const displayNames: Record<string, string> = {
+    'length': 'Länge',
+    'height': 'Höhe',
+    'area': 'Fläche',
+    'solar': 'PV-Fläche',
+    'ridge': 'First',
+    'eave': 'Traufe',
+    'verge': 'Ortgang',
+    'valley': 'Kehle',
+    'hip': 'Grat',
+    'chimney': 'Kamin',
+    'skylight': 'Dachfenster',
+    'vent': 'Lüfter',
+    'hook': 'Dachhaken',
+    'other': 'Sonstiges'
+  };
+  
+  return displayNames[type] || type;
+};
+
+// Get display name for segment type
+export const getSegmentTypeDisplayName = (type?: string): string => {
+  if (!type) return 'Custom';
+  
+  const displayNames: Record<string, string> = {
+    'first': 'First',
+    'grat': 'Grat',
+    'kehle': 'Kehle',
+    'traufe': 'Traufe',
+    'ortgang': 'Ortgang',
+    'custom': 'Benutzerdefiniert'
+  };
+  
+  return displayNames[type] || type;
+};
+
+// Consolidate penetrations for roof plan
+export const consolidatePenetrations = (
+  measurements: Measurement[]
+): Record<string, Measurement[]> => {
+  return {
+    chimneys: measurements.filter(m => m.type === 'chimney'),
+    skylights: measurements.filter(m => m.type === 'skylight'),
+    vents: measurements.filter(m => m.type === 'vent'),
+    hooks: measurements.filter(m => m.type === 'hook'),
+    other: measurements.filter(m => m.type === 'other')
+  };
+};
+
+// Calculate scale factor for roof plan rendering
+export const calculateRoofPlanScaleFactor = (
+  measurements: Measurement[],
+  maxWidth: number = 190,
+  maxHeight: number = 140
+): number => {
+  // Extract all points from measurements
+  const allPoints: THREE.Vector3[] = [];
+  measurements.forEach(m => {
+    m.points.forEach(p => {
+      allPoints.push(new THREE.Vector3(p.x, p.y, p.z));
+    });
+  });
+  
+  if (allPoints.length === 0) return 1;
+  
+  // Calculate bounding box
+  const bbox = new THREE.Box3().setFromPoints(allPoints);
+  const size = bbox.getSize(new THREE.Vector3());
+  
+  // Calculate scale to fit within max dimensions
+  const scaleX = maxWidth / size.x;
+  const scaleZ = maxHeight / size.z;
+  
+  // Use the smaller scale to ensure it fits
+  return Math.min(scaleX, scaleZ) * 0.9; // Add 10% margin
+};
+
+// Get summary of roof elements
+export const getRoofElementsSummary = (
+  measurements: Measurement[]
+): Record<string, { count: number; totalLength: number }> => {
+  const result: Record<string, { count: number; totalLength: number }> = {
+    'ridge': { count: 0, totalLength: 0 },
+    'eave': { count: 0, totalLength: 0 },
+    'verge': { count: 0, totalLength: 0 },
+    'valley': { count: 0, totalLength: 0 },
+    'hip': { count: 0, totalLength: 0 }
+  };
+  
+  measurements.forEach(m => {
+    const type = m.type as string;
+    if (result[type]) {
+      result[type].count += 1;
+      result[type].totalLength += m.value || 0;
+    }
+  });
+  
+  return result;
+};
+
+// Export measurements to CSV
+export const exportMeasurementsToCSV = (measurements: Measurement[]): string => {
+  const headers = ['Type', 'Name', 'Value', 'Unit'];
+  const rows = measurements.map(m => {
+    const unit = (m.type === 'area' || m.type === 'solar') ? 'm²' : 'm';
+    return [
+      getMeasurementTypeDisplayName(m.type),
+      m.name || '',
+      m.value?.toFixed(2) || '',
+      unit
+    ];
+  });
+  
+  // Convert to CSV format
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
+  
+  return csvContent;
+};
+
 // Export measurements to a PDF report
 export const exportMeasurementsToPdf = async (
   measurements: Measurement[],
