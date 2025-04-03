@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -215,6 +214,35 @@
   
   .pdf-table {
     page-break-inside: avoid;
+  }
+  
+  .pdf-cover-page {
+    height: 267mm; /* A4 height minus margins */
+    max-height: 267mm;
+    overflow: hidden;
+    page-break-after: always;
+  }
+  
+  .pdf-image-container {
+    max-height: 180px;
+    text-align: center;
+  }
+  
+  .pdf-image {
+    max-height: 180px;
+    max-width: 100%;
+    object-fit: contain;
+  }
+  
+  .pdf-content-container {
+    max-height: 240px;
+    overflow: hidden;
+  }
+  
+  .pdf-notes {
+    max-height: 80px;
+    overflow: hidden;
+    font-size: 12px;
   }
 }
 
