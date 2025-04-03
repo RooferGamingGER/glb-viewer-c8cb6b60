@@ -5,6 +5,8 @@ import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasure
 export interface CoverPageData {
   title: string;
   companyName: string;
+  companyLogo?: string; // Base64 encoded image
+  companyColor?: string; // Primary brand color
   projectNumber: string;
   projectAddress: string;
   clientName: string;
@@ -13,6 +15,11 @@ export interface CoverPageData {
   contactPhone: string;
   creationDate: string;
   notes: string;
+  showLogo?: boolean;
+  logoPosition?: 'left' | 'center' | 'right';
+  useCustomHeader?: boolean;
+  customHeader?: string;
+  customFooter?: string;
 }
 
 const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLElement => {
@@ -744,6 +751,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const container = document.createElement('div');
     container.className = 'pdf-container';
     
+    const brandColor = coverData.companyColor || '#333333';
+    
     const style = document.createElement('style');
     style.textContent = `
       .pdf-container {
@@ -764,14 +773,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       .cover-header {
         margin-bottom: 15px;
         display: flex;
-        justify-content: center;
+        justify-content: ${coverData.logoPosition || 'center'};
         align-items: center;
         text-align: center;
+      }
+      .company-logo {
+        max-height: 60px;
+        max-width: 200px;
+        object-fit: contain;
       }
       .company-name {
         font-size: 20px;
         font-weight: bold;
-        color: #222;
+        color: ${brandColor};
         text-align: center;
         width: 100%;
       }
@@ -779,7 +793,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         font-size: 24px;
         font-weight: bold;
         margin-bottom: 5px;
-        color: #333;
+        color: ${brandColor};
         text-align: center;
       }
       .cover-subtitle {
@@ -907,16 +921,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         border-bottom: 1px solid #ddd;
         padding-bottom: 10px;
         margin-top: 20px;
+        color: ${brandColor};
       }
       h3 {
         margin-top: 10px;
         margin-bottom: 5px;
         font-size: 13px;
+        color: ${brandColor};
       }
       h4 {
         margin-top: 8px;
         margin-bottom: 5px;
         font-size: 12px;
+        color: ${brandColor};
       }
       .roof-plan {
         max-width: 100%;
@@ -942,6 +959,21 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         max-height: 60mm;
         overflow: hidden;
       }
+      .custom-header {
+        font-size: 10px;
+        color: #666;
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .custom-footer {
+        font-size: 10px;
+        color: #666;
+        text-align: center;
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+      }
     `;
     container.appendChild(style);
     
@@ -952,10 +984,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const coverHeader = document.createElement('div');
     coverHeader.className = 'cover-header';
     
-    const companyName = document.createElement('div');
-    companyName.className = 'company-name';
-    companyName.innerHTML = coverData.companyName || 'DrohnenGLB by RooferGaming<sup>®</sup>';
-    coverHeader.appendChild(companyName);
+    // Add company logo if available
+    if (coverData.showLogo && coverData.companyLogo) {
+      const logo = document.createElement('img');
+      logo.className = 'company-logo';
+      logo.src = coverData.companyLogo;
+      logo.alt = coverData.companyName || 'Company Logo';
+      coverHeader.appendChild(logo);
+    } else {
+      const companyName = document.createElement('div');
+      companyName.className = 'company-name';
+      companyName.innerHTML = coverData.companyName || 'DrohnenGLB by RooferGaming<sup>®</sup>';
+      coverHeader.appendChild(companyName);
+    }
     
     coverPage.appendChild(coverHeader);
     
@@ -966,103 +1007,21 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     const subtitle = document.createElement('div');
     subtitle.className = 'cover-subtitle';
-    subtitle.innerHTML = 'Kostenloser GLB Viewer: drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
+    
+    if (coverData.useCustomHeader && coverData.customHeader) {
+      subtitle.innerHTML = coverData.customHeader;
+    } else {
+      subtitle.innerHTML = 'Kostenloser GLB Viewer: drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
+    }
+    
     coverPage.appendChild(subtitle);
     
-    const infoSection = document.createElement('div');
-    infoSection.className = 'info-section';
-    
-    const leftInfo = document.createElement('div');
-    leftInfo.className = 'left-info';
-    
-    const projectTitle = document.createElement('h3');
-    projectTitle.textContent = 'Projektdaten';
-    projectTitle.style.color = '#444';
-    projectTitle.style.marginBottom = '5px';
-    leftInfo.appendChild(projectTitle);
-    
-    const projectTable = document.createElement('table');
-    projectTable.className = 'info-table';
-    
-    const projectRows = [
-      { label: 'Projektnummer:', value: coverData.projectNumber },
-      { label: 'Erstellungsdatum:', value: coverData.creationDate },
-      { label: 'Objektadresse:', value: coverData.projectAddress }
-    ];
-    
-    projectRows.forEach(row => {
-      if (row.value) {
-        const tableRow = document.createElement('tr');
-        
-        const labelCell = document.createElement('td');
-        labelCell.className = 'info-label';
-        labelCell.textContent = row.label;
-        tableRow.appendChild(labelCell);
-        
-        const valueCell = document.createElement('td');
-        valueCell.textContent = row.value;
-        tableRow.appendChild(valueCell);
-        
-        projectTable.appendChild(tableRow);
-      }
-    });
-    
-    leftInfo.appendChild(projectTable);
-    infoSection.appendChild(leftInfo);
-    
-    const rightInfo = document.createElement('div');
-    rightInfo.className = 'right-info';
-    
-    const customerTitle = document.createElement('h3');
-    customerTitle.textContent = 'Kundendaten';
-    customerTitle.style.color = '#444';
-    customerTitle.style.marginBottom = '5px';
-    rightInfo.appendChild(customerTitle);
-    
-    const customerTable = document.createElement('table');
-    customerTable.className = 'info-table';
-    
-    const customerRows = [
-      { label: 'Auftraggeber:', value: coverData.clientName },
-      { label: 'Ansprechpartner:', value: coverData.contactPerson },
-      { label: 'Telefon:', value: coverData.contactPhone },
-      { label: 'E-Mail:', value: coverData.contactEmail }
-    ];
-    
-    customerRows.forEach(row => {
-      if (row.value) {
-        const tableRow = document.createElement('tr');
-        
-        const labelCell = document.createElement('td');
-        labelCell.className = 'info-label';
-        labelCell.textContent = row.label;
-        tableRow.appendChild(labelCell);
-        
-        const valueCell = document.createElement('td');
-        valueCell.textContent = row.value;
-        tableRow.appendChild(valueCell);
-        
-        customerTable.appendChild(tableRow);
-      }
-    });
-    
-
-    rightInfo.appendChild(customerTable);
-    infoSection.appendChild(rightInfo);
-    
-    coverPage.appendChild(infoSection);
-    
-    if ((measurements as any).topDownScreenshot) {
-      const modelView = document.createElement('div');
-      modelView.className = 'model-view';
-      
-      const modelImage = document.createElement('img');
-      modelImage.className = 'model-image';
-      modelImage.src = (measurements as any).topDownScreenshot;
-      modelImage.alt = 'Dachdraufsicht';
-      
-      modelView.appendChild(modelImage);
-      coverPage.appendChild(modelView);
+    // Add custom footer if provided
+    if (coverData.customFooter) {
+      const footerElement = document.createElement('div');
+      footerElement.className = 'custom-footer';
+      footerElement.innerHTML = coverData.customFooter;
+      coverPage.appendChild(footerElement);
     }
     
     // Add the cover page to the container first

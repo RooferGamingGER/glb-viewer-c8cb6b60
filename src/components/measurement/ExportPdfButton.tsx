@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown, Image } from 'lucide-react';
+import { FileDown, Image, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/types/measurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
@@ -13,7 +14,7 @@ import * as THREE from 'three';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,8 @@ import { Toggle } from "@/components/ui/toggle";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { LogoUpload } from '@/components/ui/logo-upload';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -40,6 +43,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
   const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
+  const { isPortrait } = useScreenOrientation();
+  
   const {
     scene,
     camera,
@@ -58,7 +63,13 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       contactEmail: '',
       contactPhone: '',
       creationDate: new Date().toISOString().split('T')[0],
-      notes: ''
+      notes: '',
+      showLogo: false,
+      logoPosition: 'center',
+      companyColor: '#333333',
+      useCustomHeader: false,
+      customHeader: 'Kostenloser GLB Viewer: drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de',
+      customFooter: ''
     }
   });
 
@@ -244,8 +255,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-3 mb-4">
+          <TabsList className={`grid ${isPortrait ? 'grid-cols-2 gap-1' : 'grid-cols-4'} mb-4`}>
             <TabsTrigger value="info">Berichtsinfos</TabsTrigger>
+            <TabsTrigger value="branding">Branding</TabsTrigger>
             <TabsTrigger value="preview">
               Messungen ({measurements.length})
             </TabsTrigger>
@@ -368,6 +380,156 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                     </label>
                   </div>
                 </div>
+              </div>
+            </Form>
+          </TabsContent>
+          
+          <TabsContent value="branding">
+            <Form {...form}>
+              <div className="grid gap-4 py-2">
+                <FormField control={form.control} name="companyName" render={({
+                field
+              }) => <FormItem>
+                      <FormLabel>Firmenname</FormLabel>
+                      <FormControl>
+                        <Input placeholder="DrohnenGLB by RooferGaming" {...field} />
+                      </FormControl>
+                    </FormItem>} />
+                
+                <FormField control={form.control} name="companyLogo" render={({
+                field
+              }) => <FormItem>
+                      <FormLabel>Firmenlogo</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <LogoUpload value={field.value} onChange={field.onChange} />
+                        </FormControl>
+                      </div>
+                      <FormDescription>
+                        Füge dein Firmenlogo für das Deckblatt hinzu.
+                      </FormDescription>
+                    </FormItem>} />
+                
+                <FormField control={form.control} name="showLogo" render={({
+                field
+              }) => <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Logo anzeigen</FormLabel>
+                        <FormDescription>
+                          Logo anstelle des Firmennamens auf dem Deckblatt verwenden
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>} />
+                
+                <FormField control={form.control} name="logoPosition" render={({
+                field
+              }) => <FormItem>
+                      <FormLabel>Logo-Position</FormLabel>
+                      <div className="flex space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`flex-1 ${field.value === 'left' ? 'bg-primary/20' : ''}`}
+                          onClick={() => field.onChange('left')}
+                        >
+                          Links
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`flex-1 ${field.value === 'center' ? 'bg-primary/20' : ''}`}
+                          onClick={() => field.onChange('center')}
+                        >
+                          Mitte
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`flex-1 ${field.value === 'right' ? 'bg-primary/20' : ''}`}
+                          onClick={() => field.onChange('right')}
+                        >
+                          Rechts
+                        </Button>
+                      </div>
+                    </FormItem>} />
+                
+                <FormField control={form.control} name="companyColor" render={({
+                field
+              }) => <FormItem>
+                      <FormLabel>Primäre Farbe</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="color"
+                              {...field}
+                              className="w-12 h-9 p-1"
+                            />
+                            <Input
+                              type="text"
+                              value={field.value}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              className="flex-1"
+                            />
+                            <Palette className="h-5 w-5 text-gray-400" />
+                          </div>
+                        </FormControl>
+                      </div>
+                      <FormDescription>
+                        Diese Farbe wird für Überschriften und Akzente verwendet.
+                      </FormDescription>
+                    </FormItem>} />
+                
+                <FormField control={form.control} name="useCustomHeader" render={({
+                field
+              }) => <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Eigene Kopfzeile</FormLabel>
+                        <FormDescription>
+                          Eigene Kopfzeile für das Deckblatt verwenden
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>} />
+                
+                {form.watch('useCustomHeader') && (
+                  <FormField control={form.control} name="customHeader" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Benutzerdefinierte Kopfzeile</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Eigene Informationen für die Kopfzeile..." 
+                            className="resize-none h-16" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          HTML wird unterstützt, z.B. für Zeilenumbrüche &lt;br&gt;
+                        </FormDescription>
+                      </FormItem>} />
+                )}
+                
+                <FormField control={form.control} name="customFooter" render={({
+                field
+              }) => <FormItem>
+                      <FormLabel>Benutzerdefinierte Fußzeile</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Eigene Informationen für die Fußzeile..." 
+                          className="resize-none h-16" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        HTML wird unterstützt, z.B. für Links oder Formatierungen
+                      </FormDescription>
+                    </FormItem>} />
               </div>
             </Form>
           </TabsContent>
