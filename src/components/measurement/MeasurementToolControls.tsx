@@ -12,13 +12,17 @@ import {
   Cylinder,
   Wind,
   Anchor,
-  Droplet
+  Droplet,
+  Magnet
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
 import { exportMeasurementsToCSV } from '@/utils/exportUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import { Toggle } from "@/components/ui/toggle";
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { toast } from 'sonner';
 
 interface MeasurementToolControlsProps {
   activeMode: MeasurementMode;
@@ -43,10 +47,21 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   onCategoryChange
 }) => {
   const [activeTab, setActiveTab] = useState("standard");
+  // Use the centralized point snapping context instead of the hook
+  const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   const handleDownload = () => {
     if (measurements.length === 0) return;
     exportMeasurementsToCSV(measurements);
+  };
+  
+  const handleToggleSnap = () => {
+    const newValue = !snapEnabled;
+    setSnapEnabled(newValue);
+    toast.info(newValue 
+      ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
+      : "Punktfang deaktiviert: Punkte werden exakt platziert"
+    );
   };
   
   // When tab changes, notify parent if callback provided
@@ -119,6 +134,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               Fläche
             </Button>
           </div>
+          
+          <Toggle
+            pressed={snapEnabled}
+            onPressedChange={handleToggleSnap}
+            size="sm"
+            variant={snapEnabled ? "default" : "outline"}
+            aria-label="Punktfang ein/aus"
+            title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+            className={`w-full justify-start mb-2 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+          >
+            <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+            Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+          </Toggle>
         </TabsContent>
         
         <TabsContent value="roof-elements">
@@ -156,6 +184,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               <span className="text-xs">Solarfläche</span>
             </Button>
           </div>
+          
+          <Toggle
+            pressed={snapEnabled}
+            onPressedChange={handleToggleSnap}
+            size="sm"
+            variant={snapEnabled ? "default" : "outline"}
+            aria-label="Punktfang ein/aus"
+            title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+            className={`w-full justify-start mt-2 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+          >
+            <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+            Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+          </Toggle>
         </TabsContent>
         
         <TabsContent value="penetrations">
@@ -193,6 +234,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               <span className="text-xs">Sonstiges</span>
             </Button>
           </div>
+          
+          <Toggle
+            pressed={snapEnabled}
+            onPressedChange={handleToggleSnap}
+            size="sm"
+            variant={snapEnabled ? "default" : "outline"}
+            aria-label="Punktfang ein/aus"
+            title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+            className={`w-full justify-start mt-2 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+          >
+            <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+            Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+          </Toggle>
         </TabsContent>
       </Tabs>
       

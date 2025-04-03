@@ -9,6 +9,7 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 // Import visualization utilities
 import { 
@@ -38,6 +39,21 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   camera,
   autoOpenSidebar = false
 }) => {
+  // Register the scene with the point snapping context
+  const { registerScene } = usePointSnapping();
+  
+  // Register scene when component mounts
+  useEffect(() => {
+    if (scene && enabled) {
+      registerScene(scene);
+    }
+    
+    return () => {
+      // Clean up when component unmounts
+      registerScene(null);
+    };
+  }, [scene, enabled, registerScene]);
+
   // Measurement state from main hook
   const { 
     measurements,

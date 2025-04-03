@@ -6,7 +6,7 @@ import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
 import { useMeasurementEvents } from './useMeasurementEvents';
-import { usePointSnapping } from './usePointSnapping';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 /**
  * Main hook for measurement interactions - combines all other specialized hooks
@@ -35,6 +35,25 @@ export const useMeasurementInteraction = (
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
+  // Register scene with the point snapping context
+  const { 
+    clearSnapIndicator, 
+    snapEnabled, 
+    isSnapping, 
+    snapTarget,
+    registerScene 
+  } = usePointSnapping();
+  
+  // Register scene when component mounts
+  useEffect(() => {
+    if (scene && enabled) {
+      registerScene(scene);
+    }
+    return () => {
+      // No need to explicitly unregister, the provider handles cleanup
+    };
+  }, [scene, enabled, registerScene]);
+
   // Hook for preview visualization
   const {
     previewPoint,
@@ -49,14 +68,6 @@ export const useMeasurementInteraction = (
     clearAddPointIndicators,
     updateAddPointIndicators
   } = useAddPointIndicators(scene);
-
-  // Hook for point snapping with enhanced functionality
-  const {
-    clearSnapIndicator,
-    snapEnabled,
-    isSnapping,
-    snapTarget
-  } = usePointSnapping(scene);
 
   // Hook for point movement
   const {

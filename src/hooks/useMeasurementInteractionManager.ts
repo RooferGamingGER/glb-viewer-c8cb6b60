@@ -28,6 +28,10 @@ export const useMeasurementInteractionManager = (
 
   // State for preview points
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
+  
+  // Touch interaction state
+  const [touchStartTime, setTouchStartTime] = useState<number>(0);
+  const [lastTouchPosition, setLastTouchPosition] = useState<{x: number, y: number} | null>(null);
 
   // Get Three.js object references
   const { 
@@ -117,6 +121,29 @@ export const useMeasurementInteractionManager = (
   const finishPointMovement = useCallback(() => {
     setMovingPointInfo(null);
   }, []);
+  
+  // Handle touch interactions with debouncing for better touch experience
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      setTouchStartTime(Date.now());
+      setLastTouchPosition({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      });
+    }
+  }, []);
+  
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    const touchDuration = Date.now() - touchStartTime;
+    
+    // Short tap detection (less than 250ms) with minimal movement
+    if (touchDuration < 250 && lastTouchPosition) {
+      // Process as a tap/click
+      // Implementation would depend on your raycasting logic
+    }
+    
+    setLastTouchPosition(null);
+  }, [touchStartTime, lastTouchPosition]);
 
   // Clean up when enabled status changes
   useEffect(() => {
@@ -137,7 +164,12 @@ export const useMeasurementInteractionManager = (
     addPointIndicatorsRef,
     startPointMovement,
     updateMovingPoint,
-    finishPointMovement
+    finishPointMovement,
+    // Touch handlers
+    handleTouchStart,
+    handleTouchEnd,
+    touchStartTime,
+    lastTouchPosition
   };
 };
 

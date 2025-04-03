@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Magnet } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import * as THREE from 'three';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
-import { usePointSnapping } from '@/hooks/usePointSnapping';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -71,8 +71,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const [activeTab, setActiveTab] = useState<string>("standard");
   const { toast } = useToast();
   
-  // Use our improved snapping hook
-  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
+  // Use our centralized point snapping hook
+  const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
@@ -100,6 +100,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       description: newValue 
         ? "Punkte rasten automatisch ein wenn sie sich in der Nähe vorhandener Punkte befinden" 
         : "Punkte werden exakt an der geklickten Position platziert",
+      variant: newValue ? "default" : "destructive",
       duration: 3000
     });
   };
@@ -113,13 +114,13 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             pressed={snapEnabled}
             onPressedChange={handleToggleSnap}
             size="sm"
-            variant="outline"
+            variant={snapEnabled ? "default" : "outline"}
             aria-label="Punktfang ein/aus"
-            title="Punktfang ein/aus"
-            className="h-7 text-xs"
+            title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+            className={`h-7 text-xs ${snapEnabled ? 'bg-green-500 text-white hover:bg-green-600' : ''}`}
           >
-            <Magnet className="h-3.5 w-3.5 mr-1" />
-            Punktfang
+            <Magnet className={`h-3.5 w-3.5 mr-1 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+            Punktfang {snapEnabled ? 'Ein' : 'Aus'}
           </Toggle>
           
           {measurements.length > 0 && (
