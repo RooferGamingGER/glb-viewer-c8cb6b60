@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -336,9 +337,13 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                 <FormField control={form.control} name="notes" render={({
                 field
               }) => <FormItem>
-                      <FormLabel>Bemerkungen</FormLabel>
+                      <FormLabel>Bemerkungen (erscheint auf separater Seite)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Zusätzliche Informationen zum Projekt..." className="resize-none h-20" {...field} />
+                        <Textarea 
+                          placeholder="Zusätzliche Informationen zum Projekt..." 
+                          className="resize-none h-24" 
+                          {...field} 
+                        />
                       </FormControl>
                     </FormItem>} />
                 

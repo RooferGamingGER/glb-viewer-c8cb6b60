@@ -350,6 +350,24 @@ const createTableOfContents = (measurements: Measurement[]): HTMLElement => {
   
   let currentPage = 2;
   
+  const notesRow = document.createElement('tr');
+  const notesLabel = document.createElement('td');
+  notesLabel.textContent = 'Bemerkungen';
+  notesLabel.style.padding = '5px 0';
+  notesLabel.style.borderBottom = '1px solid #eee';
+  
+  const notesPage = document.createElement('td');
+  notesPage.textContent = currentPage.toString();
+  notesPage.style.textAlign = 'right';
+  notesPage.style.padding = '5px 0';
+  notesPage.style.borderBottom = '1px solid #eee';
+  
+  notesRow.appendChild(notesLabel);
+  notesRow.appendChild(notesPage);
+  tbody.appendChild(notesRow);
+  
+  currentPage++;
+  
   const roofPlanRow = document.createElement('tr');
   const roofPlanLabel = document.createElement('td');
   roofPlanLabel.textContent = 'Dachplan';
@@ -608,6 +626,39 @@ const createCoverPageSummary = (summary: any): HTMLElement => {
 };
 
 /**
+ * Creates a dedicated notes page
+ */
+const createNotesPage = (notes: string): HTMLElement => {
+  const container = document.createElement('div');
+  container.className = 'notes-page';
+  container.style.padding = '20px';
+  container.style.position = 'relative';
+  container.style.height = '270mm';
+  container.style.pageBreakAfter = 'always';
+  
+  const notesTitle = document.createElement('h2');
+  notesTitle.textContent = 'Bemerkungen';
+  notesTitle.style.marginBottom = '20px';
+  container.appendChild(notesTitle);
+  
+  const notesContent = document.createElement('div');
+  notesContent.style.padding = '15px';
+  notesContent.style.backgroundColor = '#f9f9f9';
+  notesContent.style.border = '1px solid #eee';
+  notesContent.style.borderRadius = '4px';
+  notesContent.style.fontSize = '14px';
+  notesContent.style.lineHeight = '1.6';
+  notesContent.style.whiteSpace = 'pre-wrap';
+  
+  const formattedNotes = notes.split('\n').join('<br>');
+  notesContent.innerHTML = formattedNotes;
+  
+  container.appendChild(notesContent);
+  
+  return container;
+};
+
+/**
  * Export measurements to PDF with cover page
  */
 export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData): Promise<boolean> => {
@@ -731,6 +782,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         border-bottom: 1px solid #eee;
         font-size: 10px;
       }
+      .notes-page {
+        padding: 20px;
+        height: 270mm;
+        position: relative;
+        background-color: #fafafa;
+        box-sizing: border-box;
+        page-break-after: always;
+      }
       .measurement-section {
         margin-top: 20px;
         page-break-before: always;
@@ -816,10 +875,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .summary-section {
         max-height: 60mm;
-        overflow: hidden;
-      }
-      .notes-section {
-        max-height: 30mm;
         overflow: hidden;
       }
     `;
@@ -958,46 +1013,28 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     contentContainer.appendChild(summarySection);
     
     if (coverData.notes) {
-      const notesSection = document.createElement('div');
-      notesSection.className = 'notes-section';
-      notesSection.style.marginTop = '10px';
-      
-      const notesTitle = document.createElement('h3');
-      notesTitle.textContent = 'Bemerkungen';
-      notesTitle.style.color = '#444';
-      notesTitle.style.marginBottom = '5px';
-      notesSection.appendChild(notesTitle);
-      
-      const notesContent = document.createElement('div');
-      notesContent.style.padding = '8px';
-      notesContent.style.backgroundColor = '#f9f9f9';
-      notesContent.style.borderRadius = '4px';
-      notesContent.style.border = '1px solid #eee';
-      notesContent.style.fontSize = '11px';
-      
-      const maxNotesLength = 200;
-      notesContent.textContent = coverData.notes.length > maxNotesLength 
-        ? coverData.notes.substring(0, maxNotesLength) + '...' 
-        : coverData.notes;
-      
-      notesSection.appendChild(notesContent);
-      contentContainer.appendChild(notesSection);
+      const notesPage = createNotesPage(coverData.notes);
+      container.appendChild(notesPage);
     }
     
-    coverPage.appendChild(contentContainer);
-    
-    container.appendChild(coverPage);
-    
-    if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
+    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
       const roofPlanPage = document.createElement('div');
-      roofPlanPage.className = 'page-break';
+      roofPlanPage.style.pageBreakAfter = 'always';
       roofPlanPage.style.padding = '20px';
+      roofPlanPage.style.height = '270mm';
+      roofPlanPage.style.position = 'relative';
       
       if (!(measurements as any).showRoofPlanWithoutHeader) {
         const roofPlanTitle = document.createElement('h2');
         roofPlanTitle.textContent = 'Dachplan';
         roofPlanPage.appendChild(roofPlanTitle);
       }
+      
+      const roofPlanContainer = document.createElement('div');
+      roofPlanContainer.style.display = 'flex';
+      roofPlanContainer.style.justifyContent = 'center';
+      roofPlanContainer.style.alignItems = 'center';
+      roofPlanContainer.style.height = (measurements as any).showRoofPlanWithoutHeader ? 'calc(100% - 40px)' : 'calc(100% - 80px)';
       
       const roofPlanImage = document.createElement('img');
       roofPlanImage.src = (measurements as any).roofPlan;
@@ -1012,18 +1049,21 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           pageHeight / dims.height * 25.4
         );
         
-        if ((measurements as any).showRoofPlanWithoutHeader) {
-          roofPlanImage.style.maxHeight = '95vh';
-        } else {
-          roofPlanImage.style.maxHeight = '85vh';
-        }
+        roofPlanImage.style.maxWidth = '100%';
+        roofPlanImage.style.maxHeight = '100%';
+        roofPlanImage.style.objectFit = 'contain';
       }
       
-      roofPlanPage.appendChild(roofPlanImage);
+      roofPlanContainer.appendChild(roofPlanImage);
+      roofPlanPage.appendChild(roofPlanContainer);
       
       const footnote = document.createElement('div');
       footnote.className = 'footnote';
       footnote.textContent = 'Hinweis: Dieser Dachplan ist eine schematische Darstellung und nicht maßstabsgetreu.';
+      footnote.style.position = 'absolute';
+      footnote.style.bottom = '20px';
+      footnote.style.left = '20px';
+      footnote.style.right = '20px';
       roofPlanPage.appendChild(footnote);
       
       container.appendChild(roofPlanPage);
