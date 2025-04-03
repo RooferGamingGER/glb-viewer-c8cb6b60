@@ -33,8 +33,8 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     setIsGenerating(true);
     
     try {
-      // Specify higher resolution and true top-down view for better readability
-      const plan = createCombinedRoofPlan(measurements, 2800, 2100, 0.1, true);
+      // Higher resolution for better quality
+      const plan = createCombinedRoofPlan(measurements, 3000, 2400, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {

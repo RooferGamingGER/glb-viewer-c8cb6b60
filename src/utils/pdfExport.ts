@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -646,33 +645,34 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       .pdf-container {
         font-family: 'Arial', sans-serif;
         color: #333;
-        line-height: 1.5;
+        line-height: 1.4;
       }
       .cover-page {
-        padding: 30px;
-        height: 1100px; /* Fixed height to ensure it fits on one page */
-        max-height: 1100px; /* Ensure it doesn't grow beyond this */
+        padding: 15px;
+        height: 270mm;
+        max-height: 270mm;
         position: relative;
         background-color: #fafafa;
-        overflow: hidden; /* Hide any overflow content */
-        box-sizing: border-box; /* Include padding in height calculation */
+        overflow: hidden;
+        box-sizing: border-box;
+        page-break-after: always;
       }
       .cover-header {
-        margin-bottom: 30px;
+        margin-bottom: 15px;
         display: flex;
         justify-content: center;
         align-items: center;
         text-align: center;
       }
       .company-name {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: bold;
         color: #222;
         text-align: center;
         width: 100%;
       }
       .cover-title {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: bold;
         margin-bottom: 5px;
         color: #333;
@@ -680,14 +680,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .cover-subtitle {
         text-align: center;
-        font-size: 14px;
+        font-size: 12px;
         color: #555;
-        margin-bottom: 30px;
+        margin-bottom: 15px;
       }
       .info-section {
         display: flex;
-        margin-bottom: 20px;
-        gap: 40px;
+        margin-bottom: 10px;
+        gap: 30px;
       }
       .left-info, .right-info {
         flex: 1;
@@ -697,34 +697,40 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         border-collapse: collapse;
       }
       .info-table td {
-        padding: 4px 0;
+        padding: 2px 0;
         border-bottom: 1px solid #eee;
+        font-size: 11px;
       }
       .info-label {
         font-weight: bold;
-        width: 130px;
+        width: 110px;
         color: #555;
       }
       .model-view {
-        margin: 30px auto;
+        margin: 10px auto;
         text-align: center;
-        max-width: 500px;
+        max-width: 100%;
       }
       .model-image {
         width: 100%;
-        max-height: 240px; /* Reduced height to ensure everything fits */
+        max-height: 150px;
         object-fit: contain;
         border: 1px solid #ddd;
-        border-radius: 8px;
+        border-radius: 4px;
         background-color: #fff;
+      }
+      .content-container {
+        max-height: 80mm;
+        overflow: hidden;
       }
       .toc-table {
         width: 100%;
         border-collapse: collapse;
       }
       .toc-table td {
-        padding: 5px 0;
+        padding: 2px 0;
         border-bottom: 1px solid #eee;
+        font-size: 10px;
       }
       .measurement-section {
         margin-top: 20px;
@@ -780,12 +786,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         margin-top: 20px;
       }
       h3 {
-        margin-top: 20px;
-        margin-bottom: 10px;
+        margin-top: 10px;
+        margin-bottom: 5px;
+        font-size: 13px;
       }
       h4 {
-        margin-top: 15px;
-        margin-bottom: 8px;
+        margin-top: 8px;
+        margin-bottom: 5px;
+        font-size: 12px;
       }
       .roof-plan {
         max-width: 100%;
@@ -806,6 +814,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .type-section {
         page-break-inside: avoid;
+      }
+      .summary-section {
+        max-height: 60mm;
+        overflow: hidden;
+      }
+      .notes-section {
+        max-height: 30mm;
+        overflow: hidden;
       }
     `;
     container.appendChild(style);
@@ -842,7 +858,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const projectTitle = document.createElement('h3');
     projectTitle.textContent = 'Projektdaten';
     projectTitle.style.color = '#444';
-    projectTitle.style.marginBottom = '10px';
+    projectTitle.style.marginBottom = '5px';
     leftInfo.appendChild(projectTitle);
     
     const projectTable = document.createElement('table');
@@ -880,7 +896,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const customerTitle = document.createElement('h3');
     customerTitle.textContent = 'Kundendaten';
     customerTitle.style.color = '#444';
-    customerTitle.style.marginBottom = '10px';
+    customerTitle.style.marginBottom = '5px';
     rightInfo.appendChild(customerTitle);
     
     const customerTable = document.createElement('table');
@@ -915,7 +931,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     coverPage.appendChild(infoSection);
     
-    // Limit the height of the model view image
     if ((measurements as any).topDownScreenshot) {
       const modelView = document.createElement('div');
       modelView.className = 'model-view';
@@ -929,51 +944,51 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       coverPage.appendChild(modelView);
     }
     
-    // Only add table of contents if not skipped
-    // Make sure cover page summary and notes still fit on the first page
     const contentContainer = document.createElement('div');
-    contentContainer.style.maxHeight = '320px'; // Limit the height of this container
-    contentContainer.style.overflow = 'hidden'; // Hide overflow
-
+    contentContainer.className = 'content-container';
+    
     if (!(measurements as any).skipTableOfContents) {
       const toc = createTableOfContents(measurements);
       contentContainer.appendChild(toc);
     }
     
+    const summarySection = document.createElement('div');
+    summarySection.className = 'summary-section';
     const coverSummary = createCoverPageSummary(summaryData);
-    contentContainer.appendChild(coverSummary);
+    summarySection.appendChild(coverSummary);
+    contentContainer.appendChild(summarySection);
     
     if (coverData.notes) {
-      // Limit the notes section to ensure it fits
       const notesSection = document.createElement('div');
-      notesSection.style.marginTop = '20px';
+      notesSection.className = 'notes-section';
+      notesSection.style.marginTop = '10px';
       
       const notesTitle = document.createElement('h3');
       notesTitle.textContent = 'Bemerkungen';
       notesTitle.style.color = '#444';
-      notesTitle.style.marginBottom = '10px';
+      notesTitle.style.marginBottom = '5px';
       notesSection.appendChild(notesTitle);
       
       const notesContent = document.createElement('div');
-      notesContent.style.padding = '10px';
-      notesContent.style.maxHeight = '100px'; // Limit notes height
-      notesContent.style.overflow = 'hidden'; // Hide overflow
-      notesContent.style.textOverflow = 'ellipsis'; // Add ellipsis if text overflows
+      notesContent.style.padding = '8px';
       notesContent.style.backgroundColor = '#f9f9f9';
       notesContent.style.borderRadius = '4px';
       notesContent.style.border = '1px solid #eee';
-      notesContent.textContent = coverData.notes;
-      notesSection.appendChild(notesContent);
+      notesContent.style.fontSize = '11px';
       
+      const maxNotesLength = 200;
+      notesContent.textContent = coverData.notes.length > maxNotesLength 
+        ? coverData.notes.substring(0, maxNotesLength) + '...' 
+        : coverData.notes;
+      
+      notesSection.appendChild(notesContent);
       contentContainer.appendChild(notesSection);
     }
     
     coverPage.appendChild(contentContainer);
     
-    // IMPORTANT: Add the cover page to the container
     container.appendChild(coverPage);
     
-    // Now let's fix the roof plan page by explicitly forcing a page break before the roof plan
     if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
       const roofPlanPage = document.createElement('div');
       roofPlanPage.className = 'page-break';

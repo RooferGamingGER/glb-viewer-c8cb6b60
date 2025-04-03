@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -79,8 +78,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      const width = 2480; // ~210mm at 300dpi
-      const height = 3508; // ~297mm at 300dpi
+      const width = 3000; // Increased from 2480
+      const height = 2400; // Adjusted from 3508 for more appropriate aspect ratio
       
       setOptimizedRoofPlanDimensions({width, height});
       
@@ -181,8 +180,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
-          const width = 2480; // ~210mm at 300dpi
-          const height = 3508; // ~297mm at 300dpi
+          const width = 3000; // Increased from 2480
+          const height = 2400; // Adjusted for appropriate aspect ratio
           const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;
