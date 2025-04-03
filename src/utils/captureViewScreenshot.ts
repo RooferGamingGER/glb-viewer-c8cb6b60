@@ -83,12 +83,14 @@ export const captureViewScreenshot = (
  * @param renderer The WebGL renderer
  * @param scene The current scene
  * @param originalCamera The original camera (to restore after capture)
+ * @param hideMeasurementGroups Array of measurement-related groups to hide during capture
  * @returns Base64 data URL of the screenshot
  */
 export const captureTopDownView = (
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
-  originalCamera: THREE.Camera
+  originalCamera: THREE.Camera,
+  hideMeasurementGroups?: THREE.Group[]
 ): string | null => {
   if (!renderer || !scene) {
     console.error('Missing required parameters for top-down screenshot');
@@ -103,6 +105,19 @@ export const captureTopDownView = (
       width: renderer.domElement.width,
       height: renderer.domElement.height
     };
+    
+    // Store visibility state of measurement groups if provided
+    const originalVisibilityStates: boolean[] = [];
+    if (hideMeasurementGroups && hideMeasurementGroups.length > 0) {
+      hideMeasurementGroups.forEach(group => {
+        if (group) {
+          originalVisibilityStates.push(group.visible);
+          group.visible = false; // Hide measurement groups
+        } else {
+          originalVisibilityStates.push(true); // Placeholder for null groups
+        }
+      });
+    }
     
     // Create temporary orthographic camera for top-down view
     const boundingBox = new THREE.Box3().setFromObject(scene);
@@ -138,6 +153,15 @@ export const captureTopDownView = (
     
     // Capture the rendered image
     const dataUrl = renderer.domElement.toDataURL('image/png');
+    
+    // Restore visibility of measurement groups
+    if (hideMeasurementGroups && hideMeasurementGroups.length > 0) {
+      hideMeasurementGroups.forEach((group, index) => {
+        if (group) {
+          group.visible = originalVisibilityStates[index];
+        }
+      });
+    }
     
     // Restore original settings
     renderer.setClearColor(originalClearColor, originalClearAlpha);

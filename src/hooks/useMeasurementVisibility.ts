@@ -4,11 +4,12 @@ import * as THREE from 'three';
 import { Measurement } from '@/types/measurements';
 
 interface ThreeObjects {
-  pointsRef: React.MutableRefObject<THREE.Group>;
-  linesRef: React.MutableRefObject<THREE.Group>;
-  measurementsRef: React.MutableRefObject<THREE.Group>;
-  labelsRef: React.MutableRefObject<THREE.Group>;
-  segmentLabelsRef: React.MutableRefObject<THREE.Group>;
+  pointsRef: React.MutableRefObject<THREE.Group | null>;
+  linesRef: React.MutableRefObject<THREE.Group | null>;
+  measurementsRef: React.MutableRefObject<THREE.Group | null>;
+  labelsRef: React.MutableRefObject<THREE.Group | null>;
+  segmentLabelsRef: React.MutableRefObject<THREE.Group | null>;
+  getAllGroups?: () => THREE.Group[];
 }
 
 export const useMeasurementVisibility = (
@@ -112,11 +113,27 @@ export const useMeasurementVisibility = (
     });
   }, [measurements, threeObjects]);
 
+  // Get all measurement groups for temporary hiding during screenshots
+  const getMeasurementGroups = useCallback(() => {
+    if (threeObjects.getAllGroups) {
+      return threeObjects.getAllGroups();
+    }
+    
+    return [
+      threeObjects.pointsRef.current,
+      threeObjects.linesRef.current,
+      threeObjects.measurementsRef.current,
+      threeObjects.labelsRef.current,
+      threeObjects.segmentLabelsRef.current
+    ].filter(Boolean) as THREE.Group[];
+  }, [threeObjects]);
+
   return {
     handleToggleMeasurementVisibility,
     handleToggleLabelVisibility,
     updateAllLabelsVisibility,
     updateMeasurementMarkers,
-    updateLabelVisibility
+    updateLabelVisibility,
+    getMeasurementGroups
   };
 };

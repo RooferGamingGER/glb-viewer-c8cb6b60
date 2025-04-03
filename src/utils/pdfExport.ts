@@ -802,7 +802,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .info-table td {
         padding: 2px 0;
-        border-bottom: 1px solid #eee;
+        border-bottom: none; /* Entfernt die untere Linie explizit */
         font-size: 11px;
       }
       .info-label {

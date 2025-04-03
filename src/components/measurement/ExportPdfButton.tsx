@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -26,10 +25,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
+  measurementGroups?: THREE.Group[];
 }
 
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
-  measurements
+  measurements,
+  measurementGroups
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -69,12 +70,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
 
   useEffect(() => {
     if (scene && camera && renderer) {
-      const screenshot = captureTopDownView(renderer, scene, camera);
+      const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
       if (screenshot) {
         setTopDownScreenshot(screenshot);
       }
     }
-  }, [scene, camera, renderer]);
+  }, [scene, camera, renderer, measurementGroups]);
 
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
@@ -113,7 +114,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       setExportProgress(20);
       
       if (!topDownScreenshot && scene && camera && renderer) {
-        const screenshot = captureTopDownView(renderer, scene, camera);
+        const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
         if (screenshot) {
           (measurementsWithVisuals as any).topDownScreenshot = screenshot;
         }
