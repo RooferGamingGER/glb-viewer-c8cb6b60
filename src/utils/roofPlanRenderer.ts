@@ -396,12 +396,6 @@ export const createCombinedRoofPlan = (
       for (let i = 0; i < measurement.segments.length; i++) {
         const segment = measurement.segments[i];
         
-        // Skip segments that don't have a type
-        if (!segment.type) continue;
-        
-        // Add to used segment types for legend
-        usedSegmentTypes.add(segment.type);
-        
         // Find the points in the 2D array
         const p1Index = measurement.points.findIndex(p => 
           p.x === segment.points[0].x && 
@@ -425,7 +419,8 @@ export const createCombinedRoofPlan = (
           ctx.lineTo(toCanvasX(p2.x), toCanvasY(p2.y));
           
           // Use segment type color or default
-          const segmentType = segment.type.toLowerCase();
+          const segmentType = segment.type?.toLowerCase() || 'default';
+          usedSegmentTypes.add(segmentType);
           ctx.strokeStyle = segmentColors[segmentType] || segmentColors.default;
           ctx.lineWidth = 4; // Thicker line for segments
           ctx.stroke();
@@ -434,29 +429,31 @@ export const createCombinedRoofPlan = (
           const midX = (p1.x + p2.x) / 2;
           const midY = (p1.y + p2.y) / 2;
           
-          // Draw the segment type label
-          const segmentTypeDisplayName = getSegmentTypeDisplayName(segment.type);
+          // Draw the segment type label if it exists
+          if (segment.type) {
+            const segmentTypeDisplayName = getSegmentTypeDisplayName(segment.type);
+            
+            // Draw the segment type with background
+            ctx.font = 'bold 14px Arial';
+            const typeTextWidth = ctx.measureText(segmentTypeDisplayName).width;
+            
+            // White background for segment type
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(
+              toCanvasX(midX) - typeTextWidth / 2 - 6, 
+              toCanvasY(midY) - 28, 
+              typeTextWidth + 12,
+              20
+            );
+            
+            // Type text
+            ctx.fillStyle = segmentColors[segmentType] || segmentColors.default;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
+          }
           
-          // Draw the segment type with background
-          ctx.font = 'bold 14px Arial';
-          const typeTextWidth = ctx.measureText(segmentTypeDisplayName).width;
-          
-          // White background for segment type
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-          ctx.fillRect(
-            toCanvasX(midX) - typeTextWidth / 2 - 6, 
-            toCanvasY(midY) - 28, 
-            typeTextWidth + 12,
-            20
-          );
-          
-          // Type text
-          ctx.fillStyle = segmentColors[segmentType] || segmentColors.default;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
-          
-          // Always show length, even if no inclination
+          // Always show length, even if no type or inclination
           const lengthText = segment.inclination !== undefined && Math.abs(segment.inclination) >= 2.0
             ? `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`
             : `${segment.length.toFixed(2)}m`;
@@ -484,15 +481,15 @@ export const createCombinedRoofPlan = (
     
     // Fourth pass: Draw measurement labels, points and areas in the center
     sortedMeasurements.forEach(({ measurement, points2D, centroid }) => {
-      // Draw the vertices - FURTHER INCREASED SIZE for better visibility
+      // Draw the vertices - INCREASED SIZE for better visibility on A4
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 8, 0, Math.PI * 2); // Increased from 6 to 8
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 10, 0, Math.PI * 2); // Increased from 8 to 10
         ctx.fillStyle = '#666666';
         ctx.fill();
         
-        // Add index numbers to vertices - FURTHER INCREASED SIZE
-        ctx.font = 'bold 20px Arial'; // Increased from 16px to 20px
+        // Add index numbers to vertices - INCREASED SIZE
+        ctx.font = 'bold 24px Arial'; // Increased from 20px to 24px
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -504,7 +501,7 @@ export const createCombinedRoofPlan = (
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
       // INCREASED font size for better readability
-      ctx.font = 'bold 24px Arial'; // Increased from 22px to 24px
+      ctx.font = 'bold 26px Arial'; // Increased from 24px to 26px
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
@@ -519,7 +516,7 @@ export const createCombinedRoofPlan = (
         toCanvasX(centroid.x) - maxWidth / 2 - 5,
         toCanvasY(centroid.y) - 20,
         maxWidth + 10,
-        40  // Increased height for larger font
+        44  // Increased height for larger font
       );
       
       // Draw label text
@@ -530,15 +527,15 @@ export const createCombinedRoofPlan = (
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(
         toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) + 20,
+        toCanvasY(centroid.y) + 24,
         maxWidth + 10,
-        32  // Increased height for larger font
+        36  // Increased height for larger font
       );
       
       // Draw value text - INCREASED SIZE
-      ctx.font = 'bold 22px Arial'; // Increased from 20px to 22px
+      ctx.font = 'bold 24px Arial'; // Increased from 22px to 24px
       ctx.fillStyle = '#222222';
-      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 34); // Adjusted position for larger text
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 42); // Adjusted position for larger text
     });
     
     // Add a disclaimer below the plan
@@ -687,151 +684,6 @@ function drawScaleIndicator(
 }
 
 /**
- * Draw a legend for the different roof segment types
- * NOTE: This function is kept but not called as requested by the user
- */
-function drawSegmentLegend(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  segmentColors: Record<string, string>,
-  usedTypes: string[]
-): void {
-  // Define standard segment types (in order)
-  const standardTypes = ['ridge', 'hip', 'valley', 'eave', 'verge'];
-  
-  // Filter to only include used types, prioritizing standard ones
-  const typesToShow = [
-    ...standardTypes.filter(type => usedTypes.includes(type)),
-    ...usedTypes.filter(type => !standardTypes.includes(type))
-  ];
-  
-  // Return early if no types to show
-  if (typesToShow.length === 0) return;
-  
-  const legendX = 40;
-  const legendY = height - 50 - (typesToShow.length * 25);
-  const itemHeight = 22;
-  const legendWidth = 200;
-  
-  const legendHeight = typesToShow.length * itemHeight + 40;
-  
-  // Draw legend background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
-  
-  // Draw border
-  ctx.strokeStyle = '#333333';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
-  
-  // Draw legend title
-  ctx.font = 'bold 16px Arial';
-  ctx.fillStyle = '#333333';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText('Dachflächen-Legende', legendX + legendWidth / 2, legendY + 10);
-  
-  // Draw legend items
-  let currentY = legendY + 35;
-  
-  typesToShow.forEach(type => {
-    const displayName = getSegmentTypeDisplayName(type);
-    const color = segmentColors[type] || segmentColors.default;
-    
-    // Draw color line
-    ctx.beginPath();
-    ctx.moveTo(legendX + 15, currentY + itemHeight / 2);
-    ctx.lineTo(legendX + 45, currentY + itemHeight / 2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    
-    // Draw label
-    ctx.font = 'bold 14px Arial';
-    ctx.fillStyle = '#333333';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(displayName, legendX + 55, currentY + itemHeight / 2);
-    
-    currentY += itemHeight;
-  });
-}
-
-/**
- * Draw a legend for the different measurement types
- * NOTE: This function is kept but not called as requested by the user
- */
-function drawMeasurementTypeLegend(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  colors: Record<string, { fill: string; stroke: string }>,
-  usedTypes: string[]
-): void {
-  // Define standard measurement types (in order of display)
-  const standardTypes = ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'];
-  
-  // Filter to only include used types, prioritizing standard ones
-  const typesToShow = [
-    ...standardTypes.filter(type => usedTypes.includes(type)),
-    ...usedTypes.filter(type => !standardTypes.includes(type))
-  ];
-  
-  // Return early if no types to show
-  if (typesToShow.length === 0) return;
-  
-  const legendX = width - 220; // Position on right side
-  const legendY = 80; // Position below title
-  const itemHeight = 24; // Slightly bigger items
-  const legendWidth = 200;
-  
-  const legendHeight = typesToShow.length * itemHeight + 40;
-  
-  // Draw legend background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
-  
-  // Draw border
-  ctx.strokeStyle = '#333333';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
-  
-  // Draw legend title
-  ctx.font = 'bold 16px Arial';
-  ctx.fillStyle = '#333333';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText('Messungstypen', legendX + legendWidth / 2, legendY + 10);
-  
-  // Draw legend items
-  let currentY = legendY + 35;
-  
-  typesToShow.forEach(type => {
-    const displayName = getMeasurementTypeDisplayName(type);
-    const colorSet = colors[type] || colors.default;
-    
-    // Draw color box
-    ctx.fillStyle = colorSet.fill;
-    ctx.strokeStyle = colorSet.stroke;
-    ctx.lineWidth = 2;
-    
-    const boxSize = 16;
-    ctx.fillRect(legendX + 15, currentY + (itemHeight - boxSize) / 2, boxSize, boxSize);
-    ctx.strokeRect(legendX + 15, currentY + (itemHeight - boxSize) / 2, boxSize, boxSize);
-    
-    // Draw label
-    ctx.font = 'bold 14px Arial';
-    ctx.fillStyle = '#333333';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(displayName, legendX + 15 + boxSize + 10, currentY + itemHeight / 2);
-    
-    currentY += itemHeight;
-  });
-}
-
-/**
  * Draw a disclaimer note at the bottom of the plan
  */
 function drawDisclaimer(
@@ -846,70 +698,4 @@ function drawDisclaimer(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   ctx.fillText(disclaimerText, width / 2, height - 10);
-}
-
-/**
- * Draw a legend for the different measurement types - more compact for PDF export
- * NOTE: This function is kept but not called as requested by the user
- */
-function drawLegend(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  colors: Record<string, { fill: string; stroke: string }>
-): void {
-  const legendX = width - 180; // More compact, moved left
-  const legendY = 40; // Moved up from 60 to 40
-  const itemHeight = 20; // Reduced from 25 to 20
-  const legendWidth = 160; // Reduced from 180 to 160
-  
-  // Define legend items
-  const legendItems = [
-    { type: 'area', label: 'Dachfläche' },
-    { type: 'solar', label: 'Solaranlage' },
-    { type: 'skylight', label: 'Dachfenster' },
-    { type: 'chimney', label: 'Kamin' }
-  ];
-  
-  const legendHeight = legendItems.length * itemHeight + 30; // Reduced padding
-  
-  // Draw legend background with better opacity
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Increased opacity from 0.8 to 0.9
-  ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
-  
-  // Draw border
-  ctx.strokeStyle = '#333333';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
-  
-  // Draw legend title with increased font size
-  ctx.font = 'bold 14px Arial'; // Increased from 13px to 14px
-  ctx.fillStyle = '#333333';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText('Legende', legendX + legendWidth / 2, legendY + 8); // Reduced top padding
-  
-  // Draw legend items
-  let currentY = legendY + 28; // Reduced spacing
-  
-  legendItems.forEach(item => {
-    const colorSet = colors[item.type] || colors.default;
-    
-    // Draw color box
-    ctx.fillStyle = colorSet.fill;
-    ctx.strokeStyle = colorSet.stroke;
-    ctx.lineWidth = 1;
-    
-    ctx.fillRect(legendX + 10, currentY, 18, 14); // Smaller color boxes
-    ctx.strokeRect(legendX + 10, currentY, 18, 14);
-    
-    // Draw label with increased font size
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#333333';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(item.label, legendX + 38, currentY + 7);
-    
-    currentY += itemHeight;
-  });
 }

@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -649,7 +650,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .cover-page {
         padding: 30px;
-        min-height: 1100px;
+        min-height: 1200px; /* Increased from 1100px to ensure content fits on one page */
         height: 100%;
         position: relative;
         background-color: #fafafa;
@@ -726,6 +727,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         display: flex;
         flex-direction: column;
         align-items: center;
+        margin-top: 30px; /* Additional margin to ensure separation from content */
       }
       .promo-primary {
         font-size: 18px;
