@@ -55,7 +55,9 @@ export const useMeasurementInteraction = (
     clearSnapIndicator,
     snapEnabled,
     isSnapping,
-    snapTarget
+    snapTarget,
+    snapMode,
+    checkForSnapping
   } = usePointSnapping(scene);
 
   // Hook for point movement
@@ -94,7 +96,8 @@ export const useMeasurementInteraction = (
       finishPointMovement,
       startPointMovement,
       setPreviewPoint,
-      movingPointInfo
+      movingPointInfo,
+      checkForSnapping
     },
     {
       editPointsRef: refs.editPointsRef,
@@ -120,6 +123,7 @@ export const useMeasurementInteraction = (
     clearAddPointIndicators,
     isSnapping,
     snapTarget,
-    snapEnabled
+    snapEnabled,
+    snapMode
   };
 };

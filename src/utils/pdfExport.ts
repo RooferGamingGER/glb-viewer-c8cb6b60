@@ -989,16 +989,25 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     container.appendChild(coverPage);
     
-    if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
+    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2))) {
       const roofPlanPage = document.createElement('div');
-      roofPlanPage.className = 'page-break';
+      roofPlanPage.style.pageBreakBefore = 'always';
+      roofPlanPage.style.pageBreakAfter = 'always';
       roofPlanPage.style.padding = '20px';
+      roofPlanPage.style.height = '270mm';
+      roofPlanPage.style.position = 'relative';
       
       if (!(measurements as any).showRoofPlanWithoutHeader) {
         const roofPlanTitle = document.createElement('h2');
         roofPlanTitle.textContent = 'Dachplan';
         roofPlanPage.appendChild(roofPlanTitle);
       }
+      
+      const roofPlanContainer = document.createElement('div');
+      roofPlanContainer.style.display = 'flex';
+      roofPlanContainer.style.justifyContent = 'center';
+      roofPlanContainer.style.alignItems = 'center';
+      roofPlanContainer.style.height = (measurements as any).showRoofPlanWithoutHeader ? 'calc(100% - 40px)' : 'calc(100% - 80px)';
       
       const roofPlanImage = document.createElement('img');
       roofPlanImage.src = (measurements as any).roofPlan;
@@ -1013,18 +1022,21 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           pageHeight / dims.height * 25.4
         );
         
-        if ((measurements as any).showRoofPlanWithoutHeader) {
-          roofPlanImage.style.maxHeight = '95vh';
-        } else {
-          roofPlanImage.style.maxHeight = '85vh';
-        }
+        roofPlanImage.style.maxWidth = '100%';
+        roofPlanImage.style.maxHeight = '100%';
+        roofPlanImage.style.objectFit = 'contain';
       }
       
-      roofPlanPage.appendChild(roofPlanImage);
+      roofPlanContainer.appendChild(roofPlanImage);
+      roofPlanPage.appendChild(roofPlanContainer);
       
       const footnote = document.createElement('div');
       footnote.className = 'footnote';
       footnote.textContent = 'Hinweis: Dieser Dachplan ist eine schematische Darstellung und nicht maßstabsgetreu.';
+      footnote.style.position = 'absolute';
+      footnote.style.bottom = '20px';
+      footnote.style.left = '20px';
+      footnote.style.right = '20px';
       roofPlanPage.appendChild(footnote);
       
       container.appendChild(roofPlanPage);
