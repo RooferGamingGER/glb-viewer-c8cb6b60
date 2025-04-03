@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -990,9 +989,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     container.appendChild(coverPage);
     
-    // Fixed syntax error: Removed extra closing parenthesis
-    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
+    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2))) {
       const roofPlanPage = document.createElement('div');
+      roofPlanPage.style.pageBreakBefore = 'always';
       roofPlanPage.style.pageBreakAfter = 'always';
       roofPlanPage.style.padding = '20px';
       roofPlanPage.style.height = '270mm';
