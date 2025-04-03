@@ -1,6 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { MeasurementMode, Measurement, Point, Segment, PVMaterials } from '@/types/measurements';
 import { useMeasurements } from '@/hooks/useMeasurements';
+import { isMeasurementType, ExtendedMeasurementMode } from '@/types/measurementTypes';
 
 // Define the context type
 interface MeasurementContextType {
@@ -80,7 +82,7 @@ export const isMeasurementType = (currentMode: MeasurementMode, typeToCheck: str
 };
 
 // Helper function to get display name for measurement type
-export const getMeasurementTypeDisplayName = (type: MeasurementMode): string => {
+export const getMeasurementTypeDisplayName = (type: MeasurementMode | ExtendedMeasurementMode): string => {
   const displayNames: Record<string, string> = {
     'length': 'Länge',
     'height': 'Höhe',
@@ -104,46 +106,46 @@ export const getMeasurementTypeDisplayName = (type: MeasurementMode): string => 
 };
 
 // Helper function to check if a measurement is a roof element
-export const isRoofElement = (type: MeasurementMode): boolean => {
+export const isRoofElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return [
     'chimney', 'skylight', 'solar', 'vent', 'hook', 'other', 'pvmodule'
   ].includes(type as string);
 };
 
 // Helper function to check if a measurement is a roof edge
-export const isRoofEdge = (type: MeasurementMode): boolean => {
+export const isRoofEdge = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return [
     'ridge', 'eave', 'verge', 'valley', 'hip'
   ].includes(type as string);
 };
 
 // Helper function to check if a measurement is a standard measurement
-export const isStandardMeasurement = (type: MeasurementMode): boolean => {
+export const isStandardMeasurement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return ['length', 'height', 'area'].includes(type as string);
 };
 
 // Helper function to check if a measurement is a point-based element
-export const isPointElement = (type: MeasurementMode): boolean => {
+export const isPointElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return ['vent', 'hook', 'other'].includes(type as string);
 };
 
 // Helper function to check if a measurement is a quadrilateral element
-export const isQuadrilateralElement = (type: MeasurementMode): boolean => {
+export const isQuadrilateralElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return ['chimney', 'skylight', 'pvmodule'].includes(type as string);
 };
 
 // Helper function to check if a measurement is an area-based element
-export const isAreaElement = (type: MeasurementMode): boolean => {
+export const isAreaElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return ['area', 'solar'].includes(type as string);
 };
 
 // Helper function to check if a measurement is a line-based element
-export const isLineElement = (type: MeasurementMode): boolean => {
+export const isLineElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
   return ['length', 'height', 'ridge', 'eave', 'verge', 'valley', 'hip'].includes(type as string);
 };
 
 // Helper function to get the required number of points for a measurement type
-export const getRequiredPointsForType = (type: MeasurementMode): number => {
+export const getRequiredPointsForType = (type: MeasurementMode | ExtendedMeasurementMode): number => {
   if (isPointElement(type)) return 1;
   if (isLineElement(type)) return 2;
   if (isQuadrilateralElement(type)) return 4;
@@ -152,7 +154,7 @@ export const getRequiredPointsForType = (type: MeasurementMode): number => {
 };
 
 // Helper function to check if a measurement type is valid for a given number of points
-export const isValidPointCountForType = (type: MeasurementMode, pointCount: number): boolean => {
+export const isValidPointCountForType = (type: MeasurementMode | ExtendedMeasurementMode, pointCount: number): boolean => {
   const requiredPoints = getRequiredPointsForType(type);
   
   if (requiredPoints === 0) return true;
@@ -162,7 +164,7 @@ export const isValidPointCountForType = (type: MeasurementMode, pointCount: numb
 };
 
 // Helper function to get the color for a measurement type
-export const getMeasurementTypeColor = (type: MeasurementMode): string => {
+export const getMeasurementTypeColor = (type: MeasurementMode | ExtendedMeasurementMode): string => {
   const colors: Record<string, string> = {
     'length': '#3b82f6', // blue-500
     'height': '#10b981', // emerald-500

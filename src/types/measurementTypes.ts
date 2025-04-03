@@ -20,3 +20,18 @@ export const isValidPoint = (point: Point): boolean => {
     typeof point.z === 'number'
   );
 };
+
+// Helper function to safely check if a measurement is of a certain type
+export const isMeasurementOfType = (measurement: Measurement, type: MeasurementMode | ExtendedMeasurementMode): boolean => {
+  return measurement.type === type;
+};
+
+// Utility to check if a return value from finalizeMeasurement is a measurement
+export const isMeasurement = (value: any): value is Measurement => {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof value.id === 'string' &&
+    Array.isArray(value.points)
+  );
+};

@@ -307,7 +307,7 @@ export const useMeasurements = () => {
     
     return measurementsWithLinkedSegments;
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-
+  
   // Update segment with shared properties propagation
   const updateSegmentWithSharing = useCallback((
     measurementId: string,
@@ -381,8 +381,7 @@ export const useMeasurements = () => {
     // First, call the original finalize
     const newMeasurement = finalizeMeasurement();
     
-    // Don't check if finalizeMeasurement() returns true/false if it's void
-    // Instead check if newMeasurement exists
+    // Check if newMeasurement exists before proceeding
     if (newMeasurement) {
       // After creating a new measurement, check for shared segments
       const measurementsWithSharedSegments = findAndLinkSharedSegments([...measurements, newMeasurement]);
