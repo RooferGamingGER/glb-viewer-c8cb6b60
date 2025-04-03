@@ -13,8 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose
+  DialogClose,
+  DialogTabs,
+  DialogTabsList,
+  DialogTabsTrigger,
+  DialogTabsContent
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface GenerateRoofPlanButtonProps {
   measurements: Measurement[];
@@ -23,6 +28,9 @@ interface GenerateRoofPlanButtonProps {
 const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measurements }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [roofPlan, setRoofPlan] = useState<string | null>(null);
+  const [segmentPlan, setSegmentPlan] = useState<string | null>(null);
+  const [areaPlan, setAreaPlan] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("combined");
   
   const handleGenerateRoofPlan = () => {
     if (measurements.length === 0) {
@@ -33,11 +41,19 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     setIsGenerating(true);
     
     try {
-      // Specify that we want a true top-down view with higher resolution
-      const plan = createCombinedRoofPlan(measurements, 2000, 1400, 0.1, true);
-      setRoofPlan(plan);
+      // Generate combined plan
+      const combined = createCombinedRoofPlan(measurements, 2000, 1400, 0.1, true);
+      setRoofPlan(combined);
       
-      if (!plan) {
+      // Generate segments only plan
+      const segments = createCombinedRoofPlan(measurements, 2000, 1400, 0.1, true, true, false);
+      setSegmentPlan(segments);
+      
+      // Generate areas only plan
+      const areas = createCombinedRoofPlan(measurements, 2000, 1400, 0.1, true, false, true);
+      setAreaPlan(areas);
+      
+      if (!combined) {
         toast.error('Fehler beim Erstellen des Dachplans');
       } else {
         toast.success('Dachplan erfolgreich erstellt');
@@ -50,12 +66,26 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
+  const getActivePlan = () => {
+    switch(activeTab) {
+      case "segments": return segmentPlan;
+      case "areas": return areaPlan;
+      default: return roofPlan;
+    }
+  };
+  
   const handleDownload = () => {
-    if (!roofPlan) return;
+    const activePlan = getActivePlan();
+    if (!activePlan) return;
     
     const link = document.createElement('a');
-    link.href = roofPlan;
-    link.download = `Dachplan_${new Date().toISOString().split('T')[0]}.png`;
+    link.href = activePlan;
+    
+    // Name based on the type of plan
+    const planType = activeTab === "segments" ? "Segmente" : 
+                     activeTab === "areas" ? "Flaechen" : "Komplett";
+    
+    link.download = `Dachplan_${planType}_${new Date().toISOString().split('T')[0]}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -64,21 +94,26 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
   };
   
   const handleOpenInNewTab = () => {
-    if (!roofPlan) return;
+    const activePlan = getActivePlan();
+    if (!activePlan) return;
+    
+    const planTitle = activeTab === "segments" ? "Dachplan - Segmente" : 
+                      activeTab === "areas" ? "Dachplan - Flächen" : 
+                      "Dachplan - Komplett";
     
     const newTab = window.open();
     if (newTab) {
       newTab.document.write(`
         <html>
           <head>
-            <title>Dachplan</title>
+            <title>${planTitle}</title>
             <style>
               body { margin: 0; display: flex; justify-content: center; align-items: center; background-color: #f5f5f5; }
               img { max-width: 100%; max-height: 100vh; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
             </style>
           </head>
           <body>
-            <img src="${roofPlan}" alt="Dachplan" />
+            <img src="${activePlan}" alt="${planTitle}" />
           </body>
         </html>
       `);
@@ -116,7 +151,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
         </DialogHeader>
         
         <div className="py-4">
-          {!roofPlan ? (
+          {(!roofPlan && !segmentPlan && !areaPlan) ? (
             <div className="flex justify-center items-center h-[500px] border rounded-md bg-muted/20">
               <Button 
                 onClick={handleGenerateRoofPlan}
@@ -127,14 +162,46 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="border rounded-md p-2 overflow-hidden bg-white">
-                <img 
-                  src={roofPlan} 
-                  alt="Dachplan" 
-                  className="w-full object-contain"
-                  style={{ maxHeight: '500px' }} 
-                />
-              </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid grid-cols-3 mb-2">
+                  <TabsTrigger value="combined">Komplett</TabsTrigger>
+                  <TabsTrigger value="segments">Segmente</TabsTrigger>
+                  <TabsTrigger value="areas">Flächen</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="combined">
+                  <div className="border rounded-md p-2 overflow-hidden bg-white">
+                    <img 
+                      src={roofPlan || ""} 
+                      alt="Vollständiger Dachplan" 
+                      className="w-full object-contain"
+                      style={{ maxHeight: '500px' }} 
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="segments">
+                  <div className="border rounded-md p-2 overflow-hidden bg-white">
+                    <img 
+                      src={segmentPlan || ""} 
+                      alt="Dachplan - Segmente" 
+                      className="w-full object-contain"
+                      style={{ maxHeight: '500px' }} 
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="areas">
+                  <div className="border rounded-md p-2 overflow-hidden bg-white">
+                    <img 
+                      src={areaPlan || ""} 
+                      alt="Dachplan - Flächen" 
+                      className="w-full object-contain"
+                      style={{ maxHeight: '500px' }} 
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
               
               <div className="flex justify-center gap-4">
                 <Button onClick={handleDownload} className="flex items-center gap-2">

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -35,7 +34,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [exportProgress, setExportProgress] = useState(0);
   const [use2DRendering, setUse2DRendering] = useState(true);
   const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
-  const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
+  const [generatedSegmentPlan, setGeneratedSegmentPlan] = useState<string | null>(null);
+  const [generatedAreaPlan, setGeneratedAreaPlan] = useState<string | null>(null);
   const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
   const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
@@ -63,7 +63,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
 
   useEffect(() => {
     if (measurements.length > 0 && includeRoofPlan) {
-      generateRoofPlan();
+      generateRoofPlans();
     }
   }, [measurements, includeRoofPlan]);
 
@@ -76,7 +76,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     }
   }, [scene, camera, renderer]);
 
-  const generateRoofPlan = () => {
+  const generateRoofPlans = () => {
     if (measurements.length === 0) return;
     try {
       const width = 2480; // ~210mm at 300dpi
@@ -84,10 +84,15 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       
       setOptimizedRoofPlanDimensions({width, height});
       
-      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
-      setGeneratedRoofPlan(roofPlan);
+      // Create segment plan - show segments only
+      const segmentPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true, true, false);
+      setGeneratedSegmentPlan(segmentPlan);
+      
+      // Create area plan - show areas only
+      const areaPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true, false, true);
+      setGeneratedAreaPlan(areaPlan);
     } catch (error) {
-      console.error('Error generating roof plan:', error);
+      console.error('Error generating roof plans:', error);
     }
   };
 
@@ -179,21 +184,38 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       }
       
       setExportProgress(50);
+      
       if (includeRoofPlan) {
-        if (!generatedRoofPlan) {
+        // Add the segments plan for page 2
+        if (!generatedSegmentPlan) {
           const width = 2480; // ~210mm at 300dpi
           const height = 3508; // ~297mm at 300dpi
-          const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
-          if (roofPlan) {
-            (measurementsWithVisuals as any).roofPlan = roofPlan;
+          const segmentPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true, true, false);
+          if (segmentPlan) {
+            (measurementsWithVisuals as any).segmentPlan = segmentPlan;
             (measurementsWithVisuals as any).roofPlanDimensions = {width, height};
           }
         } else {
-          (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
+          (measurementsWithVisuals as any).segmentPlan = generatedSegmentPlan;
           (measurementsWithVisuals as any).roofPlanDimensions = optimizedRoofPlanDimensions;
         }
         
-        (measurementsWithVisuals as any).placeRoofPlanOnPage2 = true;
+        // Add the area plan for page 3
+        if (!generatedAreaPlan) {
+          const width = 2480; // ~210mm at 300dpi
+          const height = 3508; // ~297mm at 300dpi
+          const areaPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true, false, true);
+          if (areaPlan) {
+            (measurementsWithVisuals as any).areaPlan = areaPlan;
+            // We already set the dimensions above
+          }
+        } else {
+          (measurementsWithVisuals as any).areaPlan = generatedAreaPlan;
+        }
+        
+        // Set flags for the PDF export
+        (measurementsWithVisuals as any).placeSegmentPlanOnPage2 = true;
+        (measurementsWithVisuals as any).placeAreaPlanOnPage3 = true;
         (measurementsWithVisuals as any).showRoofPlanWithoutHeader = true;
       }
       
@@ -204,6 +226,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       
       // Add flag to skip table of contents
       (measurementsWithVisuals as any).skipTableOfContents = true;
+      
+      // Add flag to start measurements on page 4
+      (measurementsWithVisuals as any).startMeasurementsOnPage4 = true;
       
       const coverData = form.getValues();
       const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
@@ -354,12 +379,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                   <div className="flex items-center space-x-2">
                     <Switch id="include-roof-plan" checked={includeRoofPlan} onCheckedChange={value => {
                     setIncludeRoofPlan(value);
-                    if (value && !generatedRoofPlan) {
-                      generateRoofPlan();
+                    if (value && (!generatedSegmentPlan || !generatedAreaPlan)) {
+                      generateRoofPlans();
                     }
                   }} />
                     <label htmlFor="include-roof-plan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Dachplan auf eigener Seite darstellen
+                      Dachpläne im Bericht darstellen (Seite 2 & 3)
                     </label>
                   </div>
                 </div>
