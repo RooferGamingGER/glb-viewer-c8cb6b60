@@ -158,10 +158,14 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint
   };
 
-  // Measurement interaction state
+  // Improved measurement interaction management with enhanced snapping
   const { 
     movingPointInfo, 
     setMovingPointInfo, 
+    isSnapping,
+    snapTarget,
+    snapEnabled,
+    lastHitPoint,
     clearPreviewGroup,
     clearAddPointIndicators 
   } = useMeasurementInteractionManager(

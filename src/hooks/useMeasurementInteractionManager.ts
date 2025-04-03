@@ -1,179 +1,215 @@
-
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
-import { Point, Measurement } from '@/types/measurements';
-import { useThreeJs } from '@/contexts/ThreeJsContext';
+import { Point, Measurement, MeasurementMode } from '@/types/measurements';
+import { usePointSnapping } from './usePointSnapping';
+import { usePointMovement } from './usePointMovement';
+import { useMeasurementRaycasting } from './useMeasurementRaycasting';
 
+// Custom event for raycaster hits
+interface RaycastHitEvent {
+  point: Point;
+  object: THREE.Object3D;
+  normal?: THREE.Vector3;
+}
+
+// Throttle time in milliseconds for mouse move events
+const MOUSE_MOVE_THROTTLE = 30;
+
+/**
+ * Hook for managing measurement interactions
+ */
 export const useMeasurementInteractionManager = (
   enabled: boolean,
   scene: THREE.Scene | null,
   camera: THREE.Camera | null,
   measurements: Measurement[],
   currentPoints: Point[],
-  activeMode: string,
+  activeMode: MeasurementMode,
   handlers: {
-    addPoint: (point: Point) => void,
-    startPointEdit: (id: string, index: number) => void,
-    updateMeasurementPoint: (id: string, index: number, point: Point) => void
+    addPoint: (point: Point) => void;
+    startPointEdit: (id: string, index: number) => void;
+    updateMeasurementPoint: (id: string, index: number, point: Point) => void;
   },
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
-  // State for point movement
+  // State for tracking the point currently being moved
   const [movingPointInfo, setMovingPointInfo] = useState<{
     measurementId: string;
     pointIndex: number;
     originalPoint: Point;
   } | null>(null);
-
-  // State for preview points
-  const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   
-  // Touch interaction state
-  const [touchStartTime, setTouchStartTime] = useState<number>(0);
-  const [lastTouchPosition, setLastTouchPosition] = useState<{x: number, y: number} | null>(null);
-
-  // Get Three.js object references
-  const { 
-    pointsRef,
-    linesRef,
-    measurementsRef,
-    editPointsRef,
-    labelsRef,
-    segmentLabelsRef,
-    clearGroup
-  } = useThreeJs();
-
-  // Reference to the preview group
-  const previewGroupRef = useRef<THREE.Group | null>(null);
+  // Last raycast hit point
+  const [lastHitPoint, setLastHitPoint] = useState<Point | null>(null);
   
-  // Reference to add point indicators group
-  const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
-
-  // Create and manage preview visualization group
+  // Time of last mouse move event for throttling
+  const lastMoveTimeRef = useRef<number>(0);
+  
+  // Improved point snapping
+  const {
+    snapEnabled,
+    isSnapping,
+    snapTarget,
+    setSnapping,
+    checkPointForSnapping,
+    clearSnapIndicator
+  } = usePointSnapping(scene);
+  
+  // Point movement handling
+  const {
+    startPointMovement,
+    updateMovingPoint,
+    finishPointMovement
+  } = usePointMovement(scene, camera, handlers.updateMeasurementPoint);
+  
+  // Raycasting for detecting point positions
+  const {
+    raycast,
+    addPointIndicatorsRef,
+    clearAddPointIndicators,
+    updateAddPointIndicators
+  } = useMeasurementRaycasting(scene, camera);
+  
+  // Handle mouse click events
+  const handleClick = useCallback((event: MouseEvent) => {
+    if (!enabled || !scene || !camera) return;
+    
+    // Use the snap target if snapping
+    if (isSnapping && snapTarget) {
+      if (editMeasurementId !== null && editingPointIndex !== null) {
+        // Update existing point
+        handlers.updateMeasurementPoint(
+          editMeasurementId,
+          editingPointIndex,
+          snapTarget.point
+        );
+      } else if (activeMode !== 'none') {
+        // Add new point
+        handlers.addPoint(snapTarget.point);
+      }
+      return;
+    }
+    
+    // Otherwise raycast to find the hit point
+    const hit = raycast(event);
+    if (hit) {
+      if (editMeasurementId !== null && editingPointIndex !== null) {
+        // Update existing point
+        handlers.updateMeasurementPoint(
+          editMeasurementId,
+          editingPointIndex,
+          hit.point
+        );
+      } else if (activeMode !== 'none') {
+        // Add new point
+        handlers.addPoint(hit.point);
+      }
+    }
+  }, [
+    enabled, scene, camera, isSnapping, snapTarget, 
+    editMeasurementId, editingPointIndex, activeMode, 
+    raycast, handlers
+  ]);
+  
+  // Handle mouse move events with throttling
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    if (!enabled || !scene || !camera) {
+      if (isSnapping) setSnapping(false);
+      return;
+    }
+    
+    // Throttle mouse move events
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current < MOUSE_MOVE_THROTTLE && !movingPointInfo) {
+      return;
+    }
+    lastMoveTimeRef.current = now;
+    
+    // Raycast to find the current hit point
+    const hit = raycast(event);
+    if (!hit) {
+      if (isSnapping) setSnapping(false);
+      setLastHitPoint(null);
+      return;
+    }
+    
+    setLastHitPoint(hit.point);
+    
+    // Check for point snapping
+    const snapResult = checkPointForSnapping(
+      hit.point, 
+      measurements,
+      editMeasurementId,
+      editingPointIndex
+    );
+    
+    if (snapResult) {
+      setSnapping(
+        true, 
+        snapResult.point, 
+        snapResult.measurementId, 
+        snapResult.pointIndex
+      );
+    } else {
+      setSnapping(false);
+    }
+    
+    // Update moving point if dragging
+    if (movingPointInfo) {
+      const pointToUse = isSnapping && snapTarget ? snapTarget.point : hit.point;
+      updateMovingPoint(
+        movingPointInfo.measurementId,
+        movingPointInfo.pointIndex,
+        pointToUse
+      );
+    }
+  }, [
+    enabled, scene, camera, isSnapping, setSnapping, snapTarget,
+    movingPointInfo, editMeasurementId, editingPointIndex,
+    raycast, checkPointForSnapping, measurements, updateMovingPoint
+  ]);
+  
+  // Set up event listeners
   useEffect(() => {
-    if (!scene || !enabled) return;
+    if (!enabled) return;
     
-    // Create preview group if it doesn't exist
-    if (!previewGroupRef.current) {
-      previewGroupRef.current = new THREE.Group();
-      previewGroupRef.current.name = "previewGroup";
-      scene.add(previewGroupRef.current);
-    }
+    const throttledMouseMove = (e: MouseEvent) => {
+      handleMouseMove(e);
+    };
     
-    // Create add point indicators group if it doesn't exist
-    if (!addPointIndicatorsRef.current) {
-      addPointIndicatorsRef.current = new THREE.Group();
-      addPointIndicatorsRef.current.name = "addPointIndicators";
-      scene.add(addPointIndicatorsRef.current);
-    }
+    window.addEventListener('click', handleClick);
+    window.addEventListener('mousemove', throttledMouseMove);
     
     return () => {
-      // Clean up preview group when unmounting
-      if (previewGroupRef.current) {
-        scene.remove(previewGroupRef.current);
-        previewGroupRef.current = null;
-      }
-      
-      // Clean up add point indicators
-      if (addPointIndicatorsRef.current) {
-        scene.remove(addPointIndicatorsRef.current);
-        addPointIndicatorsRef.current = null;
-      }
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('mousemove', throttledMouseMove);
     };
-  }, [scene, enabled]);
-
-  // Clear preview group
-  const clearPreviewGroup = useCallback(() => {
-    if (previewGroupRef.current) {
-      clearGroup(previewGroupRef.current);
-    }
-  }, [clearGroup]);
-
-  // Clear add point indicators
-  const clearAddPointIndicators = useCallback(() => {
-    if (addPointIndicatorsRef.current) {
-      clearGroup(addPointIndicatorsRef.current);
-    }
-  }, [clearGroup]);
-
-  // Start point movement
-  const startPointMovement = useCallback((measurementId: string, pointIndex: number, point: Point) => {
-    setMovingPointInfo({
-      measurementId,
-      pointIndex,
-      originalPoint: { ...point }
-    });
-  }, []);
-
-  // Update moving point
-  const updateMovingPoint = useCallback((newPoint: Point) => {
-    if (!movingPointInfo) return;
-    
-    handlers.updateMeasurementPoint(
-      movingPointInfo.measurementId,
-      movingPointInfo.pointIndex,
-      newPoint
-    );
-  }, [movingPointInfo, handlers]);
-
-  // Finish point movement
-  const finishPointMovement = useCallback(() => {
-    setMovingPointInfo(null);
-  }, []);
+  }, [enabled, handleClick, handleMouseMove]);
   
-  // Handle touch interactions with debouncing for better touch experience
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      setTouchStartTime(Date.now());
-      setLastTouchPosition({
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY
-      });
-    }
-  }, []);
-  
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    const touchDuration = Date.now() - touchStartTime;
-    
-    // Short tap detection (less than 250ms) with minimal movement
-    if (touchDuration < 250 && lastTouchPosition) {
-      // Process as a tap/click
-      // Implementation would depend on your raycasting logic
-    }
-    
-    setLastTouchPosition(null);
-  }, [touchStartTime, lastTouchPosition]);
-
-  // Clean up when enabled status changes
+  // Clean up when disabled
   useEffect(() => {
     if (!enabled) {
-      clearPreviewGroup();
+      clearSnapIndicator();
       clearAddPointIndicators();
-      setMovingPointInfo(null);
     }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators]);
-
+  }, [enabled, clearSnapIndicator, clearAddPointIndicators]);
+  
+  // Update add point indicators when editing changes
+  useEffect(() => {
+    updateAddPointIndicators(editMeasurementId, measurements);
+  }, [editMeasurementId, measurements, updateAddPointIndicators]);
+  
   return {
     movingPointInfo,
     setMovingPointInfo,
-    previewPoint,
-    setPreviewPoint,
-    clearPreviewGroup,
-    clearAddPointIndicators,
-    addPointIndicatorsRef,
+    isSnapping,
+    snapTarget,
+    snapEnabled,
+    lastHitPoint,
     startPointMovement,
-    updateMovingPoint,
     finishPointMovement,
-    // Touch handlers
-    handleTouchStart,
-    handleTouchEnd,
-    touchStartTime,
-    lastTouchPosition
+    clearAddPointIndicators,
+    clearSnapIndicator
   };
-};
-
-const useRef = <T,>(initialValue: T) => {
-  const [ref] = useState<{ current: T }>({ current: initialValue });
-  return ref;
 };

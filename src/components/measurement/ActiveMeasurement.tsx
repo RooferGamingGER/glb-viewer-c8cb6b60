@@ -1,17 +1,20 @@
 
-import React from 'react';
+import React, { useContext } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   CheckCircle2,
   ArrowLeft,
-  X
+  X,
+  Magnet
 } from 'lucide-react';
-import { Point, MeasurementMode } from '@/hooks/useMeasurements';
+import { Point, MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import { usePointSnapping } from '@/hooks/usePointSnapping';
+import { Badge } from "@/components/ui/badge";
 
 interface ActiveMeasurementProps {
   activeMode: MeasurementMode;
@@ -28,8 +31,11 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  // Don't render anything if no measurement tool is active or if there are no points
+  // Don't render anything if no measurement tool is active
   if (activeMode === 'none') return null;
+  
+  // Get point snapping state
+  const { snapEnabled, isSnapping } = usePointSnapping(null);
   
   return (
     <SidebarGroup>
@@ -42,9 +48,17 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
               {activeMode === 'height' && "Höhenmessung"}
               {activeMode === 'area' && "Flächenmessung"}
             </div>
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-              {currentPoints.length} Punkte
-            </span>
+            <div className="flex items-center gap-1">
+              {isSnapping && (
+                <Badge variant="outline" className="bg-green-100 text-green-800 text-[10px] h-5 px-1">
+                  <Magnet className="h-3 w-3 mr-1" />
+                  Punktfang aktiv
+                </Badge>
+              )}
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                {currentPoints.length} Punkte
+              </span>
+            </div>
           </div>
         </div>
 
