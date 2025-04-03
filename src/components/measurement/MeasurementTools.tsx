@@ -123,7 +123,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   }, [getMeasurementGroups]);
 
   // Define the visual update function
-  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean) => {
+  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean): boolean => {
     // Update all labels visibility
     if (labelsRef.current && segmentLabelsRef.current) {
       updateAllLabelsVisibility(labelVisible);
@@ -144,6 +144,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         true
       );
     }
+    
+    return true;
   }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef]);
 
   // Set the update function in the measurements context
@@ -509,3 +511,4 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
 };
 
 export default MeasurementTools;
+

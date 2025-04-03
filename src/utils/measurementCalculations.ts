@@ -201,9 +201,11 @@ export const calculateCentroid = (points: Point[]): Point => {
 export const calculateQuadrilateralDimensions = (points: Point[]): {
   width: number;
   length: number;
+  area: number;
+  perimeter: number;
 } => {
   if (points.length !== 4) {
-    return { width: 0, length: 0 };
+    return { width: 0, length: 0, area: 0, perimeter: 0 };
   }
   
   // Calculate lengths of all sides
@@ -216,7 +218,68 @@ export const calculateQuadrilateralDimensions = (points: Point[]): {
   const width = (side1 + side3) / 2;
   const length = (side2 + side4) / 2;
   
-  return { width, length };
+  // Calculate area using the calculateArea function
+  const area = calculateArea(points);
+  
+  // Calculate perimeter
+  const perimeter = side1 + side2 + side3 + side4;
+  
+  return { width, length, area, perimeter };
+};
+
+// Calculate inclination (slope) of a segment
+export const calculateInclination = (p1: Point, p2: Point): number => {
+  // Calculate horizontal distance (ignoring y)
+  const dx = p2.x - p1.x;
+  const dz = p2.z - p1.z;
+  const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+  
+  // Calculate vertical distance
+  const dy = Math.abs(p2.y - p1.y);
+  
+  // Calculate angle in degrees
+  if (horizontalDistance === 0) return 90; // Vertical line
+  
+  const radians = Math.atan(dy / horizontalDistance);
+  return radians * (180 / Math.PI);
+};
+
+// Calculate average inclination of multiple segments
+export const calculateAverageInclination = (segments: Segment[]): number => {
+  if (segments.length === 0) return 0;
+  
+  let totalInclination = 0;
+  let totalLength = 0;
+  
+  for (const segment of segments) {
+    const inclination = calculateInclination(segment.points[0], segment.points[1]);
+    totalInclination += inclination * segment.length; // Weight by length
+    totalLength += segment.length;
+  }
+  
+  return totalLength > 0 ? totalInclination / totalLength : 0;
+};
+
+// Validate if polygon is properly formed (no self-intersections)
+export const validatePolygon = (points: Point[]): boolean => {
+  if (points.length < 3) return false;
+  
+  // This is a simplified validation
+  // For complete validation, we would need to check for self-intersections
+  
+  // Check if points are not too close to each other
+  const MIN_DISTANCE = 0.01; // 1cm minimum distance
+  
+  for (let i = 0; i < points.length; i++) {
+    const p1 = points[i];
+    const p2 = points[(i + 1) % points.length];
+    
+    if (calculateDistance(p1, p2) < MIN_DISTANCE) {
+      return false; // Points too close
+    }
+  }
+  
+  return true;
 };
 
 // Calculate the polygon area in 2D (useful for flatter structures)
@@ -234,3 +297,4 @@ export const calculatePolygonArea = (points: Point[]): number => {
   
   return Math.abs(area) / 2;
 };
+

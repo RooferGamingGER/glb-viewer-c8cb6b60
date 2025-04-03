@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -64,7 +65,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint,
     allLabelsVisible,
     moveMeasurementUp,
-    moveMeasurementDown
+    moveMeasurementDown,
+    setUpdateVisualState
   } = useMeasurements();
 
   // Three.js object references
@@ -174,6 +176,25 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       moveMeasurementDown
     }
   );
+
+  // Define the update visual state handler
+  const updateVisualState = (updatedMeasurements: any[], labelsVisible: boolean) => {
+    updateAllLabelsVisibility(labelsVisible);
+    updateMeasurementMarkers();
+    renderMeasurements(
+      measurementsRef.current, 
+      labelsRef.current, 
+      segmentLabelsRef.current, 
+      updatedMeasurements, 
+      true
+    );
+    return true;
+  };
+
+  // Set the update visual state handler
+  useEffect(() => {
+    setUpdateVisualState(updateVisualState);
+  }, [setUpdateVisualState]);
 
   // Update visibility when allLabelsVisible changes
   useEffect(() => {

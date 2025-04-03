@@ -1,322 +1,333 @@
 
-import React, { createContext, useState, useCallback, useEffect, ReactNode, useContext } from 'react';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { nanoid } from 'nanoid';
-import { toast } from 'sonner';
-import { 
-  Point, 
-  Measurement, 
-  MeasurementMode,
-  Segment
-} from '@/types/measurements';
-import { 
-  calculateDistance, 
-  calculateHeight, 
-  calculateArea,
-  generateSegments,
-  findAndLinkSharedSegments as findSharedSegments
-} from '@/utils/measurementCalculations';
-import { formatMeasurement } from '@/constants/measurements';
+import { Point, Measurement, MeasurementMode, Segment } from '@/types/measurements';
+import { generateSegments, calculateDistance, calculateArea, calculateHeight } from '@/utils/measurementCalculations';
 
+// Define the context props
 interface MeasurementContextProps {
-  // State
   measurements: Measurement[];
   currentPoints: Point[];
   activeMode: MeasurementMode;
   editMeasurementId: string | null;
   editingPointIndex: number | null;
-  allMeasurementsVisible: boolean;
   allLabelsVisible: boolean;
-  
-  // Methods
-  setMeasurements: (measurements: Measurement[]) => void;
+  calculatingMaterials: boolean;
+  setCalculatingMaterials: (calculating: boolean) => void;
+  toggleMeasurementTool: (mode: MeasurementMode) => void;
   addPoint: (point: Point) => void;
+  undoLastPoint: () => void;
   clearCurrentPoints: () => void;
   finalizeMeasurement: () => Measurement | undefined;
-  toggleMeasurementTool: (mode: MeasurementMode) => void;
+  setMeasurements: (measurements: Measurement[]) => void;
+  clearMeasurements: () => void;
+  deleteMeasurement: (id: string) => void;
+  updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   toggleMeasurementVisibility: (id: string) => void;
   toggleLabelVisibility: (id: string) => void;
   toggleAllMeasurementsVisibility: () => void;
-  toggleAllLabelsVisibility: () => boolean;
+  toggleAllLabelsVisibility: () => void;
   toggleEditMode: (id: string) => void;
-  updateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  deleteMeasurement: (id: string) => void;
-  deletePoint: (measurementId: string, pointIndex: number) => void;
-  undoLastPoint: () => void;
-  clearMeasurements: () => void;
   startPointEdit: (id: string, pointIndex: number) => void;
+  updateMeasurementPoint: (id: string, index: number, point: Point) => void;
   cancelEditing: () => void;
-  updateMeasurementPoint: (id: string, pointIndex: number, newPoint: Point) => void;
+  deletePoint: (id: string, pointIndex: number) => void;
   moveMeasurementUp: (id: string) => void;
   moveMeasurementDown: (id: string) => void;
-  findAndLinkSharedSegments: (measurements: Measurement[]) => Measurement[];
   updateVisualState?: (measurements: Measurement[], labelsVisible: boolean) => void;
   setUpdateVisualState: (fn: (measurements: Measurement[], labelsVisible: boolean) => void) => void;
 }
 
-export const MeasurementContext = createContext<MeasurementContextProps | null>(null);
+// Create the context with an undefined initial value
+export const MeasurementContext = createContext<MeasurementContextProps | undefined>(undefined);
 
-// Export a hook for using the context
-export const useMeasurementContext = () => {
-  const context = useContext(MeasurementContext);
-  if (!context) {
-    throw new Error('useMeasurementContext must be used within a MeasurementProvider');
-  }
-  return context;
-};
-
-interface MeasurementProviderProps {
-  children: ReactNode;
-}
-
-export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ children }) => {
+// Provider component that wraps parts of our app that need the context
+export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [activeMode, setActiveMode] = useState<MeasurementMode>('none');
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
   const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
-  const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
   const [allLabelsVisible, setAllLabelsVisible] = useState<boolean>(true);
-  const [updateVisualStateFn, setUpdateVisualStateFn] = useState<
-    ((measurements: Measurement[], labelsVisible: boolean) => void) | undefined
-  >(undefined);
+  const [calculatingMaterials, setCalculatingMaterials] = useState<boolean>(false);
+  const [updateVisualState, setUpdateVisualStateFn] = useState<((measurements: Measurement[], labelsVisible: boolean) => void) | undefined>(undefined);
+
+  // Toggle which measurement tool is active
+  const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
+    // If the same mode is selected again, turn it off
+    if (mode === activeMode) {
+      setActiveMode('none');
+    } else {
+      setActiveMode(mode);
+    }
+    
+    // Clear any current points or editing state
+    setCurrentPoints([]);
+    setEditMeasurementId(null);
+    setEditingPointIndex(null);
+  }, [activeMode]);
 
   // Add a point to the current measurement
   const addPoint = useCallback((point: Point) => {
     setCurrentPoints(prev => [...prev, point]);
   }, []);
 
-  // Clear current points
+  // Undo the last point
+  const undoLastPoint = useCallback(() => {
+    setCurrentPoints(prev => {
+      if (prev.length > 0) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
+  }, []);
+
+  // Clear all current points
   const clearCurrentPoints = useCallback(() => {
     setCurrentPoints([]);
   }, []);
 
   // Finalize the current measurement
-  const finalizeMeasurement = useCallback(() => {
-    if (currentPoints.length < 2) return undefined;
-
-    let newMeasurement: Measurement | undefined;
+  const finalizeMeasurement = useCallback((): Measurement | undefined => {
+    // Need at least 2 points for a measurement
+    if (currentPoints.length < 2) {
+      return undefined;
+    }
     
-    try {
-      if (activeMode === 'length' && currentPoints.length >= 2) {
-        const distance = calculateDistance(currentPoints[0], currentPoints[1]);
-        newMeasurement = {
-          id: nanoid(),
-          type: 'length',
-          points: [currentPoints[0], currentPoints[1]],
-          value: distance,
-          label: formatMeasurement(distance, 'length'),
-          visible: true,
-          labelVisible: true
-        };
-      } else if (activeMode === 'height' && currentPoints.length >= 2) {
-        const height = calculateHeight(currentPoints[0], currentPoints[1]);
-        newMeasurement = {
-          id: nanoid(),
-          type: 'height',
-          points: [currentPoints[0], currentPoints[1]],
-          value: height,
-          label: formatMeasurement(height, 'height'),
-          visible: true,
-          labelVisible: true
-        };
-      } else if (['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other', 'pvmodule'].includes(activeMode) && 
-                  currentPoints.length >= 3) {
-        const area = calculateArea(currentPoints);
-        const segments = generateSegments(currentPoints);
-        
-        newMeasurement = {
-          id: nanoid(),
-          type: activeMode as MeasurementMode,
-          points: [...currentPoints],
-          value: area,
-          segments,
-          label: formatMeasurement(area, activeMode as MeasurementMode),
-          visible: true,
-          labelVisible: true
-        };
-      }
-
-      if (newMeasurement) {
-        setMeasurements(prev => [...prev, newMeasurement as Measurement]);
-        clearCurrentPoints();
-      }
-    } catch (error) {
-      console.error('Error creating measurement:', error);
-      toast.error('Fehler beim Erstellen der Messung');
+    // Check if we have enough points based on the measurement type
+    if (activeMode === 'area' && currentPoints.length < 3) {
+      return undefined;
     }
-
+    
+    let value = 0;
+    let label = '';
+    let name = '';
+    
+    // Calculate the measurement value based on the type
+    if (activeMode === 'length') {
+      // For length, calculate distance between first and last point
+      value = calculateDistance(currentPoints[0], currentPoints[currentPoints.length - 1]);
+      label = `${value.toFixed(2)}m`;
+      name = `Länge ${measurements.filter(m => m.type === 'length').length + 1}`;
+    } else if (activeMode === 'height') {
+      // For height, calculate vertical distance
+      value = calculateHeight(currentPoints[0], currentPoints[currentPoints.length - 1]);
+      label = `${value.toFixed(2)}m`;
+      name = `Höhe ${measurements.filter(m => m.type === 'height').length + 1}`;
+    } else if (activeMode === 'area') {
+      // For area, calculate the polygon area
+      value = calculateArea(currentPoints);
+      label = `${value.toFixed(2)}m²`;
+      name = `Fläche ${measurements.filter(m => m.type === 'area').length + 1}`;
+    } else if (activeMode === 'solar') {
+      // For solar, calculate the polygon area
+      value = calculateArea(currentPoints);
+      label = `${value.toFixed(2)}m²`;
+      name = `PV-Anlage ${measurements.filter(m => m.type === 'solar').length + 1}`;
+    } else if (activeMode === 'ridge' || activeMode === 'eave' || activeMode === 'verge') {
+      // For roof elements, calculate the length
+      value = calculateDistance(currentPoints[0], currentPoints[currentPoints.length - 1]);
+      label = `${value.toFixed(2)}m`;
+      
+      // Set name based on type
+      if (activeMode === 'ridge') {
+        name = `First ${measurements.filter(m => m.type === 'ridge').length + 1}`;
+      } else if (activeMode === 'eave') {
+        name = `Traufe ${measurements.filter(m => m.type === 'eave').length + 1}`;
+      } else {
+        name = `Ortgang ${measurements.filter(m => m.type === 'verge').length + 1}`;
+      }
+    }
+    
+    // Generate segments between consecutive points
+    const segments = generateSegments(currentPoints);
+    
+    // Create the new measurement
+    const newMeasurement: Measurement = {
+      id: nanoid(),
+      type: activeMode,
+      name,
+      points: [...currentPoints],
+      segments,
+      value,
+      label,
+      visible: true,
+      labelVisible: true
+    };
+    
+    // Add to measurements list
+    setMeasurements(prev => [...prev, newMeasurement]);
+    
+    // Clear current points
+    setCurrentPoints([]);
+    
     return newMeasurement;
-  }, [activeMode, currentPoints, clearCurrentPoints]);
+  }, [activeMode, currentPoints, measurements]);
 
-  // Toggle which measurement tool is active
-  const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
-    if (activeMode === mode) {
-      setActiveMode('none');
-    } else {
-      setActiveMode(mode);
-    }
-    clearCurrentPoints();
-  }, [activeMode, clearCurrentPoints]);
-
-  // Toggle visibility of a specific measurement
-  const toggleMeasurementVisibility = useCallback((id: string) => {
-    setMeasurements(prev => 
-      prev.map(m => 
-        m.id === id 
-          ? { ...m, visible: m.visible === false ? true : false } 
-          : m
-      )
-    );
+  // Clear all measurements
+  const clearMeasurements = useCallback(() => {
+    setMeasurements([]);
   }, []);
 
-  // Toggle label visibility of a specific measurement
-  const toggleLabelVisibility = useCallback((id: string) => {
-    setMeasurements(prev => 
-      prev.map(m => 
-        m.id === id 
-          ? { ...m, labelVisible: m.labelVisible === false ? true : false } 
-          : m
-      )
-    );
-  }, []);
-
-  // Toggle visibility of all measurements
-  const toggleAllMeasurementsVisibility = useCallback(() => {
-    setAllMeasurementsVisible(prev => !prev);
-    setMeasurements(prev => 
-      prev.map(m => ({ ...m, visible: !allMeasurementsVisible }))
-    );
-  }, [allMeasurementsVisible]);
-
-  // Toggle visibility of all labels
-  const toggleAllLabelsVisibility = useCallback(() => {
-    setAllLabelsVisible(prev => !prev);
-    return !allLabelsVisible;
-  }, [allLabelsVisible]);
-
-  // Toggle edit mode for a measurement
-  const toggleEditMode = useCallback((id: string) => {
-    setMeasurements(prev => 
-      prev.map(m => 
-        m.id === id 
-          ? { ...m, editMode: m.editMode !== true } 
-          : m
-      )
-    );
+  // Delete a specific measurement
+  const deleteMeasurement = useCallback((id: string) => {
+    setMeasurements(prev => prev.filter(m => m.id !== id));
   }, []);
 
   // Update a measurement with new data
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
     setMeasurements(prev => 
       prev.map(m => 
-        m.id === id 
-          ? { ...m, ...data } 
-          : m
+        m.id === id ? { ...m, ...data } : m
       )
     );
   }, []);
 
-  // Delete a measurement
-  const deleteMeasurement = useCallback((id: string) => {
-    setMeasurements(prev => prev.filter(m => m.id !== id));
-  }, []);
-
-  // Delete a point from a measurement
-  const deletePoint = useCallback((measurementId: string, pointIndex: number) => {
+  // Toggle visibility of a measurement
+  const toggleMeasurementVisibility = useCallback((id: string) => {
     setMeasurements(prev => 
-      prev.map(m => {
-        if (m.id !== measurementId) return m;
-        
-        const newPoints = [...m.points];
-        newPoints.splice(pointIndex, 1);
-        
-        if (newPoints.length < 2) {
-          return m;
-        }
-        
-        if (m.type === 'length' || m.type === 'height') {
-          return m;
-        } else {
-          const area = calculateArea(newPoints);
-          const segments = generateSegments(newPoints);
-          
-          return {
-            ...m,
-            points: newPoints,
-            value: area,
-            segments,
-            label: formatMeasurement(area, m.type as MeasurementMode)
-          };
-        }
-      })
+      prev.map(m => 
+        m.id === id ? { ...m, visible: !m.visible } : m
+      )
     );
   }, []);
 
-  // Remove the last point from the current measurement
-  const undoLastPoint = useCallback(() => {
-    setCurrentPoints(prev => {
-      if (prev.length === 0) return prev;
-      return prev.slice(0, prev.length - 1);
-    });
+  // Toggle visibility of a measurement's label
+  const toggleLabelVisibility = useCallback((id: string) => {
+    setMeasurements(prev => 
+      prev.map(m => 
+        m.id === id ? { ...m, labelVisible: !m.labelVisible } : m
+      )
+    );
   }, []);
 
-  // Clear all measurements
-  const clearMeasurements = useCallback(() => {
-    setMeasurements([]);
-    clearCurrentPoints();
-  }, [clearCurrentPoints]);
+  // Toggle visibility of all measurements
+  const toggleAllMeasurementsVisibility = useCallback(() => {
+    const allVisible = measurements.every(m => m.visible);
+    setMeasurements(prev => 
+      prev.map(m => ({ ...m, visible: !allVisible }))
+    );
+  }, [measurements]);
 
-  // Start editing a specific point
+  // Toggle visibility of all labels
+  const toggleAllLabelsVisibility = useCallback(() => {
+    setAllLabelsVisible(prev => !prev);
+    setMeasurements(prev => 
+      prev.map(m => ({ ...m, labelVisible: !allLabelsVisible }))
+    );
+  }, [allLabelsVisible]);
+
+  // Toggle edit mode for a measurement
+  const toggleEditMode = useCallback((id: string) => {
+    if (editMeasurementId === id) {
+      // Turn off edit mode
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+    } else {
+      // Turn on edit mode for this measurement
+      setEditMeasurementId(id);
+      setEditingPointIndex(null);
+      
+      // Reset current points and active mode
+      setCurrentPoints([]);
+      setActiveMode('none');
+    }
+  }, [editMeasurementId]);
+
+  // Start editing a specific point of a measurement
   const startPointEdit = useCallback((id: string, pointIndex: number) => {
     setEditMeasurementId(id);
     setEditingPointIndex(pointIndex);
   }, []);
 
-  // Cancel editing
+  // Update a point of a measurement
+  const updateMeasurementPoint = useCallback((id: string, index: number, point: Point) => {
+    setMeasurements(prev => 
+      prev.map(m => {
+        if (m.id !== id) return m;
+        
+        // Create a new points array with the updated point
+        const newPoints = [...m.points];
+        newPoints[index] = point;
+        
+        // Recalculate segments and value based on measurement type
+        const segments = generateSegments(newPoints);
+        let value = 0;
+        let label = '';
+        
+        if (m.type === 'length' || m.type === 'ridge' || m.type === 'eave' || m.type === 'verge') {
+          value = calculateDistance(newPoints[0], newPoints[newPoints.length - 1]);
+          label = `${value.toFixed(2)}m`;
+        } else if (m.type === 'height') {
+          value = calculateHeight(newPoints[0], newPoints[newPoints.length - 1]);
+          label = `${value.toFixed(2)}m`;
+        } else if (m.type === 'area' || m.type === 'solar') {
+          value = calculateArea(newPoints);
+          label = `${value.toFixed(2)}m²`;
+        }
+        
+        return {
+          ...m,
+          points: newPoints,
+          segments,
+          value,
+          label
+        };
+      })
+    );
+  }, []);
+
+  // Cancel editing mode
   const cancelEditing = useCallback(() => {
     setEditMeasurementId(null);
     setEditingPointIndex(null);
   }, []);
 
-  // Update a point in a measurement
-  const updateMeasurementPoint = useCallback((id: string, pointIndex: number, newPoint: Point) => {
-    setMeasurements(prev => {
-      return prev.map(m => {
+  // Delete a point from a measurement
+  const deletePoint = useCallback((id: string, pointIndex: number) => {
+    setMeasurements(prev => 
+      prev.map(m => {
         if (m.id !== id) return m;
         
-        const newPoints = [...m.points];
-        newPoints[pointIndex] = newPoint;
-        
-        if (m.type === 'length') {
-          const distance = calculateDistance(newPoints[0], newPoints[1]);
-          return {
-            ...m,
-            points: newPoints,
-            value: distance,
-            label: formatMeasurement(distance, 'length')
-          };
-        } else if (m.type === 'height') {
-          const height = calculateHeight(newPoints[0], newPoints[1]);
-          return {
-            ...m,
-            points: newPoints,
-            value: height,
-            label: formatMeasurement(height, 'height')
-          };
-        } else {
-          const area = calculateArea(newPoints);
-          const segments = generateSegments(newPoints);
-          
-          return {
-            ...m,
-            points: newPoints,
-            value: area,
-            segments,
-            label: formatMeasurement(area, m.type as MeasurementMode)
-          };
+        // For area measurements, need at least 3 points
+        if (m.type === 'area' && m.points.length <= 3) {
+          return m;
         }
-      });
-    });
+        
+        // For linear measurements, need at least 2 points
+        if ((m.type === 'length' || m.type === 'height') && m.points.length <= 2) {
+          return m;
+        }
+        
+        // Create a new points array without the deleted point
+        const newPoints = [...m.points];
+        newPoints.splice(pointIndex, 1);
+        
+        // Recalculate segments and value
+        const segments = generateSegments(newPoints);
+        let value = 0;
+        let label = '';
+        
+        if (m.type === 'length' || m.type === 'ridge' || m.type === 'eave' || m.type === 'verge') {
+          value = calculateDistance(newPoints[0], newPoints[newPoints.length - 1]);
+          label = `${value.toFixed(2)}m`;
+        } else if (m.type === 'height') {
+          value = calculateHeight(newPoints[0], newPoints[newPoints.length - 1]);
+          label = `${value.toFixed(2)}m`;
+        } else if (m.type === 'area' || m.type === 'solar') {
+          value = calculateArea(newPoints);
+          label = `${value.toFixed(2)}m²`;
+        }
+        
+        return {
+          ...m,
+          points: newPoints,
+          segments,
+          value,
+          label
+        };
+      })
+    );
   }, []);
 
   // Move a measurement up in the list
@@ -325,12 +336,12 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ childr
       const index = prev.findIndex(m => m.id === id);
       if (index <= 0) return prev;
       
-      const newMeasurements = [...prev];
-      const temp = newMeasurements[index];
-      newMeasurements[index] = newMeasurements[index - 1];
-      newMeasurements[index - 1] = temp;
+      const result = [...prev];
+      const temp = result[index - 1];
+      result[index - 1] = result[index];
+      result[index] = temp;
       
-      return newMeasurements;
+      return result;
     });
   }, []);
 
@@ -338,69 +349,58 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({ childr
   const moveMeasurementDown = useCallback((id: string) => {
     setMeasurements(prev => {
       const index = prev.findIndex(m => m.id === id);
-      if (index < 0 || index >= prev.length - 1) return prev;
+      if (index === -1 || index === prev.length - 1) return prev;
       
-      const newMeasurements = [...prev];
-      const temp = newMeasurements[index];
-      newMeasurements[index] = newMeasurements[index + 1];
-      newMeasurements[index + 1] = temp;
+      const result = [...prev];
+      const temp = result[index + 1];
+      result[index + 1] = result[index];
+      result[index] = temp;
       
-      return newMeasurements;
+      return result;
     });
   }, []);
 
-  // Find and link shared segments between measurements
-  const findAndLinkSharedSegments = useCallback((measurementsToProcess: Measurement[]) => {
-    return findSharedSegments(measurementsToProcess);
-  }, []);
-
-  // Set the update visual state function
+  // Update the visual state function
   const setUpdateVisualState = useCallback((fn: (measurements: Measurement[], labelsVisible: boolean) => void) => {
     setUpdateVisualStateFn(() => fn);
   }, []);
 
-  // Update measurements when allLabelsVisible changes
-  useEffect(() => {
-    if (updateVisualStateFn) {
-      updateVisualStateFn(measurements, allLabelsVisible);
-    }
-  }, [allLabelsVisible, measurements, updateVisualStateFn]);
+  // Context value
+  const value = {
+    measurements,
+    currentPoints,
+    activeMode,
+    editMeasurementId,
+    editingPointIndex,
+    allLabelsVisible,
+    calculatingMaterials,
+    setCalculatingMaterials,
+    toggleMeasurementTool,
+    addPoint,
+    undoLastPoint,
+    clearCurrentPoints,
+    finalizeMeasurement,
+    setMeasurements,
+    clearMeasurements,
+    deleteMeasurement,
+    updateMeasurement,
+    toggleMeasurementVisibility,
+    toggleLabelVisibility,
+    toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility,
+    toggleEditMode,
+    startPointEdit,
+    updateMeasurementPoint,
+    cancelEditing,
+    deletePoint,
+    moveMeasurementUp,
+    moveMeasurementDown,
+    updateVisualState,
+    setUpdateVisualState
+  };
 
   return (
-    <MeasurementContext.Provider
-      value={{
-        measurements,
-        currentPoints,
-        activeMode,
-        editMeasurementId,
-        editingPointIndex,
-        allMeasurementsVisible,
-        allLabelsVisible,
-        setMeasurements,
-        addPoint,
-        clearCurrentPoints,
-        finalizeMeasurement,
-        toggleMeasurementTool,
-        toggleMeasurementVisibility,
-        toggleLabelVisibility,
-        toggleAllMeasurementsVisibility,
-        toggleAllLabelsVisibility,
-        toggleEditMode,
-        updateMeasurement,
-        deleteMeasurement,
-        deletePoint,
-        undoLastPoint,
-        clearMeasurements,
-        startPointEdit,
-        cancelEditing,
-        updateMeasurementPoint,
-        moveMeasurementUp,
-        moveMeasurementDown,
-        findAndLinkSharedSegments,
-        updateVisualState: updateVisualStateFn,
-        setUpdateVisualState
-      }}
-    >
+    <MeasurementContext.Provider value={value}>
       {children}
     </MeasurementContext.Provider>
   );
