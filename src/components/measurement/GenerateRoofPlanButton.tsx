@@ -34,8 +34,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     
     try {
       // Specify higher resolution and true top-down view for better readability
-      // Increasing segment line thickness, font size for better PDF readability
-      const plan = createCombinedRoofPlan(measurements, 3000, 2400, 0.08, true);
+      const plan = createCombinedRoofPlan(measurements, 2800, 2100, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {
@@ -139,7 +138,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
                   src={roofPlan} 
                   alt="Dachplan" 
                   className="w-full object-contain"
-                  style={{ maxHeight: '650px' }} 
+                  style={{ maxHeight: '650px' }} // Increased from 600px to 650px
                 />
               </div>
               

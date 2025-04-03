@@ -79,14 +79,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
     try {
-      // Use higher resolution and increased size parameters for better readability in PDF
-      const width = 3000; // Higher resolution for better quality in PDF
-      const height = 2400; // Maintain aspect ratio
+      const width = 2480; // ~210mm at 300dpi
+      const height = 3508; // ~297mm at 300dpi
       
       setOptimizedRoofPlanDimensions({width, height});
       
-      // Use smaller padding value (0.08) to allow more space for content
-      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.08, true);
+      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
       console.error('Error generating roof plan:', error);
