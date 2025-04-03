@@ -89,7 +89,6 @@ const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
   
   const areaSummary = document.createElement('div');
   areaSummary.style.marginTop = '20px';
-  areaSummary.style.pageBreakInside = 'avoid';
   
   const areaSummaryTitle = document.createElement('h3');
   areaSummaryTitle.textContent = 'Flächenauswertung';
