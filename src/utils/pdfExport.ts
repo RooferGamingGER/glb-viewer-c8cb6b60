@@ -857,7 +857,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         page-break-after: always;
       }
       .measurement-section {
-        margin-top: 40px;
+        margin-top: 20px;
+        page-break-before: always;
       }
       .measurement-table {
         width: 100%;
@@ -876,59 +877,76 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         padding: 8px;
         text-align: left;
       }
+      .measurement-table th,
+      .segment-table th,
+      .summary-table th {
+        background-color: #f2f2f2;
+      }
       .segment-table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
+        margin-bottom: 30px;
+        font-size: 0.9em;
       }
       .summary-table {
         width: 100%;
         border-collapse: collapse;
+        margin-top: 10px;
+        margin-bottom: 20px;
       }
       .total-row {
         background-color: #f9f9f9;
       }
-      .measurement-type-header {
-        margin-top: 30px;
-        margin-bottom: 10px;
-        page-break-before: auto;
-        page-break-after: avoid;
-      }
-      .roof-plan-section {
-        text-align: center;
-        margin-top: 20px;
-        page-break-after: always;
-        height: 270mm;
-        display: flex;
-        flex-direction: column;
-      }
-      .roof-plan-title {
-        margin-bottom: 20px;
-        text-align: left;
-      }
-      .roof-plan-container {
-        flex-grow: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .roof-plan-image {
+      .area-visual {
         max-width: 100%;
-        max-height: 80%;
-        object-fit: contain;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        max-height: 300px;
+        margin-top: 10px;
+        margin-bottom: 20px;
       }
-      @media print {
-        body {
-          margin: 0;
-          padding: 0;
-        }
+      h2 {
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 10px;
+        margin-top: 20px;
+      }
+      h3 {
+        margin-top: 10px;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+      h4 {
+        margin-top: 8px;
+        margin-bottom: 5px;
+        font-size: 12px;
+      }
+      .roof-plan {
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+        display: block;
+      }
+      .footnote {
+        font-size: 10px;
+        color: #999;
+        margin-top: 10px;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+      .area-detail {
+        page-break-inside: avoid;
+      }
+      .type-section {
+        page-break-inside: avoid;
+      }
+      .summary-section {
+        max-height: 60mm;
+        overflow: hidden;
       }
     `;
-    
     container.appendChild(style);
     
+    // Create the cover page
     const coverPage = document.createElement('div');
     coverPage.className = 'cover-page';
     
@@ -937,20 +955,20 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     const companyName = document.createElement('div');
     companyName.className = 'company-name';
-    companyName.textContent = coverData.companyName;
+    companyName.innerHTML = coverData.companyName || 'DrohnenGLB by RooferGaming<sup>®</sup>';
     coverHeader.appendChild(companyName);
     
-    const coverTitle = document.createElement('h1');
-    coverTitle.className = 'cover-title';
-    coverTitle.textContent = coverData.title;
-    coverHeader.appendChild(coverTitle);
-    
-    const coverSubtitle = document.createElement('div');
-    coverSubtitle.className = 'cover-subtitle';
-    coverSubtitle.textContent = coverData.projectNumber;
-    coverHeader.appendChild(coverSubtitle);
-    
     coverPage.appendChild(coverHeader);
+    
+    const title = document.createElement('h1');
+    title.className = 'cover-title';
+    title.textContent = coverData.title;
+    coverPage.appendChild(title);
+    
+    const subtitle = document.createElement('div');
+    subtitle.className = 'cover-subtitle';
+    subtitle.innerHTML = 'Kostenloser GLB Viewer: drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
+    coverPage.appendChild(subtitle);
     
     const infoSection = document.createElement('div');
     infoSection.className = 'info-section';
@@ -958,158 +976,550 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const leftInfo = document.createElement('div');
     leftInfo.className = 'left-info';
     
-    const infoTable = document.createElement('table');
-    infoTable.className = 'info-table';
+    const projectTitle = document.createElement('h3');
+    projectTitle.textContent = 'Projektdaten';
+    projectTitle.style.color = '#444';
+    projectTitle.style.marginBottom = '5px';
+    leftInfo.appendChild(projectTitle);
     
-    const infoTbody = document.createElement('tbody');
+    const projectTable = document.createElement('table');
+    projectTable.className = 'info-table';
     
-    const infoRow = document.createElement('tr');
+    const projectRows = [
+      { label: 'Projektnummer:', value: coverData.projectNumber },
+      { label: 'Erstellungsdatum:', value: coverData.creationDate },
+      { label: 'Objektadresse:', value: coverData.projectAddress }
+    ];
     
-    const infoLabel = document.createElement('td');
-    infoLabel.className = 'info-label';
-    infoLabel.textContent = 'Projektname';
-    infoRow.appendChild(infoLabel);
+    projectRows.forEach(row => {
+      if (row.value) {
+        const tableRow = document.createElement('tr');
+        
+        const labelCell = document.createElement('td');
+        labelCell.className = 'info-label';
+        labelCell.textContent = row.label;
+        tableRow.appendChild(labelCell);
+        
+        const valueCell = document.createElement('td');
+        valueCell.textContent = row.value;
+        tableRow.appendChild(valueCell);
+        
+        projectTable.appendChild(tableRow);
+      }
+    });
     
-    const infoValue = document.createElement('td');
-    infoValue.textContent = coverData.projectAddress;
-    infoRow.appendChild(infoValue);
-    
-    infoTbody.appendChild(infoRow);
-    
-    infoTable.appendChild(infoTbody);
-    leftInfo.appendChild(infoTable);
+    leftInfo.appendChild(projectTable);
+    infoSection.appendChild(leftInfo);
     
     const rightInfo = document.createElement('div');
     rightInfo.className = 'right-info';
     
-    const infoTable2 = document.createElement('table');
-    infoTable2.className = 'info-table';
+    const customerTitle = document.createElement('h3');
+    customerTitle.textContent = 'Kundendaten';
+    customerTitle.style.color = '#444';
+    customerTitle.style.marginBottom = '5px';
+    rightInfo.appendChild(customerTitle);
     
-    const infoTbody2 = document.createElement('tbody');
+    const customerTable = document.createElement('table');
+    customerTable.className = 'info-table';
     
-    const infoRow2 = document.createElement('tr');
+    const customerRows = [
+      { label: 'Auftraggeber:', value: coverData.clientName },
+      { label: 'Ansprechpartner:', value: coverData.contactPerson },
+      { label: 'Telefon:', value: coverData.contactPhone },
+      { label: 'E-Mail:', value: coverData.contactEmail }
+    ];
     
-    const infoLabel2 = document.createElement('td');
-    infoLabel2.className = 'info-label';
-    infoLabel2.textContent = 'Kunde';
-    infoRow2.appendChild(infoLabel2);
+    customerRows.forEach(row => {
+      if (row.value) {
+        const tableRow = document.createElement('tr');
+        
+        const labelCell = document.createElement('td');
+        labelCell.className = 'info-label';
+        labelCell.textContent = row.label;
+        tableRow.appendChild(labelCell);
+        
+        const valueCell = document.createElement('td');
+        valueCell.textContent = row.value;
+        tableRow.appendChild(valueCell);
+        
+        customerTable.appendChild(tableRow);
+      }
+    });
     
-    const infoValue2 = document.createElement('td');
-    infoValue2.textContent = coverData.clientName;
-    infoRow2.appendChild(infoValue2);
-    
-    infoTbody2.appendChild(infoRow2);
-    
-    infoTable2.appendChild(infoTbody2);
-    rightInfo.appendChild(infoTable2);
-    
-    infoSection.appendChild(leftInfo);
+    rightInfo.appendChild(customerTable);
     infoSection.appendChild(rightInfo);
     
     coverPage.appendChild(infoSection);
     
-    const contentContainer = document.createElement('div');
-    contentContainer.className = 'content-container';
+    if ((measurements as any).topDownScreenshot) {
+      const modelView = document.createElement('div');
+      modelView.className = 'model-view';
+      
+      const modelImage = document.createElement('img');
+      modelImage.className = 'model-image';
+      modelImage.src = (measurements as any).topDownScreenshot;
+      modelImage.alt = 'Dachdraufsicht';
+      
+      modelView.appendChild(modelImage);
+      coverPage.appendChild(modelView);
+    }
+    
+    // Add the cover page to the container first
+    container.appendChild(coverPage);
+    
+    // Create and add the info page with summary and notes
+    const infoPage = createInfoPage(coverData.notes, summaryData);
+    container.appendChild(infoPage);
+    
+    // Continue with the roof plan (now on page 3)
+    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
+      const roofPlanPage = document.createElement('div');
+      roofPlanPage.style.pageBreakAfter = 'always';
+      roofPlanPage.style.padding = '20px';
+      roofPlanPage.style.height = '270mm';
+      roofPlanPage.style.position = 'relative';
+      
+      if (!(measurements as any).showRoofPlanWithoutHeader) {
+        const roofPlanTitle = document.createElement('h2');
+        roofPlanTitle.textContent = 'Dachplan';
+        roofPlanPage.appendChild(roofPlanTitle);
+      }
+      
+      const roofPlanContainer = document.createElement('div');
+      roofPlanContainer.style.display = 'flex';
+      roofPlanContainer.style.justifyContent = 'center';
+      roofPlanContainer.style.alignItems = 'center';
+      roofPlanContainer.style.height = (measurements as any).showRoofPlanWithoutHeader ? 'calc(100% - 40px)' : 'calc(100% - 80px)';
+      
+      const roofPlanImage = document.createElement('img');
+      roofPlanImage.src = (measurements as any).roofPlan;
+      roofPlanImage.className = 'roof-plan';
+      
+      if ((measurements as any).roofPlanDimensions) {
+        const dims = (measurements as any).roofPlanDimensions;
+        const pageWidth = 210 - 40;
+        const pageHeight = 297 - 40;
+        const scaleFactor = Math.min(
+          pageWidth / dims.width * 25.4,
+          pageHeight / dims.height * 25.4
+        );
+        
+        roofPlanImage.style.maxWidth = '100%';
+        roofPlanImage.style.maxHeight = '100%';
+        roofPlanImage.style.objectFit = 'contain';
+      }
+      
+      roofPlanContainer.appendChild(roofPlanImage);
+      roofPlanPage.appendChild(roofPlanContainer);
+      
+      const footnote = document.createElement('div');
+      footnote.className = 'footnote';
+      footnote.textContent = 'Hinweis: Dieser Dachplan ist eine schematische Darstellung und nicht maßstabsgetreu.';
+      footnote.style.position = 'absolute';
+      footnote.style.bottom = '20px';
+      footnote.style.left = '20px';
+      footnote.style.right = '20px';
+      roofPlanPage.appendChild(footnote);
+      
+      container.appendChild(roofPlanPage);
+    }
     
     const measurementSection = document.createElement('div');
     measurementSection.className = 'measurement-section';
     
-    const measurementTable = document.createElement('table');
-    measurementTable.className = 'measurement-table';
-    
-    const measurementTbody = document.createElement('tbody');
-    
-    sortedMeasurements.forEach((measurement, index) => {
-      const measurementRow = document.createElement('tr');
-      
-      const measurementTypeHeader = document.createElement('h2');
-      measurementTypeHeader.className = 'measurement-type-header';
-      measurementTypeHeader.textContent = getMeasurementTypeDisplayName(measurement.type);
-      measurementRow.appendChild(measurementTypeHeader);
-      
-      const measurementTableHead = document.createElement('thead');
-      const measurementHeaderRow = document.createElement('tr');
-      
-      ['Teilmessung', 'Länge (m)', 'Typ'].forEach(column => {
-        const th = document.createElement('th');
-        th.textContent = column;
-        measurementHeaderRow.appendChild(th);
-      });
-      
-      measurementTableHead.appendChild(measurementHeaderRow);
-      measurementTable.appendChild(measurementTableHead);
-      
-      const measurementTableBody = document.createElement('tbody');
-      
-      if (measurement.segments) {
-        measurement.segments.forEach((segment, sIndex) => {
-          const segmentRow = document.createElement('tr');
-          
-          const segmentNumCell = document.createElement('td');
-          segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
-          segmentRow.appendChild(segmentNumCell);
-          
-          const segmentLengthCell = document.createElement('td');
-          segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
-          segmentRow.appendChild(segmentLengthCell);
-          
-          const segmentTypeCell = document.createElement('td');
-          if (segment.type) {
-            const typeName = getSegmentTypeDisplayName(segment.type);
-            segmentTypeCell.textContent = typeName;
-          } else {
-            segmentTypeCell.textContent = '–';
-          }
-          segmentRow.appendChild(segmentTypeCell);
-          
-          measurementTableBody.appendChild(segmentRow);
-        });
-      }
-      
-      measurementTable.appendChild(measurementTableBody);
-      measurementRow.appendChild(measurementTable);
-      
-      measurementTbody.appendChild(measurementRow);
-    });
-    
-    measurementSection.appendChild(measurementTbody);
-    contentContainer.appendChild(measurementSection);
-    
-    const summarySection = document.createElement('div');
-    summarySection.className = 'summary-section';
+    const measurementTitle = document.createElement('h2');
+    measurementTitle.textContent = 'Messungen - Übersicht';
+    measurementSection.appendChild(measurementTitle);
     
     const summaryTable = document.createElement('table');
-    summaryTable.className = 'summary-table';
+    summaryTable.className = 'measurement-table';
     
-    const summaryTbody = document.createElement('tbody');
+    const tableHead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
     
-    const summaryRow = document.createElement('tr');
+    ['Nr.', 'Beschreibung', 'Typ', 'Wert'].forEach(column => {
+      const th = document.createElement('th');
+      th.textContent = column;
+      headerRow.appendChild(th);
+    });
     
-    const summaryLabel = document.createElement('td');
-    summaryLabel.className = 'info-label';
-    summaryLabel.textContent = 'Gesamtfläche';
-    summaryRow.appendChild(summaryLabel);
+    tableHead.appendChild(headerRow);
+    summaryTable.appendChild(tableHead);
     
-    const summaryValue = document.createElement('td');
-    summaryValue.textContent = `${summaryData.totalArea.toFixed(2)} m²`;
-    summaryRow.appendChild(summaryValue);
+    const tableBody = document.createElement('tbody');
     
-    summaryTbody.appendChild(summaryRow);
+    sortedMeasurements.forEach((measurement, index) => {
+      if (measurement.id) {
+        const row = document.createElement('tr');
+        
+        const numCell = document.createElement('td');
+        numCell.textContent = (index + 1).toString();
+        row.appendChild(numCell);
+        
+        const descriptionCell = document.createElement('td');
+        descriptionCell.textContent = measurement.description || '';
+        row.appendChild(descriptionCell);
+        
+        const typeCell = document.createElement('td');
+        typeCell.textContent = getMeasurementTypeDisplayName(measurement.type);
+        row.appendChild(typeCell);
+        
+        const valueCell = document.createElement('td');
+        valueCell.textContent = formatMeasurementValue(measurement);
+        row.appendChild(valueCell);
+        
+        tableBody.appendChild(row);
+      }
+    });
     
-    summaryTable.appendChild(summaryTbody);
-    summarySection.appendChild(summaryTable);
+    summaryTable.appendChild(tableBody);
+    measurementSection.appendChild(summaryTable);
     
-    contentContainer.appendChild(summarySection);
+    container.appendChild(measurementSection);
     
-    coverPage.appendChild(contentContainer);
+    const areaMeasurements = sortedMeasurements.filter(m => m.type === 'area');
+    const lengthMeasurements = sortedMeasurements.filter(m => m.type === 'length');
+    const heightMeasurements = sortedMeasurements.filter(m => m.type === 'height');
+    const otherMeasurements = sortedMeasurements.filter(m => !['area', 'length', 'height'].includes(m.type));
     
-    container.appendChild(coverPage);
+    if (areaMeasurements.length > 0) {
+      const areaSection = document.createElement('div');
+      areaSection.className = 'page-break';
+      
+      const areaTitle = document.createElement('h2');
+      areaTitle.textContent = 'Flächenmessungen';
+      areaSection.appendChild(areaTitle);
+      
+      areaMeasurements.forEach((measurement, index) => {
+        const areaContainer = document.createElement('div');
+        areaContainer.className = 'area-detail';
+        areaContainer.style.marginBottom = '30px';
+        
+        const areaHeading = document.createElement('h3');
+        areaHeading.textContent = `Fläche ${index + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
+        areaContainer.appendChild(areaHeading);
+        
+        const areaDetails = document.createElement('div');
+        areaDetails.style.marginBottom = '10px';
+        areaDetails.innerHTML = `<strong>Fläche:</strong> ${measurement.value.toFixed(2)} m²`;
+        
+        if (measurement.inclination !== undefined) {
+          areaDetails.innerHTML += `<br><strong>Neigung:</strong> ${Math.abs(measurement.inclination).toFixed(1)}°`;
+        }
+        
+        areaContainer.appendChild(areaDetails);
+        
+        if (measurement.screenshot || measurement.polygon2D) {
+          const visual = document.createElement('img');
+          visual.src = measurement.screenshot || measurement.polygon2D || '';
+          visual.className = 'area-visual';
+          areaContainer.appendChild(visual);
+        }
+        
+        if (measurement.segments && measurement.segments.length > 0) {
+          const segmentsTable = createAreaSegmentsTable(measurement, index);
+          areaContainer.appendChild(segmentsTable);
+        }
+        
+        if (measurement.customScreenshots && measurement.customScreenshots.length > 0) {
+          const screenshotsContainer = document.createElement('div');
+          screenshotsContainer.style.marginTop = '20px';
+          screenshotsContainer.style.pageBreakInside = 'avoid';
+          
+          const screenshotsTitle = document.createElement('h4');
+          screenshotsTitle.textContent = 'Zusätzliche Ansichten';
+          screenshotsContainer.appendChild(screenshotsTitle);
+          
+          const screenshotsGrid = document.createElement('div');
+          screenshotsGrid.style.display = 'flex';
+          screenshotsGrid.style.flexWrap = 'wrap';
+          screenshotsGrid.style.gap = '10px';
+          
+          measurement.customScreenshots.forEach(screenshot => {
+            const screenshotImg = document.createElement('img');
+            screenshotImg.src = screenshot;
+            screenshotImg.style.maxWidth = '48%';
+            screenshotImg.style.height = 'auto';
+            screenshotsGrid.appendChild(screenshotImg);
+          });
+          
+          screenshotsContainer.appendChild(screenshotsGrid);
+          areaContainer.appendChild(screenshotsContainer);
+        }
+        
+        areaSection.appendChild(areaContainer);
+      });
+      
+      container.appendChild(areaSection);
+    }
     
-    const pdf = await html2pdf().from(container).save();
+    if (lengthMeasurements.length > 0) {
+      const lengthSection = document.createElement('div');
+      lengthSection.className = 'page-break';
+      
+      const lengthTitle = document.createElement('h2');
+      lengthTitle.textContent = 'Längenmessungen';
+      lengthSection.appendChild(lengthTitle);
+      
+      const lengthTable = document.createElement('table');
+      lengthTable.className = 'measurement-table';
+      
+      const lengthTableHead = document.createElement('thead');
+      const lengthHeaderRow = document.createElement('tr');
+      
+      ['Nr.', 'Beschreibung', 'Länge', 'Neigung'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        lengthHeaderRow.appendChild(th);
+      });
+      
+      lengthTableHead.appendChild(lengthHeaderRow);
+      lengthTable.appendChild(lengthTableHead);
+      
+      const lengthTableBody = document.createElement('tbody');
+      
+      lengthMeasurements.forEach((measurement, index) => {
+        const row = document.createElement('tr');
+        
+        const numCell = document.createElement('td');
+        numCell.textContent = (index + 1).toString();
+        row.appendChild(numCell);
+        
+        const descriptionCell = document.createElement('td');
+        descriptionCell.textContent = measurement.description || '';
+        row.appendChild(descriptionCell);
+        
+        const valueCell = document.createElement('td');
+        valueCell.textContent = `${measurement.value.toFixed(2)} m`;
+        row.appendChild(valueCell);
+        
+        const inclinationCell = document.createElement('td');
+        if (measurement.inclination !== undefined) {
+          inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
+        } else {
+          inclinationCell.textContent = '-';
+        }
+        row.appendChild(inclinationCell);
+        
+        lengthTableBody.appendChild(row);
+      });
+      
+      lengthTable.appendChild(lengthTableBody);
+      lengthSection.appendChild(lengthTable);
+      
+      container.appendChild(lengthSection);
+    }
     
-    return pdf;
+    if (heightMeasurements.length > 0) {
+      const heightSection = document.createElement('div');
+      
+      if (lengthMeasurements.length > 0) {
+        heightSection.className = 'page-break';
+      } else {
+        heightSection.style.marginTop = '40px';
+      }
+      
+      const heightTitle = document.createElement('h2');
+      heightTitle.textContent = 'Höhenmessungen';
+      heightSection.appendChild(heightTitle);
+      
+      const heightTable = document.createElement('table');
+      heightTable.className = 'measurement-table';
+      
+      const heightTableHead = document.createElement('thead');
+      const heightHeaderRow = document.createElement('tr');
+      
+      ['Nr.', 'Beschreibung', 'Höhe'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        heightHeaderRow.appendChild(th);
+      });
+      
+      heightTableHead.appendChild(heightHeaderRow);
+      heightTable.appendChild(heightTableHead);
+      
+      const heightTableBody = document.createElement('tbody');
+      
+      heightMeasurements.forEach((measurement, index) => {
+        const row = document.createElement('tr');
+        
+        const numCell = document.createElement('td');
+        numCell.textContent = (index + 1).toString();
+        row.appendChild(numCell);
+        
+        const descriptionCell = document.createElement('td');
+        descriptionCell.textContent = measurement.description || '';
+        row.appendChild(descriptionCell);
+        
+        const valueCell = document.createElement('td');
+        valueCell.textContent = `${measurement.value.toFixed(2)} m`;
+        row.appendChild(valueCell);
+        
+        heightTableBody.appendChild(row);
+      });
+      
+      heightTable.appendChild(heightTableBody);
+      heightSection.appendChild(heightTable);
+      
+      container.appendChild(heightSection);
+    }
+    
+    if (otherMeasurements.length > 0) {
+      const otherSection = document.createElement('div');
+      
+      if (areaMeasurements.length > 0 || lengthMeasurements.length > 0 || heightMeasurements.length > 0) {
+        otherSection.className = 'page-break';
+      } else {
+        otherSection.style.marginTop = '40px';
+      }
+      
+      const otherTitle = document.createElement('h2');
+      otherTitle.textContent = 'Andere Messungen';
+      otherSection.appendChild(otherTitle);
+      
+      const measurementsByType: Record<string, Measurement[]> = {};
+      
+      otherMeasurements.forEach(measurement => {
+        if (!measurementsByType[measurement.type]) {
+          measurementsByType[measurement.type] = [];
+        }
+        measurementsByType[measurement.type].push(measurement);
+      });
+      
+      Object.entries(measurementsByType).forEach(([type, measurements]) => {
+        const typeSection = document.createElement('div');
+        typeSection.className = 'type-section';
+        typeSection.style.marginBottom = '30px';
+        
+        const typeTitle = document.createElement('h3');
+        typeTitle.textContent = getMeasurementTypeDisplayName(type);
+        typeSection.appendChild(typeTitle);
+        
+        const typeTable = document.createElement('table');
+        typeTable.className = 'measurement-table';
+        
+        const typeTableHead = document.createElement('thead');
+        const typeHeaderRow = document.createElement('tr');
+        
+        const headerColumns = ['Nr.', 'Beschreibung'];
+        
+        if (type === 'skylight') {
+          headerColumns.push('Breite', 'Höhe', 'Fläche');
+        } else if (type === 'chimney' || type === 'vent') {
+          headerColumns.push('Durchmesser/Breite', 'Fläche');
+        } else if (type === 'solar') {
+          headerColumns.push('Fläche', 'Anzahl Module');
+        } else {
+          headerColumns.push('Wert');
+        }
+        
+        headerColumns.forEach(column => {
+          const th = document.createElement('th');
+          th.textContent = column;
+          typeHeaderRow.appendChild(th);
+        });
+        
+        typeTableHead.appendChild(typeHeaderRow);
+        typeTable.appendChild(typeTableHead);
+        
+        const typeTableBody = document.createElement('tbody');
+        
+        measurements.forEach((measurement, index) => {
+          const row = document.createElement('tr');
+          
+          const numCell = document.createElement('td');
+          numCell.textContent = (index + 1).toString();
+          row.appendChild(numCell);
+          
+          const descriptionCell = document.createElement('td');
+          descriptionCell.textContent = measurement.description || '';
+          row.appendChild(descriptionCell);
+          
+          if (type === 'skylight') {
+            const widthCell = document.createElement('td');
+            widthCell.textContent = measurement.dimensions?.width ? `${measurement.dimensions.width.toFixed(2)} m` : '-';
+            row.appendChild(widthCell);
+            
+            const heightCell = document.createElement('td');
+            heightCell.textContent = measurement.dimensions?.height ? `${measurement.dimensions.height.toFixed(2)} m` : '-';
+            row.appendChild(heightCell);
+            
+            const areaCell = document.createElement('td');
+            areaCell.textContent = `${measurement.value.toFixed(2)} m²`;
+            row.appendChild(areaCell);
+          } else if (type === 'chimney' || type === 'vent') {
+            const diameterCell = document.createElement('td');
+            diameterCell.textContent = measurement.dimensions?.width ? `${measurement.dimensions.width.toFixed(2)} m` : '-';
+            row.appendChild(diameterCell);
+            
+            const areaCell = document.createElement('td');
+            areaCell.textContent = `${measurement.value.toFixed(2)} m²`;
+            row.appendChild(areaCell);
+          } else if (type === 'solar') {
+            const areaCell = document.createElement('td');
+            areaCell.textContent = `${measurement.value.toFixed(2)} m²`;
+            row.appendChild(areaCell);
+            
+            const moduleCell = document.createElement('td');
+            moduleCell.textContent = measurement.pvModuleInfo?.moduleCount?.toString() || '-';
+            row.appendChild(moduleCell);
+          } else {
+            const valueCell = document.createElement('td');
+            valueCell.textContent = formatMeasurementValue(measurement);
+            row.appendChild(valueCell);
+          }
+          
+          typeTableBody.appendChild(row);
+        });
+        
+        typeTable.appendChild(typeTableBody);
+        typeSection.appendChild(typeTable);
+        
+        otherSection.appendChild(typeSection);
+      });
+      
+      container.appendChild(otherSection);
+    }
+    
+    if (areaMeasurements.length > 0) {
+      const areaSummary = createTotalAreaSummary(areaMeasurements);
+      container.appendChild(areaSummary);
+      
+      const hasSegments = areaMeasurements.some(
+        m => m.segments && m.segments.length > 0
+      );
+      
+      if (hasSegments) {
+        const segmentSummary = createSegmentSummary(areaMeasurements);
+        container.appendChild(segmentSummary);
+      }
+    }
+    
+    const options = {
+      margin: 10,
+      filename: `${coverData.title || 'Vermessungsbericht'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        letterRendering: true
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait'
+      }
+    };
+    
+    await html2pdf()
+      .from(container)
+      .set(options)
+      .save();
+    
+    return true;
   } catch (error) {
-    console.error('Error exporting measurements to PDF:', error);
+    console.error('Export error:', error);
     return false;
   }
 };
