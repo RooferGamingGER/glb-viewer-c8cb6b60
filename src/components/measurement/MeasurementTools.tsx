@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -157,14 +158,10 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint
   };
 
-  // Improved measurement interaction management with enhanced snapping
+  // Measurement interaction state
   const { 
     movingPointInfo, 
     setMovingPointInfo, 
-    isSnapping,
-    snapTarget,
-    snapEnabled,
-    lastHitPoint,
     clearPreviewGroup,
     clearAddPointIndicators 
   } = useMeasurementInteractionManager(
@@ -393,7 +390,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   ]);
 
   // Callback for handling cancellation of editing
-  const handleCancelEditingWithCleanup = useCallback(() => {
+  const handleCancelEditingWithCleanup = () => {
     handleCancelEditing();
     setMovingPointInfo(null);
     
@@ -414,19 +411,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       measurements, 
       true
     );
-    
-    return true; // Return true to satisfy the boolean return type
-  }, [
-    handleCancelEditing, 
-    setMovingPointInfo, 
-    clearPreviewGroup, 
-    clearAddPointIndicators, 
-    renderMeasurements,
-    measurementsRef, 
-    labelsRef, 
-    segmentLabelsRef, 
-    measurements
-  ]);
+  };
 
   // Check if current mode is a roof element mode
   const isRoofElementMode = ![
@@ -434,11 +419,9 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   ].includes(activeMode);
 
   // Handle label visibility toggling with direct visual update
-  const handleToggleAllLabelsVisibility = useCallback(() => {
+  const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
-    updateAllLabelsVisibility(!allLabelsVisible);
-    return true; // Return true to satisfy the boolean return type
-  }, [toggleAllLabelsVisibility, updateAllLabelsVisibility, allLabelsVisible]);
+  };
 
   // Component rendering
   return (

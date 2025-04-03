@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -38,7 +37,7 @@ export interface Segment {
   inclination?: number;
   type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
   shared?: boolean;            // Indicates if this segment is shared with another measurement
-  sharedWithSegmentId?: string | null; // ID of the segment this is shared with
+  sharedWithSegmentId?: string; // ID of the segment this is shared with
   isOriginal?: boolean;        // For shared segments, indicates if this is the "original" one
 }
 
@@ -133,8 +132,6 @@ export interface Measurement {
   description?: string;
   segments?: Segment[];
   inclination?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
   
   subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
   dimensions?: {         // Specific dimensions for roof elements

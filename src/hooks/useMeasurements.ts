@@ -6,7 +6,7 @@ import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measuremen
 import { extractRoofEdgeMeasurements, calculatePVMaterials } from '@/utils/pvCalculations';
 import { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';
 import { useCallback, useRef, useState } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
@@ -375,13 +375,12 @@ export const useMeasurements = () => {
     setMeasurements(finalMeasurements);
     updateVisualState(finalMeasurements, allLabelsVisible);
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-
+  
   // Enhance the initial finalization to detect shared segments
   const finalizeWithSharedSegments = useCallback(() => {
     // First, call the original finalize
     const newMeasurement = finalizeMeasurement();
     
-    // If there is a new measurement, check for shared segments
     if (newMeasurement) {
       // After creating a new measurement, check for shared segments
       const measurementsWithSharedSegments = findAndLinkSharedSegments([...measurements, newMeasurement]);
@@ -389,14 +388,11 @@ export const useMeasurements = () => {
       // Update the measurements with linked segments
       setMeasurements(measurementsWithSharedSegments);
       updateVisualState(measurementsWithSharedSegments, allLabelsVisible);
-      
-      return newMeasurement;
     }
     
-    // Return null if no measurement was created
-    return null;
+    return newMeasurement;
   }, [finalizeMeasurement, measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-
+  
   // Export all functionality and state from the composed hooks, adding our new functions
   return {
     // State

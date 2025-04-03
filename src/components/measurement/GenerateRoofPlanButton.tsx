@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Measurement, Segment } from '@/types/measurements';
-import { calculateCentroid } from '@/utils/measurementCalculations';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-  DialogTrigger
-} from "@/components/ui/dialog";
-import { toast } from '@/hooks/use-toast';
 import { Maximize, Download, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
+import { Measurement } from '@/hooks/useMeasurements';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 
 interface GenerateRoofPlanButtonProps {
   measurements: Measurement[];
@@ -85,6 +84,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
+  // Count the number of roof surfaces and special elements available
   const areaCount = measurements.filter(m => 
     ['area'].includes(m.type) && m.points && m.points.length >= 3
   ).length;
@@ -95,7 +95,9 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     m.points.length >= 3
   ).length;
   
+  // Count segments, considering shared segments only once
   const uniqueSegmentCount = (() => {
+    // Collect all segments
     const allSegments = measurements.reduce((total, m) => {
       if (m.segments && m.segments.length > 0) {
         return [...total, ...m.segments];
@@ -103,6 +105,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
       return total;
     }, [] as (Segment | undefined)[]);
     
+    // Filter out segments that are marked as shared but not original
     const uniqueSegments = allSegments.filter(segment => 
       !segment?.shared || (segment.shared && segment.isOriginal)
     );

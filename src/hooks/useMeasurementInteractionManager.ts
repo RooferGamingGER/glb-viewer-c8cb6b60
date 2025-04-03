@@ -1,14 +1,9 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { Point, Measurement } from '@/types/measurements';
-import { useMeasurementRaycasting } from './useMeasurementRaycasting';
-import { usePointSnapping } from './usePointSnapping';
-import { usePointMovement } from './usePointMovement';
+import { useThreeJs } from '@/contexts/ThreeJsContext';
 
-/**
- * Enhanced measurement interaction manager with improved point snapping
- */
 export const useMeasurementInteractionManager = (
   enabled: boolean,
   scene: THREE.Scene | null,
@@ -24,129 +19,161 @@ export const useMeasurementInteractionManager = (
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
-  // Store last hit point for improved interaction
-  const [lastHitPoint, setLastHitPoint] = useState<Point | null>(null);
-  
-  // State for preview point
+  // State for point movement
+  const [movingPointInfo, setMovingPointInfo] = useState<{
+    measurementId: string;
+    pointIndex: number;
+    originalPoint: Point;
+  } | null>(null);
+
+  // State for preview points
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
+  
+  // Touch interaction state
+  const [touchStartTime, setTouchStartTime] = useState<number>(0);
+  const [lastTouchPosition, setLastTouchPosition] = useState<{x: number, y: number} | null>(null);
 
-  // Use the enhanced raycasting hook with preview functionality
-  const {
-    raycast,
-    addPointIndicatorsRef,
-    clearAddPointIndicators,
-    updateAddPointIndicators,
-    clearPreviewGroup,
-    createPreviewGroup,
-    calculateMousePosition,
-    filterMeasurementObjects,
-    getPointFromIntersection
-  } = useMeasurementRaycasting(scene, camera);
+  // Get Three.js object references
+  const { 
+    pointsRef,
+    linesRef,
+    measurementsRef,
+    editPointsRef,
+    labelsRef,
+    segmentLabelsRef,
+    clearGroup
+  } = useThreeJs();
 
-  // Hook for point snapping with enhanced functionality
-  const {
-    snapEnabled,
-    setSnapEnabled,
-    isSnapping,
-    snapTarget,
-    setSnapping,
-    checkPointForSnapping,
-    clearSnapIndicator,
-    findSnapPoint,
-    applySnap
-  } = usePointSnapping(scene);
+  // Reference to the preview group
+  const previewGroupRef = useRef<THREE.Group | null>(null);
+  
+  // Reference to add point indicators group
+  const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
 
-  // Hook for point movement with adapted interfaces
-  const {
-    movingPointInfo,
-    setMovingPointInfo,
-    startPointMovement: originalStartPointMovement,
-    updateMovingPoint: originalUpdateMovingPoint,
-    finishPointMovement: originalFinishPointMovement
-  } = usePointMovement(scene, camera, handlers.updateMeasurementPoint);
-
-  // Update the plus symbols for area measurements in edit mode
+  // Create and manage preview visualization group
   useEffect(() => {
-    if (enabled && scene) {
-      updateAddPointIndicators(editMeasurementId, measurements);
-    }
-  }, [enabled, scene, editMeasurementId, measurements, updateAddPointIndicators]);
-
-  // Wrapper functions to match expected interfaces
-  const updateMovingPoint = useCallback((
-    event: MouseEvent | TouchEvent, 
-    canvasElement: HTMLCanvasElement
-  ): Point | null => {
-    if (!camera || !scene || !movingPointInfo) return null;
+    if (!scene || !enabled) return;
     
-    const point = getPointFromIntersection(event, camera, scene, canvasElement);
-    
-    if (point) {
-      // Update movement state
-      originalUpdateMovingPoint(
-        movingPointInfo.measurementId, 
-        movingPointInfo.pointIndex, 
-        point
-      );
-      
-      // Record last hit point
-      setLastHitPoint(point);
-      
-      return point;
+    // Create preview group if it doesn't exist
+    if (!previewGroupRef.current) {
+      previewGroupRef.current = new THREE.Group();
+      previewGroupRef.current.name = "previewGroup";
+      scene.add(previewGroupRef.current);
     }
     
-    return null;
-  }, [camera, scene, movingPointInfo, originalUpdateMovingPoint, getPointFromIntersection]);
-
-  const finishPointMovement = useCallback((
-    newPoint: Point | null
-  ): boolean => {
-    if (!movingPointInfo || !newPoint) return false;
+    // Create add point indicators group if it doesn't exist
+    if (!addPointIndicatorsRef.current) {
+      addPointIndicatorsRef.current = new THREE.Group();
+      addPointIndicatorsRef.current.name = "addPointIndicators";
+      scene.add(addPointIndicatorsRef.current);
+    }
     
-    originalFinishPointMovement(
-      movingPointInfo.measurementId, 
-      movingPointInfo.pointIndex, 
+    return () => {
+      // Clean up preview group when unmounting
+      if (previewGroupRef.current) {
+        scene.remove(previewGroupRef.current);
+        previewGroupRef.current = null;
+      }
+      
+      // Clean up add point indicators
+      if (addPointIndicatorsRef.current) {
+        scene.remove(addPointIndicatorsRef.current);
+        addPointIndicatorsRef.current = null;
+      }
+    };
+  }, [scene, enabled]);
+
+  // Clear preview group
+  const clearPreviewGroup = useCallback(() => {
+    if (previewGroupRef.current) {
+      clearGroup(previewGroupRef.current);
+    }
+  }, [clearGroup]);
+
+  // Clear add point indicators
+  const clearAddPointIndicators = useCallback(() => {
+    if (addPointIndicatorsRef.current) {
+      clearGroup(addPointIndicatorsRef.current);
+    }
+  }, [clearGroup]);
+
+  // Start point movement
+  const startPointMovement = useCallback((measurementId: string, pointIndex: number, point: Point) => {
+    setMovingPointInfo({
+      measurementId,
+      pointIndex,
+      originalPoint: { ...point }
+    });
+  }, []);
+
+  // Update moving point
+  const updateMovingPoint = useCallback((newPoint: Point) => {
+    if (!movingPointInfo) return;
+    
+    handlers.updateMeasurementPoint(
+      movingPointInfo.measurementId,
+      movingPointInfo.pointIndex,
       newPoint
     );
+  }, [movingPointInfo, handlers]);
+
+  // Finish point movement
+  const finishPointMovement = useCallback(() => {
+    setMovingPointInfo(null);
+  }, []);
+  
+  // Handle touch interactions with debouncing for better touch experience
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      setTouchStartTime(Date.now());
+      setLastTouchPosition({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      });
+    }
+  }, []);
+  
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    const touchDuration = Date.now() - touchStartTime;
     
-    return true;
-  }, [movingPointInfo, originalFinishPointMovement]);
+    // Short tap detection (less than 250ms) with minimal movement
+    if (touchDuration < 250 && lastTouchPosition) {
+      // Process as a tap/click
+      // Implementation would depend on your raycasting logic
+    }
+    
+    setLastTouchPosition(null);
+  }, [touchStartTime, lastTouchPosition]);
 
-  const startPointMovement = useCallback((
-    measurementId: string, 
-    pointIndex: number, 
-    initialPoint: Point
-  ): Point => {
-    const info = originalStartPointMovement(measurementId, pointIndex, initialPoint);
-    return initialPoint; // Return the point, not the info object
-  }, [originalStartPointMovement]);
-
-  // Clean up visual indicators when enabled status changes
+  // Clean up when enabled status changes
   useEffect(() => {
     if (!enabled) {
-      if (clearPreviewGroup) clearPreviewGroup();
+      clearPreviewGroup();
       clearAddPointIndicators();
-      clearSnapIndicator();
       setMovingPointInfo(null);
-      setLastHitPoint(null);
-      setPreviewPoint(null);
     }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
+  }, [enabled, clearPreviewGroup, clearAddPointIndicators]);
 
   return {
     movingPointInfo,
     setMovingPointInfo,
     previewPoint,
     setPreviewPoint,
-    lastHitPoint,
     clearPreviewGroup,
     clearAddPointIndicators,
-    isSnapping,
-    snapTarget,
-    snapEnabled,
-    setSnapEnabled,
+    addPointIndicatorsRef,
+    startPointMovement,
     updateMovingPoint,
     finishPointMovement,
-    startPointMovement
+    // Touch handlers
+    handleTouchStart,
+    handleTouchEnd,
+    touchStartTime,
+    lastTouchPosition
   };
+};
+
+const useRef = <T,>(initialValue: T) => {
+  const [ref] = useState<{ current: T }>({ current: initialValue });
+  return ref;
 };
