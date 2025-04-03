@@ -2,7 +2,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { MeasurementMode, Measurement, Point, Segment, PVMaterials } from '@/types/measurements';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { isMeasurementType, ExtendedMeasurementMode } from '@/types/measurementTypes';
+import { 
+  isMeasurementType as checkMeasurementType, 
+  ExtendedMeasurementMode,
+  isMeasurementOfType,
+  isValidPoint
+} from '@/types/measurementTypes';
 
 // Define the context type
 interface MeasurementContextType {
@@ -73,12 +78,6 @@ export const useMeasurementContext = (): MeasurementContextType => {
   }
   
   return context;
-};
-
-// Helper function to check if a measurement type is a specific value
-export const isMeasurementType = (currentMode: MeasurementMode, typeToCheck: string): boolean => {
-  // This function safely checks if a mode matches a type, handling type incompatibilities
-  return currentMode === typeToCheck as MeasurementMode;
 };
 
 // Helper function to get display name for measurement type
