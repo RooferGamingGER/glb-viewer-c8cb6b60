@@ -4,7 +4,8 @@ import {
   Ruler, 
   ArrowUpDown, 
   Square, 
-  Trash2
+  Trash2,
+  Magnet
 } from 'lucide-react';
 import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
 import { 
@@ -18,7 +19,9 @@ import {
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import ExportPdfButton from './ExportPdfButton';
+import { Toggle } from "@/components/ui/toggle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { usePointSnapping } from '@/hooks/usePointSnapping';
 
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
@@ -37,6 +40,8 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   handleClearMeasurements,
   measurements
 }) => {
+  // Use our point snapping hook
+  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
   
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
@@ -55,6 +60,15 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
         toast.info('Navigationsmodus aktiviert');
       }
     }
+  };
+  
+  const handleToggleSnap = () => {
+    const newValue = !snapEnabled;
+    setSnapEnabled(newValue);
+    toast.info(newValue 
+      ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
+      : "Punktfang deaktiviert: Punkte werden exakt platziert"
+    );
   };
   
   return (
@@ -102,6 +116,19 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               </SidebarMenu>
               
               <div className="flex flex-col gap-2 mt-4">
+                <Toggle
+                  pressed={snapEnabled}
+                  onPressedChange={handleToggleSnap}
+                  size="sm"
+                  variant={snapEnabled ? "default" : "outline"}
+                  aria-label="Punktfang ein/aus"
+                  title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+                  className={`w-full justify-start ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+                >
+                  <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+                  Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+                </Toggle>
+                
                 {/* Correctly pass measurements to ExportPdfButton */}
                 <ExportPdfButton measurements={measurements} />
                 

@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { Point, Measurement } from '@/types/measurements';
@@ -6,8 +7,8 @@ import { Point, Measurement } from '@/types/measurements';
  * Hook for handling point snapping functionality with improved stability
  */
 export const usePointSnapping = (scene: THREE.Scene | null) => {
-  // State for snapping settings
-  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+  // State for snapping settings - DEFAULT TO DISABLED
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(false);
   const [snapDistance, setSnapDistance] = useState<number>(0.5); // In world units
   const [isSnapping, setIsSnapping] = useState<boolean>(false);
   const [snapTarget, setSnapTarget] = useState<Point | null>(null);

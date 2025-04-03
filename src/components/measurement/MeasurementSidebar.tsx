@@ -117,11 +117,11 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             size="sm"
             variant={snapEnabled ? "default" : "outline"}
             aria-label="Punktfang ein/aus"
-            title="Punktfang ein/aus"
+            title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
             className={`h-7 text-xs ${snapEnabled ? 'bg-green-500 text-white hover:bg-green-600' : ''}`}
           >
-            <Magnet className="h-3.5 w-3.5 mr-1" />
-            Punktfang
+            <Magnet className={`h-3.5 w-3.5 mr-1 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+            Punktfang {snapEnabled ? 'Ein' : 'Aus'}
           </Toggle>
           
           {measurements.length > 0 && (
