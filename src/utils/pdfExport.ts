@@ -1,6 +1,3 @@
-
-// Modifying only the part with the cover page layout and removing the empty page issue
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -937,8 +934,11 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       coverPage.appendChild(modelView);
     }
     
-    const toc = createTableOfContents(measurements);
-    coverPage.appendChild(toc);
+    // Only add table of contents if not skipped
+    if (!(measurements as any).skipTableOfContents) {
+      const toc = createTableOfContents(measurements);
+      coverPage.appendChild(toc);
+    }
     
     const coverSummary = createCoverPageSummary(summaryData);
     coverPage.appendChild(coverSummary);
