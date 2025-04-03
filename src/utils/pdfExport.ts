@@ -857,8 +857,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         page-break-after: always;
       }
       .measurement-section {
-        margin-top: 20px;
-        page-break-before: always;
+        margin-top: 40px;
       }
       .measurement-table {
         width: 100%;
@@ -877,3 +876,240 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         padding: 8px;
         text-align: left;
       }
+      .segment-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .total-row {
+        background-color: #f9f9f9;
+      }
+      .measurement-type-header {
+        margin-top: 30px;
+        margin-bottom: 10px;
+        page-break-before: auto;
+        page-break-after: avoid;
+      }
+      .roof-plan-section {
+        text-align: center;
+        margin-top: 20px;
+        page-break-after: always;
+        height: 270mm;
+        display: flex;
+        flex-direction: column;
+      }
+      .roof-plan-title {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      .roof-plan-container {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .roof-plan-image {
+        max-width: 100%;
+        max-height: 80%;
+        object-fit: contain;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      @media print {
+        body {
+          margin: 0;
+          padding: 0;
+        }
+      }
+    `;
+    
+    container.appendChild(style);
+    
+    const coverPage = document.createElement('div');
+    coverPage.className = 'cover-page';
+    
+    const coverHeader = document.createElement('div');
+    coverHeader.className = 'cover-header';
+    
+    const companyName = document.createElement('div');
+    companyName.className = 'company-name';
+    companyName.textContent = coverData.companyName;
+    coverHeader.appendChild(companyName);
+    
+    const coverTitle = document.createElement('h1');
+    coverTitle.className = 'cover-title';
+    coverTitle.textContent = coverData.title;
+    coverHeader.appendChild(coverTitle);
+    
+    const coverSubtitle = document.createElement('div');
+    coverSubtitle.className = 'cover-subtitle';
+    coverSubtitle.textContent = coverData.projectNumber;
+    coverHeader.appendChild(coverSubtitle);
+    
+    coverPage.appendChild(coverHeader);
+    
+    const infoSection = document.createElement('div');
+    infoSection.className = 'info-section';
+    
+    const leftInfo = document.createElement('div');
+    leftInfo.className = 'left-info';
+    
+    const infoTable = document.createElement('table');
+    infoTable.className = 'info-table';
+    
+    const infoTbody = document.createElement('tbody');
+    
+    const infoRow = document.createElement('tr');
+    
+    const infoLabel = document.createElement('td');
+    infoLabel.className = 'info-label';
+    infoLabel.textContent = 'Projektname';
+    infoRow.appendChild(infoLabel);
+    
+    const infoValue = document.createElement('td');
+    infoValue.textContent = coverData.projectAddress;
+    infoRow.appendChild(infoValue);
+    
+    infoTbody.appendChild(infoRow);
+    
+    infoTable.appendChild(infoTbody);
+    leftInfo.appendChild(infoTable);
+    
+    const rightInfo = document.createElement('div');
+    rightInfo.className = 'right-info';
+    
+    const infoTable2 = document.createElement('table');
+    infoTable2.className = 'info-table';
+    
+    const infoTbody2 = document.createElement('tbody');
+    
+    const infoRow2 = document.createElement('tr');
+    
+    const infoLabel2 = document.createElement('td');
+    infoLabel2.className = 'info-label';
+    infoLabel2.textContent = 'Kunde';
+    infoRow2.appendChild(infoLabel2);
+    
+    const infoValue2 = document.createElement('td');
+    infoValue2.textContent = coverData.clientName;
+    infoRow2.appendChild(infoValue2);
+    
+    infoTbody2.appendChild(infoRow2);
+    
+    infoTable2.appendChild(infoTbody2);
+    rightInfo.appendChild(infoTable2);
+    
+    infoSection.appendChild(leftInfo);
+    infoSection.appendChild(rightInfo);
+    
+    coverPage.appendChild(infoSection);
+    
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'content-container';
+    
+    const measurementSection = document.createElement('div');
+    measurementSection.className = 'measurement-section';
+    
+    const measurementTable = document.createElement('table');
+    measurementTable.className = 'measurement-table';
+    
+    const measurementTbody = document.createElement('tbody');
+    
+    sortedMeasurements.forEach((measurement, index) => {
+      const measurementRow = document.createElement('tr');
+      
+      const measurementTypeHeader = document.createElement('h2');
+      measurementTypeHeader.className = 'measurement-type-header';
+      measurementTypeHeader.textContent = getMeasurementTypeDisplayName(measurement.type);
+      measurementRow.appendChild(measurementTypeHeader);
+      
+      const measurementTableHead = document.createElement('thead');
+      const measurementHeaderRow = document.createElement('tr');
+      
+      ['Teilmessung', 'Länge (m)', 'Typ'].forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        measurementHeaderRow.appendChild(th);
+      });
+      
+      measurementTableHead.appendChild(measurementHeaderRow);
+      measurementTable.appendChild(measurementTableHead);
+      
+      const measurementTableBody = document.createElement('tbody');
+      
+      if (measurement.segments) {
+        measurement.segments.forEach((segment, sIndex) => {
+          const segmentRow = document.createElement('tr');
+          
+          const segmentNumCell = document.createElement('td');
+          segmentNumCell.textContent = `Teilmessung ${sIndex + 1}`;
+          segmentRow.appendChild(segmentNumCell);
+          
+          const segmentLengthCell = document.createElement('td');
+          segmentLengthCell.textContent = `${segment.length.toFixed(2)} m`;
+          segmentRow.appendChild(segmentLengthCell);
+          
+          const segmentTypeCell = document.createElement('td');
+          if (segment.type) {
+            const typeName = getSegmentTypeDisplayName(segment.type);
+            segmentTypeCell.textContent = typeName;
+          } else {
+            segmentTypeCell.textContent = '–';
+          }
+          segmentRow.appendChild(segmentTypeCell);
+          
+          measurementTableBody.appendChild(segmentRow);
+        });
+      }
+      
+      measurementTable.appendChild(measurementTableBody);
+      measurementRow.appendChild(measurementTable);
+      
+      measurementTbody.appendChild(measurementRow);
+    });
+    
+    measurementSection.appendChild(measurementTbody);
+    contentContainer.appendChild(measurementSection);
+    
+    const summarySection = document.createElement('div');
+    summarySection.className = 'summary-section';
+    
+    const summaryTable = document.createElement('table');
+    summaryTable.className = 'summary-table';
+    
+    const summaryTbody = document.createElement('tbody');
+    
+    const summaryRow = document.createElement('tr');
+    
+    const summaryLabel = document.createElement('td');
+    summaryLabel.className = 'info-label';
+    summaryLabel.textContent = 'Gesamtfläche';
+    summaryRow.appendChild(summaryLabel);
+    
+    const summaryValue = document.createElement('td');
+    summaryValue.textContent = `${summaryData.totalArea.toFixed(2)} m²`;
+    summaryRow.appendChild(summaryValue);
+    
+    summaryTbody.appendChild(summaryRow);
+    
+    summaryTable.appendChild(summaryTbody);
+    summarySection.appendChild(summaryTable);
+    
+    contentContainer.appendChild(summarySection);
+    
+    coverPage.appendChild(contentContainer);
+    
+    container.appendChild(coverPage);
+    
+    const pdf = await html2pdf().from(container).save();
+    
+    return pdf;
+  } catch (error) {
+    console.error('Error exporting measurements to PDF:', error);
+    return false;
+  }
+};
