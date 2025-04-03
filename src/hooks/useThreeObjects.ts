@@ -107,6 +107,16 @@ export const useThreeObjects = (scene: THREE.Scene | null, enabled: boolean) => 
     measurementsRef,
     editPointsRef,
     labelsRef,
-    segmentLabelsRef
+    segmentLabelsRef,
+    getAllGroups: () => {
+      return [
+        pointsRef.current,
+        linesRef.current,
+        measurementsRef.current,
+        editPointsRef.current,
+        labelsRef.current,
+        segmentLabelsRef.current
+      ].filter(Boolean) as THREE.Group[];
+    }
   };
 };

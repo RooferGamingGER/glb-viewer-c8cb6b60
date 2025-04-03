@@ -76,7 +76,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     measurementsRef,
     editPointsRef,
     labelsRef,
-    segmentLabelsRef
+    segmentLabelsRef,
+    getAllGroups
   } = useThreeObjects(scene, enabled);
 
   // Utils for handling measurement visibility
@@ -84,7 +85,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handleToggleMeasurementVisibility,
     handleToggleLabelVisibility,
     updateAllLabelsVisibility,
-    updateMeasurementMarkers
+    updateMeasurementMarkers,
+    getMeasurementGroups
   } = useMeasurementVisibility(
     measurements,
     toggleMeasurementVisibility,
@@ -94,9 +96,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       linesRef,
       measurementsRef,
       labelsRef,
-      segmentLabelsRef
+      segmentLabelsRef,
+      getAllGroups
     }
   );
+
+  // Get all measurement groups for passing to ExportPdfButton
+  const [measurementGroups, setMeasurementGroups] = useState<THREE.Group[]>([]);
+  
+  useEffect(() => {
+    setMeasurementGroups(getMeasurementGroups());
+  }, [getMeasurementGroups]);
 
   // Define the visual update function
   const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean) => {
@@ -434,7 +444,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             )}
           </div>
           
-          {/* Measurement list */}
+          {/* Measurement list with the added measurementGroups prop */}
           <MeasurementSidebar
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
@@ -455,6 +465,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             activeMode={activeMode}
             handleMoveMeasurementUp={handleMoveMeasurementUp}
             handleMoveMeasurementDown={handleMoveMeasurementDown}
+            measurementGroups={measurementGroups}
           />
         </div>
       </div>
