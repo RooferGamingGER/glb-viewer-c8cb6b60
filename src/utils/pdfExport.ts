@@ -1,4 +1,3 @@
-
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -672,9 +671,15 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       .cover-title {
         font-size: 28px;
         font-weight: bold;
-        margin-bottom: 30px;
+        margin-bottom: 5px;
         color: #333;
         text-align: center;
+      }
+      .cover-subtitle {
+        text-align: center;
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 30px;
       }
       .info-section {
         display: flex;
@@ -717,28 +722,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       .toc-table td {
         padding: 5px 0;
         border-bottom: 1px solid #eee;
-      }
-      .promo-footer {
-        position: absolute;
-        bottom: 30px;
-        left: 0;
-        right: 0;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-top: 30px; /* Additional margin to ensure separation from content */
-      }
-      .promo-primary {
-        font-size: 18px;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 10px;
-      }
-      .promo-secondary {
-        font-size: 14px;
-        color: #555;
-        margin-bottom: 5px;
       }
       .measurement-section {
         margin-top: 20px;
@@ -841,6 +824,11 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     title.className = 'cover-title';
     title.textContent = coverData.title;
     coverPage.appendChild(title);
+    
+    const subtitle = document.createElement('div');
+    subtitle.className = 'cover-subtitle';
+    subtitle.innerHTML = 'Kostenloser GLB Viewer: drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
+    coverPage.appendChild(subtitle);
     
     const infoSection = document.createElement('div');
     infoSection.className = 'info-section';
@@ -966,26 +954,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       
       coverPage.appendChild(notesSection);
     }
-    
-    const promoFooter = document.createElement('div');
-    promoFooter.className = 'promo-footer';
-    
-    const promoPrimary = document.createElement('div');
-    promoPrimary.className = 'promo-primary';
-    promoPrimary.textContent = 'DrohnenGLB by RooferGaming';
-    promoFooter.appendChild(promoPrimary);
-    
-    const promoSecondary1 = document.createElement('div');
-    promoSecondary1.className = 'promo-secondary';
-    promoSecondary1.textContent = 'Kostenloser GLB Viewer: drohnenglb.de';
-    promoFooter.appendChild(promoSecondary1);
-    
-    const promoSecondary2 = document.createElement('div');
-    promoSecondary2.className = 'promo-secondary';
-    promoSecondary2.textContent = 'Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
-    promoFooter.appendChild(promoSecondary2);
-    
-    coverPage.appendChild(promoFooter);
     
     // IMPORTANT: Add the cover page to the container
     container.appendChild(coverPage);
