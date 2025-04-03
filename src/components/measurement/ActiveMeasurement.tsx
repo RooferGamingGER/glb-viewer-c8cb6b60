@@ -1,5 +1,5 @@
 
-import React, { useContext } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   CheckCircle2,
@@ -34,7 +34,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   // Don't render anything if no measurement tool is active
   if (activeMode === 'none') return null;
   
-  // Get point snapping state
+  // Get point snapping state - pass null for scene as we don't need it here
   const { snapEnabled, isSnapping } = usePointSnapping(null);
   
   return (

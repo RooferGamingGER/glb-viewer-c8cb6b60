@@ -7,6 +7,7 @@ import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
 import { useMeasurementEvents } from './useMeasurementEvents';
 import { usePointSnapping } from './usePointSnapping';
+import { useMeasurementRaycasting } from './useMeasurementRaycasting';
 
 /**
  * Main hook for measurement interactions - combines all other specialized hooks
@@ -35,27 +36,28 @@ export const useMeasurementInteraction = (
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
-  // Hook for preview visualization
-  const {
-    previewPoint,
-    setPreviewPoint,
-    clearPreviewGroup,
-    updatePreviewVisualization
-  } = useMeasurementPreview(scene);
+  // State for preview point
+  const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
 
-  // Hook for plus symbols for adding points
+  // Use the enhanced raycasting hook which includes preview functionality
   const {
+    raycast,
     addPointIndicatorsRef,
     clearAddPointIndicators,
-    updateAddPointIndicators
-  } = useAddPointIndicators(scene);
+    updateAddPointIndicators,
+    clearPreviewGroup,
+    createPreviewGroup
+  } = useMeasurementRaycasting(scene, camera);
 
   // Hook for point snapping with enhanced functionality
   const {
-    clearSnapIndicator,
     snapEnabled,
+    setSnapEnabled,
     isSnapping,
-    snapTarget
+    snapTarget,
+    setSnapping,
+    checkPointForSnapping,
+    clearSnapIndicator
   } = usePointSnapping(scene);
 
   // Hook for point movement
@@ -63,27 +65,32 @@ export const useMeasurementInteraction = (
     movingPointInfo,
     setMovingPointInfo,
     startPointMovement,
-    finishPointMovement,
-    updateMovingPoint
+    updateMovingPoint,
+    finishPointMovement
   } = usePointMovement(scene, camera, handlers.updateMeasurementPoint);
-
-  // Update preview display when the preview point changes
-  useEffect(() => {
-    updatePreviewVisualization(movingPointInfo, measurements);
-  }, [previewPoint, movingPointInfo, measurements, updatePreviewVisualization]);
 
   // Update the plus symbols for area measurements in edit mode
   useEffect(() => {
     updateAddPointIndicators(editMeasurementId, measurements);
   }, [editMeasurementId, measurements, updateAddPointIndicators]);
 
-  // Event handlers for interactions
+  // Clean up visual indicators when enabled status changes
+  useEffect(() => {
+    if (!enabled) {
+      if (clearPreviewGroup) clearPreviewGroup();
+      clearAddPointIndicators();
+      clearSnapIndicator();
+      setMovingPointInfo(null);
+    }
+  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
+
+  // Event handlers for measurement interactions
   useMeasurementEvents(
     enabled,
     scene,
     camera,
     open,
-    activeMode,
+    activeMode as any,
     editMeasurementId,
     editingPointIndex,
     measurements,
@@ -98,19 +105,9 @@ export const useMeasurementInteraction = (
     },
     {
       editPointsRef: refs.editPointsRef,
-      addPointIndicatorsRef
+      addPointIndicatorsRef: addPointIndicatorsRef as React.RefObject<THREE.Group>
     }
   );
-
-  // Clean up when enabled status changes
-  useEffect(() => {
-    if (!enabled) {
-      clearPreviewGroup();
-      clearAddPointIndicators();
-      clearSnapIndicator();
-      setMovingPointInfo(null);
-    }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
 
   return {
     movingPointInfo,

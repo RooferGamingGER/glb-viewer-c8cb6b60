@@ -13,6 +13,7 @@ export const useMeasurementRaycasting = (
   // References for raycaster and add point indicators
   const raycasterRef = useRef(new THREE.Raycaster());
   const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
+  const previewGroupRef = useRef<THREE.Group | null>(null);
   
   // Create a reusable raycaster
   const raycast = useCallback((event: MouseEvent) => {
@@ -51,6 +52,31 @@ export const useMeasurementRaycasting = (
     
     return null;
   }, [scene, camera]);
+  
+  // Create preview group
+  const createPreviewGroup = useCallback(() => {
+    if (!scene) return null;
+    
+    // Clean up existing preview
+    clearPreviewGroup();
+    
+    // Create a group to hold the preview
+    const group = new THREE.Group();
+    group.name = 'previewGroup';
+    scene.add(group);
+    
+    previewGroupRef.current = group;
+    
+    return group;
+  }, [scene]);
+  
+  // Clear preview group
+  const clearPreviewGroup = useCallback(() => {
+    if (previewGroupRef.current && scene) {
+      scene.remove(previewGroupRef.current);
+      previewGroupRef.current = null;
+    }
+  }, [scene]);
   
   // Create add point indicators
   const createAddPointIndicators = useCallback(() => {
@@ -161,6 +187,9 @@ export const useMeasurementRaycasting = (
     raycast,
     addPointIndicatorsRef,
     clearAddPointIndicators,
-    updateAddPointIndicators
+    updateAddPointIndicators,
+    previewGroupRef,
+    createPreviewGroup,
+    clearPreviewGroup
   };
 };

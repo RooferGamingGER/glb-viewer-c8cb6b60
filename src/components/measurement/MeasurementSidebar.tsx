@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Measurement } from '@/hooks/useMeasurements'; 
+import { Measurement } from '@/types/measurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
 import { usePointSnapping } from '@/hooks/usePointSnapping';
+import * as THREE from 'three';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];

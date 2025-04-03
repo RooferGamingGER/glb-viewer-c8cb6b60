@@ -1,264 +1,166 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { Point, Measurement } from '@/types/measurements';
 
-// Configuration
-const SNAP_THRESHOLD = 0.2; // Base threshold in meters
-const SNAP_HYSTERESIS = 0.1; // Additional distance to maintain snapping once engaged
-const SNAP_COLOR = '#00ff00'; // Bright green
-const SNAP_PULSE_COLOR = '#4bff4b'; // Lighter green for pulsing effect
-const SNAP_RADIUS = 0.15; // Size of the snap indicator
-const INDICATOR_SCALE_FACTOR = 1.5; // How much larger the indicator is than the actual snap area
-const INDICATOR_OPACITY = 0.7; // Opacity of the indicator
+// Snap tolerance in world units (e.g., meters)
+const SNAP_TOLERANCE = 0.5;
+// Snap tolerance with hysteresis for stability
+const SNAP_HYSTERESIS_IN = 0.6;  // More generous to snap in
+const SNAP_HYSTERESIS_OUT = 0.4; // Stricter to snap out
 
-interface SnapState {
-  isSnapping: boolean;
-  snapTarget: {
+// Debounce time for clearing snap indicators (ms)
+const CLEAR_INDICATOR_DEBOUNCE = 500;
+
+/**
+ * Enhanced hook for point snapping functionality with improved stability
+ */
+export const usePointSnapping = (scene: THREE.Scene | null) => {
+  // Main state for snapping
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+  const [isSnapping, setIsSnapping] = useState<boolean>(false);
+  const [snapTarget, setSnapTarget] = useState<{
     point: Point;
     measurementId?: string;
     pointIndex?: number;
-  } | null;
-}
+  } | null>(null);
 
-/**
- * Enhanced hook for point snapping with hysteresis and improved visual feedback
- */
-export const usePointSnapping = (scene: THREE.Scene | null) => {
-  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
-  const [snapState, setSnapState] = useState<SnapState>({
-    isSnapping: false,
-    snapTarget: null
-  });
+  // Refs for internal state management
+  const snapIndicatorRef = useRef<THREE.Mesh | null>(null);
+  const clearSnapIndicatorTimerRef = useRef<number | null>(null);
   
-  // Use refs to avoid stale closures in event handlers
-  const snapEnabledRef = useRef(snapEnabled);
-  const snapStateRef = useRef(snapState);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const snapIndicatorRef = useRef<THREE.Group | null>(null);
-  const pulseAnimationRef = useRef<number>(0);
-  
-  // Update refs when state changes
-  useEffect(() => {
-    snapEnabledRef.current = snapEnabled;
-    snapStateRef.current = snapState;
-  }, [snapEnabled, snapState]);
-
-  // Create the snap indicator
-  const createSnapIndicator = useCallback(() => {
-    if (!scene) return;
+  // Set snapping state
+  const setSnapping = useCallback((
+    isSnap: boolean,
+    point?: Point,
+    measurementId?: string,
+    pointIndex?: number
+  ) => {
+    setIsSnapping(isSnap);
     
-    // Clean up any existing indicator first
-    clearSnapIndicator();
-    
-    // Create a group to hold the indicator elements
-    const group = new THREE.Group();
-    group.name = 'snapIndicator';
-    
-    // Create a pulsing circle
-    const ringGeometry = new THREE.RingGeometry(SNAP_RADIUS * 0.8, SNAP_RADIUS, 32);
-    const ringMaterial = new THREE.MeshBasicMaterial({
-      color: SNAP_COLOR,
-      transparent: true,
-      opacity: INDICATOR_OPACITY,
-      side: THREE.DoubleSide
-    });
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    
-    // Create a filled circle
-    const circleGeometry = new THREE.CircleGeometry(SNAP_RADIUS * 0.7, 32);
-    const circleMaterial = new THREE.MeshBasicMaterial({
-      color: SNAP_PULSE_COLOR,
-      transparent: true,
-      opacity: INDICATOR_OPACITY * 0.7,
-      side: THREE.DoubleSide
-    });
-    const circle = new THREE.Mesh(circleGeometry, circleMaterial);
-    
-    // Add to group and position correctly
-    ring.rotation.x = -Math.PI / 2;
-    circle.rotation.x = -Math.PI / 2;
-    
-    // Position slightly above the surface to avoid z-fighting
-    ring.position.y = 0.01;
-    circle.position.y = 0.01;
-    
-    group.add(ring);
-    group.add(circle);
-    group.visible = false;
-    
-    scene.add(group);
-    snapIndicatorRef.current = group;
-    
-    return group;
-  }, [scene]);
-
-  // Update the snap indicator position and animation
-  const updateSnapIndicator = useCallback((point: Point | null, isSnapping: boolean) => {
-    if (!snapIndicatorRef.current || !point) {
-      if (snapIndicatorRef.current) {
-        snapIndicatorRef.current.visible = false;
-      }
-      return;
-    }
-    
-    // Position the indicator
-    snapIndicatorRef.current.position.set(point.x, point.y, point.z);
-    snapIndicatorRef.current.visible = true;
-    
-    // Animate the indicator if snapping
-    if (isSnapping) {
-      // Get the circle element (second child)
-      const circle = snapIndicatorRef.current.children[1] as THREE.Mesh;
-      const ring = snapIndicatorRef.current.children[0] as THREE.Mesh;
+    if (isSnap && point) {
+      setSnapTarget({
+        point,
+        measurementId,
+        pointIndex
+      });
       
-      if (circle && circle.material) {
-        // Pulsing opacity effect
-        const circleMaterial = circle.material as THREE.MeshBasicMaterial;
-        const ringMaterial = ring.material as THREE.MeshBasicMaterial;
-        
-        // Update pulse animation
-        pulseAnimationRef.current = (pulseAnimationRef.current + 0.05) % (Math.PI * 2);
-        const pulseValue = (Math.sin(pulseAnimationRef.current) + 1) / 2; // 0 to 1
-        
-        circleMaterial.opacity = INDICATOR_OPACITY * 0.5 + (pulseValue * INDICATOR_OPACITY * 0.5);
-        ringMaterial.color.set(pulseValue > 0.7 ? SNAP_PULSE_COLOR : SNAP_COLOR);
-        
-        // Scale effect
-        const scale = 1 + (pulseValue * 0.2);
-        ring.scale.set(scale, scale, 1);
+      // Create or update snap indicator
+      createSnapIndicator(point);
+      
+      // Clear any pending clear timer
+      if (clearSnapIndicatorTimerRef.current !== null) {
+        window.clearTimeout(clearSnapIndicatorTimerRef.current);
+        clearSnapIndicatorTimerRef.current = null;
+      }
+    } else {
+      setSnapTarget(null);
+      
+      // Schedule clearing the indicator with debounce
+      if (clearSnapIndicatorTimerRef.current === null) {
+        clearSnapIndicatorTimerRef.current = window.setTimeout(() => {
+          clearSnapIndicator();
+          clearSnapIndicatorTimerRef.current = null;
+        }, CLEAR_INDICATOR_DEBOUNCE);
       }
     }
   }, []);
-
-  // Clear the snap indicator from the scene
+  
+  // Clear snap indicator
   const clearSnapIndicator = useCallback(() => {
     if (snapIndicatorRef.current && scene) {
       scene.remove(snapIndicatorRef.current);
       snapIndicatorRef.current = null;
     }
   }, [scene]);
-
-  // Setup and cleanup
-  useEffect(() => {
+  
+  // Create snap indicator
+  const createSnapIndicator = useCallback((point: Point) => {
     if (!scene) return;
     
-    // Create the snap indicator
-    createSnapIndicator();
+    // Clear existing indicator
+    if (snapIndicatorRef.current) {
+      scene.remove(snapIndicatorRef.current);
+    }
     
-    // Setup animation loop for pulsing effect
-    const animateIndicator = () => {
-      if (snapStateRef.current.isSnapping && snapStateRef.current.snapTarget) {
-        updateSnapIndicator(snapStateRef.current.snapTarget.point, true);
-      }
-      requestAnimationFrame(animateIndicator);
+    // Create a larger, more visible snap indicator
+    const geometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.7,
+    });
+    
+    const indicator = new THREE.Mesh(geometry, material);
+    indicator.position.set(point.x, point.y, point.z);
+    indicator.userData = { isUI: true };
+    
+    scene.add(indicator);
+    snapIndicatorRef.current = indicator;
+    
+    // Add a pulsing animation
+    const pulseAnimation = () => {
+      if (!snapIndicatorRef.current) return;
+      
+      const time = Date.now() * 0.002;
+      const pulse = Math.sin(time) * 0.2 + 1.0;
+      
+      snapIndicatorRef.current.scale.set(pulse, pulse, pulse);
+      requestAnimationFrame(pulseAnimation);
     };
     
-    const animationId = requestAnimationFrame(animateIndicator);
-    
-    return () => {
-      cancelAnimationFrame(animationId);
-      clearSnapIndicator();
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [scene, createSnapIndicator, updateSnapIndicator, clearSnapIndicator]);
-
-  // Set snapping status with or without a point
-  const setSnapping = useCallback((
-    isSnapping: boolean, 
-    point?: Point, 
-    measurementId?: string, 
-    pointIndex?: number
-  ) => {
-    // Cancel any pending debounce
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
-    
-    // If we're turning off snapping, debounce it to avoid flickering
-    if (!isSnapping && snapStateRef.current.isSnapping) {
-      debounceTimerRef.current = setTimeout(() => {
-        setSnapState({
-          isSnapping: false,
-          snapTarget: null
-        });
-        updateSnapIndicator(null, false);
-      }, 150); // Short delay to reduce flickering
-      return;
-    }
-    
-    // If we're turning on snapping or updating the target point
-    if (isSnapping && point) {
-      setSnapState({
-        isSnapping,
-        snapTarget: {
-          point,
-          measurementId,
-          pointIndex
-        }
-      });
-      updateSnapIndicator(point, true);
-    }
-  }, [updateSnapIndicator]);
-
-  // Check if a point is within snap distance of any existing point
+    pulseAnimation();
+  }, [scene]);
+  
+  // Check if a point should snap to any existing points
   const checkPointForSnapping = useCallback((
-    point: Point,
+    testPoint: Point,
     measurements: Measurement[],
-    activeId?: string | null,
-    excludePointIndex?: number
+    currentMeasurementId?: string | null,
+    currentPointIndex?: number | null
   ) => {
-    if (!snapEnabledRef.current) return null;
-    
-    // Determine the effective threshold based on current state
-    // If already snapping, use a larger threshold (hysteresis)
-    const effectiveThreshold = snapStateRef.current.isSnapping 
-      ? SNAP_THRESHOLD + SNAP_HYSTERESIS 
-      : SNAP_THRESHOLD;
+    if (!snapEnabled) return null;
     
     let closestPoint: Point | null = null;
-    let closestDistance = Infinity;
+    let closestDistance = isSnapping ? SNAP_HYSTERESIS_OUT : SNAP_HYSTERESIS_IN;
     let closestMeasurementId: string | undefined;
     let closestPointIndex: number | undefined;
     
+    // Function to process a point
+    const processPoint = (point: Point, measurementId: string, pointIndex: number) => {
+      const distance = Math.sqrt(
+        Math.pow(testPoint.x - point.x, 2) +
+        Math.pow(testPoint.y - point.y, 2) +
+        Math.pow(testPoint.z - point.z, 2)
+      );
+      
+      // Skip the current point if we're editing
+      if (
+        currentMeasurementId === measurementId && 
+        currentPointIndex === pointIndex
+      ) {
+        return;
+      }
+      
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestPoint = point;
+        closestMeasurementId = measurementId;
+        closestPointIndex = pointIndex;
+      }
+    };
+    
     // Check all measurements
     for (const measurement of measurements) {
-      // Skip the current measurement if we're editing and should exclude self
-      if (activeId && measurement.id === activeId) {
-        for (let i = 0; i < measurement.points.length; i++) {
-          // Skip the point we're currently editing
-          if (excludePointIndex !== undefined && i === excludePointIndex) continue;
-          
-          const p = measurement.points[i];
-          const distance = calculateDistance(point, p);
-          
-          if (distance < effectiveThreshold && distance < closestDistance) {
-            closestDistance = distance;
-            closestPoint = p;
-            closestMeasurementId = measurement.id;
-            closestPointIndex = i;
-          }
-        }
-      } else {
-        // Check points in other measurements
-        for (let i = 0; i < measurement.points.length; i++) {
-          const p = measurement.points[i];
-          const distance = calculateDistance(point, p);
-          
-          if (distance < effectiveThreshold && distance < closestDistance) {
-            closestDistance = distance;
-            closestPoint = p;
-            closestMeasurementId = measurement.id;
-            closestPointIndex = i;
-          }
-        }
-      }
+      // Skip hidden measurements
+      if (measurement.visible === false) continue;
+      
+      // Process each point in the measurement
+      measurement.points.forEach((point, index) => {
+        processPoint(point, measurement.id, index);
+      });
     }
     
-    // If we found a point to snap to
     if (closestPoint) {
       return {
         point: closestPoint,
@@ -268,26 +170,26 @@ export const usePointSnapping = (scene: THREE.Scene | null) => {
     }
     
     return null;
-  }, []);
-
-  // Calculate distance between points
-  const calculateDistance = (p1: Point, p2: Point): number => {
-    return Math.sqrt(
-      Math.pow(p1.x - p2.x, 2) + 
-      Math.pow(p1.y - p2.y, 2) + 
-      Math.pow(p1.z - p2.z, 2)
-    );
-  };
-
-  // Return the public API
+  }, [snapEnabled, isSnapping]);
+  
+  // Clean up on unmount or when scene changes
+  useEffect(() => {
+    return () => {
+      clearSnapIndicator();
+      if (clearSnapIndicatorTimerRef.current !== null) {
+        window.clearTimeout(clearSnapIndicatorTimerRef.current);
+        clearSnapIndicatorTimerRef.current = null;
+      }
+    };
+  }, [clearSnapIndicator]);
+  
   return {
     snapEnabled,
     setSnapEnabled,
-    isSnapping: snapState.isSnapping,
-    snapTarget: snapState.snapTarget,
+    isSnapping,
+    snapTarget,
     setSnapping,
     checkPointForSnapping,
-    clearSnapIndicator,
-    updateSnapIndicator
+    clearSnapIndicator
   };
 };
