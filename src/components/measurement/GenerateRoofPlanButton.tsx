@@ -33,12 +33,14 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     setIsGenerating(true);
     
     try {
-      // Specify that we want a true top-down view
-      const plan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+      // Specify that we want a true top-down view with higher resolution
+      const plan = createCombinedRoofPlan(measurements, 2000, 1400, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {
         toast.error('Fehler beim Erstellen des Dachplans');
+      } else {
+        toast.success('Dachplan erfolgreich erstellt');
       }
     } catch (error) {
       console.error('Error generating roof plan:', error);
@@ -83,10 +85,12 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
-  // Count the number of roof surfaces available
+  // Count the number of roof surfaces and segments available
   const areaCount = measurements.filter(m => 
     ['area', 'solar'].includes(m.type) && m.points && m.points.length >= 3
   ).length;
+  
+  const segmentCount = measurements.reduce((total, m) => total + (m.segments?.length || 0), 0);
   
   return (
     <Dialog>
@@ -101,19 +105,19 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
           Dachplan
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>Dachplan - Draufsicht</DialogTitle>
           <DialogDescription>
             {areaCount > 0 
-              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen in der Draufsicht.`
+              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen und ${segmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-4">
           {!roofPlan ? (
-            <div className="flex justify-center items-center h-[400px] border rounded-md bg-muted/20">
+            <div className="flex justify-center items-center h-[500px] border rounded-md bg-muted/20">
               <Button 
                 onClick={handleGenerateRoofPlan}
                 disabled={isGenerating || areaCount === 0}
@@ -128,7 +132,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
                   src={roofPlan} 
                   alt="Dachplan" 
                   className="w-full object-contain"
-                  style={{ maxHeight: '400px' }} 
+                  style={{ maxHeight: '500px' }} 
                 />
               </div>
               
