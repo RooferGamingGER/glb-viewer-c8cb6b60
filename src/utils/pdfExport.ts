@@ -1046,6 +1046,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     });
     
+
     rightInfo.appendChild(customerTable);
     infoSection.appendChild(rightInfo);
     
