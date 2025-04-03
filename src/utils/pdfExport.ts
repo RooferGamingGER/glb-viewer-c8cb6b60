@@ -1,3 +1,4 @@
+
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
@@ -649,10 +650,12 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .cover-page {
         padding: 30px;
-        min-height: 1200px; /* Increased from 1100px to ensure content fits on one page */
-        height: 100%;
+        height: 1100px; /* Fixed height to ensure it fits on one page */
+        max-height: 1100px; /* Ensure it doesn't grow beyond this */
         position: relative;
         background-color: #fafafa;
+        overflow: hidden; /* Hide any overflow content */
+        box-sizing: border-box; /* Include padding in height calculation */
       }
       .cover-header {
         margin-bottom: 30px;
@@ -709,7 +712,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
       .model-image {
         width: 100%;
-        max-height: 280px;
+        max-height: 240px; /* Reduced height to ensure everything fits */
         object-fit: contain;
         border: 1px solid #ddd;
         border-radius: 8px;
@@ -912,6 +915,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     coverPage.appendChild(infoSection);
     
+    // Limit the height of the model view image
     if ((measurements as any).topDownScreenshot) {
       const modelView = document.createElement('div');
       modelView.className = 'model-view';
@@ -926,15 +930,21 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     }
     
     // Only add table of contents if not skipped
+    // Make sure cover page summary and notes still fit on the first page
+    const contentContainer = document.createElement('div');
+    contentContainer.style.maxHeight = '320px'; // Limit the height of this container
+    contentContainer.style.overflow = 'hidden'; // Hide overflow
+
     if (!(measurements as any).skipTableOfContents) {
       const toc = createTableOfContents(measurements);
-      coverPage.appendChild(toc);
+      contentContainer.appendChild(toc);
     }
     
     const coverSummary = createCoverPageSummary(summaryData);
-    coverPage.appendChild(coverSummary);
+    contentContainer.appendChild(coverSummary);
     
     if (coverData.notes) {
+      // Limit the notes section to ensure it fits
       const notesSection = document.createElement('div');
       notesSection.style.marginTop = '20px';
       
@@ -946,14 +956,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       
       const notesContent = document.createElement('div');
       notesContent.style.padding = '10px';
+      notesContent.style.maxHeight = '100px'; // Limit notes height
+      notesContent.style.overflow = 'hidden'; // Hide overflow
+      notesContent.style.textOverflow = 'ellipsis'; // Add ellipsis if text overflows
       notesContent.style.backgroundColor = '#f9f9f9';
       notesContent.style.borderRadius = '4px';
       notesContent.style.border = '1px solid #eee';
       notesContent.textContent = coverData.notes;
       notesSection.appendChild(notesContent);
       
-      coverPage.appendChild(notesSection);
+      contentContainer.appendChild(notesSection);
     }
+    
+    coverPage.appendChild(contentContainer);
     
     // IMPORTANT: Add the cover page to the container
     container.appendChild(coverPage);
