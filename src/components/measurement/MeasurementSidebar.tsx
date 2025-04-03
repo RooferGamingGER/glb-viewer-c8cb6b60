@@ -43,6 +43,7 @@ interface MeasurementSidebarProps {
   activeMode?: string;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
+  measurementGroups?: THREE.Group[];
 }
 
 const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({ 
@@ -64,7 +65,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   allLabelsVisible,
   activeMode,
   handleMoveMeasurementUp,
-  handleMoveMeasurementDown
+  handleMoveMeasurementDown,
+  measurementGroups
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
   const { toast } = useToast();

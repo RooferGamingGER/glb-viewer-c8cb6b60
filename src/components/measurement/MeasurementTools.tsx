@@ -1,14 +1,13 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
-// Import custom hooks
-import { useThreeObjects } from '@/hooks/useThreeObjects';
-import { useLabelScaling } from '@/hooks/useLabelScaling';
-import { useMeasurementInteraction } from '@/hooks/useMeasurementInteraction';
-import { useMeasurements } from '@/hooks/useMeasurements';
+// Import contexts and hooks
+import { MeasurementProvider, useMeasurementContext } from '@/contexts/MeasurementContext';
+import { ThreeJsProvider, useThreeJs } from '@/contexts/ThreeJsContext';
+import { useVisibilityManager } from '@/hooks/useVisibilityManager';
+import { useMeasurementInteractionManager } from '@/hooks/useMeasurementInteractionManager';
 import { useMeasurementState } from '@/hooks/useMeasurementState';
-import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
-import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 
 // Import visualization utilities
 import { 
@@ -33,13 +32,35 @@ interface MeasurementToolsProps {
   autoOpenSidebar?: boolean;
 }
 
+// Wrapper component that provides contexts
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
   camera,
   autoOpenSidebar = false
 }) => {
-  // Measurement state from main hook
+  return (
+    <MeasurementProvider>
+      <ThreeJsProvider scene={scene} enabled={enabled}>
+        <MeasurementToolsContent
+          enabled={enabled}
+          scene={scene}
+          camera={camera}
+          autoOpenSidebar={autoOpenSidebar}
+        />
+      </ThreeJsProvider>
+    </MeasurementProvider>
+  );
+};
+
+// Main component that uses the context
+const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({ 
+  enabled,
+  scene,
+  camera,
+  autoOpenSidebar = false
+}) => {
+  // Get measurement state and actions from context
   const { 
     measurements,
     currentPoints,
@@ -67,9 +88,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     moveMeasurementUp,
     moveMeasurementDown,
     setUpdateVisualState
-  } = useMeasurements();
+  } = useMeasurementContext();
 
-  // Three.js object references
+  // Three.js object references from context
   const {
     pointsRef,
     linesRef,
@@ -77,8 +98,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     editPointsRef,
     labelsRef,
     segmentLabelsRef,
-    getAllGroups
-  } = useThreeObjects(scene, enabled);
+    updateLabelScaling
+  } = useThreeJs();
 
   // Utils for handling measurement visibility
   const { 
@@ -87,18 +108,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateAllLabelsVisibility,
     updateMeasurementMarkers,
     getMeasurementGroups
-  } = useMeasurementVisibility(
+  } = useVisibilityManager(
     measurements,
     toggleMeasurementVisibility,
     toggleLabelVisibility,
-    {
-      pointsRef,
-      linesRef,
-      measurementsRef,
-      labelsRef,
-      segmentLabelsRef,
-      getAllGroups
-    }
+    allLabelsVisible
   );
 
   // Get all measurement groups for passing to ExportPdfButton
@@ -130,9 +144,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         true
       );
     }
-  }, [updateAllLabelsVisibility, updateMeasurementMarkers]);
+  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef]);
 
-  // Set the update function in the measurements hook
+  // Set the update function in the measurements context
   useEffect(() => {
     setUpdateVisualState(updateVisualState);
   }, [setUpdateVisualState, updateVisualState]);
@@ -150,19 +164,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setMovingPointInfo, 
     clearPreviewGroup,
     clearAddPointIndicators 
-  } = useMeasurementInteraction(
+  } = useMeasurementInteractionManager(
     enabled,
     scene,
     camera,
-    true, // Always open
-    {
-      pointsRef,
-      linesRef,
-      measurementsRef,
-      editPointsRef,
-      labelsRef,
-      segmentLabelsRef
-    },
     measurements,
     currentPoints,
     activeMode,
@@ -172,11 +177,28 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   // Scale labels based on camera distance
-  useLabelScaling(camera, labelsRef, segmentLabelsRef);
+  useEffect(() => {
+    if (!camera) return;
+    
+    const handleCameraMove = () => {
+      updateLabelScaling(camera);
+    };
+    
+    // Initial update
+    handleCameraMove();
+    
+    // Setup listener for camera movement
+    window.addEventListener('cameramove', handleCameraMove);
+    
+    // Fallback - update periodically
+    const intervalId = setInterval(handleCameraMove, 1000);
+    
+    return () => {
+      window.removeEventListener('cameramove', handleCameraMove);
+      clearInterval(intervalId);
+    };
+  }, [camera, updateLabelScaling]);
   
-  // Utils for cleaning up measurement visuals
-  const { clearMeasurementVisuals } = useMeasurementCleanup();
-
   // Additional state and handlers for UI
   const { 
     showTable,
@@ -266,7 +288,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       processLabel(label, true);
     });
     
-  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
+  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible, labelsRef, segmentLabelsRef]);
 
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
@@ -291,7 +313,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       measurements, 
       true
     );
-  }, [measurements]);
+  }, [measurements, measurementsRef, labelsRef, segmentLabelsRef]);
 
   // Re-render current points when they change
   useEffect(() => {
@@ -302,7 +324,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       currentPoints, 
       activeMode
     );
-  }, [currentPoints, activeMode]);
+  }, [currentPoints, activeMode, pointsRef, linesRef, labelsRef]);
 
   // Re-render edit points when edit state changes
   useEffect(() => {
@@ -313,7 +335,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       editingPointIndex, 
       true
     );
-  }, [measurements, editMeasurementId, editingPointIndex]);
+  }, [measurements, editMeasurementId, editingPointIndex, editPointsRef]);
 
   // Clean up when enabled state changes
   useEffect(() => {
@@ -352,7 +374,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         true
       );
     }
-  }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators]);
+  }, [
+    enabled, 
+    measurements, 
+    editMeasurementId, 
+    editingPointIndex, 
+    clearPreviewGroup, 
+    clearAddPointIndicators,
+    pointsRef,
+    linesRef,
+    measurementsRef,
+    editPointsRef,
+    labelsRef,
+    segmentLabelsRef
+  ]);
 
   // Callback for handling cancellation of editing
   const handleCancelEditingWithCleanup = () => {
@@ -444,7 +479,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             )}
           </div>
           
-          {/* Measurement list with the added measurementGroups prop */}
+          {/* Measurement list with measurement groups prop */}
           <MeasurementSidebar
             measurements={measurements}
             toggleMeasurementVisibility={handleToggleMeasurementVisibility}
