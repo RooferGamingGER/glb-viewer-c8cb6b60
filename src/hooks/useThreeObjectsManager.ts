@@ -49,4 +49,3 @@ export const useThreeObjectsManager = (scene: THREE.Scene | null, enabled: boole
     getAllGroups
   };
 };
-

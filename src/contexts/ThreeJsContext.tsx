@@ -1,145 +1,123 @@
 
-import React, { createContext, useContext, useRef, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { Measurement } from '@/types/measurements';
 
-interface ThreeJsContextValue {
-  // Group references
-  pointsRef: React.MutableRefObject<THREE.Group | null>;
-  linesRef: React.MutableRefObject<THREE.Group | null>;
-  measurementsRef: React.MutableRefObject<THREE.Group | null>;
-  editPointsRef: React.MutableRefObject<THREE.Group | null>;
-  labelsRef: React.MutableRefObject<THREE.Group | null>;
-  segmentLabelsRef: React.MutableRefObject<THREE.Group | null>;
-  
-  // Utility functions
+// Define context type
+type ThreeJsContextType = {
+  pointsRef: React.RefObject<THREE.Group>;
+  linesRef: React.RefObject<THREE.Group>;
+  measurementsRef: React.RefObject<THREE.Group>;
+  editPointsRef: React.RefObject<THREE.Group>;
+  labelsRef: React.RefObject<THREE.Group>;
+  segmentLabelsRef: React.RefObject<THREE.Group>;
   initializeGroups: (scene: THREE.Scene) => void;
   cleanupGroups: () => void;
-  clearGroup: (group: THREE.Group | null) => void;
   getAllGroups: () => THREE.Group[];
+  clearGroup: (group: THREE.Group) => void;
   updateLabelScaling: (camera: THREE.Camera) => void;
-}
+};
 
-export const ThreeJsContext = createContext<ThreeJsContextValue | undefined>(undefined);
+// Create context with default values
+const ThreeJsContext = createContext<ThreeJsContextType>({
+  pointsRef: { current: null },
+  linesRef: { current: null },
+  measurementsRef: { current: null },
+  editPointsRef: { current: null },
+  labelsRef: { current: null },
+  segmentLabelsRef: { current: null },
+  initializeGroups: () => {},
+  cleanupGroups: () => {},
+  getAllGroups: () => [],
+  clearGroup: () => {},
+  updateLabelScaling: () => {},
+});
 
-export const ThreeJsProvider: React.FC<{ 
+// Interface for provider props
+interface ThreeJsProviderProps {
   children: React.ReactNode;
   scene: THREE.Scene | null;
   enabled: boolean;
-}> = ({ children, scene, enabled }) => {
-  // Create refs for all the Three.js object groups
-  const pointsRef = useRef<THREE.Group | null>(null);
-  const linesRef = useRef<THREE.Group | null>(null);
-  const measurementsRef = useRef<THREE.Group | null>(null);
-  const editPointsRef = useRef<THREE.Group | null>(null);
-  const labelsRef = useRef<THREE.Group | null>(null);
-  const segmentLabelsRef = useRef<THREE.Group | null>(null);
+}
 
-  // Initialize the groups in the scene
-  const initializeGroups = useCallback((scene: THREE.Scene) => {
-    if (!scene) return;
+// Provider component
+export const ThreeJsProvider: React.FC<ThreeJsProviderProps> = ({ 
+  children, 
+  scene,
+  enabled
+}) => {
+  // Create refs for all groups
+  const pointsRef = useRef<THREE.Group>(new THREE.Group());
+  const linesRef = useRef<THREE.Group>(new THREE.Group());
+  const measurementsRef = useRef<THREE.Group>(new THREE.Group());
+  const editPointsRef = useRef<THREE.Group>(new THREE.Group());
+  const labelsRef = useRef<THREE.Group>(new THREE.Group());
+  const segmentLabelsRef = useRef<THREE.Group>(new THREE.Group());
 
-    // Create points group
-    if (!pointsRef.current) {
-      pointsRef.current = new THREE.Group();
-      pointsRef.current.name = "measurementPoints";
-      scene.add(pointsRef.current);
-    }
+  // Flag to track if groups are initialized
+  const isInitializedRef = useRef(false);
 
-    // Create lines group
-    if (!linesRef.current) {
-      linesRef.current = new THREE.Group();
-      linesRef.current.name = "measurementLines";
-      scene.add(linesRef.current);
-    }
-    
-    // Create measurements group
-    if (!measurementsRef.current) {
-      measurementsRef.current = new THREE.Group();
-      measurementsRef.current.name = "measurementLabels";
-      scene.add(measurementsRef.current);
-    }
+  // Initialize groups in the scene
+  const initializeGroups = useCallback((sceneToUse: THREE.Scene) => {
+    if (!sceneToUse || isInitializedRef.current) return;
 
-    // Create edit points group
-    if (!editPointsRef.current) {
-      editPointsRef.current = new THREE.Group();
-      editPointsRef.current.name = "editPoints";
-      scene.add(editPointsRef.current);
-    }
-    
-    // Create labels group
-    if (!labelsRef.current) {
-      labelsRef.current = new THREE.Group();
-      labelsRef.current.name = "textLabels";
-      scene.add(labelsRef.current);
-    }
+    // Set names for the groups
+    pointsRef.current.name = "pointsGroup";
+    linesRef.current.name = "linesGroup";
+    measurementsRef.current.name = "measurementsGroup";
+    editPointsRef.current.name = "editPointsGroup";
+    labelsRef.current.name = "labelsGroup";
+    segmentLabelsRef.current.name = "segmentLabelsGroup";
 
-    // Create segment labels group
-    if (!segmentLabelsRef.current) {
-      segmentLabelsRef.current = new THREE.Group();
-      segmentLabelsRef.current.name = "segmentLabels";
-      scene.add(segmentLabelsRef.current);
-    }
+    // Add groups to the scene
+    sceneToUse.add(pointsRef.current);
+    sceneToUse.add(linesRef.current);
+    sceneToUse.add(measurementsRef.current);
+    sceneToUse.add(editPointsRef.current);
+    sceneToUse.add(labelsRef.current);
+    sceneToUse.add(segmentLabelsRef.current);
+
+    isInitializedRef.current = true;
   }, []);
 
-  // Clean up all the groups and dispose of resources
-  const cleanupGroups = useCallback(() => {
-    // Helper function to dispose of a group and its children
-    const disposeGroup = (group: THREE.Group | null) => {
-      if (!group || !scene) return;
-      
-      // Remove all children with proper disposal
-      while (group.children.length > 0) {
-        const object = group.children[0];
-        
-        // Dispose of geometries and materials if they exist
-        if (object instanceof THREE.Mesh) {
-          if (object.geometry) object.geometry.dispose();
-          if (object.material) {
-            if (Array.isArray(object.material)) {
-              object.material.forEach(material => material.dispose());
-            } else {
-              object.material.dispose();
-            }
-          }
-        }
-        
-        // Remove from parent
-        group.remove(object);
-      }
-      
-      // Remove the group from the scene
-      scene.remove(group);
-    };
-
-    // Dispose of all groups
-    disposeGroup(pointsRef.current);
-    disposeGroup(linesRef.current);
-    disposeGroup(measurementsRef.current);
-    disposeGroup(editPointsRef.current);
-    disposeGroup(labelsRef.current);
-    disposeGroup(segmentLabelsRef.current);
-    
-    // Reset refs
-    pointsRef.current = null;
-    linesRef.current = null;
-    measurementsRef.current = null;
-    editPointsRef.current = null;
-    labelsRef.current = null;
-    segmentLabelsRef.current = null;
-  }, [scene]);
-
-  // Clear a specific group without disposing
+  // Clear all objects from a group
   const clearGroup = useCallback((group: THREE.Group | null) => {
     if (!group) return;
-    
+
+    // Remove all children
     while (group.children.length > 0) {
       const child = group.children[0];
       group.remove(child);
+
+      // Dispose of geometries and materials
+      if (child instanceof THREE.Mesh) {
+        if (child.geometry) {
+          child.geometry.dispose();
+        }
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((material) => material.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      }
     }
   }, []);
 
-  // Get all measurement groups as an array
+  // Cleanup all groups
+  const cleanupGroups = useCallback(() => {
+    if (!isInitializedRef.current) return;
+
+    // Clear all groups
+    clearGroup(pointsRef.current);
+    clearGroup(linesRef.current);
+    clearGroup(measurementsRef.current);
+    clearGroup(editPointsRef.current);
+    clearGroup(labelsRef.current);
+    clearGroup(segmentLabelsRef.current);
+  }, [clearGroup]);
+
+  // Get all groups
   const getAllGroups = useCallback(() => {
     return [
       pointsRef.current,
@@ -154,81 +132,73 @@ export const ThreeJsProvider: React.FC<{
   // Update label scaling based on camera distance
   const updateLabelScaling = useCallback((camera: THREE.Camera) => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
-    
-    const updateGroupScaling = (group: THREE.Group) => {
-      group.children.forEach(label => {
-        // Check if the label has a position
-        if (label.position) {
-          // Calculate distance to camera
-          const distance = new THREE.Vector3()
-            .copy(label.position as THREE.Vector3)
-            .distanceTo(camera.position);
+
+    const updateGroupLabels = (group: THREE.Group) => {
+      group.children.forEach(child => {
+        if (child instanceof THREE.Group && child.userData.isLabel) {
+          // Get distance to camera
+          const position = new THREE.Vector3();
+          child.getWorldPosition(position);
+          const distanceToCamera = position.distanceTo(camera.position);
           
-          // Scale inversely proportional to distance, within bounds
-          const baseScale = 0.5;
-          const maxDistance = 20;
-          const minScale = 0.5;
-          const maxScale = 2.0;
+          // Scale based on distance
+          const baseScale = 0.01;
+          const scaleFactor = Math.max(baseScale, distanceToCamera * 0.004);
           
-          // Calculate scale factor based on distance
-          let scaleFactor = baseScale * (maxDistance / Math.max(distance, 1));
-          
-          // Clamp scale factor between min and max values
-          scaleFactor = Math.max(minScale, Math.min(maxScale, scaleFactor));
-          
-          // Apply scale to label
-          label.scale.set(scaleFactor, scaleFactor, scaleFactor);
+          // Apply scale
+          child.scale.set(scaleFactor, scaleFactor, scaleFactor);
         }
       });
     };
-    
-    // Update scaling for both label groups
-    updateGroupScaling(labelsRef.current);
-    updateGroupScaling(segmentLabelsRef.current);
+
+    // Update both label groups
+    updateGroupLabels(labelsRef.current);
+    updateGroupLabels(segmentLabelsRef.current);
   }, []);
 
-  // Initialize groups when scene is available and enabled
+  // Initialize groups when scene and enabled change
   useEffect(() => {
     if (scene && enabled) {
       initializeGroups(scene);
     }
     
+    // Cleanup when component unmounts
     return () => {
-      if (!enabled) {
-        cleanupGroups();
+      if (scene && isInitializedRef.current) {
+        // Remove groups from scene
+        scene.remove(pointsRef.current);
+        scene.remove(linesRef.current);
+        scene.remove(measurementsRef.current);
+        scene.remove(editPointsRef.current);
+        scene.remove(labelsRef.current);
+        scene.remove(segmentLabelsRef.current);
+        
+        isInitializedRef.current = false;
       }
     };
-  }, [scene, enabled, initializeGroups, cleanupGroups]);
+  }, [scene, enabled, initializeGroups]);
 
-  const value: ThreeJsContextValue = {
-    // Group references
+  // Provide context values
+  const contextValue = {
     pointsRef,
     linesRef,
     measurementsRef,
     editPointsRef,
     labelsRef,
     segmentLabelsRef,
-    
-    // Utility functions
     initializeGroups,
     cleanupGroups,
-    clearGroup,
     getAllGroups,
+    clearGroup,
     updateLabelScaling
   };
 
   return (
-    <ThreeJsContext.Provider value={value}>
+    <ThreeJsContext.Provider value={contextValue}>
       {children}
     </ThreeJsContext.Provider>
   );
 };
 
-export const useThreeJs = () => {
-  const context = useContext(ThreeJsContext);
-  if (context === undefined) {
-    throw new Error('useThreeJs must be used within a ThreeJsProvider');
-  }
-  return context;
-};
-
+// Hook for using the context
+export const useThreeJs = () => useContext(ThreeJsContext);

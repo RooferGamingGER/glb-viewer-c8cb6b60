@@ -509,4 +509,3 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
 };
 
 export default MeasurementTools;
-
