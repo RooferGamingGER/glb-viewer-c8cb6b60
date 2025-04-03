@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   X
 } from 'lucide-react';
-import { Point, MeasurementMode } from '@/types/measurements';
+import { Point, MeasurementMode } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,

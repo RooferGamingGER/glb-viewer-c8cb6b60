@@ -1,129 +1,446 @@
+import { useMeasurementCore } from './useMeasurementCore';
+import { useMeasurementEditing } from './useMeasurementEditing';
+import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
+import { useMeasurementToolToggle } from './useMeasurementToolToggle';
+import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
+import { extractRoofEdgeMeasurements, calculatePVMaterials } from '@/utils/pvCalculations';
+import { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';
+import { useCallback, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { useCallback, useContext } from 'react';
-import { MeasurementContext } from '@/contexts/MeasurementContext';
-import { Point, Measurement, MeasurementMode, Segment } from '@/types/measurements';
-import { findAndLinkSharedSegments } from '@/utils/measurementCalculations';
-
-// This hook provides access to the measurement context functionality
+/**
+ * Main measurements hook that composes functionality from specialized hooks
+ */
 export const useMeasurements = () => {
-  const context = useContext(MeasurementContext);
+  // Add a state to track calculation status
+  const [calculatingMaterials, setCalculatingMaterials] = useState(false);
   
-  if (!context) {
-    throw new Error('useMeasurements must be used within a MeasurementProvider');
-  }
+  // Core measurement state and functions
+  const {
+    measurements,
+    setMeasurements,
+    currentPoints,
+    setCurrentPoints,
+    activeMode,
+    setActiveMode,
+    allMeasurementsVisible,
+    setAllMeasurementsVisible,
+    allLabelsVisible,
+    setAllLabelsVisible,
+    editMeasurementId,
+    setEditMeasurementId,
+    editingPointIndex,
+    setEditingPointIndex,
+    addPoint,
+    finalizeMeasurement,
+    clearCurrentPoints,
+    clearMeasurements,
+    updateMeasurementPoint,
+    undoLastPoint
+  } = useMeasurementCore();
   
-  // Add the finalizeWithSharedSegments function - must return a boolean
-  const finalizeWithSharedSegments = useCallback(() => {
-    // First, call the original finalize
-    const newMeasurement = context.finalizeMeasurement();
+  // Use a ref to store the visual update function so it can be replaced
+  const visualStateUpdaterRef = useRef<(updatedMeasurements: Measurement[], labelVisibility: boolean) => void>(
+    (updatedMeasurements, labelVisibility) => {
+      // Default implementation is a no-op
+      // This will be replaced by the actual implementation in MeasurementTools
+    }
+  );
+  
+  // Wrapper function that calls the current ref value
+  const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisibility: boolean) => {
+    visualStateUpdaterRef.current(updatedMeasurements, labelVisibility);
+  }, []);
+  
+  // Editing functionality
+  const {
+    toggleEditMode,
+    startPointEdit,
+    updateMeasurement,
+    deleteMeasurement,
+    deletePoint,
+    cancelEditing
+  } = useMeasurementEditing(
+    measurements,
+    setMeasurements,
+    editMeasurementId,
+    setEditMeasurementId,
+    setEditingPointIndex
+  );
+  
+  // Visibility toggling with visual update callback
+  const {
+    toggleMeasurementVisibility,
+    toggleLabelVisibility,
+    toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility,
+    moveMeasurementUp,
+    moveMeasurementDown
+  } = useMeasurementVisibilityToggle(
+    measurements,
+    setMeasurements,
+    allMeasurementsVisible,
+    setAllMeasurementsVisible,
+    allLabelsVisible,
+    setAllLabelsVisible,
+    updateVisualState
+  );
+  
+  // Tool toggling
+  const {
+    toggleMeasurementTool
+  } = useMeasurementToolToggle(
+    activeMode,
+    setActiveMode,
+    clearCurrentPoints,
+    setEditMeasurementId,
+    setEditingPointIndex,
+    setMeasurements
+  );
+  
+  // Get roof edge information from measurements with validation
+  const getRoofEdgeInfo = useCallback(() => {
+    return extractRoofEdgeMeasurements(measurements);
+  }, [measurements]);
+
+  // Calculate PV materials for a measurement with improved error handling
+  const calculatePVMaterialsForMeasurement = useCallback((measurementId: string, inverterDistance: number = 10): PVMaterials | undefined => {
+    console.log('Starting PV materials calculation for measurement:', measurementId);
+    setCalculatingMaterials(true);
     
-    if (newMeasurement) {
-      // After creating a new measurement, check for shared segments
-      const measurementsWithSharedSegments = findAndLinkSharedSegments([...context.measurements, newMeasurement]);
-      
-      // Update the measurements with linked segments
-      context.setMeasurements(measurementsWithSharedSegments);
-      if (context.updateVisualState) {
-        context.updateVisualState(measurementsWithSharedSegments, context.allLabelsVisible);
+    try {
+      // Find the measurement
+      const measurement = measurements.find(m => m.id === measurementId);
+      if (!measurement) {
+        console.error('Cannot calculate PV materials: measurement not found', { measurementId });
+        toast.error('Fehler: Messung nicht gefunden');
+        setCalculatingMaterials(false);
+        return undefined;
       }
       
-      return true;
-    }
-    
-    return false;
-  }, [context]);
-
-  // Add the calculatePVMaterialsForMeasurement function
-  const calculatePVMaterialsForMeasurement = useCallback((measurementId: string, inverterDistance: number = 10) => {
-    const measurement = context.measurements.find(m => m.id === measurementId);
-    
-    if (!measurement || !measurement.pvModuleInfo || !measurement.pvModuleInfo.pvModuleSpec) {
-      console.error('Cannot calculate materials: measurement or PV module info missing');
-      return;
-    }
-    
-    // Simulate calculation in progress
-    context.setCalculatingMaterials(true);
-    
-    // Simulate async calculation
-    setTimeout(() => {
-      if (!measurement.pvModuleInfo || !measurement.pvModuleInfo.pvModuleSpec) return;
+      // Check if pvModuleInfo exists
+      if (!measurement.pvModuleInfo) {
+        console.error('Cannot calculate PV materials: pvModuleInfo not found', { measurementId });
+        toast.error('Fehler: PV-Modul-Informationen fehlen');
+        setCalculatingMaterials(false);
+        return undefined;
+      }
       
-      const moduleSpec = measurement.pvModuleInfo.pvModuleSpec;
-      const moduleCount = measurement.pvModuleInfo.moduleCount;
+      // Check if pvModuleSpec exists
+      if (!measurement.pvModuleInfo.pvModuleSpec) {
+        console.error('Cannot calculate PV materials: pvModuleSpec is missing', { measurementId, pvInfo: measurement.pvModuleInfo });
+        toast.error('Fehler: PV-Modul-Spezifikation fehlt');
+        setCalculatingMaterials(false);
+        return undefined;
+      }
       
-      // Calculate the materials needed
-      const pvMaterials = {
-        totalModuleCount: moduleCount,
-        totalPower: (moduleCount * moduleSpec.power) / 1000, // kWp
-        moduleSpec,
-        mountingSystem: {
-          railLength: Math.ceil(moduleCount * 4), // 4m of rail per module
-          roofHookCount: Math.ceil(moduleCount * 1.5), // 1.5 hooks per module
-          middleClampCount: Math.max(0, (moduleCount - 2) * 2), // 2 middle clamps per module except first and last
-          endClampCount: 4, // 4 end clamps (2 per side)
-          railConnectorCount: Math.floor(moduleCount / 3) // One connector per 3 modules
-        },
-        electricalSystem: {
-          stringCableLength: moduleCount * 2, // 2m of string cable per module
-          mainCableLength: 20, // 20m of main cable
-          acCableLength: inverterDistance, // User-defined
-          connectorPairCount: moduleCount + 2, // module count + 2 for connections
-          inverterCount: Math.ceil(moduleCount / 15), // One inverter per 15 modules
-          inverterPower: Math.ceil(((moduleCount * moduleSpec.power) / 1000) * 1.1), // 10% oversized
-          stringCount: Math.ceil(moduleCount / 15), // One string per 15 modules
-          modulesPerString: Math.min(15, moduleCount) // Max 15 modules per string
-        },
-        includesSurgeProtection: true,
-        includesMonitoringSystem: true,
-        notes: [
-          'Materialliste basiert auf Standardwerten und sollte von einem Fachmann überprüft werden.',
-          'Die tatsächliche Anzahl der benötigten Materialien kann je nach Dachbeschaffenheit variieren.'
-        ]
-      };
+      console.log('PV module info before calculation:', measurement.pvModuleInfo);
       
-      // Update the measurement with the new materials
+      // Calculate materials with detailed error handling
+      let materials: PVMaterials | undefined;
+      try {
+        materials = calculatePVMaterials(measurement.pvModuleInfo, inverterDistance);
+        console.log('Raw calculation result:', materials);
+      } catch (calcError) {
+        console.error('Error in calculatePVMaterials function:', calcError);
+        toast.error('Fehler bei der Materialberechnung');
+        setCalculatingMaterials(false);
+        return undefined;
+      }
+      
+      if (!materials) {
+        console.error('PV materials calculation returned undefined');
+        toast.error('Materialberechnung fehlgeschlagen');
+        setCalculatingMaterials(false);
+        return undefined;
+      }
+      
+      console.log('Successfully calculated PV materials:', materials);
+      
+      // Update the measurement with the calculated materials
       const updatedMeasurement = {
         ...measurement,
         pvModuleInfo: {
           ...measurement.pvModuleInfo,
-          pvMaterials
+          pvMaterials: materials
         }
       };
       
       // Update the measurement in the measurements array
-      const updatedMeasurements = context.measurements.map(m => 
+      const updatedMeasurements = measurements.map(m => 
         m.id === measurementId ? updatedMeasurement : m
       );
       
-      // Update state
-      context.setMeasurements(updatedMeasurements);
-      context.setCalculatingMaterials(false);
+      // Update state and trigger visual update
+      console.log('Updating measurements with new PV materials');
+      setMeasurements(updatedMeasurements);
+      updateVisualState(updatedMeasurements, allLabelsVisible);
       
-      // Update visuals
-      if (context.updateVisualState) {
-        context.updateVisualState(updatedMeasurements, context.allLabelsVisible);
-      }
-    }, 1500); // Simulate 1.5s calculation time
-    
-  }, [context]);
+      // Show success toast
+      toast.success('Materialliste erfolgreich berechnet');
+      
+      setCalculatingMaterials(false);
+      return materials;
+    } catch (error) {
+      console.error('Unexpected error in calculatePVMaterialsForMeasurement:', error);
+      toast.error('Unerwarteter Fehler bei der Berechnung');
+      setCalculatingMaterials(false);
+      return undefined;
+    }
+  }, [measurements, setMeasurements, updateVisualState, allLabelsVisible]);
 
+  // Add function to find and link shared segments
+  const findAndLinkSharedSegments = useCallback((updatedMeasurements: Measurement[]) => {
+    // Create a deep copy to avoid mutation issues
+    const measurementsCopy = JSON.parse(JSON.stringify(updatedMeasurements)) as Measurement[];
+    
+    // Collect segments from area measurements only
+    const areaMeasurements = measurementsCopy.filter(m => m.type === 'area' || m.type === 'solar');
+    
+    // Process each area measurement
+    for (let i = 0; i < areaMeasurements.length; i++) {
+      const measurement1 = areaMeasurements[i];
+      if (!measurement1.segments) continue;
+      
+      // Compare with all other area measurements
+      for (let j = i + 1; j < areaMeasurements.length; j++) {
+        const measurement2 = areaMeasurements[j];
+        if (!measurement2.segments) continue;
+        
+        // Compare segments between the two measurements
+        for (let si = 0; si < measurement1.segments.length; si++) {
+          const segment1 = measurement1.segments[si];
+          
+          for (let sj = 0; sj < measurement2.segments.length; sj++) {
+            const segment2 = measurement2.segments[sj];
+            
+            // Check if the segments share the same points (in any order)
+            const isShared = areSegmentsShared(segment1, segment2);
+            
+            if (isShared) {
+              // Mark both segments as shared
+              segment1.shared = true;
+              segment2.shared = true;
+              
+              // Set one as original, the other as reference
+              segment1.isOriginal = true;
+              segment2.isOriginal = false;
+              
+              // Link them to each other
+              segment1.sharedWithSegmentId = segment2.id;
+              segment2.sharedWithSegmentId = segment1.id;
+              
+              // If one has a type and the other doesn't, or if they have different types,
+              // the one with the type becomes the original, or the first one by default
+              if ((segment1.type && !segment2.type) || 
+                  (segment1.type !== segment2.type && segment1.type)) {
+                segment1.isOriginal = true;
+                segment2.isOriginal = false;
+                
+                // Transfer the type if needed
+                if (segment1.type && !segment2.type) {
+                  segment2.type = segment1.type;
+                }
+              } else if ((!segment1.type && segment2.type) || 
+                         (segment1.type !== segment2.type && segment2.type)) {
+                segment1.isOriginal = false;
+                segment2.isOriginal = true;
+                
+                // Transfer the type if needed
+                if (!segment1.type && segment2.type) {
+                  segment1.type = segment2.type;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Update the original measurements array with the modified measurements
+    return measurementsCopy;
+  }, []);
+  
+  // Helper function to check if two segments share the same points
+  const areSegmentsShared = useCallback((segment1: Segment, segment2: Segment): boolean => {
+    // Check points in both directions
+    const matchForward = 
+      arePointsEqual(segment1.points[0], segment2.points[0]) && 
+      arePointsEqual(segment1.points[1], segment2.points[1]);
+    
+    const matchReverse = 
+      arePointsEqual(segment1.points[0], segment2.points[1]) && 
+      arePointsEqual(segment1.points[1], segment2.points[0]);
+    
+    // A small distance threshold for floating point comparison
+    return matchForward || matchReverse;
+  }, []);
+  
+  // Helper function to compare points with a small tolerance
+  const arePointsEqual = useCallback((p1: Point, p2: Point, tolerance: number = 0.01): boolean => {
+    const distanceSquared = 
+      Math.pow(p1.x - p2.x, 2) + 
+      Math.pow(p1.y - p2.y, 2) + 
+      Math.pow(p1.z - p2.z, 2);
+    
+    return distanceSquared < tolerance * tolerance;
+  }, []);
+
+  // Wrapper for updateMeasurement that also handles shared segments
+  const updateMeasurementWithSharing = useCallback((
+    measurementId: string, 
+    data: Partial<Measurement>
+  ) => {
+    // First, update the measurement normally
+    const updatedMeasurements = measurements.map(m => 
+      m.id === measurementId ? { ...m, ...data } : m
+    );
+    
+    // Then, find and link shared segments
+    const measurementsWithLinkedSegments = findAndLinkSharedSegments(updatedMeasurements);
+    
+    // Update the state with the new measurements
+    setMeasurements(measurementsWithLinkedSegments);
+    
+    // Trigger visual update
+    updateVisualState(measurementsWithLinkedSegments, allLabelsVisible);
+    
+    return measurementsWithLinkedSegments;
+  }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
+
+  // Update segment with shared properties propagation
+  const updateSegmentWithSharing = useCallback((
+    measurementId: string,
+    segmentId: string,
+    segmentData: Partial<Segment>
+  ) => {
+    // First, find the measurement and segment
+    const measurementIndex = measurements.findIndex(m => m.id === measurementId);
+    if (measurementIndex === -1) return;
+    
+    const measurement = measurements[measurementIndex];
+    if (!measurement.segments) return;
+    
+    const segmentIndex = measurement.segments.findIndex(s => s.id === segmentId);
+    if (segmentIndex === -1) return;
+    
+    const segment = measurement.segments[segmentIndex];
+    
+    // Create a copy of measurements array
+    const updatedMeasurements = [...measurements];
+    
+    // Create a copy of the segments array
+    const updatedSegments = [...measurement.segments];
+    
+    // Update the specific segment
+    updatedSegments[segmentIndex] = {
+      ...segment,
+      ...segmentData
+    };
+    
+    // Update the measurement with the new segments
+    updatedMeasurements[measurementIndex] = {
+      ...measurement,
+      segments: updatedSegments
+    };
+    
+    // Check if this segment is shared with another segment
+    if (segment.shared && segment.sharedWithSegmentId) {
+      // Find the other segment
+      for (let i = 0; i < updatedMeasurements.length; i++) {
+        if (!updatedMeasurements[i].segments) continue;
+        
+        const otherSegmentIndex = updatedMeasurements[i].segments.findIndex(
+          s => s.id === segment.sharedWithSegmentId
+        );
+        
+        if (otherSegmentIndex !== -1) {
+          // Update the other segment with the same changes
+          updatedMeasurements[i].segments[otherSegmentIndex] = {
+            ...updatedMeasurements[i].segments[otherSegmentIndex],
+            ...segmentData
+          };
+          
+          // Show a notification about the shared update
+          toast.info('Änderung wurde auf geteilte Kante übertragen');
+          break;
+        }
+      }
+    }
+    
+    // Update measurements with shared segment links
+    const finalMeasurements = findAndLinkSharedSegments(updatedMeasurements);
+    
+    // Save the updated measurements and trigger a visual update
+    setMeasurements(finalMeasurements);
+    updateVisualState(finalMeasurements, allLabelsVisible);
+  }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
+  
+  // Enhance the initial finalization to detect shared segments
+  const finalizeWithSharedSegments = useCallback(() => {
+    // First, call the original finalize
+    const newMeasurement = finalizeMeasurement();
+    
+    if (newMeasurement) {
+      // After creating a new measurement, check for shared segments
+      const measurementsWithSharedSegments = findAndLinkSharedSegments([...measurements, newMeasurement]);
+      
+      // Update the measurements with linked segments
+      setMeasurements(measurementsWithSharedSegments);
+      updateVisualState(measurementsWithSharedSegments, allLabelsVisible);
+    }
+    
+    return newMeasurement;
+  }, [finalizeMeasurement, measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
+  
+  // Export all functionality and state from the composed hooks, adding our new functions
   return {
-    ...context,
-    finalizeWithSharedSegments,
+    // State
+    measurements,
+    currentPoints,
+    setCurrentPoints,
+    activeMode,
+    editMeasurementId,
+    editingPointIndex,
+    allMeasurementsVisible,
+    allLabelsVisible,
+    calculatingMaterials,
+    
+    // Actions
+    addPoint,
+    toggleMeasurementTool,
+    clearMeasurements,
+    clearCurrentPoints,
+    finalizeMeasurement: finalizeWithSharedSegments,
+    toggleMeasurementVisibility,
+    toggleLabelVisibility,
+    toggleAllMeasurementsVisibility,
+    toggleAllLabelsVisibility,
+    toggleEditMode,
+    updateMeasurement: updateMeasurementWithSharing,
+    updateSegment: updateSegmentWithSharing,
+    deleteMeasurement,
+    deletePoint,
+    undoLastPoint,
+    startPointEdit,
+    updateMeasurementPoint,
+    cancelEditing,
+    moveMeasurementUp,
+    moveMeasurementDown,
+    getRoofEdgeInfo,
     calculatePVMaterialsForMeasurement,
-    calculatingMaterials: context.calculatingMaterials || false
+    findAndLinkSharedSegments,
+    
+    // Visual state update function - expose this so it can be replaced
+    setUpdateVisualState: (fn: typeof updateVisualState) => {
+      visualStateUpdaterRef.current = fn;
+    },
+    
+    // Utilities
+    getNearestPointIndex,
+    calculateSegmentLength
   };
 };
 
-// Create and export a hook for using the measurement context
-export const useMeasurementContext = () => {
-  const context = useContext(MeasurementContext);
-  if (!context) {
-    throw new Error("useMeasurementContext must be used within a MeasurementProvider");
-  }
-  return context;
-};
-
-// Re-export the types from the types folder for backward compatibility
-export type { Point, Measurement, MeasurementMode, Segment } from '@/types/measurements';
+// Re-export types
+export type { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';

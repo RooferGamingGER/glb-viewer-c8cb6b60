@@ -1,8 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import * as THREE from 'three';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Measurement } from '@/types/measurements'; 
+import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';

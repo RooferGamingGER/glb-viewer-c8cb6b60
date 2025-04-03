@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -65,8 +64,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint,
     allLabelsVisible,
     moveMeasurementUp,
-    moveMeasurementDown,
-    setUpdateVisualState
+    moveMeasurementDown
   } = useMeasurements();
 
   // Three.js object references
@@ -176,25 +174,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       moveMeasurementDown
     }
   );
-
-  // Define the update visual state handler that returns a boolean
-  const updateVisualState = (updatedMeasurements: any[], labelsVisible: boolean): boolean => {
-    updateAllLabelsVisibility(labelsVisible);
-    updateMeasurementMarkers();
-    renderMeasurements(
-      measurementsRef.current, 
-      labelsRef.current, 
-      segmentLabelsRef.current, 
-      updatedMeasurements, 
-      true
-    );
-    return true;
-  };
-
-  // Set the update visual state handler
-  useEffect(() => {
-    setUpdateVisualState(updateVisualState);
-  }, [setUpdateVisualState]);
 
   // Update visibility when allLabelsVisible changes
   useEffect(() => {
@@ -453,10 +432,5 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     </div>
   );
 };
-
-// Check if current mode is a roof element mode
-const isRoofElementMode = (mode: string) => ![
-  'length', 'height', 'area', 'none'
-].includes(mode);
 
 export default MeasurementTools;

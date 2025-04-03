@@ -6,7 +6,7 @@ import {
   Square, 
   Trash2
 } from 'lucide-react';
-import { MeasurementMode, Measurement } from '@/types/measurements';
+import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,

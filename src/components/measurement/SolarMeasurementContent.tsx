@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
@@ -234,13 +233,21 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     );
   }
   
-  const modulePower = measurement.pvModuleInfo.pvModuleSpec?.power || 425;
-  const moduleCount = measurement.pvModuleInfo.moduleCount;
-  const kWp = calculatePVPower(moduleCount, modulePower);
-  
   const annualYield = measurement.pvModuleInfo.roofAzimuth && measurement.pvModuleInfo.roofInclination
-    ? calculateAnnualYieldWithOrientation(kWp, measurement.pvModuleInfo)
-    : calculateAnnualYield(kWp, measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat');
+    ? calculateAnnualYieldWithOrientation(
+        calculatePVPower(
+          measurement.pvModuleInfo.moduleCount, 
+          measurement.pvModuleInfo.pvModuleSpec?.power || 425
+        ),
+        measurement.pvModuleInfo
+      )
+    : calculateAnnualYield(
+        calculatePVPower(
+          measurement.pvModuleInfo.moduleCount, 
+          measurement.pvModuleInfo.pvModuleSpec?.power || 425
+        ),
+        measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
+      );
   
   return (
     <div className="pt-2">
@@ -304,7 +311,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               <div>{measurement.pvModuleInfo.coveragePercent.toFixed(1)}%</div>
               
               <div className="text-muted-foreground">Leistung:</div>
-              <div>{kWp.toFixed(1)} kWp</div>
+              <div>
+                {((measurement.pvModuleInfo.moduleCount * 
+                  (measurement.pvModuleInfo.pvModuleSpec?.power || 425)) / 1000).toFixed(1)} kWp
+              </div>
               
               <div className="text-muted-foreground">Ausrichtung:</div>
               <div className="flex items-center">
