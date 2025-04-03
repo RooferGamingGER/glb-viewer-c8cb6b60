@@ -50,9 +50,12 @@ export const useMeasurementInteraction = (
     updateAddPointIndicators
   } = useAddPointIndicators(scene);
 
-  // Hook for point snapping
+  // Hook for point snapping with enhanced functionality
   const {
-    clearSnapIndicator
+    clearSnapIndicator,
+    snapEnabled,
+    isSnapping,
+    snapTarget
   } = usePointSnapping(scene);
 
   // Hook for point movement
@@ -99,23 +102,6 @@ export const useMeasurementInteraction = (
     }
   );
 
-  // Listen for snap setting changes
-  useEffect(() => {
-    const handleSnapSettingChange = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const snapEnabled = customEvent.detail?.enabled;
-      
-      // You could do something with the snap enabled state here if needed
-      console.log("Snap setting changed:", snapEnabled);
-    };
-    
-    document.addEventListener('snapSettingChanged', handleSnapSettingChange);
-    
-    return () => {
-      document.removeEventListener('snapSettingChanged', handleSnapSettingChange);
-    };
-  }, []);
-
   // Clean up when enabled status changes
   useEffect(() => {
     if (!enabled) {
@@ -131,6 +117,9 @@ export const useMeasurementInteraction = (
     setMovingPointInfo,
     previewPoint,
     clearPreviewGroup,
-    clearAddPointIndicators
+    clearAddPointIndicators,
+    isSnapping,
+    snapTarget,
+    snapEnabled
   };
 };

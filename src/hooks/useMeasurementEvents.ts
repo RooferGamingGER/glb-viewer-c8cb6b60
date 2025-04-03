@@ -44,19 +44,20 @@ export const useMeasurementEvents = (
     getPointFromIntersection 
   } = useMeasurementRaycasting();
   
-  // Use our new snapping hook
+  // Use our improved snapping hook
   const {
     applySnap,
     findSnapPoint,
-    clearSnapIndicator
+    clearSnapIndicator,
+    snapEnabled
   } = usePointSnapping(scene);
 
   // Process mouse movement for point snapping preview
   const handlePointerMoveForSnapping = useCallback((event: MouseEvent | TouchEvent) => {
-    if (!enabled || !open || !scene || !camera || handlers.movingPointInfo) return;
+    if (!enabled || !open || !scene || !camera || handlers.movingPointInfo || !snapEnabled) return;
     
     // Skip snapping preview if we're not in a measurement mode
-    if (activeMode === 'none' || !['length', 'height', 'area', 'solar'].includes(activeMode)) {
+    if (activeMode === 'none' || !['length', 'height', 'area', 'solar', 'skylight', 'chimney'].includes(activeMode)) {
       clearSnapIndicator();
       return;
     }
@@ -73,7 +74,7 @@ export const useMeasurementEvents = (
     
     // Find snap point but don't apply it yet - just show indicator
     findSnapPoint(point, measurements, editMeasurementId);
-  }, [enabled, open, scene, camera, activeMode, editMeasurementId, getPointFromIntersection, findSnapPoint, clearSnapIndicator, handlers.movingPointInfo, measurements]);
+  }, [enabled, open, scene, camera, activeMode, editMeasurementId, getPointFromIntersection, findSnapPoint, clearSnapIndicator, handlers.movingPointInfo, measurements, snapEnabled]);
 
   // Process user interaction (adds a point or edits existing point)
   const processInteraction = useCallback((event: MouseEvent | TouchEvent) => {
@@ -89,7 +90,7 @@ export const useMeasurementEvents = (
       
       // Apply snapping when finishing point movement
       let finalPoint = newPoint;
-      if (newPoint) {
+      if (newPoint && snapEnabled) {
         finalPoint = applySnap(newPoint, measurements, handlers.movingPointInfo.measurementId);
       }
       
@@ -116,7 +117,8 @@ export const useMeasurementEvents = (
           const userData = intersect.object.userData;
           
           // Only allow adding points to area measurements
-          const measurement = measurements.find(m => m.id === userData.measurementId && m.type === 'area');
+          const measurement = measurements.find(m => m.id === userData.measurementId && 
+            (m.type === 'area' || m.type === 'solar' || m.type === 'skylight' || m.type === 'chimney'));
           if (measurement) {
             // Create custom event to add a point at the segment's midpoint
             const addPointEvent = new CustomEvent('areaPointAdded', {
@@ -200,12 +202,12 @@ export const useMeasurementEvents = (
       const point = getPointFromIntersection(event, camera, scene, canvasElement);
       
       if (point) {
-        // Apply point snapping
-        const snappedPoint = applySnap(point, measurements, editMeasurementId);
+        // Apply point snapping if enabled
+        const finalPoint = snapEnabled ? applySnap(point, measurements, editMeasurementId) : point;
         
         // Handle editing case
         if (editMeasurementId !== null && editingPointIndex !== null) {
-          handlers.addPoint(snappedPoint);
+          handlers.addPoint(finalPoint);
           toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
           clearSnapIndicator();
           return;
@@ -214,7 +216,7 @@ export const useMeasurementEvents = (
         // Handle adding new measurement points
         const currentCount = currentPoints.length;
         
-        handlers.addPoint(snappedPoint);
+        handlers.addPoint(finalPoint);
         clearSnapIndicator();
         
         if (activeMode === 'length') {
@@ -225,11 +227,13 @@ export const useMeasurementEvents = (
           if (currentCount === 0) {
             toast.info("Ersten Punkt für Höhenmessung gesetzt");
           }
-        } else if (activeMode === 'area') {
+        } else if (activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') {
           if (currentCount === 0) {
-            toast.info("Ersten Punkt für Flächenmessung gesetzt");
+            toast.info(`Ersten Punkt für ${activeMode === 'area' ? 'Flächenmessung' : 
+                       activeMode === 'solar' ? 'Solarfläche' : 
+                       activeMode === 'skylight' ? 'Dachfenster' : 'Schornstein'} gesetzt`);
           } else {
-            toast.info(`Punkt ${currentCount + 1} für Flächenmessung gesetzt`);
+            toast.info(`Punkt ${currentCount + 1} gesetzt`);
           }
         }
       }
@@ -237,7 +241,7 @@ export const useMeasurementEvents = (
   }, [
     enabled, open, scene, camera, activeMode, editMeasurementId, editingPointIndex,
     measurements, currentPoints, handlers, refs, calculateMousePosition,
-    filterMeasurementObjects, getPointFromIntersection, applySnap, clearSnapIndicator
+    filterMeasurementObjects, getPointFromIntersection, applySnap, clearSnapIndicator, snapEnabled
   ]);
 
   // Update preview point when moving
@@ -253,11 +257,15 @@ export const useMeasurementEvents = (
     
     const newPoint = handlers.updateMovingPoint(event, canvasElement);
     if (newPoint) {
-      // When moving an existing point, show snapping preview
-      const snapPoint = findSnapPoint(newPoint, measurements, handlers.movingPointInfo.measurementId);
-      handlers.setPreviewPoint(snapPoint || newPoint);
+      // When moving an existing point, show snapping preview if enabled
+      if (snapEnabled) {
+        const snapPoint = findSnapPoint(newPoint, measurements, handlers.movingPointInfo.measurementId);
+        handlers.setPreviewPoint(snapPoint || newPoint);
+      } else {
+        handlers.setPreviewPoint(newPoint);
+      }
     }
-  }, [handlers, scene, camera, handlePointerMoveForSnapping, findSnapPoint, measurements]);
+  }, [handlers, scene, camera, handlePointerMoveForSnapping, findSnapPoint, measurements, snapEnabled]);
 
   // Separate mouse event handler
   const handleMouseDown = useCallback((event: MouseEvent) => {

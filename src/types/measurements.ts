@@ -36,6 +36,9 @@ export interface Segment {
   label?: string;
   inclination?: number;
   type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
+  shared?: boolean;            // Indicates if this segment is shared with another measurement
+  sharedWithSegmentId?: string; // ID of the segment this is shared with
+  isOriginal?: boolean;        // For shared segments, indicates if this is the "original" one
 }
 
 export interface Point2D {

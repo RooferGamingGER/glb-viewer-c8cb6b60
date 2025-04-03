@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Move, ChevronDown, ChevronRight, Edit, Check, X } from 'lucide-react';
+import { Move, ChevronDown, ChevronRight, Edit, Check, X, Link } from 'lucide-react';
 import { Segment } from '@/types/measurements';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SegmentListProps {
   measurementId: string;
@@ -171,7 +172,17 @@ const SegmentList: React.FC<SegmentListProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex items-center">
+                    {segment.shared && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link className="h-3 w-3 mr-1 text-blue-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Geteilte Kante mit anderer Dachfläche</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     <span className="font-medium">Teilmessung {index + 1}:</span> {getSegmentDisplayName(segment, index)}
                   </div>
                   <div className="flex space-x-1">

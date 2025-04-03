@@ -77,3 +77,78 @@ export const captureViewScreenshot = (
     return null;
   }
 };
+
+/**
+ * Captures a top-down view of the model for the cover page
+ * @param renderer The WebGL renderer
+ * @param scene The current scene
+ * @param originalCamera The original camera (to restore after capture)
+ * @returns Base64 data URL of the screenshot
+ */
+export const captureTopDownView = (
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  originalCamera: THREE.Camera
+): string | null => {
+  if (!renderer || !scene) {
+    console.error('Missing required parameters for top-down screenshot');
+    return null;
+  }
+
+  try {
+    // Store original renderer settings
+    const originalClearColor = renderer.getClearColor(new THREE.Color());
+    const originalClearAlpha = renderer.getClearAlpha();
+    const originalSize = {
+      width: renderer.domElement.width,
+      height: renderer.domElement.height
+    };
+    
+    // Create temporary orthographic camera for top-down view
+    const boundingBox = new THREE.Box3().setFromObject(scene);
+    const center = new THREE.Vector3();
+    boundingBox.getCenter(center);
+    
+    const size = new THREE.Vector3();
+    boundingBox.getSize(size);
+    
+    const aspectRatio = originalSize.width / originalSize.height;
+    const width = Math.max(size.x, size.z) * 1.2; // Add some padding
+    const height = width / aspectRatio;
+    
+    const topCamera = new THREE.OrthographicCamera(
+      -width / 2, width / 2, 
+      height / 2, -height / 2,
+      0.1, 1000
+    );
+    
+    // Position camera above the scene looking down
+    topCamera.position.set(center.x, center.y + size.y * 2, center.z);
+    topCamera.lookAt(center);
+    topCamera.up.set(0, 0, 1); // Set "up" direction to Z-axis for better orientation
+
+    // Higher resolution for better quality
+    renderer.setSize(1024, 1024);
+    
+    // Set white background for cleaner look
+    renderer.setClearColor(0xffffff, 1);
+    
+    // Render the scene from top-down
+    renderer.render(scene, topCamera);
+    
+    // Capture the rendered image
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    
+    // Restore original settings
+    renderer.setClearColor(originalClearColor, originalClearAlpha);
+    renderer.setSize(originalSize.width, originalSize.height);
+    
+    // Re-render the scene with the original settings
+    renderer.render(scene, originalCamera);
+    
+    return dataUrl;
+  } catch (error) {
+    console.error('Error capturing top-down screenshot:', error);
+    return null;
+  }
+};

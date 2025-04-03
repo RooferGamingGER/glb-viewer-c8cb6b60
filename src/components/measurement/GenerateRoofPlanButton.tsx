@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Maximize, Download, ExternalLink } from 'lucide-react';
@@ -33,12 +32,14 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     setIsGenerating(true);
     
     try {
-      // Specify that we want a true top-down view
-      const plan = createCombinedRoofPlan(measurements, 1200, 900, 0.1, true);
+      // Higher resolution for better quality
+      const plan = createCombinedRoofPlan(measurements, 3000, 2400, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {
         toast.error('Fehler beim Erstellen des Dachplans');
+      } else {
+        toast.success('Dachplan erfolgreich erstellt');
       }
     } catch (error) {
       console.error('Error generating roof plan:', error);
@@ -83,10 +84,34 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
-  // Count the number of roof surfaces available
+  // Count the number of roof surfaces and special elements available
   const areaCount = measurements.filter(m => 
-    ['area', 'solar'].includes(m.type) && m.points && m.points.length >= 3
+    ['area'].includes(m.type) && m.points && m.points.length >= 3
   ).length;
+  
+  const specialElementCount = measurements.filter(m => 
+    ['solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type) && 
+    m.points && 
+    m.points.length >= 3
+  ).length;
+  
+  // Count segments, considering shared segments only once
+  const uniqueSegmentCount = (() => {
+    // Collect all segments
+    const allSegments = measurements.reduce((total, m) => {
+      if (m.segments && m.segments.length > 0) {
+        return [...total, ...m.segments];
+      }
+      return total;
+    }, [] as (Segment | undefined)[]);
+    
+    // Filter out segments that are marked as shared but not original
+    const uniqueSegments = allSegments.filter(segment => 
+      !segment?.shared || (segment.shared && segment.isOriginal)
+    );
+    
+    return uniqueSegments.length;
+  })();
   
   return (
     <Dialog>
@@ -101,19 +126,19 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
           Dachplan
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>Dachplan - Draufsicht</DialogTitle>
           <DialogDescription>
             {areaCount > 0 
-              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen in der Draufsicht.`
+              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-4">
           {!roofPlan ? (
-            <div className="flex justify-center items-center h-[400px] border rounded-md bg-muted/20">
+            <div className="flex justify-center items-center h-[500px] border rounded-md bg-muted/20">
               <Button 
                 onClick={handleGenerateRoofPlan}
                 disabled={isGenerating || areaCount === 0}
@@ -128,7 +153,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
                   src={roofPlan} 
                   alt="Dachplan" 
                   className="w-full object-contain"
-                  style={{ maxHeight: '400px' }} 
+                  style={{ maxHeight: '650px' }}
                 />
               </div>
               

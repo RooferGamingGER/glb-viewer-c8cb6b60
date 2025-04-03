@@ -7,6 +7,7 @@ import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
 import { Trash2, Magnet } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
+import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
+import { usePointSnapping } from '@/hooks/usePointSnapping';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -65,26 +67,10 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   handleMoveMeasurementDown
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
-  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
   const { toast } = useToast();
   
-  // Store snap setting in localStorage
-  useEffect(() => {
-    localStorage.setItem('snapEnabled', snapEnabled ? 'true' : 'false');
-    
-    // Dispatch custom event so other components can react to the change
-    document.dispatchEvent(new CustomEvent('snapSettingChanged', { 
-      detail: { enabled: snapEnabled } 
-    }));
-  }, [snapEnabled]);
-  
-  // Load snap setting from localStorage on init
-  useEffect(() => {
-    const savedSnap = localStorage.getItem('snapEnabled');
-    if (savedSnap !== null) {
-      setSnapEnabled(savedSnap === 'true');
-    }
-  }, []);
+  // Use our improved snapping hook
+  const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
@@ -194,6 +180,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           
           {measurements.length > 0 && (
             <div className="mt-4 space-y-2 px-2">
+              <GenerateRoofPlanButton measurements={measurements} />
               <ExportPdfButton measurements={measurements} />
             </div>
           )}

@@ -1,4 +1,3 @@
-
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
@@ -190,7 +189,211 @@ export const useMeasurements = () => {
     }
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible]);
 
-  // Export all functionality and state from the composed hooks
+  // Add function to find and link shared segments
+  const findAndLinkSharedSegments = useCallback((updatedMeasurements: Measurement[]) => {
+    // Create a deep copy to avoid mutation issues
+    const measurementsCopy = JSON.parse(JSON.stringify(updatedMeasurements)) as Measurement[];
+    
+    // Collect segments from area measurements only
+    const areaMeasurements = measurementsCopy.filter(m => m.type === 'area' || m.type === 'solar');
+    
+    // Process each area measurement
+    for (let i = 0; i < areaMeasurements.length; i++) {
+      const measurement1 = areaMeasurements[i];
+      if (!measurement1.segments) continue;
+      
+      // Compare with all other area measurements
+      for (let j = i + 1; j < areaMeasurements.length; j++) {
+        const measurement2 = areaMeasurements[j];
+        if (!measurement2.segments) continue;
+        
+        // Compare segments between the two measurements
+        for (let si = 0; si < measurement1.segments.length; si++) {
+          const segment1 = measurement1.segments[si];
+          
+          for (let sj = 0; sj < measurement2.segments.length; sj++) {
+            const segment2 = measurement2.segments[sj];
+            
+            // Check if the segments share the same points (in any order)
+            const isShared = areSegmentsShared(segment1, segment2);
+            
+            if (isShared) {
+              // Mark both segments as shared
+              segment1.shared = true;
+              segment2.shared = true;
+              
+              // Set one as original, the other as reference
+              segment1.isOriginal = true;
+              segment2.isOriginal = false;
+              
+              // Link them to each other
+              segment1.sharedWithSegmentId = segment2.id;
+              segment2.sharedWithSegmentId = segment1.id;
+              
+              // If one has a type and the other doesn't, or if they have different types,
+              // the one with the type becomes the original, or the first one by default
+              if ((segment1.type && !segment2.type) || 
+                  (segment1.type !== segment2.type && segment1.type)) {
+                segment1.isOriginal = true;
+                segment2.isOriginal = false;
+                
+                // Transfer the type if needed
+                if (segment1.type && !segment2.type) {
+                  segment2.type = segment1.type;
+                }
+              } else if ((!segment1.type && segment2.type) || 
+                         (segment1.type !== segment2.type && segment2.type)) {
+                segment1.isOriginal = false;
+                segment2.isOriginal = true;
+                
+                // Transfer the type if needed
+                if (!segment1.type && segment2.type) {
+                  segment1.type = segment2.type;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Update the original measurements array with the modified measurements
+    return measurementsCopy;
+  }, []);
+  
+  // Helper function to check if two segments share the same points
+  const areSegmentsShared = useCallback((segment1: Segment, segment2: Segment): boolean => {
+    // Check points in both directions
+    const matchForward = 
+      arePointsEqual(segment1.points[0], segment2.points[0]) && 
+      arePointsEqual(segment1.points[1], segment2.points[1]);
+    
+    const matchReverse = 
+      arePointsEqual(segment1.points[0], segment2.points[1]) && 
+      arePointsEqual(segment1.points[1], segment2.points[0]);
+    
+    // A small distance threshold for floating point comparison
+    return matchForward || matchReverse;
+  }, []);
+  
+  // Helper function to compare points with a small tolerance
+  const arePointsEqual = useCallback((p1: Point, p2: Point, tolerance: number = 0.01): boolean => {
+    const distanceSquared = 
+      Math.pow(p1.x - p2.x, 2) + 
+      Math.pow(p1.y - p2.y, 2) + 
+      Math.pow(p1.z - p2.z, 2);
+    
+    return distanceSquared < tolerance * tolerance;
+  }, []);
+
+  // Wrapper for updateMeasurement that also handles shared segments
+  const updateMeasurementWithSharing = useCallback((
+    measurementId: string, 
+    data: Partial<Measurement>
+  ) => {
+    // First, update the measurement normally
+    const updatedMeasurements = measurements.map(m => 
+      m.id === measurementId ? { ...m, ...data } : m
+    );
+    
+    // Then, find and link shared segments
+    const measurementsWithLinkedSegments = findAndLinkSharedSegments(updatedMeasurements);
+    
+    // Update the state with the new measurements
+    setMeasurements(measurementsWithLinkedSegments);
+    
+    // Trigger visual update
+    updateVisualState(measurementsWithLinkedSegments, allLabelsVisible);
+    
+    return measurementsWithLinkedSegments;
+  }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
+
+  // Update segment with shared properties propagation
+  const updateSegmentWithSharing = useCallback((
+    measurementId: string,
+    segmentId: string,
+    segmentData: Partial<Segment>
+  ) => {
+    // First, find the measurement and segment
+    const measurementIndex = measurements.findIndex(m => m.id === measurementId);
+    if (measurementIndex === -1) return;
+    
+    const measurement = measurements[measurementIndex];
+    if (!measurement.segments) return;
+    
+    const segmentIndex = measurement.segments.findIndex(s => s.id === segmentId);
+    if (segmentIndex === -1) return;
+    
+    const segment = measurement.segments[segmentIndex];
+    
+    // Create a copy of measurements array
+    const updatedMeasurements = [...measurements];
+    
+    // Create a copy of the segments array
+    const updatedSegments = [...measurement.segments];
+    
+    // Update the specific segment
+    updatedSegments[segmentIndex] = {
+      ...segment,
+      ...segmentData
+    };
+    
+    // Update the measurement with the new segments
+    updatedMeasurements[measurementIndex] = {
+      ...measurement,
+      segments: updatedSegments
+    };
+    
+    // Check if this segment is shared with another segment
+    if (segment.shared && segment.sharedWithSegmentId) {
+      // Find the other segment
+      for (let i = 0; i < updatedMeasurements.length; i++) {
+        if (!updatedMeasurements[i].segments) continue;
+        
+        const otherSegmentIndex = updatedMeasurements[i].segments.findIndex(
+          s => s.id === segment.sharedWithSegmentId
+        );
+        
+        if (otherSegmentIndex !== -1) {
+          // Update the other segment with the same changes
+          updatedMeasurements[i].segments[otherSegmentIndex] = {
+            ...updatedMeasurements[i].segments[otherSegmentIndex],
+            ...segmentData
+          };
+          
+          // Show a notification about the shared update
+          toast.info('Änderung wurde auf geteilte Kante übertragen');
+          break;
+        }
+      }
+    }
+    
+    // Update measurements with shared segment links
+    const finalMeasurements = findAndLinkSharedSegments(updatedMeasurements);
+    
+    // Save the updated measurements and trigger a visual update
+    setMeasurements(finalMeasurements);
+    updateVisualState(finalMeasurements, allLabelsVisible);
+  }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
+  
+  // Enhance the initial finalization to detect shared segments
+  const finalizeWithSharedSegments = useCallback(() => {
+    // First, call the original finalize
+    const newMeasurement = finalizeMeasurement();
+    
+    if (newMeasurement) {
+      // After creating a new measurement, check for shared segments
+      const measurementsWithSharedSegments = findAndLinkSharedSegments([...measurements, newMeasurement]);
+      
+      // Update the measurements with linked segments
+      setMeasurements(measurementsWithSharedSegments);
+      updateVisualState(measurementsWithSharedSegments, allLabelsVisible);
+    }
+    
+    return newMeasurement;
+  }, [finalizeMeasurement, measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
+  
+  // Export all functionality and state from the composed hooks, adding our new functions
   return {
     // State
     measurements,
@@ -208,13 +411,14 @@ export const useMeasurements = () => {
     toggleMeasurementTool,
     clearMeasurements,
     clearCurrentPoints,
-    finalizeMeasurement,
+    finalizeMeasurement: finalizeWithSharedSegments,
     toggleMeasurementVisibility,
     toggleLabelVisibility,
     toggleAllMeasurementsVisibility,
     toggleAllLabelsVisibility,
     toggleEditMode,
-    updateMeasurement,
+    updateMeasurement: updateMeasurementWithSharing,
+    updateSegment: updateSegmentWithSharing,
     deleteMeasurement,
     deletePoint,
     undoLastPoint,
@@ -225,6 +429,7 @@ export const useMeasurements = () => {
     moveMeasurementDown,
     getRoofEdgeInfo,
     calculatePVMaterialsForMeasurement,
+    findAndLinkSharedSegments,
     
     // Visual state update function - expose this so it can be replaced
     setUpdateVisualState: (fn: typeof updateVisualState) => {
