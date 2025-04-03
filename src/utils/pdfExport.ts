@@ -879,3 +879,373 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     const rightInfo = document.createElement('div');
     rightInfo.className = 'right-info';
+    
+    const clientTitle = document.createElement('h3');
+    clientTitle.textContent = 'Kundendaten';
+    clientTitle.style.color = '#444';
+    clientTitle.style.marginBottom = '8px';
+    rightInfo.appendChild(clientTitle);
+    
+    const clientTable = document.createElement('table');
+    clientTable.className = 'info-table';
+    
+    const clientRows = [
+      { label: 'Auftraggeber:', value: coverData.clientName },
+      { label: 'Ansprechpartner:', value: coverData.contactPerson },
+      { label: 'Telefon:', value: coverData.contactPhone },
+      { label: 'E-Mail:', value: coverData.contactEmail }
+    ];
+    
+    clientRows.forEach(row => {
+      if (row.value) {
+        const tableRow = document.createElement('tr');
+        
+        const labelCell = document.createElement('td');
+        labelCell.className = 'info-label';
+        labelCell.textContent = row.label;
+        tableRow.appendChild(labelCell);
+        
+        const valueCell = document.createElement('td');
+        valueCell.textContent = row.value;
+        tableRow.appendChild(valueCell);
+        
+        clientTable.appendChild(tableRow);
+      }
+    });
+    
+    rightInfo.appendChild(clientTable);
+    infoSection.appendChild(rightInfo);
+    coverPage.appendChild(infoSection);
+    
+    if ((measurements as any).topDownScreenshot) {
+      const modelView = document.createElement('div');
+      modelView.className = 'model-view';
+      
+      const modelImage = document.createElement('img');
+      modelImage.className = 'model-image';
+      modelImage.src = (measurements as any).topDownScreenshot;
+      modelImage.alt = 'Modellansicht';
+      modelView.appendChild(modelImage);
+      
+      coverPage.appendChild(modelView);
+    }
+    
+    if (Object.keys(summaryData).length > 0) {
+      const summary = createCoverPageSummary(summaryData);
+      
+      summary.style.maxHeight = '120px';
+      summary.style.overflow = 'hidden';
+      
+      coverPage.appendChild(summary);
+    }
+    
+    if (coverData.notes) {
+      const notesContainer = document.createElement('div');
+      notesContainer.style.marginTop = '15px';
+      notesContainer.style.maxHeight = '80px';
+      notesContainer.style.overflow = 'hidden';
+      
+      const notesTitle = document.createElement('h3');
+      notesTitle.textContent = 'Bemerkungen';
+      notesTitle.style.color = '#444';
+      notesTitle.style.marginBottom = '5px';
+      notesContainer.appendChild(notesTitle);
+      
+      const notesText = document.createElement('p');
+      notesText.textContent = coverData.notes;
+      notesText.style.fontSize = '12px';
+      notesText.style.lineHeight = '1.4';
+      notesText.style.margin = '0';
+      notesContainer.appendChild(notesText);
+      
+      coverPage.appendChild(notesContainer);
+    }
+    
+    const footerText = document.createElement('div');
+    footerText.className = 'footnote';
+    footerText.style.position = 'absolute';
+    footerText.style.bottom = '20px';
+    footerText.style.left = '20px';
+    footerText.style.right = '20px';
+    footerText.style.textAlign = 'center';
+    footerText.innerHTML = 'Erstellt mit DrohnenGLB.de | Berechnungen und Maße sind Näherungswerte und ersetzen nicht die Ermittlung vor Ort.';
+    coverPage.appendChild(footerText);
+    
+    container.appendChild(coverPage);
+    
+    if ((measurements as any).roofPlan && (measurements as any).placeRoofPlanOnPage2) {
+      const roofPlanPage = document.createElement('div');
+      roofPlanPage.style.pageBreakBefore = 'always';
+      roofPlanPage.style.padding = '20px';
+      
+      if (!(measurements as any).showRoofPlanWithoutHeader) {
+        const roofPlanTitle = document.createElement('h1');
+        roofPlanTitle.style.textAlign = 'center';
+        roofPlanTitle.style.marginBottom = '20px';
+        roofPlanTitle.textContent = 'Dachplan';
+        roofPlanPage.appendChild(roofPlanTitle);
+      }
+      
+      const roofPlanImage = document.createElement('img');
+      roofPlanImage.className = 'roof-plan';
+      roofPlanImage.src = (measurements as any).roofPlan;
+      roofPlanImage.alt = 'Dachplan';
+      
+      const dimensions = (measurements as any).roofPlanDimensions;
+      const maxWidth = 800;
+      const maxHeight = 1000;
+      
+      const scale = calculateRoofPlanScaleFactor(dimensions.width, dimensions.height, maxWidth, maxHeight);
+      
+      roofPlanImage.style.width = `${dimensions.width * scale}px`;
+      roofPlanImage.style.height = `${dimensions.height * scale}px`;
+      
+      roofPlanPage.appendChild(roofPlanImage);
+      container.appendChild(roofPlanPage);
+    }
+    
+    if (!(measurements as any).skipTableOfContents) {
+      const toc = createTableOfContents(measurements);
+      container.appendChild(toc);
+    }
+    
+    const measurementSection = document.createElement('div');
+    measurementSection.className = 'measurement-section';
+    
+    const sectionTitle = document.createElement('h2');
+    sectionTitle.textContent = 'Messungen - Übersicht';
+    measurementSection.appendChild(sectionTitle);
+    
+    const table = document.createElement('table');
+    table.className = 'measurement-table';
+    
+    const tableHead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    
+    ['Nr.', 'Beschreibung', 'Typ', 'Wert', 'Neigung'].forEach(column => {
+      const th = document.createElement('th');
+      th.textContent = column;
+      headerRow.appendChild(th);
+    });
+    
+    tableHead.appendChild(headerRow);
+    table.appendChild(tableHead);
+    
+    const tableBody = document.createElement('tbody');
+    
+    sortedMeasurements.forEach((measurement, index) => {
+      if (!measurement.type) return;
+      
+      const row = document.createElement('tr');
+      
+      const indexCell = document.createElement('td');
+      indexCell.textContent = (index + 1).toString();
+      row.appendChild(indexCell);
+      
+      const descriptionCell = document.createElement('td');
+      descriptionCell.textContent = measurement.description || '';
+      row.appendChild(descriptionCell);
+      
+      const typeCell = document.createElement('td');
+      typeCell.textContent = getMeasurementTypeDisplayName(measurement.type);
+      row.appendChild(typeCell);
+      
+      const valueCell = document.createElement('td');
+      valueCell.textContent = formatMeasurementValue(measurement);
+      row.appendChild(valueCell);
+      
+      const inclinationCell = document.createElement('td');
+      if (measurement.type === 'length' && measurement.inclination !== undefined) {
+        inclinationCell.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
+      } else {
+        inclinationCell.textContent = '–';
+      }
+      row.appendChild(inclinationCell);
+      
+      tableBody.appendChild(row);
+    });
+    
+    table.appendChild(tableBody);
+    measurementSection.appendChild(table);
+    container.appendChild(measurementSection);
+    
+    const measurementsByType = groupMeasurementsByType(sortedMeasurements);
+    
+    const typeOrder = ['area', 'length', 'height'];
+    typeOrder.forEach(type => {
+      if (measurementsByType[type] && measurementsByType[type].length > 0) {
+        const typeSection = document.createElement('div');
+        typeSection.className = 'measurement-section';
+        
+        const typeName = getMeasurementTypeDisplayName(type);
+        const typeSectionTitle = document.createElement('h2');
+        typeSectionTitle.textContent = `${typeName}messungen`;
+        typeSection.appendChild(typeSectionTitle);
+        
+        measurementsByType[type].forEach((measurement, index) => {
+          const measurementDetail = document.createElement('div');
+          measurementDetail.className = 'area-detail';
+          
+          const detailTitle = document.createElement('h3');
+          detailTitle.textContent = measurement.description || `${typeName} ${index + 1}`;
+          measurementDetail.appendChild(detailTitle);
+          
+          if (measurement.screenshot || measurement.polygon2D) {
+            const visualContainer = document.createElement('div');
+            visualContainer.style.textAlign = 'center';
+            
+            const visual = document.createElement('img');
+            visual.className = 'area-visual';
+            visual.src = measurement.screenshot || measurement.polygon2D;
+            visual.alt = `${typeName} Visualisierung`;
+            
+            visualContainer.appendChild(visual);
+            measurementDetail.appendChild(visualContainer);
+          }
+          
+          if (type === 'area' && measurement.segments && measurement.segments.length > 0) {
+            const segmentsTable = createAreaSegmentsTable(measurement, index);
+            measurementDetail.appendChild(segmentsTable);
+          }
+          
+          if (measurement.customScreenshots && measurement.customScreenshots.length > 0) {
+            const screenshotContainer = document.createElement('div');
+            screenshotContainer.style.marginTop = '20px';
+            
+            const screenshotTitle = document.createElement('h4');
+            screenshotTitle.textContent = 'Zusätzliche Ansichten';
+            screenshotContainer.appendChild(screenshotTitle);
+            
+            const screenshotGallery = document.createElement('div');
+            screenshotGallery.style.display = 'flex';
+            screenshotGallery.style.flexWrap = 'wrap';
+            screenshotGallery.style.justifyContent = 'center';
+            screenshotGallery.style.gap = '10px';
+            
+            measurement.customScreenshots.forEach((screenshot, sIndex) => {
+              const screenshotWrapper = document.createElement('div');
+              screenshotWrapper.style.width = '45%';
+              screenshotWrapper.style.margin = '5px';
+              
+              const screenshotImg = document.createElement('img');
+              screenshotImg.src = screenshot;
+              screenshotImg.alt = `Ansicht ${sIndex + 1}`;
+              screenshotImg.style.width = '100%';
+              screenshotImg.style.border = '1px solid #ddd';
+              screenshotImg.style.borderRadius = '4px';
+              
+              screenshotWrapper.appendChild(screenshotImg);
+              screenshotGallery.appendChild(screenshotWrapper);
+            });
+            
+            screenshotContainer.appendChild(screenshotGallery);
+            measurementDetail.appendChild(screenshotContainer);
+          }
+          
+          typeSection.appendChild(measurementDetail);
+        });
+        
+        container.appendChild(typeSection);
+      }
+    });
+    
+    const otherTypes = Object.keys(measurementsByType).filter(type => !typeOrder.includes(type));
+    if (otherTypes.length > 0) {
+      const otherSection = document.createElement('div');
+      otherSection.className = 'measurement-section';
+      
+      const otherSectionTitle = document.createElement('h2');
+      otherSectionTitle.textContent = 'Dacheinbauten und sonstige Elemente';
+      otherSection.appendChild(otherSectionTitle);
+      
+      otherTypes.forEach(type => {
+        const measurements = measurementsByType[type];
+        if (measurements && measurements.length > 0) {
+          const typeContainer = document.createElement('div');
+          typeContainer.className = 'type-section';
+          
+          const typeTitle = document.createElement('h3');
+          typeTitle.textContent = getMeasurementTypeDisplayName(type);
+          typeContainer.appendChild(typeTitle);
+          
+          measurements.forEach((measurement, index) => {
+            const measurementItem = document.createElement('div');
+            measurementItem.style.marginBottom = '20px';
+            
+            const itemTitle = document.createElement('h4');
+            itemTitle.textContent = measurement.description || `${getMeasurementTypeDisplayName(type)} ${index + 1}`;
+            measurementItem.appendChild(itemTitle);
+            
+            if (measurement.screenshot || measurement.polygon2D) {
+              const visualContainer = document.createElement('div');
+              visualContainer.style.textAlign = 'center';
+              
+              const visual = document.createElement('img');
+              visual.style.maxWidth = '80%';
+              visual.style.maxHeight = '200px';
+              visual.style.border = '1px solid #ddd';
+              visual.style.borderRadius = '4px';
+              visual.style.margin = '10px 0';
+              visual.src = measurement.screenshot || measurement.polygon2D;
+              visual.alt = `${getMeasurementTypeDisplayName(type)} Visualisierung`;
+              
+              visualContainer.appendChild(visual);
+              measurementItem.appendChild(visualContainer);
+            }
+            
+            typeContainer.appendChild(measurementItem);
+          });
+          
+          otherSection.appendChild(typeContainer);
+        }
+      });
+      
+      container.appendChild(otherSection);
+    }
+    
+    const summarySection = document.createElement('div');
+    summarySection.className = 'measurement-section';
+    
+    const summaryTitle = document.createElement('h2');
+    summaryTitle.textContent = 'Gesamtübersicht';
+    summarySection.appendChild(summaryTitle);
+    
+    if (measurements.filter(m => m.type === 'area').length > 0) {
+      const areaSummary = createTotalAreaSummary(measurements);
+      summarySection.appendChild(areaSummary);
+    }
+    
+    const hasSegments = measurements.some(m => m.segments && m.segments.length > 0);
+    if (hasSegments) {
+      const segmentSummary = createSegmentSummary(measurements);
+      summarySection.appendChild(segmentSummary);
+    }
+    
+    container.appendChild(summarySection);
+    
+    const opt = {
+      margin: [15, 15],
+      filename: `Vermessungsbericht_${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        logging: false
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    await html2pdf().from(container).set(opt).save();
+    
+    return true;
+  } catch (error) {
+    console.error('Error exporting PDF:', error);
+    return false;
+  }
+};
+
+const calculateRoofPlanScaleFactor = (width: number, height: number, maxWidth: number, maxHeight: number): number => {
+  const widthScale = maxWidth / width;
+  const heightScale = maxHeight / height;
+  return Math.min(widthScale, heightScale) * 0.90;
+};
