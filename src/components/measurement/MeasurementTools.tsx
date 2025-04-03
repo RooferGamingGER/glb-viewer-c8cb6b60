@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -415,6 +414,9 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       measurements, 
       true
     );
+    
+    // Return true to satisfy the boolean return type requirement
+    return true;
   };
 
   // Check if current mode is a roof element mode
@@ -425,6 +427,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   // Handle label visibility toggling with direct visual update
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
+    return true; // Return true to satisfy boolean return type
   };
 
   // Component rendering

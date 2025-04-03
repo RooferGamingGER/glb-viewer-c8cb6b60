@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useState,
@@ -115,12 +116,17 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
   );
   const [updateVisualState, setUpdateVisualState] = useState<(updatedMeasurements: Measurement[], labelVisibility: boolean) => void>(() => {});
 
+  // Function to clear current points - define this first
+  const clearCurrentPoints = useCallback(() => {
+    setCurrentPoints([]);
+  }, []);
+
   // Function to add a new point to currentPoints
   const addPoint = useCallback(
     (point: Point) => {
       setCurrentPoints((prevPoints) => [...prevPoints, point]);
     },
-    [setCurrentPoints]
+    []
   );
 
   // Function to toggle the active measurement tool
@@ -131,21 +137,16 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       setEditMeasurementId(null);
       setEditingPointIndex(null);
       setMeasurements((prevMeasurements) =>
-        prevMeasurements.map((m) => ({ ...m, isEditing: false }))
+        prevMeasurements.map((m) => ({ ...m }))
       );
     },
-    [setActiveMode, clearCurrentPoints, setEditMeasurementId, setEditingPointIndex, setMeasurements]
+    [clearCurrentPoints]
   );
 
   // Function to clear all measurements
   const clearMeasurements = useCallback(() => {
     setMeasurements([]);
-  }, [setMeasurements]);
-
-  // Function to clear current points
-  const clearCurrentPoints = useCallback(() => {
-    setCurrentPoints([]);
-  }, [setCurrentPoints]);
+  }, []);
 
   // Function to finalize a measurement
   const finalizeMeasurement = useCallback(() => {
@@ -156,9 +157,9 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       id,
       type: activeMode,
       points: currentPoints,
+      value: 0,
       visible: true,
       labelVisible: true,
-      isEditing: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -172,7 +173,8 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         segments.push({
           id: uuidv4(),
           points: [startPoint, endPoint],
-          type: 'edge',
+          length: 0,
+          type: 'custom',
           shared: false,
           isOriginal: true,
           sharedWithSegmentId: null,
@@ -184,7 +186,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
     setMeasurements((prevMeasurements) => [...prevMeasurements, newMeasurement]);
     clearCurrentPoints();
     return newMeasurement;
-  }, [activeMode, currentPoints, setMeasurements, clearCurrentPoints]);
+  }, [activeMode, currentPoints, clearCurrentPoints]);
 
   // Function to toggle the visibility of a measurement
   const toggleMeasurementVisibility = useCallback(
@@ -195,7 +197,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         )
       );
     },
-    [setMeasurements]
+    []
   );
 
   // Function to toggle the visibility of a measurement label
@@ -207,7 +209,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         )
       );
     },
-    [setMeasurements]
+    []
   );
 
   // Function to toggle the visibility of all measurements
@@ -216,7 +218,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
     setMeasurements((prevMeasurements) =>
       prevMeasurements.map((m) => ({ ...m, visible: !allMeasurementsVisible }))
     );
-  }, [setMeasurements, allMeasurementsVisible, setAllMeasurementsVisible]);
+  }, [allMeasurementsVisible]);
 
   // Function to toggle the visibility of all labels
   const toggleAllLabelsVisibility = useCallback(() => {
@@ -224,7 +226,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
     setMeasurements((prevMeasurements) =>
       prevMeasurements.map((m) => ({ ...m, labelVisible: !allLabelsVisible }))
     );
-  }, [setMeasurements, allLabelsVisible, setAllLabelsVisible]);
+  }, [allLabelsVisible]);
 
   // Function to toggle edit mode for a measurement
   const toggleEditMode = useCallback(
@@ -232,10 +234,10 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       setEditMeasurementId(id);
       setEditingPointIndex(null);
       setMeasurements((prevMeasurements) =>
-        prevMeasurements.map((m) => ({ ...m, isEditing: m.id === id }))
+        prevMeasurements.map((m) => ({ ...m }))
       );
     },
-    [setEditMeasurementId, setEditingPointIndex, setMeasurements]
+    []
   );
 
   // Function to update a measurement
@@ -245,7 +247,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         prevMeasurements.map((m) => (m.id === id ? { ...m, ...data } : m))
       );
     },
-    [setMeasurements]
+    []
   );
 
   // Function to update a segment
@@ -265,7 +267,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         })
       );
     },
-    [setMeasurements]
+    []
   );
 
   // Function to delete a measurement
@@ -277,7 +279,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       setEditMeasurementId(null);
       setEditingPointIndex(null);
     },
-    [setMeasurements, setEditMeasurementId, setEditingPointIndex]
+    []
   );
 
   // Function to delete a point from a measurement
@@ -294,7 +296,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         })
       );
     },
-    [setMeasurements]
+    []
   );
 
   // Function to undo the last added point
@@ -304,7 +306,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       newPoints.pop();
       return newPoints;
     });
-  }, [setCurrentPoints]);
+  }, []);
 
   // Function to start editing a point
   const startPointEdit = useCallback(
@@ -312,14 +314,14 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       setEditMeasurementId(id);
       setEditingPointIndex(index);
     },
-    [setEditMeasurementId, setEditingPointIndex]
+    []
   );
 
   // Function to cancel editing
   const cancelEditing = useCallback(() => {
     setEditMeasurementId(null);
     setEditingPointIndex(null);
-  }, [setEditMeasurementId, setEditingPointIndex]);
+  }, []);
 
   // Function to update a measurement point
   const updateMeasurementPoint = useCallback(
@@ -335,7 +337,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
         })
       );
     },
-    [setMeasurements]
+    []
   );
 
   // Function to move a measurement up in the array
@@ -349,7 +351,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       newMeasurements[index - 1] = temp;
       return newMeasurements;
     });
-  }, [setMeasurements]);
+  }, []);
 
   // Function to move a measurement down in the array
   const moveMeasurementDown = useCallback((id: string) => {
@@ -362,7 +364,7 @@ export const MeasurementProvider: React.FC<MeasurementProviderProps> = ({
       newMeasurements[index + 1] = temp;
       return newMeasurements;
     });
-  }, [setMeasurements]);
+  }, []);
 
   const value: MeasurementContextType = {
     measurements,
