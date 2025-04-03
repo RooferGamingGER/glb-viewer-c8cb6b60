@@ -1,4 +1,3 @@
-
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 

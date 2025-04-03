@@ -202,6 +202,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       const summary = getRoofElementsSummary(measurements);
       (measurementsWithVisuals as any).summary = summary;
       
+      // Add flag to skip table of contents
+      (measurementsWithVisuals as any).skipTableOfContents = true;
+      
       const coverData = form.getValues();
       const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
       setExportProgress(100);
@@ -426,7 +429,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         {isExporting && <div className="mt-4">
             <Progress value={exportProgress} className="w-full" />
             <p className="text-xs text-muted-foreground text-center mt-2">
-              {exportProgress < 100 ? 'PDF wird erstellt...' : 'PDF fertiggestellt!'}
+              {exportProgress === 100 ? 'PDF fertiggestellt!' : 'PDF wird erstellt...'}
             </p>
           </div>}
         
