@@ -462,11 +462,24 @@ export const groupSegmentsByType = (measurements: Measurement[]): Record<string,
     segmentGroups[type] = { count: 0, totalLength: 0 };
   });
   
+  // Track processed shared segments to avoid double counting
+  const processedSharedSegments = new Set<string>();
+  
   // Add custom types that might not be in the common list
   measurements.forEach(measurement => {
     if (measurement.segments) {
       measurement.segments.forEach(segment => {
         if (segment.type) {
+          // Skip shared segments that are not originals to avoid double counting
+          if (segment.shared && !segment.isOriginal) {
+            return;
+          }
+          
+          // For shared segments that are originals, track them
+          if (segment.shared && segment.isOriginal && segment.id) {
+            processedSharedSegments.add(segment.id);
+          }
+          
           if (!segmentGroups[segment.type]) {
             segmentGroups[segment.type] = { count: 0, totalLength: 0 };
           }
@@ -514,10 +527,29 @@ export const getSegmentTypeDisplayName = (type: string): string => {
 };
 
 /**
- * Count total segments in all measurements
+ * Count total segments in all measurements, avoiding double counting of shared segments
  */
 export const countTotalSegments = (measurements: Measurement[]): number => {
+  const processedSharedSegments = new Set<string>();
+  
   return measurements.reduce((total, m) => {
-    return total + (m.segments?.length || 0);
+    if (!m.segments) return total;
+    
+    return total + m.segments.filter(segment => {
+      // Skip shared segments that aren't originals
+      if (segment.shared && !segment.isOriginal) {
+        return false;
+      }
+      
+      // For shared original segments, check if already counted
+      if (segment.shared && segment.isOriginal && segment.id) {
+        if (processedSharedSegments.has(segment.id)) {
+          return false;
+        }
+        processedSharedSegments.add(segment.id);
+      }
+      
+      return true;
+    }).length;
   }, 0);
 };

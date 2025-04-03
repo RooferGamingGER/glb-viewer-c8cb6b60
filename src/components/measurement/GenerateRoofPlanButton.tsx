@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Maximize, Download, ExternalLink } from 'lucide-react';
@@ -96,7 +95,23 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     m.points.length >= 3
   ).length;
   
-  const segmentCount = measurements.reduce((total, m) => total + (m.segments?.length || 0), 0);
+  // Count segments, considering shared segments only once
+  const uniqueSegmentCount = (() => {
+    // Collect all segments
+    const allSegments = measurements.reduce((total, m) => {
+      if (m.segments && m.segments.length > 0) {
+        return [...total, ...m.segments];
+      }
+      return total;
+    }, [] as (Segment | undefined)[]);
+    
+    // Filter out segments that are marked as shared but not original
+    const uniqueSegments = allSegments.filter(segment => 
+      !segment?.shared || (segment.shared && segment.isOriginal)
+    );
+    
+    return uniqueSegments.length;
+  })();
   
   return (
     <Dialog>
@@ -116,7 +131,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
           <DialogTitle>Dachplan - Draufsicht</DialogTitle>
           <DialogDescription>
             {areaCount > 0 
-              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${segmentCount} Segmenten in der Draufsicht.`
+              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
           </DialogDescription>
         </DialogHeader>
@@ -138,7 +153,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
                   src={roofPlan} 
                   alt="Dachplan" 
                   className="w-full object-contain"
-                  style={{ maxHeight: '650px' }} // Increased from 600px to 650px
+                  style={{ maxHeight: '650px' }}
                 />
               </div>
               

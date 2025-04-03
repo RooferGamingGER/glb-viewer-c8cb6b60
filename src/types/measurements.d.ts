@@ -11,6 +11,9 @@ export interface Segment {
   inclination?: number;
   label?: string;
   type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
+  shared?: boolean;
+  sharedWithSegmentId?: string;
+  isOriginal?: boolean;
 }
 
 export interface Measurement {
