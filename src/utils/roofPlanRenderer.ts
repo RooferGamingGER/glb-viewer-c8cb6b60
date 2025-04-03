@@ -565,9 +565,6 @@ export const createCombinedRoofPlan = (
     // Add a segment type legend
     drawSegmentLegend(ctx, width, height, segmentColors, Array.from(usedSegmentTypes));
     
-    // Add a measurement type legend
-    drawMeasurementTypeLegend(ctx, width, height, colors, Array.from(usedMeasurementTypes));
-    
     // Add a disclaimer below the plan
     drawDisclaimer(ctx, width, height);
     
@@ -774,7 +771,7 @@ function drawSegmentLegend(
     ctx.stroke();
     
     // Draw label
-    ctx.font = 'bold 14px Arial'; // Increased font size
+    ctx.font = 'bold 14px Arial';
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
@@ -823,7 +820,7 @@ function drawMeasurementTypeLegend(
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
   
   // Draw legend title
-  ctx.font = 'bold 16px Arial'; // Same size as segment legend
+  ctx.font = 'bold 16px Arial';
   ctx.fillStyle = '#333333';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -846,7 +843,7 @@ function drawMeasurementTypeLegend(
     ctx.strokeRect(legendX + 15, currentY + (itemHeight - boxSize) / 2, boxSize, boxSize);
     
     // Draw label
-    ctx.font = 'bold 14px Arial'; // Same size as segment legend
+    ctx.font = 'bold 14px Arial';
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
@@ -866,7 +863,7 @@ function drawDisclaimer(
 ): void {
   const disclaimerText = "Hinweis: Alle Maße dienen der Orientierung und sind vor Ort zu prüfen.";
   
-  ctx.font = '14px Arial'; // Increased from 12px to 14px
+  ctx.font = '14px Arial';
   ctx.fillStyle = '#666666';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
@@ -928,7 +925,7 @@ function drawLegend(
     ctx.strokeRect(legendX + 10, currentY, 18, 14);
     
     // Draw label with increased font size
-    ctx.font = '12px Arial'; // Increased from 11px to 12px
+    ctx.font = '12px Arial';
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
