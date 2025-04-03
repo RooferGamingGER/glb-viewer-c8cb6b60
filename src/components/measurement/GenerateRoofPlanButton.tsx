@@ -33,8 +33,8 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     setIsGenerating(true);
     
     try {
-      // Specify that we want a true top-down view with higher resolution
-      const plan = createCombinedRoofPlan(measurements, 2400, 1800, 0.1, true);
+      // Specify higher resolution and true top-down view for better readability
+      const plan = createCombinedRoofPlan(measurements, 2800, 2100, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {
@@ -138,7 +138,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
                   src={roofPlan} 
                   alt="Dachplan" 
                   className="w-full object-contain"
-                  style={{ maxHeight: '600px' }} // Increased from 500px to 600px
+                  style={{ maxHeight: '650px' }} // Increased from 600px to 650px
                 />
               </div>
               

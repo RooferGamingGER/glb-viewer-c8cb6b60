@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -422,7 +423,7 @@ export const createCombinedRoofPlan = (
           const segmentType = segment.type?.toLowerCase() || 'default';
           usedSegmentTypes.add(segmentType);
           ctx.strokeStyle = segmentColors[segmentType] || segmentColors.default;
-          ctx.lineWidth = 4; // Thicker line for segments
+          ctx.lineWidth = 5; // Increased from 4 to 5 for better visibility
           ctx.stroke();
           
           // Calculate the midpoint of the segment
@@ -433,17 +434,17 @@ export const createCombinedRoofPlan = (
           if (segment.type) {
             const segmentTypeDisplayName = getSegmentTypeDisplayName(segment.type);
             
-            // Draw the segment type with background
-            ctx.font = 'bold 14px Arial';
+            // Draw the segment type with background - INCREASED SIZE
+            ctx.font = 'bold 18px Arial'; // Increased from 14px to 18px
             const typeTextWidth = ctx.measureText(segmentTypeDisplayName).width;
             
             // White background for segment type
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.fillRect(
               toCanvasX(midX) - typeTextWidth / 2 - 6, 
-              toCanvasY(midY) - 28, 
+              toCanvasY(midY) - 30, // Adjusted position for better spacing
               typeTextWidth + 12,
-              20
+              24 // Increased height for larger font
             );
             
             // Type text
@@ -453,28 +454,28 @@ export const createCombinedRoofPlan = (
             ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
           }
           
-          // Always show length, even if no type or inclination
+          // Always show length, even if no type or inclination - INCREASED SIZE
           const lengthText = segment.inclination !== undefined && Math.abs(segment.inclination) >= 2.0
             ? `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`
             : `${segment.length.toFixed(2)}m`;
           
-          ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px for better readability
+          ctx.font = 'bold 22px Arial'; // Increased from 16px to 22px for better readability
           const textWidth = ctx.measureText(lengthText).width;
           
           // White background for text
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
           ctx.fillRect(
-            toCanvasX(midX) - textWidth / 2 - 6, 
-            toCanvasY(midY) + 4, 
-            textWidth + 12,
-            24 // Increased height for larger font
+            toCanvasX(midX) - textWidth / 2 - 8, 
+            toCanvasY(midY) + 6, 
+            textWidth + 16, // More padding
+            30 // Increased height for larger font
           );
           
           // Draw text with segment color for better visibility
           ctx.fillStyle = '#000000';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY) + 16); // Adjusted y position
+          ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY) + 20); // Adjusted y position
         }
       }
     });
@@ -484,12 +485,12 @@ export const createCombinedRoofPlan = (
       // Draw the vertices - INCREASED SIZE for better visibility on A4
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 10, 0, Math.PI * 2); // Increased from 8 to 10
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 14, 0, Math.PI * 2); // Increased from 10 to 14
         ctx.fillStyle = '#666666';
         ctx.fill();
         
         // Add index numbers to vertices - INCREASED SIZE
-        ctx.font = 'bold 24px Arial'; // Increased from 20px to 24px
+        ctx.font = 'bold 28px Arial'; // Increased from 24px to 28px
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -501,7 +502,7 @@ export const createCombinedRoofPlan = (
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
       // INCREASED font size for better readability
-      ctx.font = 'bold 26px Arial'; // Increased from 24px to 26px
+      ctx.font = 'bold 30px Arial'; // Increased from 26px to 30px
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
@@ -513,10 +514,10 @@ export const createCombinedRoofPlan = (
       // Draw white background for label text
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(
-        toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) - 20,
-        maxWidth + 10,
-        44  // Increased height for larger font
+        toCanvasX(centroid.x) - maxWidth / 2 - 10,
+        toCanvasY(centroid.y) - 25,
+        maxWidth + 20,
+        50  // Increased height for larger font
       );
       
       // Draw label text
@@ -526,16 +527,16 @@ export const createCombinedRoofPlan = (
       // Draw white background for value text
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(
-        toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) + 24,
-        maxWidth + 10,
-        36  // Increased height for larger font
+        toCanvasX(centroid.x) - maxWidth / 2 - 10,
+        toCanvasY(centroid.y) + 25,
+        maxWidth + 20,
+        44  // Increased height for larger font
       );
       
       // Draw value text - INCREASED SIZE
-      ctx.font = 'bold 24px Arial'; // Increased from 22px to 24px
+      ctx.font = 'bold 28px Arial'; // Increased from 24px to 28px
       ctx.fillStyle = '#222222';
-      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 42); // Adjusted position for larger text
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 46); // Adjusted position for larger text
     });
     
     // Add a disclaimer below the plan
@@ -670,14 +671,14 @@ function drawScaleIndicator(
   }
   
   // Add label with increased font size
-  ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px
+  ctx.font = 'bold 20px Arial'; // Increased from 16px to 20px
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 8);
   
   // Add "Maßstab" label with increased font size
-  ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px
+  ctx.font = 'bold 20px Arial'; // Increased from 16px to 20px
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 8);
@@ -693,7 +694,7 @@ function drawDisclaimer(
 ): void {
   const disclaimerText = "Hinweis: Alle Maße dienen der Orientierung und sind vor Ort zu prüfen.";
   
-  ctx.font = '14px Arial';
+  ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px and made bold
   ctx.fillStyle = '#666666';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
