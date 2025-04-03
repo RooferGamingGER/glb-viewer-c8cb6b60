@@ -1,14 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
+import * as THREE from 'three';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Measurement } from '@/hooks/useMeasurements'; 
+import { Measurement } from '@/types/measurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
 import { Trash2, Magnet } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
-import * as THREE from 'three';
 import { 
   AlertDialog,
   AlertDialogAction,
