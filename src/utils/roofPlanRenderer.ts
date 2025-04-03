@@ -196,8 +196,6 @@ const projectMeasurementsTopDown = (measurements: Measurement[]): {
  * @param height - Height of the output canvas in pixels
  * @param padding - Padding around the plan in percentage (0-1)
  * @param useTopDownView - If true, use a strict top-down projection (ignoring Y axis)
- * @param showSegments - Whether to show segment lines and labels (default true)
- * @param showAreas - Whether to show area measurements and labels (default true)
  * @returns Base64 data URL of the rendered plan
  */
 export const createCombinedRoofPlan = (
@@ -205,9 +203,7 @@ export const createCombinedRoofPlan = (
   width = 1800,
   height = 1300,
   padding = 0.05,
-  useTopDownView = false,
-  showSegments = true,
-  showAreas = true
+  useTopDownView = false
 ): string => {
   if (measurements.length === 0) {
     console.warn('No measurements to create roof plan');
@@ -282,15 +278,7 @@ export const createCombinedRoofPlan = (
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    
-    // Change title based on what's being shown
-    if (showSegments && !showAreas) {
-      ctx.fillText('Dachplan - Segmente', width / 2, 15);
-    } else if (!showSegments && showAreas) {
-      ctx.fillText('Dachplan - Flächen', width / 2, 15);
-    } else {
-      ctx.fillText('Dachplan (Draufsicht)', width / 2, 15);
-    }
+    ctx.fillText('Dachplan (Draufsicht)', width / 2, 15);
     
     // Draw scale indicator
     drawScaleIndicator(ctx, width, height, scale, rangeX);
@@ -322,219 +310,211 @@ export const createCombinedRoofPlan = (
     // Track all segment types used for the legend
     const usedSegmentTypes = new Set<string>();
     
-    // First pass: Draw all roof areas (only if showAreas is true)
-    if (showAreas) {
-      projectedMeasurements.forEach(({ measurement, points2D }) => {
-        if (measurement.type !== 'area') return;
-        
-        const colorSet = colors[measurement.type] || colors.default;
-        
-        // Draw the polygon
-        ctx.beginPath();
-        ctx.moveTo(toCanvasX(points2D[0].x), toCanvasY(points2D[0].y));
-        
-        for (let i = 1; i < points2D.length; i++) {
-          ctx.lineTo(toCanvasX(points2D[i].x), toCanvasY(points2D[i].y));
-        }
-        
-        ctx.closePath();
-        
-        // Fill with the type-specific color
-        ctx.fillStyle = colorSet.fill;
-        ctx.fill();
-        
-        // Draw the outline
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = colorSet.stroke;
-        ctx.stroke();
-      });
-    }
+    // First pass: Draw all roof areas
+    projectedMeasurements.forEach(({ measurement, points2D }) => {
+      if (measurement.type !== 'area') return;
+      
+      const colorSet = colors[measurement.type] || colors.default;
+      
+      // Draw the polygon
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(points2D[0].x), toCanvasY(points2D[0].y));
+      
+      for (let i = 1; i < points2D.length; i++) {
+        ctx.lineTo(toCanvasX(points2D[i].x), toCanvasY(points2D[i].y));
+      }
+      
+      ctx.closePath();
+      
+      // Fill with the type-specific color
+      ctx.fillStyle = colorSet.fill;
+      ctx.fill();
+      
+      // Draw the outline
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = colorSet.stroke;
+      ctx.stroke();
+    });
     
-    // Second pass: Draw all measurement segments (only if showSegments is true)
-    if (showSegments) {
-      projectedMeasurements.forEach(({ measurement, points2D }) => {
-        if (measurement.type !== 'area' || !measurement.segments) return;
+    // Second pass: Draw all measurement segments
+    projectedMeasurements.forEach(({ measurement, points2D }) => {
+      if (measurement.type !== 'area' || !measurement.segments) return;
+      
+      // Draw each segment with type-specific color
+      for (let i = 0; i < measurement.segments.length; i++) {
+        const segment = measurement.segments[i];
         
-        // Draw each segment with type-specific color
-        for (let i = 0; i < measurement.segments.length; i++) {
-          const segment = measurement.segments[i];
+        // Skip segments that don't have a type
+        if (!segment.type) continue;
+        
+        // Add to used segment types for legend
+        usedSegmentTypes.add(segment.type);
+        
+        // Find the points in the 2D array
+        const p1Index = measurement.points.findIndex(p => 
+          p.x === segment.points[0].x && 
+          p.y === segment.points[0].y && 
+          p.z === segment.points[0].z
+        );
+        
+        const p2Index = measurement.points.findIndex(p => 
+          p.x === segment.points[1].x && 
+          p.y === segment.points[1].y && 
+          p.z === segment.points[1].z
+        );
+        
+        if (p1Index >= 0 && p2Index >= 0 && p1Index < points2D.length && p2Index < points2D.length) {
+          const p1 = points2D[p1Index];
+          const p2 = points2D[p2Index];
           
-          // Skip segments that don't have a type
-          if (!segment.type) continue;
+          // Draw the segment with type-specific color
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(p1.x), toCanvasY(p1.y));
+          ctx.lineTo(toCanvasX(p2.x), toCanvasY(p2.y));
           
-          // Add to used segment types for legend
-          usedSegmentTypes.add(segment.type);
+          // Use segment type color or default
+          const segmentType = segment.type.toLowerCase();
+          ctx.strokeStyle = segmentColors[segmentType] || segmentColors.default;
+          ctx.lineWidth = 4; // Thicker line for segments
+          ctx.stroke();
           
-          // Find the points in the 2D array
-          const p1Index = measurement.points.findIndex(p => 
-            p.x === segment.points[0].x && 
-            p.y === segment.points[0].y && 
-            p.z === segment.points[0].z
+          // Calculate the midpoint of the segment
+          const midX = (p1.x + p2.x) / 2;
+          const midY = (p1.y + p2.y) / 2;
+          
+          // Draw the segment type label
+          const segmentTypeDisplayName = getSegmentTypeDisplayName(segment.type);
+          
+          // Draw the segment type with background
+          ctx.font = 'bold 14px Arial';
+          const typeTextWidth = ctx.measureText(segmentTypeDisplayName).width;
+          
+          // White background for segment type
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillRect(
+            toCanvasX(midX) - typeTextWidth / 2 - 6, 
+            toCanvasY(midY) - 28, 
+            typeTextWidth + 12,
+            20
           );
           
-          const p2Index = measurement.points.findIndex(p => 
-            p.x === segment.points[1].x && 
-            p.y === segment.points[1].y && 
-            p.z === segment.points[1].z
-          );
+          // Type text
+          ctx.fillStyle = segmentColors[segmentType] || segmentColors.default;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
           
-          if (p1Index >= 0 && p2Index >= 0 && p1Index < points2D.length && p2Index < points2D.length) {
-            const p1 = points2D[p1Index];
-            const p2 = points2D[p2Index];
+          // Draw the length value with background
+          const lengthText = `${segment.length.toFixed(2)}m`;
+          
+          if (segment.inclination !== undefined) {
+            // Include inclination for segments that have it (usually length measurements)
+            const lengthWithIncl = `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`;
             
-            // Draw the segment with type-specific color
-            ctx.beginPath();
-            ctx.moveTo(toCanvasX(p1.x), toCanvasY(p1.y));
-            ctx.lineTo(toCanvasX(p2.x), toCanvasY(p2.y));
-            
-            // Use segment type color or default
-            const segmentType = segment.type.toLowerCase();
-            ctx.strokeStyle = segmentColors[segmentType] || segmentColors.default;
-            ctx.lineWidth = 4; // Thicker line for segments
-            ctx.stroke();
-            
-            // Calculate the midpoint of the segment
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
-            
-            // Draw the segment type label
-            const segmentTypeDisplayName = getSegmentTypeDisplayName(segment.type);
-            
-            // Draw the segment type with background
             ctx.font = 'bold 14px Arial';
-            const typeTextWidth = ctx.measureText(segmentTypeDisplayName).width;
+            const textWidth = ctx.measureText(lengthWithIncl).width;
             
-            // White background for segment type
+            // White background for text
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.fillRect(
-              toCanvasX(midX) - typeTextWidth / 2 - 6, 
-              toCanvasY(midY) - 28, 
-              typeTextWidth + 12,
+              toCanvasX(midX) - textWidth / 2 - 6, 
+              toCanvasY(midY) + 4, 
+              textWidth + 12,
               20
             );
             
-            // Type text
-            ctx.fillStyle = segmentColors[segmentType] || segmentColors.default;
+            // Draw text with segment color for better visibility
+            ctx.fillStyle = '#000000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
+            ctx.fillText(lengthWithIncl, toCanvasX(midX), toCanvasY(midY) + 14);
+          } else {
+            // Just the length for segments without inclination
+            ctx.font = 'bold 14px Arial';
+            const textWidth = ctx.measureText(lengthText).width;
             
-            // Draw the length value with background
-            const lengthText = `${segment.length.toFixed(2)}m`;
+            // White background for text
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(
+              toCanvasX(midX) - textWidth / 2 - 6, 
+              toCanvasY(midY) + 4, 
+              textWidth + 12,
+              20
+            );
             
-            if (segment.inclination !== undefined) {
-              // Include inclination for segments that have it (usually length measurements)
-              const lengthWithIncl = `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`;
-              
-              ctx.font = 'bold 14px Arial';
-              const textWidth = ctx.measureText(lengthWithIncl).width;
-              
-              // White background for text
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-              ctx.fillRect(
-                toCanvasX(midX) - textWidth / 2 - 6, 
-                toCanvasY(midY) + 4, 
-                textWidth + 12,
-                20
-              );
-              
-              // Draw text with segment color for better visibility
-              ctx.fillStyle = '#000000';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(lengthWithIncl, toCanvasX(midX), toCanvasY(midY) + 14);
-            } else {
-              // Just the length for segments without inclination
-              ctx.font = 'bold 14px Arial';
-              const textWidth = ctx.measureText(lengthText).width;
-              
-              // White background for text
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-              ctx.fillRect(
-                toCanvasX(midX) - textWidth / 2 - 6, 
-                toCanvasY(midY) + 4, 
-                textWidth + 12,
-                20
-              );
-              
-              // Draw text
-              ctx.fillStyle = '#000000';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY) + 14);
-            }
+            // Draw text
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(lengthText, toCanvasX(midX), toCanvasY(midY) + 14);
           }
         }
-      });
-    }
+      }
+    });
     
-    // Third pass: Draw measurement labels, points and areas in the center (only if showAreas is true)
-    if (showAreas) {
-      projectedMeasurements.forEach(({ measurement, points2D, centroid }) => {
-        if (measurement.type !== 'area') return;
+    // Third pass: Draw measurement labels, points and areas in the center
+    projectedMeasurements.forEach(({ measurement, points2D, centroid }) => {
+      if (measurement.type !== 'area') return;
+      
+      // Draw the vertices
+      points2D.forEach((point, index) => {
+        ctx.beginPath();
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#666666';
+        ctx.fill();
         
-        // Draw the vertices
-        points2D.forEach((point, index) => {
-          ctx.beginPath();
-          ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2);
-          ctx.fillStyle = '#666666';
-          ctx.fill();
-          
-          // Add index numbers to vertices
-          ctx.font = 'bold 12px Arial';
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText((index + 1).toString(), toCanvasX(point.x), toCanvasY(point.y));
-        });
-        
-        // Draw the measurement ID/label in the center
-        const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
-        const valueText = `${measurement.value.toFixed(2)} m²`;
-        
-        // Increased font size for better readability
-        ctx.font = 'bold 18px Arial';
+        // Add index numbers to vertices
+        ctx.font = 'bold 12px Arial';
+        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
-        // Add a white background behind text for better readability
-        const labelWidth = ctx.measureText(labelText).width;
-        const valueWidth = ctx.measureText(valueText).width;
-        const maxWidth = Math.max(labelWidth, valueWidth);
-        
-        // Draw white background for label text
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillRect(
-          toCanvasX(centroid.x) - maxWidth / 2 - 5,
-          toCanvasY(centroid.y) - 15,
-          maxWidth + 10,
-          30
-        );
-        
-        // Draw label text
-        ctx.fillStyle = '#222222';
-        ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y));
-        
-        // Draw white background for value text
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillRect(
-          toCanvasX(centroid.x) - maxWidth / 2 - 5,
-          toCanvasY(centroid.y) + 15,
-          maxWidth + 10,
-          24
-        );
-        
-        // Draw value text
-        ctx.font = 'bold 16px Arial';
-        ctx.fillStyle = '#222222';
-        ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 26);
+        ctx.fillText((index + 1).toString(), toCanvasX(point.x), toCanvasY(point.y));
       });
-    }
+      
+      // Draw the measurement ID/label in the center
+      const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
+      const valueText = `${measurement.value.toFixed(2)} m²`;
+      
+      // Increased font size for better readability
+      ctx.font = 'bold 18px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Add a white background behind text for better readability
+      const labelWidth = ctx.measureText(labelText).width;
+      const valueWidth = ctx.measureText(valueText).width;
+      const maxWidth = Math.max(labelWidth, valueWidth);
+      
+      // Draw white background for label text
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(
+        toCanvasX(centroid.x) - maxWidth / 2 - 5,
+        toCanvasY(centroid.y) - 15,
+        maxWidth + 10,
+        30
+      );
+      
+      // Draw label text
+      ctx.fillStyle = '#222222';
+      ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y));
+      
+      // Draw white background for value text
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(
+        toCanvasX(centroid.x) - maxWidth / 2 - 5,
+        toCanvasY(centroid.y) + 15,
+        maxWidth + 10,
+        24
+      );
+      
+      // Draw value text
+      ctx.font = 'bold 16px Arial';
+      ctx.fillStyle = '#222222';
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 26);
+    });
     
-    // Add a segment type legend if needed
-    if (showSegments) {
-      drawSegmentLegend(ctx, width, height, segmentColors, Array.from(usedSegmentTypes));
-    }
+    // Add a segment type legend
+    drawSegmentLegend(ctx, width, height, segmentColors, Array.from(usedSegmentTypes));
     
     // Add a disclaimer below the plan
     drawDisclaimer(ctx, width, height);
