@@ -393,7 +393,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   ]);
 
   // Callback for handling cancellation of editing
-  const handleCancelEditingWithCleanup = () => {
+  const handleCancelEditingWithCleanup = useCallback(() => {
     handleCancelEditing();
     setMovingPointInfo(null);
     
@@ -415,9 +415,18 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       true
     );
     
-    // Return true to satisfy the boolean return type requirement
-    return true;
-  };
+    return true; // Return true to satisfy the boolean return type
+  }, [
+    handleCancelEditing, 
+    setMovingPointInfo, 
+    clearPreviewGroup, 
+    clearAddPointIndicators, 
+    renderMeasurements,
+    measurementsRef, 
+    labelsRef, 
+    segmentLabelsRef, 
+    measurements
+  ]);
 
   // Check if current mode is a roof element mode
   const isRoofElementMode = ![
@@ -425,10 +434,11 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   ].includes(activeMode);
 
   // Handle label visibility toggling with direct visual update
-  const handleToggleAllLabelsVisibility = () => {
+  const handleToggleAllLabelsVisibility = useCallback(() => {
     toggleAllLabelsVisibility();
-    return true; // Return true to satisfy boolean return type
-  };
+    updateAllLabelsVisibility(!allLabelsVisible);
+    return true; // Return true to satisfy the boolean return type
+  }, [toggleAllLabelsVisibility, updateAllLabelsVisibility, allLabelsVisible]);
 
   // Component rendering
   return (

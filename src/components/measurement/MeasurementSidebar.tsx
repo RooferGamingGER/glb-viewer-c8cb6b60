@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/types/measurements'; 
@@ -20,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Toggle } from "@/components/ui/toggle";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { usePointSnapping } from '@/hooks/usePointSnapping';
 import * as THREE from 'three';
 
@@ -70,7 +69,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   measurementGroups
 }) => {
   const [activeTab, setActiveTab] = useState<string>("standard");
-  const { toast } = useToast();
   
   // Use our improved snapping hook
   const { snapEnabled, setSnapEnabled } = usePointSnapping(null);
@@ -96,8 +94,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const handleToggleSnap = () => {
     const newValue = !snapEnabled;
     setSnapEnabled(newValue);
-    toast({
-      title: newValue ? "Punktfang aktiviert" : "Punktfang deaktiviert",
+    toast.success(newValue ? "Punktfang aktiviert" : "Punktfang deaktiviert", {
       description: newValue 
         ? "Punkte rasten automatisch ein wenn sie sich in der Nähe vorhandener Punkte befinden" 
         : "Punkte werden exakt an der geklickten Position platziert",
