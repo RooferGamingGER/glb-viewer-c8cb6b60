@@ -34,7 +34,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     
     try {
       // Specify that we want a true top-down view with higher resolution
-      const plan = createCombinedRoofPlan(measurements, 2000, 1400, 0.1, true);
+      const plan = createCombinedRoofPlan(measurements, 2400, 1800, 0.1, true);
       setRoofPlan(plan);
       
       if (!plan) {
@@ -85,9 +85,15 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
-  // Count the number of roof surfaces and segments available
+  // Count the number of roof surfaces and special elements available
   const areaCount = measurements.filter(m => 
-    ['area', 'solar'].includes(m.type) && m.points && m.points.length >= 3
+    ['area'].includes(m.type) && m.points && m.points.length >= 3
+  ).length;
+  
+  const specialElementCount = measurements.filter(m => 
+    ['solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type) && 
+    m.points && 
+    m.points.length >= 3
   ).length;
   
   const segmentCount = measurements.reduce((total, m) => total + (m.segments?.length || 0), 0);
@@ -110,7 +116,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
           <DialogTitle>Dachplan - Draufsicht</DialogTitle>
           <DialogDescription>
             {areaCount > 0 
-              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen und ${segmentCount} Segmenten in der Draufsicht.`
+              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${segmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
           </DialogDescription>
         </DialogHeader>
@@ -132,7 +138,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
                   src={roofPlan} 
                   alt="Dachplan" 
                   className="w-full object-contain"
-                  style={{ maxHeight: '500px' }} 
+                  style={{ maxHeight: '600px' }} // Increased from 500px to 600px
                 />
               </div>
               

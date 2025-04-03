@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -27,9 +26,9 @@ export const projectMeasurementsTo2D = (
     maxY: number;
   };
 } => {
-  // Only include area measurements and other relevant types
+  // Include all relevant measurement types: area, solar, skylight, chimney, vent, hook, other
   const relevantMeasurements = measurements.filter(m => 
-    ['area', 'solar', 'skylight', 'chimney'].includes(m.type) && 
+    ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type) && 
     m.points && 
     m.points.length >= 3
   );
@@ -283,13 +282,16 @@ export const createCombinedRoofPlan = (
     // Draw scale indicator
     drawScaleIndicator(ctx, width, height, scale, rangeX);
     
-    // Define colors for different measurement types
+    // Define colors for different measurement types - improved with more distinct colors
     const colors: Record<string, { fill: string; stroke: string }> = {
-      'area': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#888888' },
+      'area': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#666666' },
       'solar': { fill: 'rgba(0, 180, 0, 0.2)', stroke: '#006600' },
-      'skylight': { fill: 'rgba(255, 165, 0, 0.2)', stroke: '#cc7000' },
+      'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, // More vivid for skylights
       'chimney': { fill: 'rgba(180, 0, 0, 0.2)', stroke: '#990000' },
-      'default': { fill: 'rgba(240, 240, 240, 0.2)', stroke: '#888888' }
+      'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  // Added vent
+      'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, // Added hook
+      'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' }, // Added other
+      'default': { fill: 'rgba(200, 200, 200, 0.2)', stroke: '#888888' }
     };
     
     // Define segment type colors - similar to the reference image
@@ -310,11 +312,25 @@ export const createCombinedRoofPlan = (
     // Track all segment types used for the legend
     const usedSegmentTypes = new Set<string>();
     
-    // First pass: Draw all roof areas
-    projectedMeasurements.forEach(({ measurement, points2D }) => {
+    // Track all measurement types used for the legend
+    const usedMeasurementTypes = new Set<string>();
+    
+    // First pass: Draw all roof areas (sorted with basic areas first, special elements later)
+    const sortOrder = ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'];
+    
+    // Sort the measurements by type
+    const sortedMeasurements = [...projectedMeasurements].sort((a, b) => {
+      const aIndex = sortOrder.indexOf(a.measurement.type);
+      const bIndex = sortOrder.indexOf(b.measurement.type);
+      return aIndex - bIndex;
+    });
+    
+    // First pass: Draw all base roof areas
+    sortedMeasurements.forEach(({ measurement, points2D }) => {
       if (measurement.type !== 'area') return;
       
       const colorSet = colors[measurement.type] || colors.default;
+      usedMeasurementTypes.add(measurement.type);
       
       // Draw the polygon
       ctx.beginPath();
@@ -336,9 +352,45 @@ export const createCombinedRoofPlan = (
       ctx.stroke();
     });
     
-    // Second pass: Draw all measurement segments
-    projectedMeasurements.forEach(({ measurement, points2D }) => {
-      if (measurement.type !== 'area' || !measurement.segments) return;
+    // Second pass: Draw all special areas (solar, skylight, chimney, etc.)
+    sortedMeasurements.forEach(({ measurement, points2D }) => {
+      if (measurement.type === 'area') return; // Skip regular areas, already drawn
+      
+      const colorSet = colors[measurement.type] || colors.default;
+      usedMeasurementTypes.add(measurement.type);
+      
+      // Draw the polygon
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(points2D[0].x), toCanvasY(points2D[0].y));
+      
+      for (let i = 1; i < points2D.length; i++) {
+        ctx.lineTo(toCanvasX(points2D[i].x), toCanvasY(points2D[i].y));
+      }
+      
+      ctx.closePath();
+      
+      // Fill with the type-specific color
+      ctx.fillStyle = colorSet.fill;
+      ctx.fill();
+      
+      // Draw the outline - thicker for special elements
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = colorSet.stroke;
+      ctx.stroke();
+      
+      // Add a hatch pattern for special elements to make them more visible
+      if (['skylight', 'chimney', 'vent', 'hook'].includes(measurement.type)) {
+        drawHatchPattern(
+          ctx, 
+          points2D.map(p => ({ x: toCanvasX(p.x), y: toCanvasY(p.y) })),
+          colorSet.stroke
+        );
+      }
+    });
+    
+    // Third pass: Draw all measurement segments
+    sortedMeasurements.forEach(({ measurement, points2D }) => {
+      if (!measurement.segments) return;
       
       // Draw each segment with type-specific color
       for (let i = 0; i < measurement.segments.length; i++) {
@@ -404,11 +456,9 @@ export const createCombinedRoofPlan = (
           ctx.textBaseline = 'middle';
           ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
           
-          // Draw the length value with background
-          const lengthText = `${segment.length.toFixed(2)}m`;
-          
-          if (segment.inclination !== undefined) {
-            // Include inclination for segments that have it (usually length measurements)
+          // Only show inclination if it's 2 degrees or higher (absolute value)
+          if (segment.inclination !== undefined && Math.abs(segment.inclination) >= 2.0) {
+            // Include inclination for segments that have it and are >= 2°
             const lengthWithIncl = `${segment.length.toFixed(2)}m / ${Math.abs(segment.inclination).toFixed(1)}°`;
             
             ctx.font = 'bold 14px Arial';
@@ -429,7 +479,8 @@ export const createCombinedRoofPlan = (
             ctx.textBaseline = 'middle';
             ctx.fillText(lengthWithIncl, toCanvasX(midX), toCanvasY(midY) + 14);
           } else {
-            // Just the length for segments without inclination
+            // Just the length for segments without inclination or small inclination
+            const lengthText = `${segment.length.toFixed(2)}m`;
             ctx.font = 'bold 14px Arial';
             const textWidth = ctx.measureText(lengthText).width;
             
@@ -452,19 +503,17 @@ export const createCombinedRoofPlan = (
       }
     });
     
-    // Third pass: Draw measurement labels, points and areas in the center
-    projectedMeasurements.forEach(({ measurement, points2D, centroid }) => {
-      if (measurement.type !== 'area') return;
-      
-      // Draw the vertices
+    // Fourth pass: Draw measurement labels, points and areas in the center
+    sortedMeasurements.forEach(({ measurement, points2D, centroid }) => {
+      // Draw the vertices - INCREASED SIZE for better visibility
       points2D.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 5, 0, Math.PI * 2);
+        ctx.arc(toCanvasX(point.x), toCanvasY(point.y), 6, 0, Math.PI * 2); // Increased from 5 to 6
         ctx.fillStyle = '#666666';
         ctx.fill();
         
-        // Add index numbers to vertices
-        ctx.font = 'bold 12px Arial';
+        // Add index numbers to vertices - INCREASED SIZE
+        ctx.font = 'bold 16px Arial'; // Increased from 12px to 16px
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -475,8 +524,8 @@ export const createCombinedRoofPlan = (
       const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
       const valueText = `${measurement.value.toFixed(2)} m²`;
       
-      // Increased font size for better readability
-      ctx.font = 'bold 18px Arial';
+      // INCREASED font size for better readability
+      ctx.font = 'bold 22px Arial'; // Increased from 18px to 22px
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
@@ -489,9 +538,9 @@ export const createCombinedRoofPlan = (
       ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.fillRect(
         toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) - 15,
+        toCanvasY(centroid.y) - 18,
         maxWidth + 10,
-        30
+        36  // Increased height for larger font
       );
       
       // Draw label text
@@ -502,19 +551,22 @@ export const createCombinedRoofPlan = (
       ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.fillRect(
         toCanvasX(centroid.x) - maxWidth / 2 - 5,
-        toCanvasY(centroid.y) + 15,
+        toCanvasY(centroid.y) + 18,
         maxWidth + 10,
-        24
+        28  // Increased height for larger font
       );
       
-      // Draw value text
-      ctx.font = 'bold 16px Arial';
+      // Draw value text - INCREASED SIZE
+      ctx.font = 'bold 20px Arial'; // Increased from 16px to 20px
       ctx.fillStyle = '#222222';
-      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 26);
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 30); // Adjusted position for larger text
     });
     
     // Add a segment type legend
     drawSegmentLegend(ctx, width, height, segmentColors, Array.from(usedSegmentTypes));
+    
+    // Add a measurement type legend
+    drawMeasurementTypeLegend(ctx, width, height, colors, Array.from(usedMeasurementTypes));
     
     // Add a disclaimer below the plan
     drawDisclaimer(ctx, width, height);
@@ -526,6 +578,57 @@ export const createCombinedRoofPlan = (
     return '';
   }
 };
+
+/**
+ * Draws a hatch pattern inside a polygon for better visibility of special elements
+ */
+function drawHatchPattern(
+  ctx: CanvasRenderingContext2D,
+  points: {x: number, y: number}[],
+  color: string,
+  spacing = 8
+): void {
+  if (points.length < 3) return;
+  
+  // Find the bounding box of the polygon
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+  
+  // Draw diagonal lines
+  ctx.save();
+  
+  // Create a clipping region for the polygon
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.closePath();
+  ctx.clip();
+  
+  // Draw the hatch lines
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const diagonal = Math.sqrt(width * width + height * height);
+  
+  for (let i = -diagonal; i <= diagonal * 2; i += spacing) {
+    ctx.moveTo(minX - height + i, minY - width);
+    ctx.lineTo(minX + i, minY + height);
+  }
+  
+  ctx.stroke();
+  ctx.restore();
+}
 
 /**
  * Draw a scale indicator on the canvas
@@ -597,14 +700,14 @@ function drawScaleIndicator(
   }
   
   // Add label with increased font size
-  ctx.font = 'bold 14px Arial'; // Increased from 12px to 14px
+  ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(`${niceScaleLength} m`, scaleBarX + scaleBarPixelLength / 2, scaleBarY + 8);
   
   // Add "Maßstab" label with increased font size
-  ctx.font = 'bold 14px Arial'; // Increased from 12px to 14px
+  ctx.font = 'bold 16px Arial'; // Increased from 14px to 16px
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.fillText('Maßstab:', scaleBarX, scaleBarY - 8);
@@ -671,11 +774,83 @@ function drawSegmentLegend(
     ctx.stroke();
     
     // Draw label
-    ctx.font = '14px Arial';
+    ctx.font = 'bold 14px Arial'; // Increased font size
     ctx.fillStyle = '#333333';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(displayName, legendX + 55, currentY + itemHeight / 2);
+    
+    currentY += itemHeight;
+  });
+}
+
+/**
+ * Draw a legend for the different measurement types
+ */
+function drawMeasurementTypeLegend(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  colors: Record<string, { fill: string; stroke: string }>,
+  usedTypes: string[]
+): void {
+  // Define standard measurement types (in order of display)
+  const standardTypes = ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'];
+  
+  // Filter to only include used types, prioritizing standard ones
+  const typesToShow = [
+    ...standardTypes.filter(type => usedTypes.includes(type)),
+    ...usedTypes.filter(type => !standardTypes.includes(type))
+  ];
+  
+  // Return early if no types to show
+  if (typesToShow.length === 0) return;
+  
+  const legendX = width - 220; // Position on right side
+  const legendY = 80; // Position below title
+  const itemHeight = 24; // Slightly bigger items
+  const legendWidth = 200;
+  
+  const legendHeight = typesToShow.length * itemHeight + 40;
+  
+  // Draw legend background
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+  
+  // Draw border
+  ctx.strokeStyle = '#333333';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
+  
+  // Draw legend title
+  ctx.font = 'bold 16px Arial'; // Same size as segment legend
+  ctx.fillStyle = '#333333';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Messungstypen', legendX + legendWidth / 2, legendY + 10);
+  
+  // Draw legend items
+  let currentY = legendY + 35;
+  
+  typesToShow.forEach(type => {
+    const displayName = getMeasurementTypeDisplayName(type);
+    const colorSet = colors[type] || colors.default;
+    
+    // Draw color box
+    ctx.fillStyle = colorSet.fill;
+    ctx.strokeStyle = colorSet.stroke;
+    ctx.lineWidth = 2;
+    
+    const boxSize = 16;
+    ctx.fillRect(legendX + 15, currentY + (itemHeight - boxSize) / 2, boxSize, boxSize);
+    ctx.strokeRect(legendX + 15, currentY + (itemHeight - boxSize) / 2, boxSize, boxSize);
+    
+    // Draw label
+    ctx.font = 'bold 14px Arial'; // Same size as segment legend
+    ctx.fillStyle = '#333333';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(displayName, legendX + 15 + boxSize + 10, currentY + itemHeight / 2);
     
     currentY += itemHeight;
   });
@@ -691,7 +866,7 @@ function drawDisclaimer(
 ): void {
   const disclaimerText = "Hinweis: Alle Maße dienen der Orientierung und sind vor Ort zu prüfen.";
   
-  ctx.font = '12px Arial';
+  ctx.font = '14px Arial'; // Increased from 12px to 14px
   ctx.fillStyle = '#666666';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
