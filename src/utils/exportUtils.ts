@@ -1,3 +1,4 @@
+
 import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { calculatePVPower } from './pvCalculations';
 
@@ -232,6 +233,7 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   solarArea: number;
   pvModules: number;
   pvPower: number;
+  totalArea: number;
 } => {
   const chimneys = measurements.filter(m => m.type === 'chimney').length;
   const skylights = measurements.filter(m => m.type === 'skylight').length;
@@ -259,6 +261,9 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   // Calculate total PV power in kWp
   const pvPower = calculatePVPower(pvModules);
   
+  // Calculate total roof area
+  const totalArea = calculateTotalArea(measurements);
+  
   return {
     chimneys,
     skylights,
@@ -267,7 +272,8 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
     otherPenetrations,
     solarArea,
     pvModules,
-    pvPower
+    pvPower,
+    totalArea
   };
 };
 

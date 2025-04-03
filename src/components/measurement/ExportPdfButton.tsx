@@ -1,13 +1,13 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/types/measurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
-import { consolidatePenetrations, calculateRoofPlanScaleFactor } from '@/utils/exportUtils';
+import { consolidatePenetrations, calculateRoofPlanScaleFactor, getRoofElementsSummary } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
 import { captureAreaMeasurement } from '@/utils/captureScreenshot';
+import { captureViewScreenshot, captureTopDownView } from '@/utils/captureViewScreenshot';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 import * as THREE from 'three';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
@@ -35,6 +35,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [use2DRendering, setUse2DRendering] = useState(true);
   const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
   const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
+  const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
   const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const {
@@ -52,6 +53,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       projectAddress: '',
       clientName: '',
       contactPerson: '',
+      contactEmail: '',
+      contactPhone: '',
       creationDate: new Date().toISOString().split('T')[0],
       notes: ''
     }
@@ -62,6 +65,15 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       generateRoofPlan();
     }
   }, [measurements, includeRoofPlan]);
+
+  useEffect(() => {
+    if (scene && camera && renderer) {
+      const screenshot = captureTopDownView(renderer, scene, camera);
+      if (screenshot) {
+        setTopDownScreenshot(screenshot);
+      }
+    }
+  }, [scene, camera, renderer]);
 
   const generateRoofPlan = () => {
     if (measurements.length === 0) return;
@@ -99,6 +111,15 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       const perspCamera = asPerspectiveCamera(camera);
       setExportProgress(20);
       
+      if (!topDownScreenshot && scene && camera && renderer) {
+        const screenshot = captureTopDownView(renderer, scene, camera);
+        if (screenshot) {
+          (measurementsWithVisuals as any).topDownScreenshot = screenshot;
+        }
+      } else if (topDownScreenshot) {
+        (measurementsWithVisuals as any).topDownScreenshot = topDownScreenshot;
+      }
+      
       for (let i = 0; i < areaMeasurements.length; i++) {
         const measurement = areaMeasurements[i];
         if (use2DRendering) {
@@ -127,6 +148,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         }
         setExportProgress(20 + Math.floor(i / areaMeasurements.length * 30));
       }
+      
       for (let i = 0; i < solarMeasurements.length; i++) {
         const measurement = solarMeasurements[i];
         if (use2DRendering) {
@@ -154,6 +176,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
           }
         }
       }
+      
       setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
@@ -172,7 +195,12 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         (measurementsWithVisuals as any).placeRoofPlanOnPage2 = true;
         (measurementsWithVisuals as any).showRoofPlanWithoutHeader = true;
       }
+      
       setExportProgress(70);
+      
+      const summary = getRoofElementsSummary(measurements);
+      (measurementsWithVisuals as any).summary = summary;
+      
       const coverData = form.getValues();
       const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
       setExportProgress(100);
@@ -262,16 +290,18 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                       </FormControl>
                     </FormItem>} />
                 
+                <h3 className="text-base font-medium mt-2">Kundendaten</h3>
+                
+                <FormField control={form.control} name="clientName" render={({
+                field
+              }) => <FormItem>
+                      <FormLabel>Auftraggeber</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Name des Auftraggebers" {...field} />
+                      </FormControl>
+                    </FormItem>} />
+                
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="clientName" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Auftraggeber</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Name des Auftraggebers" {...field} />
-                        </FormControl>
-                      </FormItem>} />
-                  
                   <FormField control={form.control} name="contactPerson" render={({
                   field
                 }) => <FormItem>
@@ -280,14 +310,23 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                           <Input placeholder="Name des Ansprechpartners" {...field} />
                         </FormControl>
                       </FormItem>} />
+                  
+                  <FormField control={form.control} name="contactPhone" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Telefon</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Telefonnummer" {...field} />
+                        </FormControl>
+                      </FormItem>} />
                 </div>
                 
-                <FormField control={form.control} name="companyName" render={({
+                <FormField control={form.control} name="contactEmail" render={({
                 field
               }) => <FormItem>
-                      <FormLabel>Ausführender Betrieb</FormLabel>
+                      <FormLabel>E-Mail</FormLabel>
                       <FormControl>
-                        <Input placeholder="DrohnenGLB by RooferGaming" {...field} />
+                        <Input placeholder="E-Mail-Adresse" {...field} />
                       </FormControl>
                     </FormItem>} />
                 
@@ -300,7 +339,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                       </FormControl>
                     </FormItem>} />
                 
-                <div className="flex flex-col space-y-4">
+                <div className="flex flex-col space-y-4 mt-2">
                   <div className="flex items-center space-x-2">
                     <Switch id="use-2d-rendering" checked={use2DRendering} onCheckedChange={setUse2DRendering} />
                     <label htmlFor="use-2d-rendering" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -361,10 +400,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                     <ScrollArea className="h-[300px] border rounded-md p-4">
                       <div className="grid grid-cols-2 gap-4">
                         {measurements.map(measurement => {
-                      if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
-                        return null;
-                      }
-                      return <div key={measurement.id} className="space-y-2">
+                          if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
+                            return null;
+                          }
+                          return <div key={measurement.id} className="space-y-2">
                               <h4 className="text-xs font-medium">
                                 {measurement.description || `Messung ${measurement.id.substring(0, 5)}`}
                               </h4>
@@ -374,7 +413,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                                   </div>)}
                               </div>
                             </div>;
-                    })}
+                        })}
                       </div>
                     </ScrollArea>
                   </div>
