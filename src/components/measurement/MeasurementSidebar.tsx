@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Magnet } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import * as THREE from 'three';
 import { 
   AlertDialog,
   AlertDialogAction,

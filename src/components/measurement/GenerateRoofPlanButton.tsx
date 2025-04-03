@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Maximize, Download, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-import { Measurement } from '@/hooks/useMeasurements';
+import { Measurement, Segment } from '@/types/measurements';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 import {
   Dialog,
