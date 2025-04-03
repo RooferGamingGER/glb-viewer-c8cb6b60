@@ -592,7 +592,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     addPromoItem('DrohnenGLB by RooferGaming', true);
     addPromoItem('Kostenloser GLB Viewer: drohnenglb.de');
-    addPromoItem('Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de');
+    addPromoItem('Drohnenaufmaß ab 90€/Monat: drohnenvermessung-roofergaming.de');
     
     coverPage.appendChild(promoSection);
     
