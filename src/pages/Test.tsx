@@ -74,8 +74,8 @@ const Test = () => {
           </div>
         </header>
         
-        {/* Main content area with correct padding to prevent footer overlap */}
-        <div className="flex-1 relative flex overflow-hidden pb-8">
+        {/* Main content area - removed bottom padding since footer is removed */}
+        <div className="flex-1 relative flex overflow-hidden">
           {/* Mobile menu overlay */}
           {isMobile && menuOpen && (
             <div 
@@ -109,7 +109,7 @@ const Test = () => {
             </div>
           )}
           
-          {/* SidebarProvider with modified style to account for footer */}
+          {/* SidebarProvider with screen height limitation */}
           <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
             <main className="flex-1 relative w-full h-full">
               <ModelViewer 
@@ -119,10 +119,6 @@ const Test = () => {
             </main>
           </SidebarProvider>
         </div>
-        
-        <footer className="glass-panel w-full py-2 px-4 border-t border-border/50 z-5 text-center text-xs text-muted-foreground">
-          <p>Demo-Version mit fest installiertem 3D-Modell | DrohnenGLB by RooferGaming®</p>
-        </footer>
       </div>
     </PointSnappingProvider>
   );
