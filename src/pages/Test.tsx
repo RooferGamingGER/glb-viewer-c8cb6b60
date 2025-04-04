@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '@/components/ModelViewer';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Upload, Menu, X } from 'lucide-react';
+import { ArrowLeft, Upload, Menu, X, HelpCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
@@ -13,12 +13,14 @@ import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { toast } from '@/components/ui/use-toast';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
+import { useTutorial } from '@/contexts/TutorialContext';
 
 const Test = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenOrientation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { showTutorial, setShowTutorial } = useTutorial();
   
   // Use a permanent GLB model path - this should be placed in public/models/
   const testModelUrl = '/models/test-model.glb';
@@ -28,6 +30,10 @@ const Test = () => {
   useEffect(() => {
     setMenuOpen(false);
   }, [isPortrait]);
+  
+  const handleOpenTutorial = () => {
+    setShowTutorial(true);
+  };
 
   return (
     <PointSnappingProvider>
@@ -63,6 +69,16 @@ const Test = () => {
           </div>
           
           <div className="flex gap-2">
+            <Button
+              variant="outline" 
+              size="sm" 
+              className="glass-button"
+              onClick={handleOpenTutorial}
+            >
+              <HelpCircle className="h-4 w-4 mr-2" />
+              <span className={isMobile ? "sr-only" : ""}>Tutorial</span>
+            </Button>
+            
             <Button
               variant="default"
               size="sm"
@@ -121,8 +137,8 @@ const Test = () => {
           </SidebarProvider>
         </div>
 
-        {/* Tutorial Overlay */}
-        <TutorialOverlay />
+        {/* Tutorial Overlay with showButton set to false */}
+        <TutorialOverlay showButton={false} />
       </div>
     </PointSnappingProvider>
   );

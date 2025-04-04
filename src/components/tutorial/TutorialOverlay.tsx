@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
@@ -36,8 +37,12 @@ interface TutorialStep {
   icon: LucideIcon;
 }
 
-const TutorialOverlay: React.FC = () => {
-  const [showTutorial, setShowTutorial] = useState(true);
+interface TutorialOverlayProps {
+  showButton?: boolean;
+}
+
+const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ showButton = true }) => {
+  const [showTutorial, setShowTutorial] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
   const tutorialSteps: TutorialStep[] = [
@@ -272,7 +277,7 @@ const TutorialOverlay: React.FC = () => {
   };
 
   if (!showTutorial) {
-    return (
+    return showButton ? (
       <Button
         variant="outline"
         className="fixed right-4 bottom-4 z-50 glass-button"
@@ -281,7 +286,7 @@ const TutorialOverlay: React.FC = () => {
         <HelpCircle className="h-4 w-4 mr-2" />
         Tutorial öffnen
       </Button>
-    );
+    ) : null;
   }
 
   const CurrentIcon = tutorialSteps[currentStep].icon;
