@@ -21,7 +21,6 @@ import {
 } from '@/utils/measurementVisuals';
 
 // Import components
-import MeasurementSidebar from './measurement/MeasurementSidebar';
 import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
@@ -374,7 +373,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           style={{ width: '20rem', maxHeight: 'calc(100% - 2.75rem)' }}
         >
           {/* Fixed Header - Tools Section */}
-          <div className="flex-shrink-0 border-b border-border/50">
+          <div className="flex-shrink-0 border-b border-border/50 flex flex-col">
             <MeasurementToolControls 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool}
@@ -382,6 +381,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               measurements={measurements}
               showTable={showTable}
               setShowTable={setShowTable}
+              toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+              toggleLabelVisibility={handleToggleLabelVisibility}
+              handleStartPointEdit={handleStartPointEdit}
+              handleDeleteMeasurement={handleDeleteMeasurement}
+              handleDeletePoint={handleDeletePoint}
+              updateMeasurement={updateMeasurement}
+              segmentsOpen={segmentsOpen}
+              toggleSegments={toggleSegments}
+              onEditSegment={setEditingSegmentId}
+              movingPointInfo={movingPointInfo}
+              handleMoveMeasurementUp={handleMoveMeasurementUp}
+              handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
             
             {/* Only render MeasurementControls for standard measurements */}
@@ -421,8 +432,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </div>
             )}
           </div>
-          
-          {/* Measurement list is now directly integrated into the MeasurementToolControls component via tabs */}
         </div>
       </div>
     </div>

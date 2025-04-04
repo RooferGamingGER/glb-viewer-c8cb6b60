@@ -18,7 +18,6 @@ import {
 } from '@/utils/measurementVisuals';
 
 // Import components
-import MeasurementSidebar from './MeasurementSidebar';
 import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
 import EditingAlert from './EditingAlert';
@@ -431,7 +430,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
           {/* Fixed Header - Tools Section */}
-          <div className="flex-shrink-0 border-b border-border/50">
+          <div className="flex-shrink-0 border-b border-border/50 flex flex-col">
             <MeasurementToolControls 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool}
@@ -439,6 +438,18 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
               measurements={measurements}
               showTable={showTable}
               setShowTable={setShowTable}
+              toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+              toggleLabelVisibility={handleToggleLabelVisibility}
+              handleStartPointEdit={handleStartPointEdit}
+              handleDeleteMeasurement={handleDeleteMeasurement}
+              handleDeletePoint={handleDeletePoint}
+              updateMeasurement={updateMeasurement}
+              segmentsOpen={segmentsOpen}
+              toggleSegments={toggleSegments}
+              onEditSegment={setEditingSegmentId}
+              movingPointInfo={movingPointInfo}
+              handleMoveMeasurementUp={handleMoveMeasurementUp}
+              handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
             
             {/* Only render MeasurementControls for standard measurements */}
@@ -478,30 +489,6 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
               </div>
             )}
           </div>
-          
-          {/* Measurement list with measurement groups prop */}
-          <MeasurementSidebar
-            measurements={measurements}
-            toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-            toggleLabelVisibility={handleToggleLabelVisibility}
-            handleStartPointEdit={handleStartPointEdit}
-            handleDeleteMeasurement={handleDeleteMeasurement}
-            handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
-            editMeasurementId={editMeasurementId}
-            segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
-            onEditSegment={setEditingSegmentId}
-            movingPointInfo={movingPointInfo}
-            showTable={showTable}
-            handleClearMeasurements={handleClearMeasurements}
-            toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
-            allLabelsVisible={allLabelsVisible}
-            activeMode={activeMode}
-            handleMoveMeasurementUp={handleMoveMeasurementUp}
-            handleMoveMeasurementDown={handleMoveMeasurementDown}
-            measurementGroups={measurementGroups}
-          />
         </div>
       </div>
     </div>

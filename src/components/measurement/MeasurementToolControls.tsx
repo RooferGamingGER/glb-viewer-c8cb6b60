@@ -14,7 +14,8 @@ import {
   Droplet,
   Magnet,
   Wrench,
-  LineChart
+  LineChart,
+  FileDown
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -26,6 +27,7 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import MeasurementList from './MeasurementList';
 
 interface MeasurementToolControlsProps {
   activeMode: MeasurementMode;
@@ -35,6 +37,18 @@ interface MeasurementToolControlsProps {
   showTable: boolean;
   setShowTable: (show: boolean) => void;
   onCategoryChange?: (category: string) => void;
+  toggleMeasurementVisibility?: (id: string) => void;
+  toggleLabelVisibility?: (id: string) => void;
+  handleStartPointEdit?: (id: string) => void;
+  handleDeleteMeasurement?: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
+  updateMeasurement?: (id: string, data: Partial<any>) => void;
+  segmentsOpen?: Record<string, boolean>;
+  toggleSegments?: (id: string) => void;
+  onEditSegment?: (id: string | null) => void;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  handleMoveMeasurementUp?: (id: string) => void;
+  handleMoveMeasurementDown?: (id: string) => void;
 }
 
 /**
@@ -47,7 +61,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   measurements,
   showTable,
   setShowTable,
-  onCategoryChange
+  onCategoryChange,
+  toggleMeasurementVisibility,
+  toggleLabelVisibility,
+  handleStartPointEdit,
+  handleDeleteMeasurement,
+  handleDeletePoint,
+  updateMeasurement,
+  segmentsOpen,
+  toggleSegments,
+  onEditSegment,
+  movingPointInfo,
+  handleMoveMeasurementUp,
+  handleMoveMeasurementDown
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
@@ -70,7 +96,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <div className="p-3 flex flex-col h-full overflow-hidden">
       <Tabs defaultValue="tools" value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
-        <TabsList className="w-full grid grid-cols-2 mb-4">
+        <TabsList className="w-full grid grid-cols-3 mb-4">
           <TabsTrigger value="tools" className="flex items-center">
             <Wrench className="h-4 w-4 mr-2" />
             Werkzeuge
@@ -78,6 +104,10 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           <TabsTrigger value="measurements" className="flex items-center">
             <LineChart className="h-4 w-4 mr-2" />
             Messungen
+          </TabsTrigger>
+          <TabsTrigger value="export" className="flex items-center">
+            <FileDown className="h-4 w-4 mr-2" />
+            Export
           </TabsTrigger>
         </TabsList>
         
@@ -226,8 +256,30 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </TabsContent>
           
-          <TabsContent value="measurements" className="space-y-4 mt-0">
-            <div className="text-sm font-medium mb-2">Messungen</div>
+          <TabsContent value="measurements" className="mt-0 h-full">
+            {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
+             handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
+              <MeasurementList 
+                measurements={measurements}
+                toggleMeasurementVisibility={toggleMeasurementVisibility}
+                toggleLabelVisibility={toggleLabelVisibility}
+                handleStartPointEdit={handleStartPointEdit}
+                handleDeleteMeasurement={handleDeleteMeasurement}
+                handleDeletePoint={handleDeletePoint}
+                updateMeasurement={updateMeasurement}
+                editMeasurementId={editMeasurementId}
+                segmentsOpen={segmentsOpen}
+                toggleSegments={toggleSegments}
+                onEditSegment={onEditSegment}
+                movingPointInfo={movingPointInfo}
+                handleMoveMeasurementUp={handleMoveMeasurementUp}
+                handleMoveMeasurementDown={handleMoveMeasurementDown}
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="export" className="space-y-4 mt-0">
+            <div className="text-sm font-medium mb-2">Export-Optionen</div>
             {measurements.length > 0 ? (
               <div className="space-y-2">
                 <GenerateRoofPlanButton measurements={measurements} />
