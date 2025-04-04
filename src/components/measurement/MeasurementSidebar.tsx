@@ -5,7 +5,7 @@ import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Sun } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import * as THREE from 'three';
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
@@ -74,6 +75,16 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   // Use our centralized point snapping hook
   const { snapEnabled } = usePointSnapping();
   
+  // Count measurements by type for display in tabs
+  const standardCount = measurements.filter(m => 
+    ['length', 'height', 'area'].includes(m.type)).length;
+  
+  const roofElementsCount = measurements.filter(m => 
+    ['solar', 'chimney', 'skylight', 'pvmodule', 'pvplanning'].includes(m.type)).length;
+  
+  const penetrationsCount = measurements.filter(m => 
+    ['vent', 'hook', 'other'].includes(m.type)).length;
+  
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
     
@@ -83,7 +94,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
     
     if (['length', 'height', 'area'].includes(activeMode)) {
       setActiveTab("standard");
-    } else if (['solar', 'chimney', 'skylight'].includes(activeMode)) {
+    } else if (['solar', 'chimney', 'skylight', 'pvplanning'].includes(activeMode)) {
       setActiveTab("roofElements");
     } else if (['vent', 'hook', 'other'].includes(activeMode)) {
       setActiveTab("penetrations");
@@ -126,6 +137,22 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full pr-2">
+          {!showTable && (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+              <TabsList className="w-full grid grid-cols-3 mb-2">
+                <TabsTrigger value="standard" className="text-xs py-1 px-2">
+                  Standard ({standardCount})
+                </TabsTrigger>
+                <TabsTrigger value="roofElements" className="text-xs py-1 px-2">
+                  D-Elemente ({roofElementsCount})
+                </TabsTrigger>
+                <TabsTrigger value="penetrations" className="text-xs py-1 px-2">
+                  Einbau ({penetrationsCount})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          
           {showTable ? (
             <MeasurementTable 
               measurements={measurements} 
@@ -152,6 +179,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               movingPointInfo={movingPointInfo}
               handleMoveMeasurementUp={handleMoveMeasurementUp}
               handleMoveMeasurementDown={handleMoveMeasurementDown}
+              activeTab={activeTab}
             />
           )}
           

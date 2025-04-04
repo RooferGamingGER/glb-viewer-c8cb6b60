@@ -278,6 +278,69 @@ export const useMeasurementCore = () => {
     }
   }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
 
+  const createPVPlanningMeasurement = useCallback((points: Point[]) => {
+    if (points.length < 4) {
+      toast.error("Für die Solarplanung werden mindestens 4 Punkte benötigt.");
+      return;
+    }
+    
+    const validation = validatePolygon(points);
+    if (!validation.valid) {
+      toast.error(validation.message || 'Ungültiges Polygon');
+      return;
+    }
+    
+    const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
+    
+    const polygonArea = calculateArea(points);
+    const moduleInfo = calculatePVModulePlacement(
+      points,
+      undefined,
+      undefined,
+      DEFAULT_EDGE_DISTANCE,
+      DEFAULT_MODULE_SPACING,
+      undefined,
+      roofEdgeInfo
+    );
+    const moduleSpec = PV_MODULE_TEMPLATES[0];
+    
+    const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+    const label = `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`;
+    
+    setMeasurements(prev => [
+      ...prev,
+      {
+        id: nanoid(),
+        type: 'pvplanning',
+        points: [...points],
+        value: polygonArea,
+        label,
+        visible: true,
+        labelVisible: allLabelsVisible,
+        unit: 'kWp',
+        description: '',
+        pvModuleInfo: moduleInfo,
+        pvModuleSpec: moduleSpec,
+        powerOutput: moduleInfo.moduleCount * moduleSpec.power
+      }
+    ]);
+    
+    setCurrentPoints([]);
+    currentPointsRef.current = [];
+    
+    setActiveMode('none');
+    
+    toast.success(`PV-Anlage berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
+    
+    if (roofEdgeInfo.hasAllEdges) {
+      if (roofEdgeInfo.isValid === false && roofEdgeInfo.validationMessage) {
+        toast.warning(`Hinweis zu Dachkanten: ${roofEdgeInfo.validationMessage}`);
+      } else {
+        toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+      }
+    }
+  }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
+
   const handleCalculatePV = (areaPoints: Point[], userDimensions?: {width: number, length: number}) => {
     if (areaPoints.length !== 4) {
       if (areaPoints.length > 4) {
@@ -439,6 +502,10 @@ export const useMeasurementCore = () => {
         };
         break;
         
+      case 'pvplanning':
+        createPVPlanningMeasurement(points);
+        return; // Early return as we handle this in createPVPlanningMeasurement
+        
       case 'vent':
       case 'hook':
       case 'other':
@@ -468,7 +535,7 @@ export const useMeasurementCore = () => {
         visible: true,
         labelVisible: allLabelsVisible,
         unit: type === 'solar' ? 'm²' : 
-              type === 'pvmodule' ? 'kWp' :
+              type === 'pvmodule' || type === 'pvplanning' ? 'kWp' :
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
       }
@@ -482,7 +549,7 @@ export const useMeasurementCore = () => {
     } else {
       setActiveMode('none');
     }
-  }, [allLabelsVisible]);
+  }, [allLabelsVisible, createPVPlanningMeasurement]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
@@ -722,6 +789,10 @@ export const useMeasurementCore = () => {
       currentPointsRef.current = [];
       setActiveMode('none');
     }
+    else if (activeMode === 'pvplanning' && points.length >= 4) {
+      createPVPlanningMeasurement(points);
+      return undefined; // We return undefined here as createPVPlanningMeasurement handles the measurement creation
+    }
     else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
@@ -913,6 +984,7 @@ export const useMeasurementCore = () => {
     createHeightMeasurement,
     createRoofElementMeasurement,
     createPVModuleMeasurement,
+    createPVPlanningMeasurement,
     handleCalculatePV
   };
 };

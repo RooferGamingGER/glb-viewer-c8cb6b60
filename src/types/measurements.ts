@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -7,11 +8,12 @@ export type MeasurementMode =
   | 'none' 
   | 'chimney'   // Kamin
   | 'skylight'  // Dachfenster
-  | 'solar'     // Solaranlage
+  | 'solar'     // Solarfläche
   | 'vent'      // Lüfter (nur Markierung)
   | 'hook'      // Dachhaken
   | 'other'     // Sonstige Einbauten
   | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
+  | 'pvplanning' // Solarplanung (neue Funktionalität)
   | 'ridge'     // First
   | 'eave'      // Traufe
   | 'verge'     // Ortgang
