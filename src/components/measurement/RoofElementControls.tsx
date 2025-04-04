@@ -40,7 +40,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   const getRequiredPoints = (mode: MeasurementMode): number => {
     switch(mode) {
       case 'solar': 
-        return 3; // Changed from 4 to 3 - minimum points for solar area
+        return 3; // Minimum 3 points for solar area
       case 'skylight': 
         return 4; // Vier Punkte für exakte Rechteckdefinition
       case 'chimney': 
@@ -135,9 +135,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
 
   // Flag um festzustellen, ob wir in einem Penetrationsmodus sind
   const isPenetrationMode = ['vent', 'hook', 'other'].includes(activeMode);
-  
-  // Flag to check if we're in solar planning mode with enough points to calculate
-  const isSolarReadyToCalculate = activeMode === 'solar' && currentPoints.length >= 3;
 
   return (
     <div className="p-3 pb-0">
@@ -184,20 +181,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
             <X className="h-3 w-3" />
           </Button>
         </div>
-        
-        {/* Add PV Module calculation button specifically for solar planning with 3+ points */}
-        {isSolarReadyToCalculate && (
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full mt-1 bg-green-600 hover:bg-green-700"
-            onClick={handleFinalizeMeasurement}
-            title="PV-Module berechnen"
-          >
-            <Zap className="h-3 w-3 mr-1" />
-            PV-Module berechnen
-          </Button>
-        )}
         
         <div className="flex items-center mt-2 text-xs text-muted-foreground">
           <Info className="h-3 w-3 mr-1 flex-shrink-0" />

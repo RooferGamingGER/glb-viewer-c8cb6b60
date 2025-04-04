@@ -538,11 +538,10 @@ export const useMeasurementCore = () => {
       toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
     }
     
-    if (currentMode === 'solar' && updatedPoints.length === 4) {
-      createRoofElementMeasurement(currentMode, updatedPoints);
-      toast.success(`Solarplanung-Messung abgeschlossen - Messwerkzeug deaktiviert`);
-    } else if (currentMode === 'solar' && updatedPoints.length > 0 && updatedPoints.length < 4) {
-      toast.info(`Punkt ${updatedPoints.length} von 4 für Solarplanung platziert`);
+    if (currentMode === 'solar' && updatedPoints.length > 0 && updatedPoints.length < 3) {
+      toast.info(`Punkt ${updatedPoints.length} für Solarplanung platziert`);
+    } else if (currentMode === 'solar' && updatedPoints.length >= 3) {
+      toast.info(`Punkt ${updatedPoints.length} für Solarplanung platziert`);
     }
     
     if (currentMode === 'pvmodule' && updatedPoints.length === 4) {
@@ -667,7 +666,7 @@ export const useMeasurementCore = () => {
         return undefined;
       }
     }
-    else if (activeMode === 'solar' && points.length >= 4) {
+    else if (activeMode === 'solar' && points.length >= 3) {
       const validation = validatePolygon(points);
       if (!validation.valid) {
         toast.error(validation.message || 'Ungültiges Polygon');
@@ -738,7 +737,7 @@ export const useMeasurementCore = () => {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
-        'solar': 4,
+        'solar': 3,
         'pvmodule': 4,
         'vent': 1,
         'hook': 1,
