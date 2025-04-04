@@ -36,111 +36,109 @@ const Test = () => {
   };
 
   return (
-    <PointSnappingProvider>
-      <div className="flex flex-col h-screen w-full bg-gradient-to-b from-background to-background overflow-hidden">
-        {isPortrait && <OrientationWarning />}
-        
-        <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
-          <div className="flex items-center">
-            {isMobile ? (
-              <Button 
-                variant="outline" 
-                size="icon"
-                className="glass-button mr-2 h-8 w-8"
-                onClick={() => setMenuOpen(!menuOpen)}
-              >
-                {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
-            ) : null}
-            
+    <div className="flex flex-col h-screen w-full bg-gradient-to-b from-background to-background overflow-hidden">
+      {isPortrait && <OrientationWarning />}
+      
+      <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
+        <div className="flex items-center">
+          {isMobile ? (
             <Button 
               variant="outline" 
-              size="sm" 
-              className="glass-button"
-              onClick={() => navigate('/')}
+              size="icon"
+              className="glass-button mr-2 h-8 w-8"
+              onClick={() => setMenuOpen(!menuOpen)}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className={isMobile ? "sr-only" : ""}>Zurück</span>
+              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
-            
-            <h1 className={`font-medium ml-4 ${isMobile ? "text-sm" : "text-lg"}`}>
-              {isMobile ? "Demo DrohnenGLB" : "Demo DrohnenGLB by RooferGaming®"}
-            </h1>
-          </div>
+          ) : null}
           
-          <div className="flex gap-2">
-            <Button
-              variant="outline" 
-              size="sm" 
-              className="glass-button"
-              onClick={handleOpenTutorial}
-            >
-              <HelpCircle className="h-4 w-4 mr-2" />
-              <span className={isMobile ? "sr-only" : ""}>Tutorial</span>
-            </Button>
-            
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => navigate('/')}
-              className="glass-button"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              <span className={isMobile ? "sr-only" : ""}>Eigenes Modell hochladen</span>
-            </Button>
-          </div>
-        </header>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="glass-button"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className={isMobile ? "sr-only" : ""}>Zurück</span>
+          </Button>
+          
+          <h1 className={`font-medium ml-4 ${isMobile ? "text-sm" : "text-lg"}`}>
+            {isMobile ? "Demo DrohnenGLB" : "Demo DrohnenGLB by RooferGaming®"}
+          </h1>
+        </div>
         
-        {/* Main content area - takes full remaining height */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Mobile menu overlay */}
-          {isMobile && menuOpen && (
+        <div className="flex gap-2">
+          <Button
+            variant="outline" 
+            size="sm" 
+            className="glass-button"
+            onClick={handleOpenTutorial}
+          >
+            <HelpCircle className="h-4 w-4 mr-2" />
+            <span className={isMobile ? "sr-only" : ""}>Tutorial</span>
+          </Button>
+          
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="glass-button"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            <span className={isMobile ? "sr-only" : ""}>Eigenes Modell hochladen</span>
+          </Button>
+        </div>
+      </header>
+      
+      {/* Main content area - takes full remaining height */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Mobile menu overlay */}
+        {isMobile && menuOpen && (
+          <div 
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20"
+            onClick={() => setMenuOpen(false)}
+          >
             <div 
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20"
-              onClick={() => setMenuOpen(false)}
+              className="w-64 h-full bg-background border-r border-border/50 p-4"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div 
-                className="w-64 h-full bg-background border-r border-border/50 p-4"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 className="text-lg font-medium mb-4">Menü</h3>
-                <div className="flex flex-col space-y-2">
-                  <Button 
-                    variant="outline" 
-                    className="justify-start"
-                    onClick={() => navigate('/')}
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Zurück zur Startseite
-                  </Button>
-                  <Button 
-                    variant="default" 
-                    className="justify-start"
-                    onClick={() => navigate('/')}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Eigenes Modell hochladen
-                  </Button>
-                </div>
+              <h3 className="text-lg font-medium mb-4">Menü</h3>
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="justify-start"
+                  onClick={() => navigate('/')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Zurück zur Startseite
+                </Button>
+                <Button 
+                  variant="default" 
+                  className="justify-start"
+                  onClick={() => navigate('/')}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Eigenes Modell hochladen
+                </Button>
               </div>
             </div>
-          )}
-          
-          {/* SidebarProvider with full height */}
-          <SidebarProvider defaultOpen={!isMobile} open={!isMobile} className="h-full">
-            <main className="flex-1 relative w-full h-full">
-              <ModelViewer 
-                fileUrl={testModelUrl} 
-                fileName={testModelName} 
-              />
-            </main>
-          </SidebarProvider>
-        </div>
-
-        {/* Tutorial Overlay with showButton set to false */}
-        <TutorialOverlay showButton={false} />
+          </div>
+        )}
+        
+        {/* SidebarProvider with full height */}
+        <SidebarProvider defaultOpen={!isMobile} open={!isMobile} className="h-full">
+          <main className="flex-1 relative w-full h-full">
+            <ModelViewer 
+              fileUrl={testModelUrl} 
+              fileName={testModelName} 
+            />
+          </main>
+        </SidebarProvider>
       </div>
-    </PointSnappingProvider>
+
+      {/* Tutorial Overlay with showButton set to false */}
+      <TutorialOverlay showButton={false} />
+    </div>
   );
 };
 
