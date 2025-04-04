@@ -1,449 +1,334 @@
 import React, { useState, useEffect } from 'react';
-import { Measurement, PVMaterials } from '@/types/measurements';
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  formatPVModuleInfo, 
-  calculatePVModulePlacement, 
-  calculatePVPower, 
-  calculateAnnualYield,
-  calculateRoofOrientation,
+import { Measurement, PVModuleInfo } from '@/types/measurements';
+import { Sun, Info, Settings } from 'lucide-react';
+import {
+  calculatePVModulePlacement,
+  calculatePVPower,
   calculateAnnualYieldWithOrientation,
-  updatePVModuleInfoWithOrientation
+  updatePVModuleInfoWithOrientation,
+  calculatePVMaterials,
+  extractRoofEdgeMeasurements
 } from '@/utils/pvCalculations';
+import { formatCurrency, formatNumber } from '@/utils/formatting';
 import PVModuleSelect from './PVModuleSelect';
-import PVMaterialsList from './PVMaterialsList';
-import { useMeasurements } from '@/hooks/useMeasurements';
-import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
-import { toast } from 'sonner';
-import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import PVModulePositioningControls from '../pvplanning/PVModulePositioningControls';
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
-  updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
+  onUpdate: (updatedMeasurement: Measurement) => void;
+  allMeasurements: Measurement[];
+  isMetric: boolean;
 }
 
-const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
-  measurement, 
-  updateMeasurement 
+const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
+  measurement,
+  onUpdate,
+  allMeasurements,
+  isMetric
 }) => {
-  const [activeTab, setActiveTab] = useState("overview");
-  const { calculatePVMaterialsForMeasurement, calculatingMaterials } = useMeasurements();
-  const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
-  const [pendingInverterDistance, setPendingInverterDistance] = useState(10);
+  const [pvModuleInfo, setPvModuleInfo] = useState<PVModuleInfo | undefined>(
+    measurement.pvModuleInfo
+  );
   
+  // Default values if not present
+  const moduleHeightOffset = pvModuleInfo?.moduleHeightOffset !== undefined ? pvModuleInfo.moduleHeightOffset : 0.05;
+  const moduleRotation = pvModuleInfo?.moduleRotation !== undefined ? pvModuleInfo.moduleRotation : 0;
+  const modulePositionX = pvModuleInfo?.modulePositionX !== undefined ? pvModuleInfo.modulePositionX : 0;
+  const modulePositionZ = pvModuleInfo?.modulePositionZ !== undefined ? pvModuleInfo.modulePositionZ : 0;
+  
+  const [activeTab, setActiveTab] = useState("module");
+
+  // Calculate PV module placement if not already calculated
   useEffect(() => {
-    if (measurement.pvModuleInfo?.pvMaterials && activeTab === "overview") {
-      setActiveTab("materials");
-    }
-  }, [measurement.pvModuleInfo?.pvMaterials, activeTab]);
-  
-  useEffect(() => {
-    if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
-      if (measurement.pvModuleInfo.roofAzimuth === undefined) {
-        console.log("Detecting roof orientation from 3D points");
-        
-        const updatedPVInfo = updatePVModuleInfoWithOrientation(
-          measurement.pvModuleInfo,
-          measurement.points
-        );
-        
-        updateMeasurement(measurement.id, {
-          pvModuleInfo: updatedPVInfo
-        });
-        
-        toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection}`);
-      }
-    }
-  }, [measurement.id, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
-  
-  useEffect(() => {
-    console.log("SolarMeasurementContent: Measurement updated", {
-      id: measurement.id,
-      hasPvModuleInfo: !!measurement.pvModuleInfo,
-      hasPvMaterials: !!measurement.pvModuleInfo?.pvMaterials,
-      pvModuleSpec: measurement.pvModuleInfo?.pvModuleSpec ? 
-        `${measurement.pvModuleInfo.pvModuleSpec.name} (${measurement.pvModuleInfo.pvModuleSpec.power}W)` : 'None',
-      orientation: measurement.pvModuleInfo?.roofDirection || 'Unknown',
-      inclination: measurement.pvModuleInfo?.roofInclination || 'Unknown',
-    });
-  }, [measurement]);
-  
-  useEffect(() => {
-    if (measurement.type === 'solar' && !measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
-      const pvModuleInfo = calculatePVModulePlacement(measurement.points);
-      if (pvModuleInfo.moduleCount > 0) {
-        updateMeasurement(measurement.id, { pvModuleInfo });
-        toast.success(`PV-Module automatisch berechnet: ${pvModuleInfo.moduleCount} Module`);
-      }
-    }
-  }, [measurement.id, measurement.type, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
-  
-  const handleModuleSelect = (moduleSpec: any) => {
-    if (!measurement.pvModuleInfo) return;
-    
-    console.log("Module selected:", moduleSpec);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      pvModuleSpec: moduleSpec
-    };
-    
-    updateMeasurement(measurement.id, {
-      pvModuleInfo: updatedPVInfo
-    });
-  };
-  
-  const handleDimensionsChange = (dimensions: {width: number, length: number}) => {
-    if (!measurement.pvModuleInfo) return;
-    
-    console.log("Dimensions changed:", dimensions);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      manualDimensions: true,
-      userDefinedWidth: dimensions.width,
-      userDefinedLength: dimensions.length
-    };
-    
-    const recalculatedPVInfo = calculatePVModulePlacement(
-      measurement.points,
-      measurement.pvModuleInfo.moduleWidth,
-      measurement.pvModuleInfo.moduleHeight,
-      measurement.pvModuleInfo.edgeDistance,
-      measurement.pvModuleInfo.moduleSpacing,
-      dimensions
-    );
-    
-    const finalPVInfo = {
-      ...recalculatedPVInfo,
-      manualDimensions: true,
-      userDefinedWidth: dimensions.width,
-      userDefinedLength: dimensions.length,
-      pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
-      pvMaterials: measurement.pvModuleInfo.pvMaterials,
-      roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
-      roofDirection: measurement.pvModuleInfo.roofDirection,
-      roofInclination: measurement.pvModuleInfo.roofInclination,
-      yieldFactor: measurement.pvModuleInfo.yieldFactor
-    };
-    
-    updateMeasurement(measurement.id, {
-      pvModuleInfo: finalPVInfo
-    });
-  };
-  
-  const handleSpacingChange = (spacing: {edgeDistance: number, moduleSpacing: number}) => {
-    if (!measurement.pvModuleInfo) return;
-    
-    console.log("Spacing changed:", spacing);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      edgeDistance: spacing.edgeDistance,
-      moduleSpacing: spacing.moduleSpacing
-    };
-    
-    const recalculatedPVInfo = calculatePVModulePlacement(
-      measurement.points,
-      measurement.pvModuleInfo.moduleWidth,
-      measurement.pvModuleInfo.moduleHeight,
-      spacing.edgeDistance,
-      spacing.moduleSpacing,
-      measurement.pvModuleInfo.manualDimensions ? {
-        width: measurement.pvModuleInfo.userDefinedWidth || 0,
-        length: measurement.pvModuleInfo.userDefinedLength || 0
-      } : undefined
-    );
-    
-    const finalPVInfo = {
-      ...recalculatedPVInfo,
-      edgeDistance: spacing.edgeDistance,
-      moduleSpacing: spacing.moduleSpacing,
-      manualDimensions: measurement.pvModuleInfo.manualDimensions,
-      userDefinedWidth: measurement.pvModuleInfo.userDefinedWidth,
-      userDefinedLength: measurement.pvModuleInfo.userDefinedLength,
-      pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
-      pvMaterials: measurement.pvModuleInfo.pvMaterials,
-      roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
-      roofDirection: measurement.pvModuleInfo.roofDirection,
-      roofInclination: measurement.pvModuleInfo.roofInclination,
-      yieldFactor: measurement.pvModuleInfo.yieldFactor
-    };
-    
-    updateMeasurement(measurement.id, {
-      pvModuleInfo: finalPVInfo
-    });
-  };
-  
-  const handleCalculateMaterials = async (inverterDistance: number = 10) => {
-    setPendingInverterDistance(inverterDistance);
-    setShowPVDisclaimer(true);
-  };
-  
-  const handlePVDisclaimerConfirm = () => {
-    setShowPVDisclaimer(false);
-    
-    if (!measurement.pvModuleInfo) {
-      toast.error('Keine PV-Modul-Informationen verfügbar');
-      return;
-    }
-    
-    if (!measurement.pvModuleInfo.pvModuleSpec) {
-      toast.error('Bitte wählen Sie ein PV-Modul aus');
-      return;
-    }
-    
-    console.log("Starting materials calculation with:", {
-      measurementId: measurement.id,
-      moduleSpec: measurement.pvModuleInfo.pvModuleSpec,
-      inverterDistance: pendingInverterDistance
-    });
-    
-    calculatePVMaterialsForMeasurement(measurement.id, pendingInverterDistance);
-    
-    setActiveTab("materials");
-  };
-  
-  const handlePVDisclaimerCancel = () => {
-    setShowPVDisclaimer(false);
-  };
-  
-  if (!measurement.pvModuleInfo) {
-    return (
-      <div className="p-4">
-        <p className="text-sm text-muted-foreground mb-3">
-          Keine PV-Modul-Informationen verfügbar. Bitte neu berechnen.
-        </p>
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="w-full"
-          onClick={() => {
-            const pvModuleInfo = calculatePVModulePlacement(measurement.points);
-            updateMeasurement(measurement.id, { pvModuleInfo });
-            toast.success(`PV-Module berechnet: ${pvModuleInfo.moduleCount} Module`);
-          }}
-        >
-          <Zap className="h-4 w-4 mr-2" />
-          PV-Module berechnen
-        </Button>
-      </div>
-    );
-  }
-  
-  const annualYield = measurement.pvModuleInfo.roofAzimuth && measurement.pvModuleInfo.roofInclination
-    ? calculateAnnualYieldWithOrientation(
-        calculatePVPower(
-          measurement.pvModuleInfo.moduleCount, 
-          measurement.pvModuleInfo.pvModuleSpec?.power || 425
-        ),
-        measurement.pvModuleInfo
-      )
-    : calculateAnnualYield(
-        calculatePVPower(
-          measurement.pvModuleInfo.moduleCount, 
-          measurement.pvModuleInfo.pvModuleSpec?.power || 425
-        ),
-        measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
+    if (!measurement.pvModuleInfo && measurement.points.length >= 3) {
+      // Get roof edge measurements
+      const edgeInfo = extractRoofEdgeMeasurements(allMeasurements);
+      
+      // Calculate initial PV module placement
+      const initialPvInfo = calculatePVModulePlacement(
+        measurement.points, 
+        undefined, 
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        edgeInfo
       );
+      
+      // Add default positioning values
+      const pvInfoWithPositioning: PVModuleInfo = {
+        ...initialPvInfo,
+        moduleHeightOffset: 0.05,
+        moduleRotation: 0,
+        modulePositionX: 0,
+        modulePositionZ: 0
+      };
+      
+      // Add orientation data
+      const pvInfoWithOrientation = updatePVModuleInfoWithOrientation(
+        pvInfoWithPositioning,
+        measurement.points
+      );
+      
+      // Calculate materials
+      const materials = calculatePVMaterials(pvInfoWithOrientation);
+      pvInfoWithOrientation.pvMaterials = materials;
+      
+      // Update the measurement
+      const updatedMeasurement = {
+        ...measurement,
+        pvModuleInfo: pvInfoWithOrientation
+      };
+      
+      onUpdate(updatedMeasurement);
+      setPvModuleInfo(pvInfoWithOrientation);
+    }
+  }, [measurement, allMeasurements, onUpdate]);
+  
+  // Update measurement when pvModuleInfo changes
+  useEffect(() => {
+    if (pvModuleInfo && JSON.stringify(pvModuleInfo) !== JSON.stringify(measurement.pvModuleInfo)) {
+      const updatedMeasurement = {
+        ...measurement,
+        pvModuleInfo
+      };
+      onUpdate(updatedMeasurement);
+    }
+  }, [pvModuleInfo, measurement, onUpdate]);
+  
+  // Handle module selection
+  const handleModuleSelect = (moduleSpec) => {
+    if (pvModuleInfo) {
+      const updatedPvInfo = {
+        ...pvModuleInfo,
+        pvModuleSpec: moduleSpec
+      };
+      
+      // Recalculate materials
+      const materials = calculatePVMaterials(updatedPvInfo);
+      updatedPvInfo.pvMaterials = materials;
+      
+      setPvModuleInfo(updatedPvInfo);
+    }
+  };
+  
+  // Handle dimension changes
+  const handleDimensionsChange = (dimensions) => {
+    if (pvModuleInfo) {
+      const updatedPvInfo = calculatePVModulePlacement(
+        measurement.points,
+        pvModuleInfo.moduleWidth,
+        pvModuleInfo.moduleHeight,
+        pvModuleInfo.edgeDistance,
+        pvModuleInfo.moduleSpacing,
+        dimensions
+      );
+      
+      // Preserve positioning parameters
+      updatedPvInfo.moduleHeightOffset = pvModuleInfo.moduleHeightOffset;
+      updatedPvInfo.moduleRotation = pvModuleInfo.moduleRotation;
+      updatedPvInfo.modulePositionX = pvModuleInfo.modulePositionX;
+      updatedPvInfo.modulePositionZ = pvModuleInfo.modulePositionZ;
+      
+      // Preserve orientation data
+      updatedPvInfo.roofAzimuth = pvModuleInfo.roofAzimuth;
+      updatedPvInfo.roofDirection = pvModuleInfo.roofDirection;
+      updatedPvInfo.roofInclination = pvModuleInfo.roofInclination;
+      updatedPvInfo.yieldFactor = pvModuleInfo.yieldFactor;
+      
+      // Calculate materials
+      const materials = calculatePVMaterials(updatedPvInfo);
+      updatedPvInfo.pvMaterials = materials;
+      
+      setPvModuleInfo(updatedPvInfo);
+    }
+  };
+  
+  // Handle spacing changes
+  const handleSpacingChange = (spacing) => {
+    if (pvModuleInfo) {
+      const updatedPvInfo = calculatePVModulePlacement(
+        measurement.points,
+        pvModuleInfo.moduleWidth,
+        pvModuleInfo.moduleHeight,
+        spacing.edgeDistance,
+        spacing.moduleSpacing,
+        pvModuleInfo.manualDimensions ? {
+          width: pvModuleInfo.userDefinedWidth,
+          length: pvModuleInfo.userDefinedLength
+        } : undefined
+      );
+      
+      // Preserve positioning parameters
+      updatedPvInfo.moduleHeightOffset = pvModuleInfo.moduleHeightOffset;
+      updatedPvInfo.moduleRotation = pvModuleInfo.moduleRotation;
+      updatedPvInfo.modulePositionX = pvModuleInfo.modulePositionX;
+      updatedPvInfo.modulePositionZ = pvModuleInfo.modulePositionZ;
+      
+      // Preserve orientation data
+      updatedPvInfo.roofAzimuth = pvModuleInfo.roofAzimuth;
+      updatedPvInfo.roofDirection = pvModuleInfo.roofDirection;
+      updatedPvInfo.roofInclination = pvModuleInfo.roofInclination;
+      updatedPvInfo.yieldFactor = pvModuleInfo.yieldFactor;
+      
+      // Calculate materials
+      const materials = calculatePVMaterials(updatedPvInfo);
+      updatedPvInfo.pvMaterials = materials;
+      
+      setPvModuleInfo(updatedPvInfo);
+    }
+  };
+
+  // Handle positioning changes
+  const handlePositioningChange = (changes: Partial<PVModuleInfo>) => {
+    if (pvModuleInfo) {
+      setPvModuleInfo({
+        ...pvModuleInfo,
+        ...changes
+      });
+    }
+  };
+  
+  // Handle materials calculation
+  const handleCalculateMaterials = (inverterDistance) => {
+    if (pvModuleInfo) {
+      const materials = calculatePVMaterials(pvModuleInfo, inverterDistance);
+      
+      const updatedPvInfo = {
+        ...pvModuleInfo,
+        pvMaterials: materials
+      };
+      
+      setPvModuleInfo(updatedPvInfo);
+    }
+  };
+  
+  if (!pvModuleInfo) return null;
+  
+  // Calculate power and yield
+  const power = calculatePVPower(pvModuleInfo.moduleCount, pvModuleInfo.pvModuleSpec?.power || 380);
+  const annualYield = calculateAnnualYieldWithOrientation(power, pvModuleInfo);
   
   return (
-    <div className="pt-2">
-      <PVPlanningDisclaimer 
-        open={showPVDisclaimer}
-        onConfirm={handlePVDisclaimerConfirm}
-        onCancel={handlePVDisclaimerCancel}
-      />
-      
-      <div className="flex items-center justify-between mb-2 px-2">
-        <Label className="text-xs">
-          <span className="text-muted-foreground">Layout:</span>{' '}
-          {formatPVModuleInfo(measurement.pvModuleInfo)}
-        </Label>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">PV-Anlagenplanung</h3>
         
-        <PVModuleSelect 
-          onModuleSelect={handleModuleSelect}
-          currentModule={measurement.pvModuleInfo.pvModuleSpec}
-          pvModuleInfo={measurement.pvModuleInfo}
-          onDimensionsChange={handleDimensionsChange}
-          onSpacingChange={handleSpacingChange}
-          onCalculateMaterials={handleCalculateMaterials}
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Einstellungen
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-4">
+            <h4 className="font-medium mb-2">PV-Modul Einstellungen</h4>
+            <Tabs defaultValue="module" className="w-full" onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="module">Modul</TabsTrigger>
+                <TabsTrigger value="position">Position</TabsTrigger>
+                <TabsTrigger value="dimensions">Fläche</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="module" className="space-y-4 pt-2">
+                <PVModuleSelect 
+                  onModuleSelect={handleModuleSelect} 
+                  currentModule={pvModuleInfo.pvModuleSpec} 
+                  pvModuleInfo={pvModuleInfo}
+                  onSpacingChange={handleSpacingChange}
+                  onDimensionsChange={handleDimensionsChange}
+                  onCalculateMaterials={handleCalculateMaterials}
+                />
+              </TabsContent>
+              
+              <TabsContent value="position" className="space-y-4 pt-2">
+                <PVModulePositioningControls 
+                  pvModuleInfo={pvModuleInfo}
+                  onChange={handlePositioningChange}
+                />
+              </TabsContent>
+              
+              <TabsContent value="dimensions" className="space-y-4 pt-2">
+                <div className="space-y-3">
+                  {/* Manual dimension settings would go here */}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </PopoverContent>
+        </Popover>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-2">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">
-            <Zap className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Übersicht</span>
-          </TabsTrigger>
-          <TabsTrigger value="details">
-            <ListTodo className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="materials">
-            <PackageIcon className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Material</span>
-            {measurement.pvModuleInfo.pvMaterials && (
-              <span className="ml-1 w-2 h-2 bg-green-500 rounded-full"></span>
-            )}
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="pt-2">
-          <div className="space-y-1">
-            <div className="grid grid-cols-2 gap-1 text-xs">
-              <div className="text-muted-foreground">Modulgröße:</div>
-              <div>{measurement.pvModuleInfo.moduleWidth.toFixed(2)} × {measurement.pvModuleInfo.moduleHeight.toFixed(2)} m</div>
-              
-              <div className="text-muted-foreground">Anzahl Module:</div>
-              <div>{measurement.pvModuleInfo.moduleCount}</div>
-              
-              <div className="text-muted-foreground">Raster:</div>
-              <div>{measurement.pvModuleInfo.columns || 0} × {measurement.pvModuleInfo.rows || 0}</div>
-              
-              <div className="text-muted-foreground">Dachfläche:</div>
-              <div>{measurement.pvModuleInfo.actualArea?.toFixed(2) || "?"} m²</div>
-              
-              <div className="text-muted-foreground">Flächennutzung:</div>
-              <div>{measurement.pvModuleInfo.coveragePercent.toFixed(1)}%</div>
-              
-              <div className="text-muted-foreground">Leistung:</div>
-              <div>
-                {((measurement.pvModuleInfo.moduleCount * 
-                  (measurement.pvModuleInfo.pvModuleSpec?.power || 425)) / 1000).toFixed(1)} kWp
-              </div>
-              
-              <div className="text-muted-foreground">Ausrichtung:</div>
-              <div className="flex items-center">
-                {measurement.pvModuleInfo.roofDirection || "Süd"} 
-                {measurement.pvModuleInfo.roofAzimuth && (
-                  <span className="ml-1 text-muted-foreground">
-                    ({Math.round(measurement.pvModuleInfo.roofAzimuth)}°)
-                  </span>
-                )}
-              </div>
-              
-              <div className="text-muted-foreground">Dachneigung:</div>
-              <div>
-                {measurement.pvModuleInfo.roofInclination 
-                  ? `${Math.round(measurement.pvModuleInfo.roofInclination)}°` 
-                  : "30°"}
-              </div>
-              
-              <div className="text-muted-foreground">Jahresertrag:</div>
-              <div>
-                {annualYield.toFixed(0)} kWh/Jahr
-              </div>
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Module</Label>
+              <p className="font-medium">{pvModuleInfo.moduleCount} Module</p>
+              <p className="text-sm text-muted-foreground">{pvModuleInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</p>
             </div>
             
-            <div className="mt-2 pt-2 border-t text-xs">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full h-7"
-                onClick={() => handleCalculateMaterials()}
-                disabled={calculatingMaterials}
-              >
-                {calculatingMaterials ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Berechnung läuft...
-                  </>
-                ) : (
-                  <>
-                    <PackageIcon className="h-3 w-3 mr-1" />
-                    Materialliste berechnen
-                  </>
-                )}
-              </Button>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Leistung</Label>
+              <p className="font-medium">{power.toFixed(1)} kWp</p>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <p className="text-sm text-muted-foreground flex items-center cursor-help">
+                    ca. {formatNumber(annualYield)} kWh/Jahr <Info className="h-3 w-3 ml-1" />
+                  </p>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <p className="text-sm">
+                    Diese Schätzung basiert auf der Dachausrichtung ({pvModuleInfo.roofDirection || 'Süd'}) 
+                    und Neigung ({pvModuleInfo.roofInclination?.toFixed(0) || '30'}°).
+                  </p>
+                </HoverCardContent>
+              </HoverCard>
+            </div>
+            
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Dachfläche</Label>
+              <p className="font-medium">{pvModuleInfo.actualArea?.toFixed(1)} m²</p>
+              <p className="text-sm text-muted-foreground">{pvModuleInfo.coveragePercent.toFixed(1)}% belegt</p>
+            </div>
+            
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Ausrichtung</Label>
+              <p className="font-medium">{pvModuleInfo.roofDirection || 'Süd'}</p>
+              <p className="text-sm text-muted-foreground">{pvModuleInfo.roofInclination?.toFixed(0) || '30'}° Neigung</p>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="details" className="pt-2">
-          <div className="space-y-1">
-            <div className="grid grid-cols-2 gap-1 text-xs">
-              <div className="text-muted-foreground">Modultyp:</div>
-              <div>{measurement.pvModuleInfo.pvModuleSpec?.name || "Standard"}</div>
-              
-              <div className="text-muted-foreground">Modulleistung:</div>
-              <div>{measurement.pvModuleInfo.pvModuleSpec?.power || 425} Wp</div>
-              
-              <div className="text-muted-foreground">Orientierung:</div>
-              <div>{measurement.pvModuleInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}</div>
-              
-              <div className="text-muted-foreground">Randabstand:</div>
-              <div>{measurement.pvModuleInfo.edgeDistance?.toFixed(2) || "0.10"} m</div>
-              
-              <div className="text-muted-foreground">Modulabstand:</div>
-              <div>{measurement.pvModuleInfo.moduleSpacing?.toFixed(2) || "0.05"} m</div>
-              
-              <div className="text-muted-foreground">Verfügbare Breite:</div>
-              <div>{measurement.pvModuleInfo.availableWidth?.toFixed(2) || "?"} m</div>
-              
-              <div className="text-muted-foreground">Verfügbare Länge:</div>
-              <div>{measurement.pvModuleInfo.availableLength?.toFixed(2) || "?"} m</div>
-              
-              <div className="text-muted-foreground">Dachausrichtung:</div>
-              <div className="flex items-center">
-                {measurement.pvModuleInfo.roofDirection || "Süd"}
-                <Compass className="h-3 w-3 ml-1 text-muted-foreground" />
+          
+          <Separator />
+          
+          <div>
+            <div className="flex items-center gap-1 mb-2">
+              <Sun className="h-4 w-4 text-amber-500" />
+              <h4 className="font-medium">Wirtschaftlichkeit</h4>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Investition (ca.)</Label>
+                <p className="font-medium">{formatCurrency(power * 1800)}</p>
+                <p className="text-sm text-muted-foreground">{formatCurrency(power * 1800 / pvModuleInfo.moduleCount)} pro Modul</p>
               </div>
               
-              <div className="text-muted-foreground">Azimut:</div>
               <div>
-                {measurement.pvModuleInfo.roofAzimuth 
-                  ? `${Math.round(measurement.pvModuleInfo.roofAzimuth)}°` 
-                  : "180° (Süd)"}
-              </div>
-              
-              <div className="text-muted-foreground">Dachneigung:</div>
-              <div>
-                {measurement.pvModuleInfo.roofInclination 
-                  ? `${Math.round(measurement.pvModuleInfo.roofInclination)}°` 
-                  : "30°"}
-              </div>
-              
-              <div className="text-muted-foreground">Ertragsfaktor:</div>
-              <div>
-                {measurement.pvModuleInfo.yieldFactor || 950} kWh/kWp
+                <Label className="text-xs text-muted-foreground mb-1 block">Jährlicher Ertrag (ca.)</Label>
+                <p className="font-medium">{formatCurrency(annualYield * 0.12)}</p>
+                <p className="text-sm text-muted-foreground">bei {formatCurrency(0.12)}/kWh</p>
               </div>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="materials" className="pt-2">
-          {calculatingMaterials ? (
-            <div className="p-4 text-center">
-              <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
-              <p className="text-sm">Berechne Materialliste...</p>
-            </div>
-          ) : measurement.pvModuleInfo.pvMaterials ? (
-            <PVMaterialsList 
-              materials={measurement.pvModuleInfo.pvMaterials}
-              onCalculate={() => handleCalculateMaterials()}
-            />
-          ) : (
-            <div className="p-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                Keine Materialliste vorhanden. Bitte berechnen Sie die Materialliste.
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleCalculateMaterials()}
-                disabled={calculatingMaterials}
-              >
-                <PackageIcon className="h-4 w-4 mr-1" />
-                Materialliste berechnen
-              </Button>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
