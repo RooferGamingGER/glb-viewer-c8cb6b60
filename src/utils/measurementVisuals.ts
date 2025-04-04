@@ -1553,7 +1553,7 @@ function renderPVModuleGrid(
   if (result && result.modulePoints && result.modulePoints.length > 0) {
     for (let index = 0; index < result.modulePoints.length; index++) {
       const points = result.modulePoints[index];
-      if (points.length !== 4) continue; // Skip invalid modules
+      if (!points || points.length !== 4) continue; // Skip invalid modules
       
       // Calculate center
       const center = new THREE.Vector3(0, 0, 0);
