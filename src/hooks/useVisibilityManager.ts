@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import * as THREE from 'three';
-import { Measurement, Point } from '@/types/measurements';
+import { Measurement } from '@/types/measurements';
 import { useThreeJs } from '@/contexts/ThreeJsContext';
 import { toast } from '@/components/ui/use-toast';
 
@@ -21,7 +21,106 @@ export const useVisibilityManager = (
     getAllGroups
   } = useThreeJs();
 
-  // Declare functions first to avoid reference errors
+  // Extrahiere Dachkanten (insbesondere die Traufe) für die Ausrichtung der PV-Module
+  const extractRoofEdgeSegments = useCallback(() => {
+    // Prioritäre Suche nach Messungen vom Typ "eave" (Traufe)
+    let eaveEdgeMeasurements = measurements.filter(m => m.type === 'eave');
+    
+    // Falls keine Traufe gefunden wurde, versuche andere Dachkanten
+    let edgeMeasurements = eaveEdgeMeasurements.length > 0 ? 
+      eaveEdgeMeasurements : 
+      measurements.filter(m => m.type === 'ridge' || m.type === 'verge');
+    
+    const segments: {from: THREE.Vector3, to: THREE.Vector3}[] = [];
+    
+    // Debug-Ausgabe zur Fehlerfindung
+    console.log(`Gefundene Dachkanten für Ausrichtung: ${edgeMeasurements.length}`, 
+      edgeMeasurements.map(m => ({type: m.type, id: m.id, points: m.points?.length})));
+    
+    // Extrahiere Segmente aus Messungen
+    edgeMeasurements.forEach(measurement => {
+      if (measurement.points && measurement.points.length >= 2) {
+        // Convert Point to THREE.Vector3
+        const fromPoint = new THREE.Vector3(
+          measurement.points[0].x,
+          measurement.points[0].y,
+          measurement.points[0].z
+        );
+        
+        const toPoint = new THREE.Vector3(
+          measurement.points[1].x,
+          measurement.points[1].y,
+          measurement.points[1].z
+        );
+        
+        segments.push({
+          from: fromPoint,
+          to: toPoint
+        });
+        
+        console.log(`Dachkante vom Typ ${measurement.type} für Ausrichtung verwendet:`, {
+          from: [fromPoint.x, fromPoint.y, fromPoint.z],
+          to: [toPoint.x, toPoint.y, toPoint.z],
+          length: new THREE.Vector3().subVectors(toPoint, fromPoint).length()
+        });
+      }
+    });
+    
+    return segments;
+  }, [measurements]);
+
+  // Toggle visibility of a measurement on screen
+  const handleToggleMeasurementVisibility = useCallback((id: string) => {
+    toggleMeasurementVisibility(id);
+
+    // Update visibility in Three.js objects
+    updateMeasurementMarkers();
+    
+    // Show toast notification for important PV visibility changes
+    const measurement = measurements.find(m => m.id === id);
+    if (measurement && (measurement.type === 'pvmodule' || measurement.type === 'solar')) {
+      const newState = measurement.visible === false ? 'visible' : 'hidden';
+      toast({
+        title: `PV Module ${newState}`,
+        description: `The PV module area is now ${newState}`,
+        duration: 2000,
+      });
+    }
+  }, [toggleMeasurementVisibility, measurements]);
+
+  // Toggle label visibility
+  const handleToggleLabelVisibility = useCallback((id: string) => {
+    toggleLabelVisibility(id);
+
+    // Update label visibility in Three.js
+    updateLabelVisibility(id);
+  }, [toggleLabelVisibility]);
+
+  // Update all labels visibility
+  const updateAllLabelsVisibility = useCallback((visible: boolean) => {
+    if (!labelsRef.current || !segmentLabelsRef.current) return;
+    
+    // Update all main labels
+    labelsRef.current.children.forEach(label => {
+      if (!label.userData || !label.userData.measurementId) return;
+      
+      const measurement = measurements.find(m => m.id === label.userData.measurementId);
+      if (measurement) {
+        label.visible = visible && measurement.visible !== false;
+      }
+    });
+
+    // Update all segment labels
+    segmentLabelsRef.current.children.forEach(label => {
+      if (!label.userData || !label.userData.measurementId) return;
+      
+      const measurement = measurements.find(m => m.id === label.userData.measurementId);
+      if (measurement) {
+        label.visible = visible && measurement.visible !== false;
+      }
+    });
+  }, [measurements, labelsRef, segmentLabelsRef]);
+
   // Update label visibility for a specific measurement
   const updateLabelVisibility = useCallback((id: string) => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
@@ -44,7 +143,7 @@ export const useVisibilityManager = (
       }
     });
   }, [measurements, labelsRef, segmentLabelsRef]);
-  
+
   // Update measurement markers visibility
   const updateMeasurementMarkers = useCallback(() => {
     if (!measurementsRef.current) return;
@@ -55,7 +154,7 @@ export const useVisibilityManager = (
     let pvModuleCount = 0;
     let pvModulesVisible = 0;
     
-    // Extract roof edge segments for PV module alignment
+    // Extrahiere Dachkantensegmente für die Ausrichtung von PV-Modulen
     const roofEdgeSegments = extractRoofEdgeSegments();
     
     // Update mesh visibilities for PV areas and other measurements
@@ -122,164 +221,6 @@ export const useVisibilityManager = (
     
     console.log(`PV Module visibility summary from useVisibilityManager: ${pvModulesVisible}/${pvModuleCount} modules visible`);
   }, [measurements, measurementsRef, extractRoofEdgeSegments]);
-
-  // Handle toggling measurement visibility
-  const handleToggleMeasurementVisibility = useCallback((id: string) => {
-    toggleMeasurementVisibility(id);
-    
-    // Update visibility in Three.js objects
-    updateMeasurementMarkers();
-    
-    // Show toast notification for important PV visibility changes
-    const measurement = measurements.find(m => m.id === id);
-    if (measurement && (measurement.type === 'pvmodule' || measurement.type === 'solar')) {
-      const newState = measurement.visible === false ? 'visible' : 'hidden';
-      toast({
-        title: `PV Module ${newState}`,
-        description: `The PV module area is now ${newState}`,
-        duration: 2000,
-      });
-    }
-  }, [toggleMeasurementVisibility, measurements, updateMeasurementMarkers]);
-
-  // Toggle label visibility
-  const handleToggleLabelVisibility = useCallback((id: string) => {
-    toggleLabelVisibility(id);
-    
-    // Update label visibility in Three.js
-    updateLabelVisibility(id);
-  }, [toggleLabelVisibility, updateLabelVisibility]);
-
-  // Improved function to extract roof edge segments, particularly the eave (Traufe)
-  // for PV module alignment
-  const extractRoofEdgeSegments = useCallback(() => {
-    // Function to calculate average Y value of a measurement's points
-    const calculateAverageY = (points?: { y: number }[]) => {
-      if (!points || points.length === 0) return 0;
-      return points.reduce((sum, p) => sum + p.y, 0) / points.length;
-    };
-    
-    // Find all edge measurements (ridge, eave, verge)
-    const ridgeMeasurements = measurements.filter(m => m.type === 'ridge');
-    const eaveMeasurements = measurements.filter(m => m.type === 'eave');
-    const vergeMeasurements = measurements.filter(m => m.type === 'verge');
-    const edgeMeasurements = [...ridgeMeasurements, ...eaveMeasurements, ...vergeMeasurements];
-    
-    // Debug output to help diagnose issues
-    console.log(`Found ${ridgeMeasurements.length} ridge, ${eaveMeasurements.length} eave, and ${vergeMeasurements.length} verge measurements`);
-    
-    // Start with more specific identification logic: find the eave (Traufe) - it should be the lowest horizontal edge
-    let eaveEdges = [];
-    
-    if (eaveMeasurements.length > 0) {
-      // If user has specifically marked eaves, use those first
-      eaveEdges = eaveMeasurements.map(m => ({
-        from: new THREE.Vector3(m.points[0].x, m.points[0].y, m.points[0].z),
-        to: new THREE.Vector3(m.points[1].x, m.points[1].y, m.points[1].z),
-        type: 'eave',
-        yValue: calculateAverageY(m.points)
-      }));
-      console.log("Using user-marked eave measurements for alignment");
-    } else {
-      // If no eaves marked, try to identify the lowest horizontal edge as the eave
-      // (Ridge is typically highest, eave is lowest)
-      const horizontalEdges = edgeMeasurements.filter(m => {
-        if (!m.points || m.points.length < 2) return false;
-        
-        // Check if this is a roughly horizontal edge (minimal Y difference)
-        const yDiff = Math.abs(m.points[0].y - m.points[1].y);
-        const length = new THREE.Vector3()
-          .subVectors(
-            new THREE.Vector3(m.points[0].x, m.points[0].y, m.points[0].z),
-            new THREE.Vector3(m.points[1].x, m.points[1].y, m.points[1].z)
-          ).length();
-        
-        // Consider it horizontal if Y difference is small relative to length
-        return yDiff / length < 0.2; // 20% threshold
-      });
-      
-      if (horizontalEdges.length > 0) {
-        // Sort by Y value, lowest first (eave is usually the lowest horizontal edge)
-        const sortedEdges = horizontalEdges
-          .map(m => ({
-            measurement: m,
-            yValue: calculateAverageY(m.points)
-          }))
-          .sort((a, b) => a.yValue - b.yValue);
-        
-        console.log("Sorted horizontal edges by height:", sortedEdges.map(e => ({
-          type: e.measurement.type,
-          y: e.yValue
-        })));
-        
-        // Use the lowest edge as eave
-        const lowestEdge = sortedEdges[0].measurement;
-        eaveEdges = [{
-          from: new THREE.Vector3(lowestEdge.points[0].x, lowestEdge.points[0].y, lowestEdge.points[0].z),
-          to: new THREE.Vector3(lowestEdge.points[1].x, lowestEdge.points[1].y, lowestEdge.points[1].z),
-          type: 'identified-eave',
-          yValue: sortedEdges[0].yValue
-        }];
-        console.log("Using lowest horizontal edge as eave:", eaveEdges[0]);
-      }
-    }
-    
-    // If still no eave found, fall back to any horizontal edge
-    if (eaveEdges.length === 0 && edgeMeasurements.length > 0) {
-      // Use the longest edge measurement as a fallback
-      let longestEdge = edgeMeasurements[0];
-      let maxLength = 0;
-      
-      edgeMeasurements.forEach(m => {
-        if (m.points && m.points.length >= 2) {
-          const v1 = new THREE.Vector3(m.points[0].x, m.points[0].y, m.points[0].z);
-          const v2 = new THREE.Vector3(m.points[1].x, m.points[1].y, m.points[1].z);
-          const length = new THREE.Vector3().subVectors(v2, v1).length();
-          
-          if (length > maxLength) {
-            maxLength = length;
-            longestEdge = m;
-          }
-        }
-      });
-      
-      eaveEdges = [{
-        from: new THREE.Vector3(longestEdge.points[0].x, longestEdge.points[0].y, longestEdge.points[0].z),
-        to: new THREE.Vector3(longestEdge.points[1].x, longestEdge.points[1].y, longestEdge.points[1].z),
-        type: 'fallback',
-        yValue: calculateAverageY(longestEdge.points)
-      }];
-      console.log("Fallback to longest edge for alignment:", eaveEdges[0]);
-    }
-    
-    // Return the segments (prioritizing eave edges)
-    return eaveEdges;
-  }, [measurements]);
-
-  // Update all labels visibility
-  const updateAllLabelsVisibility = useCallback((visible: boolean) => {
-    if (!labelsRef.current || !segmentLabelsRef.current) return;
-    
-    // Update all main labels
-    labelsRef.current.children.forEach(label => {
-      if (!label.userData || !label.userData.measurementId) return;
-      
-      const measurement = measurements.find(m => m.id === label.userData.measurementId);
-      if (measurement) {
-        label.visible = visible && measurement.visible !== false;
-      }
-    });
-
-    // Update all segment labels
-    segmentLabelsRef.current.children.forEach(label => {
-      if (!label.userData || !label.userData.measurementId) return;
-      
-      const measurement = measurements.find(m => m.id === label.userData.measurementId);
-      if (measurement) {
-        label.visible = visible && measurement.visible !== false;
-      }
-    });
-  }, [measurements, labelsRef, segmentLabelsRef]);
 
   // Get all measurement groups for temporary hiding during screenshots
   const getMeasurementGroups = useCallback(() => {

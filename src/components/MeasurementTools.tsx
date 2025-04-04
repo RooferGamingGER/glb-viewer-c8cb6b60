@@ -26,8 +26,6 @@ import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
 
-import { Point } from '@/types/measurements';
-
 interface MeasurementToolsProps {
   enabled: boolean;
   scene: THREE.Scene;
@@ -124,16 +122,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     measurements,
     currentPoints,
     activeMode,
-    {
-      addPoint,
-      startPointEdit,
-      updateMeasurementPoint: (point: Point) => {
-        // Adapt single point parameter to the expected id, index, point signature
-        if (editMeasurementId !== null && editingPointIndex !== null) {
-          updateMeasurementPoint(editMeasurementId, editingPointIndex, point);
-        }
-      }
-    },
+    interactionHandlers,
     editMeasurementId,
     editingPointIndex
   );
@@ -373,7 +362,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
     updateAllLabelsVisibility(!allLabelsVisible);
-    return true; // Return true to satisfy the boolean return type
   };
 
   // Break up the component into logical sections

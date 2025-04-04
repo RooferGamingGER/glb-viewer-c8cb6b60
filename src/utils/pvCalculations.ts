@@ -633,7 +633,7 @@ export const calculatePVModulePlacement = (
 export const generatePVModuleGrid = (
   pvInfo: PVModuleInfo, 
   baseY: number,
-  roofEdgeSegments?: {from: Point, to: Point, type?: string, yValue?: number}[]
+  roofEdgeSegments?: {from: Point, to: Point}[]
 ): {
   modulePoints: Point[][],  // Array of 4 points for each module
   gridLines: {from: Point, to: Point}[]  // Lines for the grid
@@ -642,71 +642,77 @@ export const generatePVModuleGrid = (
   const gridLines: {from: Point, to: Point}[] = [];
   
   // Determine module dimensions based on orientation
-  const moduleWidth = pvInfo.moduleWidth || (pvInfo.orientation === 'landscape' ? pvInfo.pvModuleSpec?.width || 1.04 : pvInfo.pvModuleSpec?.height || 1.77);
-  const moduleHeight = pvInfo.moduleHeight || (pvInfo.orientation === 'landscape' ? pvInfo.pvModuleSpec?.height || 1.77 : pvInfo.pvModuleSpec?.width || 1.04);
+  const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
+  const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   
   // Get the starting position (add edge distance to min coordinates)
-  const startX = pvInfo.startX || (pvInfo.minX + (pvInfo.edgeDistance || 0.1));
-  const startZ = pvInfo.startZ || (pvInfo.minZ + (pvInfo.edgeDistance || 0.1));
+  const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
+  const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
   // Standard orthogonal vectors (default alignment with coordinate system)
   let directionX = { x: 1, z: 0 };
   let directionZ = { x: 0, z: 1 };
   let alignmentAngle = 0;
   
-  // Try to find an eave line (Trauflinie) to align the modules with
+  // Versuche, eine Trauflinie (eave) zu finden, um die Module daran auszurichten
   if (roofEdgeSegments && roofEdgeSegments.length > 0) {
-    // First, check if we have an eave edge specifically
-    let eaveEdge = roofEdgeSegments.find(segment => segment.type === 'eave' || segment.type === 'identified-eave');
+    // Wähle das längste Segment für eine stabilere Ausrichtung
+    let longestSegment = roofEdgeSegments[0];
+    let maxLength = 0;
     
-    // If no explicit eave, use the edge with lowest Y value (likely to be eave)
-    if (!eaveEdge && roofEdgeSegments.length > 0) {
-      // Sort by Y value ascending (lowest first)
-      const sortedEdges = [...roofEdgeSegments].sort((a, b) => (a.yValue || 0) - (b.yValue || 0));
-      eaveEdge = sortedEdges[0];
-      console.log("Using edge with lowest Y value as eave for module alignment:", eaveEdge);
-    }
-    
-    // If we found an edge to use, calculate the direction vector
-    if (eaveEdge) {
-      // Calculate direction vector along the eave
-      const dx = eaveEdge.to.x - eaveEdge.from.x;
-      const dz = eaveEdge.to.z - eaveEdge.from.z;
-      const length2D = Math.sqrt(dx * dx + dz * dz);
+    roofEdgeSegments.forEach(segment => {
+      // Create THREE.Vector3 objects to calculate length
+      const from = new THREE.Vector3(segment.from.x, segment.from.y, segment.from.z);
+      const to = new THREE.Vector3(segment.to.x, segment.to.y, segment.to.z);
+      const length = new THREE.Vector3().subVectors(to, from).length();
       
-      if (length2D > 0.1) { // Minimum length for meaningful alignment
-        // Normalized direction vector along the eave
-        directionX = { 
-          x: dx / length2D, 
-          z: dz / length2D 
-        };
-        
-        // Orthogonal vector (90° rotated) for the second direction
-        directionZ = { 
-          x: -directionX.z, 
-          z: directionX.x 
-        };
-        
-        // Calculate angle to X-axis for debugging
-        alignmentAngle = Math.atan2(directionX.z, directionX.x) * (180 / Math.PI);
-        
-        console.log("Modules aligned with eave at angle:", alignmentAngle, "degrees");
-        console.log("Direction vectors:", { 
-          x: directionX, 
-          z: directionZ,
-          length2D
-        });
-      } else {
-        console.log("Eave segment too short for meaningful alignment, using default orientation");
+      if (length > maxLength) {
+        maxLength = length;
+        longestSegment = segment;
       }
+    });
+    
+    console.log("Längste Dachkante für Ausrichtung gefunden:", {
+      from: [longestSegment.from.x, longestSegment.from.y, longestSegment.from.z],
+      to: [longestSegment.to.x, longestSegment.to.y, longestSegment.to.z],
+      length: maxLength
+    });
+    
+    // Berechne Richtungsvektor entlang der Dachkante (nur in XZ-Ebene projiziert)
+    const dx = longestSegment.to.x - longestSegment.from.x;
+    const dz = longestSegment.to.z - longestSegment.from.z;
+    const length2D = Math.sqrt(dx * dx + dz * dz);
+    
+    if (length2D > 0.1) { // Mindestlänge für sinnvolle Ausrichtung
+      // Normalisierter Richtungsvektor entlang der Dachkante
+      directionX = { 
+        x: dx / length2D, 
+        z: dz / length2D 
+      };
+      
+      // Orthogonaler Vektor (90° gedreht) für die zweite Richtung
+      directionZ = { 
+        x: -directionX.z, 
+        z: directionX.x 
+      };
+      
+      // Berechne Winkel zur X-Achse für Debug-Zwecke
+      alignmentAngle = Math.atan2(directionX.z, directionX.x) * (180 / Math.PI);
+      
+      console.log("Module werden ausgerichtet mit Winkel:", alignmentAngle, "Grad");
+      console.log("Richtungsvektoren:", { 
+        x: directionX, 
+        z: directionZ,
+        length2D
+      });
     } else {
-      console.log("No suitable eave edge found for alignment, using default orientation");
+      console.log("Dachkante zu kurz für sinnvolle Ausrichtung, verwende Standard-Ausrichtung");
     }
   } else {
-    console.log("No roof edge segments available, using default orientation");
+    console.log("Keine Dachkanten-Segmente verfügbar, verwende Standard-Ausrichtung");
   }
   
-  console.log("PV Module Grid Generation with roof alignment:", {
+  console.log("PV Module Grid Generation mit Dachausrichtung:", {
     moduleWidth,
     moduleHeight,
     startX,
@@ -719,37 +725,37 @@ export const generatePVModuleGrid = (
   });
   
   // Generate module placement grid
-  for (let row = 0; row < (pvInfo.rows || 0); row++) {
-    for (let col = 0; col < (pvInfo.columns || 0); col++) {
-      // Calculate the base position of this module in standard coordinate system
-      const xOffset = col * (moduleWidth + (pvInfo.moduleSpacing || 0.05));
-      const zOffset = row * (moduleHeight + (pvInfo.moduleSpacing || 0.05));
+  for (let row = 0; row < pvInfo.rows!; row++) {
+    for (let col = 0; col < pvInfo.columns!; col++) {
+      // Berechne die Basisposition dieses Moduls im Standard-Koordinatensystem
+      const xOffset = col * (moduleWidth + pvInfo.moduleSpacing!);
+      const zOffset = row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Transform the position according to the roof alignment
+      // Transformiere die Position gemäß der Dachausrichtung
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
       // IMPORTANT: Increase Y offset significantly to make modules more visible
       const yOffset = 0.3; // 30cm above the roof surface for visibility
       
-      // Calculate the four corners of the module with correct alignment
+      // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
       const moduleCorners: Point[] = [
-        { // Corner 0 (left upper corner)
+        { // Ecke 0 (linke obere Ecke)
           x,
           y: baseY + yOffset,
           z
         },
-        { // Corner 1 (right upper corner) - along the eave/directionX
+        { // Ecke 1 (rechte obere Ecke) - entlang der Dachkante
           x: x + moduleWidth * directionX.x,
           y: baseY + yOffset,
           z: z + moduleWidth * directionX.z
         },
-        { // Corner 2 (right lower corner) - diagonal
+        { // Ecke 2 (rechte untere Ecke) - diagonal
           x: x + moduleWidth * directionX.x + moduleHeight * directionZ.x,
           y: baseY + yOffset,
           z: z + moduleWidth * directionX.z + moduleHeight * directionZ.z
         },
-        { // Corner 3 (left lower corner) - orthogonal to the eave/directionZ
+        { // Ecke 3 (linke untere Ecke) - orthogonal zur Dachkante
           x: x + moduleHeight * directionZ.x,
           y: baseY + yOffset,
           z: z + moduleHeight * directionZ.z
@@ -768,7 +774,7 @@ export const generatePVModuleGrid = (
   }
   
   // Add detailed debug logging to track module generation
-  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.3}m and alignment ${alignmentAngle.toFixed(2)}°`);
+  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.3}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
   if (modulePoints.length > 0) {
     console.log("First module corners:", modulePoints[0]);
   }

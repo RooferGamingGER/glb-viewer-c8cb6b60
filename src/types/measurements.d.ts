@@ -100,9 +100,4 @@ export interface PVModuleInfo {
   roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
-  modulesX: number;           // Number of modules in X direction
-  modulesY: number;           // Number of modules in Y direction
-  spacing: number;            // Spacing between modules
-  modulePoints?: Point[][];   // Points for each module
-  gridLines?: {from: Point, to: Point}[]; // Grid lines for module outlines
 }
