@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import * as THREE from 'three';
 import { Measurement } from '@/types/measurements';
 import { useThreeJs } from '@/contexts/ThreeJsContext';
+import { toast } from '@/components/ui/use-toast';
 
 export const useVisibilityManager = (
   measurements: Measurement[],
@@ -26,7 +27,18 @@ export const useVisibilityManager = (
 
     // Update visibility in Three.js objects
     updateMeasurementMarkers();
-  }, [toggleMeasurementVisibility]);
+    
+    // Show toast notification for important PV visibility changes
+    const measurement = measurements.find(m => m.id === id);
+    if (measurement && (measurement.type === 'pvmodule' || measurement.type === 'solar')) {
+      const newState = measurement.visible === false ? 'visible' : 'hidden';
+      toast({
+        title: `PV Module ${newState}`,
+        description: `The PV module area is now ${newState}`,
+        duration: 2000,
+      });
+    }
+  }, [toggleMeasurementVisibility, measurements]);
 
   // Toggle label visibility
   const handleToggleLabelVisibility = useCallback((id: string) => {
@@ -116,8 +128,8 @@ export const useVisibilityManager = (
             material.side = THREE.DoubleSide; // Show both sides
             material.needsUpdate = true;
             
-            // Raise slightly to avoid z-fighting
-            mesh.position.y += 0.01;
+            // Raise slightly to avoid z-fighting - increase offset
+            mesh.position.y += 0.05;
             
             console.log(`Updated PV Module ${mesh.name || "unnamed"} in useVisibilityManager:`, {
               visible: mesh.visible,
@@ -140,13 +152,14 @@ export const useVisibilityManager = (
             mesh.material.side = THREE.DoubleSide;
             mesh.material.needsUpdate = true;
             
-            // Raise slightly to avoid z-fighting
-            mesh.position.y += 0.01;
+            // Raise slightly to avoid z-fighting - increase offset
+            mesh.position.y += 0.05;
             
             console.log(`Standalone PV Module updated in useVisibilityManager:`, {
               visible: mesh.visible,
               opacity: mesh.material.opacity,
-              color: mesh.material.color.getHexString()
+              color: mesh.material.color.getHexString(),
+              position: mesh.position.y
             });
           }
         }

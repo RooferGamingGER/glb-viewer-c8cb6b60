@@ -3,17 +3,24 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '@/components/ModelViewer';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Upload, Menu, X } from 'lucide-react';
+import { ArrowLeft, Upload, Menu, X, Sun } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { Measurement } from '@/types/measurements';
+import { useMeasurementContext } from '@/contexts/MeasurementContext';
+import { toast } from '@/components/ui/use-toast';
 
 const Test = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenOrientation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pvMeasurementAdded, setPvMeasurementAdded] = useState(false);
+
+  // Get measurement context for testing PV modules
+  const { addMeasurement } = useMeasurementContext();
   
   // Use a permanent GLB model path - this should be placed in public/models/
   const testModelUrl = '/models/test-model.glb';
@@ -23,6 +30,58 @@ const Test = () => {
   useEffect(() => {
     setMenuOpen(false);
   }, [isPortrait]);
+
+  // Function to add a test PV measurement
+  const addTestPVMeasurement = () => {
+    if (pvMeasurementAdded) {
+      toast({
+        title: "PV Module bereits hinzugefügt",
+        description: "Ein Test-PV-Modul wurde bereits zum Modell hinzugefügt.",
+        variant: "default",
+      });
+      return;
+    }
+
+    // Create a test PV measurement
+    const testPVMeasurement: Measurement = {
+      id: "test-pv-module-" + Date.now(),
+      type: "solar",
+      points: [
+        { x: 1, y: 0.5, z: 1 },
+        { x: 1, y: 0.5, z: 2 },
+        { x: 2, y: 0.5, z: 2 },
+        { x: 2, y: 0.5, z: 1 }
+      ],
+      value: 4.0, // 4 square meters
+      label: "Test PV Module",
+      visible: true,
+      labelVisible: true,
+      pvModuleInfo: {
+        moduleCount: 4,
+        moduleWidth: 1.0,
+        moduleHeight: 0.5,
+        orientation: "landscape",
+        pvModuleSpec: {
+          name: "Standard Solar Module",
+          power: 380,
+          width: 1.0,
+          height: 0.5,
+          depth: 0.04,
+          frameThickness: 0.04
+        }
+      }
+    };
+
+    // Add the measurement
+    addMeasurement(testPVMeasurement);
+    setPvMeasurementAdded(true);
+    
+    toast({
+      title: "Test PV Module hinzugefügt",
+      description: "Ein Test-PV-Modul wurde zum Modell hinzugefügt. Prüfen Sie den Reiter 'Messungen' für Details.",
+      variant: "default",
+    });
+  };
 
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
@@ -56,15 +115,27 @@ const Test = () => {
           </h1>
         </div>
         
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => navigate('/')}
-          className="glass-button"
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          <span className={isMobile ? "sr-only" : ""}>Eigenes Modell hochladen</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addTestPVMeasurement}
+            className="glass-button"
+          >
+            <Sun className="h-4 w-4 mr-2" />
+            <span className={isMobile ? "sr-only" : ""}>Test PV-Modul</span>
+          </Button>
+          
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="glass-button"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            <span className={isMobile ? "sr-only" : ""}>Eigenes Modell hochladen</span>
+          </Button>
+        </div>
       </header>
       
       <div className="flex-1 relative flex overflow-hidden">
@@ -87,6 +158,14 @@ const Test = () => {
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Zurück zur Startseite
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="justify-start"
+                  onClick={addTestPVMeasurement}
+                >
+                  <Sun className="h-4 w-4 mr-2" />
+                  Test PV-Modul hinzufügen
                 </Button>
                 <Button 
                   variant="default" 

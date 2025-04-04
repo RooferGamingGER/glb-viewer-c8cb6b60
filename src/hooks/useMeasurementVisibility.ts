@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import * as THREE from 'three';
 import { Measurement } from '@/types/measurements';
+import { toast } from '@/components/ui/use-toast';
 
 interface ThreeObjects {
   pointsRef: React.MutableRefObject<THREE.Group | null>;
@@ -24,7 +25,18 @@ export const useMeasurementVisibility = (
 
     // Update visibility in Three.js objects
     updateMeasurementMarkers();
-  }, [toggleMeasurementVisibility]);
+    
+    // Show toast notification for important PV visibility changes
+    const measurement = measurements.find(m => m.id === id);
+    if (measurement && (measurement.type === 'pvmodule' || measurement.type === 'solar')) {
+      const newState = measurement.visible === false ? 'visible' : 'hidden';
+      toast({
+        title: `PV Module ${newState}`,
+        description: `The PV module area is now ${newState}`,
+        duration: 2000,
+      });
+    }
+  }, [toggleMeasurementVisibility, measurements]);
 
   // Toggle label visibility
   const handleToggleLabelVisibility = useCallback((id: string) => {
@@ -119,17 +131,18 @@ export const useMeasurementVisibility = (
             material.side = THREE.DoubleSide;
             material.needsUpdate = true;
             
+            // Raise position slightly to avoid z-fighting - increase offset
+            mesh.position.y += 0.05;
+            
             // Log material properties for debugging
             console.log(`PV Module ${mesh.name || "unnamed"} visibility:`, mesh.visible, "Material:", {
               color: material.color.getHexString(),
               opacity: material.opacity,
               transparent: material.transparent,
-              side: material.side === THREE.DoubleSide ? "DoubleSide" : "SingleSide"
+              side: material.side === THREE.DoubleSide ? "DoubleSide" : "SingleSide",
+              position: mesh.position.y
             });
           }
-          
-          // Raise position slightly to avoid z-fighting
-          mesh.position.y += 0.01;
           
           // Also update any children (individual PV modules)
           mesh.children.forEach(child => {
@@ -141,8 +154,8 @@ export const useMeasurementVisibility = (
               child.material.side = THREE.DoubleSide;
               child.material.needsUpdate = true;
               
-              // Raise position slightly to avoid z-fighting
-              child.position.y += 0.01;
+              // Raise position slightly to avoid z-fighting - increase offset
+              child.position.y += 0.05;
             }
           });
         }
@@ -160,8 +173,8 @@ export const useMeasurementVisibility = (
             mesh.material.side = THREE.DoubleSide;
             mesh.material.needsUpdate = true;
             
-            // Raise position slightly to avoid z-fighting
-            mesh.position.y += 0.01;
+            // Raise position slightly to avoid z-fighting - increase offset
+            mesh.position.y += 0.05;
             
             // Log material properties for debugging
             console.log(`Standalone PV Module visibility:`, mesh.visible, "Material:", {
