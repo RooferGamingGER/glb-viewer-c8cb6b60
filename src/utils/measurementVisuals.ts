@@ -1551,8 +1551,9 @@ function renderPVModuleGrid(
   
   // Process each modulePoint (each module is defined by 4 corner points)
   if (result && result.modulePoints && result.modulePoints.length > 0) {
-    result.modulePoints.forEach((points, index) => {
-      if (points.length !== 4) return; // Skip invalid modules
+    for (let index = 0; index < result.modulePoints.length; index++) {
+      const points = result.modulePoints[index];
+      if (points.length !== 4) continue; // Skip invalid modules
       
       // Calculate center
       const center = new THREE.Vector3(0, 0, 0);
@@ -1580,7 +1581,7 @@ function renderPVModuleGrid(
         size: { width, height },
         rotation: new THREE.Vector3(0, 0, 0) // Default rotation
       });
-    });
+    }
   }
   
   console.log(`Generated ${modules.length} PV modules for rendering`);
