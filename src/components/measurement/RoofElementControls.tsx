@@ -7,7 +7,8 @@ import {
   X,
   Info,
   Sun,
-  PanelLeft
+  PanelLeft,
+  Zap
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
 import { 
@@ -182,6 +183,20 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
             <X className="h-3 w-3" />
           </Button>
         </div>
+        
+        {/* Add PV Module calculation button specifically for solar planning with 4 points */}
+        {activeMode === 'solar' && currentPoints.length === 4 && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full mt-1 bg-green-600 hover:bg-green-700"
+            onClick={handleFinalizeMeasurement}
+            title="PV-Module berechnen"
+          >
+            <Zap className="h-3 w-3 mr-1" />
+            PV-Module berechnen
+          </Button>
+        )}
         
         <div className="flex items-center mt-2 text-xs text-muted-foreground">
           <Info className="h-3 w-3 mr-1 flex-shrink-0" />

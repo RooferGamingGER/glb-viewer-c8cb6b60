@@ -113,6 +113,22 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         
         <ScrollArea className="flex-1 pr-2">
           <TabsContent value="tools" className="space-y-4 mt-0 h-full">
+            {/* Punktfang toggle moved to the top */}
+            <div>
+              <Toggle
+                pressed={snapEnabled}
+                onPressedChange={handleToggleSnap}
+                size="sm"
+                variant={snapEnabled ? "customActive" : "outline"}
+                aria-label="Punktfang ein/aus"
+                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+                className="w-full justify-start"
+              >
+                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+              </Toggle>
+            </div>
+            
             <div>
               <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
               <div className="space-y-2">
@@ -169,21 +185,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   Solarplanung
                 </Button>
               </div>
-            </div>
-            
-            <div>
-              <Toggle
-                pressed={snapEnabled}
-                onPressedChange={handleToggleSnap}
-                size="sm"
-                variant={snapEnabled ? "customActive" : "outline"}
-                aria-label="Punktfang ein/aus"
-                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-                className="w-full justify-start"
-              >
-                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-              </Toggle>
             </div>
             
             <Separator />
