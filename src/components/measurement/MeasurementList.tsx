@@ -1,14 +1,7 @@
-
-import React, { useState } from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  SidebarGroup,
-  SidebarGroupContent,
-} from "@/components/ui/sidebar";
+import React from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from '@/components/ui/separator';
 
 interface MeasurementListProps {
   measurements: Measurement[];
@@ -43,167 +36,98 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   handleMoveMeasurementUp,
   handleMoveMeasurementDown
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("standard");
+  if (!measurements || measurements.length === 0 && !editMeasurementId) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        Keine Messungen vorhanden.
+      </div>
+    );
+  }
   
-  if (!measurements || measurements.length === 0 && !editMeasurementId) return null;
-  
-  // Group measurements by category with corrected categorization
+  // Group measurements by category
   const standardMeasurements = measurements.filter(m => 
     ['length', 'height', 'area'].includes(m.type)
   );
   
-  // Fixed categorization for roof elements - solar, chimney, and skylight
   const roofElementMeasurements = measurements.filter(m => 
     ['solar', 'chimney', 'skylight'].includes(m.type)
   );
   
-  // Fixed categorization for penetrations - vent, hook, and other
   const penetrationMeasurements = measurements.filter(m => 
     ['vent', 'hook', 'other'].includes(m.type)
   );
   
-  // Other measurements (if any new types are added in the future)
   const otherMeasurements = measurements.filter(m => 
     !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
   );
   
-  // Counts for each category
-  const counts = {
-    standard: standardMeasurements.length,
-    roofElements: roofElementMeasurements.length,
-    penetrations: penetrationMeasurements.length
-  };
-  
-  return (
-    <div className="flex-1 flex flex-col min-h-0 w-full">
-      <div className="pr-2">
-        <Tabs defaultValue="standard" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-2">
-            <TabsTrigger value="standard">
-              Standard ({counts.standard})
-            </TabsTrigger>
-            <TabsTrigger value="roofElements">
-              Dachelemente ({counts.roofElements})
-            </TabsTrigger>
-            <TabsTrigger value="penetrations">
-              Einbauten ({counts.penetrations})
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Standard measurements tab */}
-          <TabsContent value="standard" className="mt-0">
-            {standardMeasurements.length > 0 ? (
-              standardMeasurements.map((measurement) => (
-                <MeasurementItem
-                  key={measurement.id}
-                  measurement={measurement}
-                  toggleMeasurementVisibility={toggleMeasurementVisibility}
-                  toggleLabelVisibility={toggleLabelVisibility}
-                  handleStartPointEdit={handleStartPointEdit}
-                  handleDeleteMeasurement={handleDeleteMeasurement}
-                  handleDeletePoint={handleDeletePoint}
-                  updateMeasurement={updateMeasurement}
-                  editMeasurementId={editMeasurementId}
-                  segmentsOpen={segmentsOpen}
-                  toggleSegments={toggleSegments}
-                  onEditSegment={onEditSegment}
-                  movingPointInfo={movingPointInfo}
-                  handleMoveMeasurementUp={handleMoveMeasurementUp}
-                  handleMoveMeasurementDown={handleMoveMeasurementDown}
-                />
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground py-4 text-center">
-                Keine Standard-Messungen vorhanden
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Roof elements tab */}
-          <TabsContent value="roofElements" className="mt-0">
-            {roofElementMeasurements.length > 0 ? (
-              roofElementMeasurements.map((measurement) => (
-                <MeasurementItem
-                  key={measurement.id}
-                  measurement={measurement}
-                  toggleMeasurementVisibility={toggleMeasurementVisibility}
-                  toggleLabelVisibility={toggleLabelVisibility}
-                  handleStartPointEdit={handleStartPointEdit}
-                  handleDeleteMeasurement={handleDeleteMeasurement}
-                  handleDeletePoint={handleDeletePoint}
-                  updateMeasurement={updateMeasurement}
-                  editMeasurementId={editMeasurementId}
-                  segmentsOpen={segmentsOpen}
-                  toggleSegments={toggleSegments}
-                  onEditSegment={onEditSegment}
-                  movingPointInfo={movingPointInfo}
-                  handleMoveMeasurementUp={handleMoveMeasurementUp}
-                  handleMoveMeasurementDown={handleMoveMeasurementDown}
-                />
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground py-4 text-center">
-                Keine Dachelemente vorhanden
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Penetrations tab */}
-          <TabsContent value="penetrations" className="mt-0">
-            {penetrationMeasurements.length > 0 ? (
-              penetrationMeasurements.map((measurement) => (
-                <MeasurementItem
-                  key={measurement.id}
-                  measurement={measurement}
-                  toggleMeasurementVisibility={toggleMeasurementVisibility}
-                  toggleLabelVisibility={toggleLabelVisibility}
-                  handleStartPointEdit={handleStartPointEdit}
-                  handleDeleteMeasurement={handleDeleteMeasurement}
-                  handleDeletePoint={handleDeletePoint}
-                  updateMeasurement={updateMeasurement}
-                  editMeasurementId={editMeasurementId}
-                  segmentsOpen={segmentsOpen}
-                  toggleSegments={toggleSegments}
-                  onEditSegment={onEditSegment}
-                  movingPointInfo={movingPointInfo}
-                  handleMoveMeasurementUp={handleMoveMeasurementUp}
-                  handleMoveMeasurementDown={handleMoveMeasurementDown}
-                />
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground py-4 text-center">
-                Keine Einbauten vorhanden
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+  const renderMeasurementGroup = (title: string, items: Measurement[], showEmpty: boolean = false) => {
+    if (items.length === 0 && !showEmpty) return null;
+    
+    return (
+      <div className="mb-4">
+        <h3 className="text-sm font-medium mb-2 flex justify-between">
+          <span>{title}</span>
+          <span className="text-muted-foreground">({items.length})</span>
+        </h3>
         
-        {/* Other measurements not categorized (if any) */}
-        {otherMeasurements.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">Sonstige Messungen</h3>
-            {otherMeasurements.map((measurement) => (
-              <MeasurementItem
-                key={measurement.id}
-                measurement={measurement}
-                toggleMeasurementVisibility={toggleMeasurementVisibility}
-                toggleLabelVisibility={toggleLabelVisibility}
-                handleStartPointEdit={handleStartPointEdit}
-                handleDeleteMeasurement={handleDeleteMeasurement}
-                handleDeletePoint={handleDeletePoint}
-                updateMeasurement={updateMeasurement}
-                editMeasurementId={editMeasurementId}
-                segmentsOpen={segmentsOpen}
-                toggleSegments={toggleSegments}
-                onEditSegment={onEditSegment}
-                movingPointInfo={movingPointInfo}
-                handleMoveMeasurementUp={handleMoveMeasurementUp}
-                handleMoveMeasurementDown={handleMoveMeasurementDown}
-              />
-            ))}
+        {items.length > 0 ? (
+          items.map((measurement) => (
+            <MeasurementItem
+              key={measurement.id}
+              measurement={measurement}
+              toggleMeasurementVisibility={toggleMeasurementVisibility}
+              toggleLabelVisibility={toggleLabelVisibility}
+              handleStartPointEdit={handleStartPointEdit}
+              handleDeleteMeasurement={handleDeleteMeasurement}
+              handleDeletePoint={handleDeletePoint}
+              updateMeasurement={updateMeasurement}
+              editMeasurementId={editMeasurementId}
+              isSegmentOpen={segmentsOpen[measurement.id] || false}
+              toggleSegments={toggleSegments}
+              onEditSegment={onEditSegment}
+              movingPointInfo={movingPointInfo}
+              handleMoveUp={handleMoveMeasurementUp}
+              handleMoveDown={handleMoveMeasurementDown}
+            />
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground py-2 text-center">
+            Keine {title} vorhanden
           </div>
         )}
       </div>
+    );
+  };
+  
+  return (
+    <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+      {/* Standard measurements */}
+      {renderMeasurementGroup("Standard Messungen", standardMeasurements, true)}
+      
+      {/* Only show separator if there are multiple categories of measurements */}
+      {standardMeasurements.length > 0 && (roofElementMeasurements.length > 0 || penetrationMeasurements.length > 0) && (
+        <Separator className="my-3" />
+      )}
+      
+      {/* Roof elements */}
+      {renderMeasurementGroup("Dachelemente", roofElementMeasurements)}
+      
+      {/* Only show separator if needed */}
+      {roofElementMeasurements.length > 0 && penetrationMeasurements.length > 0 && (
+        <Separator className="my-3" />
+      )}
+      
+      {/* Penetrations */}
+      {renderMeasurementGroup("Einbauten", penetrationMeasurements)}
+      
+      {/* Other measurements not categorized (if any) */}
+      {otherMeasurements.length > 0 && (
+        <>
+          <Separator className="my-3" />
+          {renderMeasurementGroup("Sonstige", otherMeasurements)}
+        </>
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
@@ -21,12 +21,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { Separator } from "@/components/ui/separator";
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility?: (id: string) => void; // Keep for backward compatibility but we won't use it
+  toggleLabelVisibility?: (id: string) => void; 
   handleStartPointEdit: (id: string) => void;
   handleDeleteMeasurement: (id: string) => void;
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
@@ -38,8 +38,8 @@ interface MeasurementSidebarProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   showTable: boolean;
   handleClearMeasurements: () => void;
-  toggleAllLabelsVisibility?: () => void; // Keep for backward compatibility but we won't use it
-  allLabelsVisible?: boolean; // Keep for backward compatibility but we won't use it
+  toggleAllLabelsVisibility?: () => void;
+  allLabelsVisible?: boolean;
   activeMode?: string;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
@@ -68,34 +68,12 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   handleMoveMeasurementDown,
   measurementGroups
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("standard");
   const { toast } = useToast();
-  
-  // Use our centralized point snapping hook
-  const { snapEnabled } = usePointSnapping();
-  
-  useEffect(() => {
-    if (!activeMode || activeMode === 'none') return;
-    
-    const lastActiveMode = localStorage.getItem('lastActiveMode');
-    
-    if (lastActiveMode === activeMode) return;
-    
-    if (['length', 'height', 'area'].includes(activeMode)) {
-      setActiveTab("standard");
-    } else if (['solar', 'chimney', 'skylight'].includes(activeMode)) {
-      setActiveTab("roofElements");
-    } else if (['vent', 'hook', 'other'].includes(activeMode)) {
-      setActiveTab("penetrations");
-    }
-    
-    localStorage.setItem('lastActiveMode', activeMode);
-  }, [activeMode]);
   
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-3 pt-2 pb-1">
-        <h2 className="text-md font-semibold">Messungen</h2>
+      <div className="flex items-center justify-between px-3 pt-3 pb-2">
+        <h2 className="text-lg font-medium">Messungen</h2>
         <div className="flex space-x-1">
           {measurements.length > 0 && (
             <AlertDialog>
@@ -124,6 +102,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
         </div>
       </div>
       
+      <Separator className="mb-2" />
+      
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full pr-2">
           {showTable ? (
@@ -140,7 +120,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
             <MeasurementList 
               measurements={measurements}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
-              toggleLabelVisibility={toggleLabelVisibility || (() => {})} // Provide an empty function as fallback
+              toggleLabelVisibility={toggleLabelVisibility || (() => {})}
               handleStartPointEdit={handleStartPointEdit}
               handleDeleteMeasurement={handleDeleteMeasurement}
               handleDeletePoint={handleDeletePoint}
@@ -153,13 +133,6 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               handleMoveMeasurementUp={handleMoveMeasurementUp}
               handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
-          )}
-          
-          {measurements.length > 0 && (
-            <div className="mt-4 space-y-2 px-2">
-              <GenerateRoofPlanButton measurements={measurements} />
-              <ExportPdfButton measurements={measurements} />
-            </div>
           )}
         </ScrollArea>
       </div>
