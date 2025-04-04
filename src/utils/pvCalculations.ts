@@ -1,3 +1,4 @@
+
 import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 import * as THREE from 'three';
@@ -649,63 +650,114 @@ export const generatePVModuleGrid = (
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
-  // Direction vectors for grid alignment - will be calculated from the area points
-  let directionX = { x: 1, z: 0 };  // Default direction along X axis
-  let directionZ = { x: 0, z: 1 };  // Default direction along Z axis
+  // Extrahiere die vier Eckpunkte der Dachfläche
+  let cornerPoints: Point[] = [];
+  
+  if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
+    cornerPoints = [
+      roofEdgeSegments[0].from,
+      roofEdgeSegments[1].from, 
+      roofEdgeSegments[2].from,
+      roofEdgeSegments[3].from
+    ];
+    
+    // Berechne die durchschnittliche Y-Koordinate als neue Basis-Höhe
+    const avgY = cornerPoints.reduce((sum, point) => sum + point.y, 0) / cornerPoints.length;
+    
+    // Überschreibe den übergebenen baseY-Wert mit dem berechneten Durchschnitt
+    // und füge nur einen kleinen Offset hinzu (5mm statt 5cm)
+    baseY = avgY + 0.005;
+    
+    console.log("Neue Basis-Höhe berechnet aus Punkten:", baseY);
+  } else {
+    console.log("Nicht genügend Punkte für Dachflächenberechnung");
+  }
+  
+  // Richtungsvektoren für die Gitterausrichtung
+  let directionX = { x: 1, z: 0 };  // Standardrichtung entlang der X-Achse
+  let directionZ = { x: 0, z: 1 };  // Standardrichtung entlang der Z-Achse
+  let normalVector = { x: 0, y: 1, z: 0 }; // Standardnormalenvektor (nach oben)
   let alignmentAngle = 0;
   
-  // If we have at least 4 points, use them to define the grid orientation
-  if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
-    // Get the four corner points of the area
-    const p1 = roofEdgeSegments[0].from;
-    const p2 = roofEdgeSegments[1].from;
-    const p3 = roofEdgeSegments[2].from;
-    const p4 = roofEdgeSegments[3].from;
-    
-    // Calculate vectors for two adjacent sides
-    const v1 = {  // Vector from P1 to P2
-      x: p2.x - p1.x,
-      z: p2.z - p1.z
+  // Wenn wir mindestens 4 Punkte haben, verwenden wir sie zur Definition der Gitterorientierung
+  if (cornerPoints.length === 4) {
+    // Berechne Vektoren für zwei angrenzende Seiten
+    // Vektor von P1 zu P2
+    const v1 = {
+      x: cornerPoints[1].x - cornerPoints[0].x,
+      y: cornerPoints[1].y - cornerPoints[0].y,
+      z: cornerPoints[1].z - cornerPoints[0].z
     };
     
-    const v2 = {  // Vector from P1 to P4
-      x: p4.x - p1.x,
-      z: p4.z - p1.z
+    // Vektor von P1 zu P4
+    const v2 = {
+      x: cornerPoints[3].x - cornerPoints[0].x,
+      y: cornerPoints[3].y - cornerPoints[0].y,
+      z: cornerPoints[3].z - cornerPoints[0].z
     };
     
-    // Normalize the vectors
-    const v1Length = Math.sqrt(v1.x * v1.x + v1.z * v1.z);
-    const v2Length = Math.sqrt(v2.x * v2.x + v2.z * v2.z);
+    // Berechne Normalenvektor durch Kreuzprodukt von v1 und v2
+    normalVector = {
+      x: v1.y * v2.z - v1.z * v2.y,
+      y: v1.z * v2.x - v1.x * v2.z,
+      z: v1.x * v2.y - v1.y * v2.x
+    };
+    
+    // Normalisiere den Normalenvektor
+    const normalLength = Math.sqrt(
+      normalVector.x * normalVector.x + 
+      normalVector.y * normalVector.y + 
+      normalVector.z * normalVector.z
+    );
+    
+    if (normalLength > 0) {
+      normalVector.x /= normalLength;
+      normalVector.y /= normalLength;
+      normalVector.z /= normalLength;
+      
+      // Stellen Sie sicher, dass der Normalenvektor nach oben zeigt
+      if (normalVector.y < 0) {
+        normalVector.x *= -1;
+        normalVector.y *= -1;
+        normalVector.z *= -1;
+      }
+      
+      console.log("Normalenvektor der Dachfläche:", normalVector);
+    }
+    
+    // Berechne die Längen der Vektoren
+    const v1Length = Math.sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z);
+    const v2Length = Math.sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z);
     
     if (v1Length > 0.1 && v2Length > 0.1) {
-      // Use the first vector as directionX
+      // Projiziere die Vektoren auf die XZ-Ebene für die Gitterausrichtung
       directionX = {
         x: v1.x / v1Length,
         z: v1.z / v1Length
       };
       
-      // Use the second vector as directionZ 
       directionZ = {
         x: v2.x / v2Length,
         z: v2.z / v2Length
       };
       
-      // Calculate alignment angle for logging
+      // Berechne Ausrichtungswinkel für Protokollierung
       alignmentAngle = Math.atan2(directionX.z, directionX.x) * (180 / Math.PI);
       
-      console.log("Module grid aligned to area points:", {
+      console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
         directionX,
         directionZ,
-        alignmentAngle
+        alignmentAngle,
+        normalVector
       });
     } else {
-      console.log("Area points too close together, using default alignment");
+      console.log("Punkte zu nah beieinander, verwende Standardausrichtung");
     }
   } else {
-    console.log("Not enough area points available, using default alignment");
+    console.log("Nicht genügend Punkte verfügbar, verwende Standardausrichtung");
   }
   
-  console.log("PV Module Grid Generation mit Dachausrichtung:", {
+  console.log("PV-Modul-Gitter-Generierung mit Dachausrichtung:", {
     moduleWidth,
     moduleHeight,
     startX,
@@ -717,47 +769,48 @@ export const generatePVModuleGrid = (
     alignmentAngle
   });
   
-  // Generate module placement grid
+  // Generiere das Modul-Platzierungsgitter
   for (let row = 0; row < pvInfo.rows!; row++) {
     for (let col = 0; col < pvInfo.columns!; col++) {
-      // Calculate the base position of this module in the standard coordinate system
+      // Berechne die Basisposition dieses Moduls im Standardkoordinatensystem
       const xOffset = col * (moduleWidth + pvInfo.moduleSpacing!);
       const zOffset = row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Transform the position according to the roof alignment
+      // Transformiere die Position gemäß der Dachausrichtung
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
-      // Reduced module height offset from 30cm to 5cm above the roof surface for better visibility
-      const yOffset = 0.05; // 5cm above the roof surface
+      // Sehr geringer Höhenversatz für bessere Sichtbarkeit
+      const yOffset = 0.005; // 5mm über der Dachoberfläche
       
-      // Calculate the four corner points of the module with correct alignment
+      // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
+      // und folge dabei der Dachneigung durch Anwendung des Normalenvektors
       const moduleCorners: Point[] = [
-        { // Corner 0 (top left corner)
+        { // Ecke 0 (oben links)
           x,
-          y: baseY + yOffset,
+          y: baseY,
           z
         },
-        { // Corner 1 (top right corner) - along the first direction
+        { // Ecke 1 (oben rechts) - entlang der ersten Richtung
           x: x + moduleWidth * directionX.x,
-          y: baseY + yOffset,
+          y: baseY,
           z: z + moduleWidth * directionX.z
         },
-        { // Corner 2 (bottom right corner) - diagonal
+        { // Ecke 2 (unten rechts) - diagonal
           x: x + moduleWidth * directionX.x + moduleHeight * directionZ.x,
-          y: baseY + yOffset,
+          y: baseY,
           z: z + moduleWidth * directionX.z + moduleHeight * directionZ.z
         },
-        { // Corner 3 (bottom left corner) - along the second direction
+        { // Ecke 3 (unten links) - entlang der zweiten Richtung
           x: x + moduleHeight * directionZ.x,
-          y: baseY + yOffset,
+          y: baseY,
           z: z + moduleHeight * directionZ.z
         }
       ];
       
       modulePoints.push(moduleCorners);
       
-      // Add grid lines for outline visualization of each module
+      // Füge Gitterlinien für die Umrissvisualisierung jedes Moduls hinzu
       for (let i = 0; i < 4; i++) {
         const from = moduleCorners[i];
         const to = moduleCorners[(i + 1) % 4];
@@ -766,10 +819,10 @@ export const generatePVModuleGrid = (
     }
   }
   
-  // Add detailed debug logging to track module generation
-  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.05}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
+  // Füge detaillierte Debug-Protokollierung hinzu
+  console.log(`${modulePoints.length} PV-Module erzeugt mit Höhe ${baseY}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
   if (modulePoints.length > 0) {
-    console.log("First module corners:", modulePoints[0]);
+    console.log("Erste Modulecken:", modulePoints[0]);
   }
   
   return { modulePoints, gridLines };
