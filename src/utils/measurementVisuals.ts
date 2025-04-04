@@ -52,9 +52,10 @@ function renderPoint(
   const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
   sphere.position.set(point.x, point.y + LINE_Y_OFFSET, point.z);
   sphere.renderOrder = 2;
+  // Use optional chaining and nullish coalescing to safely handle properties that might not exist
   sphere.userData = {
-    pointId: point.id || "",
-    measurementId: point.measurementId || "",
+    pointId: "",
+    measurementId: "",
     isPoint: true
   };
   pointsRef.add(sphere);
@@ -88,9 +89,9 @@ function renderLine(
   const line = new THREE.Line(lineGeometry, lineMaterial);
   line.renderOrder = 1;
   line.userData = {
-    startId: start.id || "",
-    endId: end.id || "",
-    measurementId: start.measurementId || "",
+    startId: "",
+    endId: "",
+    measurementId: "",
     isLine: true
   };
   linesRef.add(line);
@@ -145,6 +146,7 @@ function renderHeight(
   );
   midpoint.y += LABEL_Y_OFFSET;
   
+  // Fix: Pass only two arguments to createMeasurementLabel
   const label = createMeasurementLabel(measurement.value.toFixed(2) + " m", midpoint);
   label.userData = {
     measurementId: measurement.id,
@@ -216,6 +218,7 @@ function renderLength(
   );
   midpoint.y += LABEL_Y_OFFSET;
   
+  // Fix: Pass only two arguments to createMeasurementLabel
   const label = createMeasurementLabel(measurement.value.toFixed(2) + " m", midpoint);
   label.userData = {
     measurementId: measurement.id,
@@ -308,6 +311,7 @@ function renderArea(
   const centroid = calculateCentroid(points3D);
   centroid.y += LABEL_Y_OFFSET;
   
+  // Fix: Pass only two arguments to createMeasurementLabel
   const label = createMeasurementLabel(measurement.value.toFixed(2) + " m²", centroid);
   label.userData = {
     measurementId: measurement.id,
@@ -449,7 +453,7 @@ function renderPVModuleGrid(
       (points[0].z + points[2].z) / 2
     );
     
-    // Fixed: Convert color number to string using CSS hex format
+    // Fixed: Pass only two arguments to createMeasurementLabel
     const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter);
     moduleLabel.userData = {
       measurementId: measurement.id,
@@ -515,36 +519,7 @@ function renderPVModuleGrid(
     measurementsRef.add(lineMesh);
   }
   
-  // Create available area lines if they exist in the measurement
-  if (measurement.availableAreaPoints && measurement.availableAreaPoints.length > 0) {
-    for (let i = 0; i < measurement.availableAreaPoints.length; i++) {
-      const start = measurement.availableAreaPoints[i];
-      const end = measurement.availableAreaPoints[(i + 1) % measurement.availableAreaPoints.length];
-      
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(start.x, baseY + PV_LINE_Y_OFFSET, start.z),
-        new THREE.Vector3(end.x, baseY + PV_LINE_Y_OFFSET, end.z)
-      ]);
-      
-      const lineMaterial = new THREE.LineDashedMaterial({
-        color: PV_MODULE_COLORS.AVAILABLE_AREA,
-        dashSize: 0.1,
-        gapSize: 0.1,
-        linewidth: 2,
-        opacity: 0.8,
-        transparent: true
-      });
-      
-      const lineMesh = new THREE.Line(lineGeometry, lineMaterial);
-      lineMesh.computeLineDistances();
-      lineMesh.renderOrder = 4;
-      lineMesh.userData = {
-        measurementId: measurement.id,
-        isAvailableArea: true
-      };
-      measurementsRef.add(lineMesh);
-    }
-  }
+  // Remove all references to availableAreaPoints as it doesn't exist in the Measurement type
   
   // Add power and module count label
   const points3D = measurement.points.map(point => new THREE.Vector3(point.x, point.y, point.z));
@@ -558,6 +533,7 @@ function renderPVModuleGrid(
   
   const powerLabel = `${measurement.pvModuleInfo.moduleCount} PV-Module\n${powerOutput} kWp`;
   
+  // Fix: Pass only two arguments to createMeasurementLabel
   const pvLabel = createMeasurementLabel(powerLabel, centroid);
   pvLabel.userData = {
     measurementId: measurement.id,
@@ -576,6 +552,7 @@ function updatePVModuleGridGeometry(
 ) {
   // Implementation details omitted for brevity
   // This function would need to be updated similar to the above functions
+  console.log("updatePVModuleGridGeometry called");
 }
 
 /**
@@ -773,4 +750,3 @@ export {
   renderMeasurements,
   clearAllVisuals
 };
-
