@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -80,6 +81,18 @@ export interface PVModuleInfo {
   roofInclination?: number;   // Roof inclination in degrees 
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
+  modulePositions?: Point[];  // Array of position points for each module (center points)
+  moduleCorners?: Point[][];  // Array of corner points for each module (4 corners per module)
+  moduleVisuals?: {           // Visual properties for module rendering
+    frameBorder?: number;     // Frame border width in meters
+    frameColor?: number;      // Frame color (hex)
+    panelColor?: number;      // Panel color (hex)
+    cellRows?: number;        // Number of cell rows in module
+    cellColumns?: number;     // Number of cell columns in module
+    cellSpacing?: number;     // Spacing between cells in meters
+    cellColor?: number;       // Cell color (hex)
+    busbarCount?: number;     // Number of busbars per cell
+  };
 }
 
 export interface PVModuleSpec {

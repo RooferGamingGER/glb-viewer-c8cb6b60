@@ -144,7 +144,7 @@ export const useVisibilityManager = (
     });
   }, [measurements, labelsRef, segmentLabelsRef]);
 
-  // Update measurement markers visibility
+  // Update measurement markers visibility with enhanced PV module visuals
   const updateMeasurementMarkers = useCallback(() => {
     if (!measurementsRef.current) return;
     
@@ -157,6 +157,18 @@ export const useVisibilityManager = (
     // Extrahiere Dachkantensegmente für die Ausrichtung von PV-Modulen
     const roofEdgeSegments = extractRoofEdgeSegments();
     
+    // Default visual properties for PV modules
+    const defaultModuleVisuals = {
+      frameBorder: 0.02,          // 2cm frame border
+      frameColor: 0x444444,       // Dark grey frame
+      panelColor: 0x0a4b8f,       // Dark blue panel
+      cellRows: 6,                // 6 rows of cells
+      cellColumns: 10,            // 10 columns of cells
+      cellSpacing: 0.005,         // 5mm spacing between cells
+      cellColor: 0x225289,        // Slightly brighter blue for cells
+      busbarCount: 3              // 3 busbars per cell
+    };
+    
     // Update mesh visibilities for PV areas and other measurements
     measurementsRef.current.children.forEach(mesh => {
       if (!mesh.userData || !mesh.userData.measurementId) return;
@@ -165,56 +177,101 @@ export const useVisibilityManager = (
       if (measurement) {
         mesh.visible = measurement.visible !== false;
         
-        // For PV areas, set a more visible color and properties
+        // Enhanced PV module visualization
         if ((measurement.type === 'pvmodule' || measurement.type === 'solar') && mesh instanceof THREE.Mesh) {
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
           
+          // Set enhanced visual properties for PV modules
           const material = mesh.material as THREE.MeshBasicMaterial;
           if (material) {
-            // Set to a bright blue with increased opacity for better visibility
+            // Set base area to transparent blue with higher opacity
             material.color.set(0x0EA5E9); 
-            material.opacity = 0.95;  
+            material.opacity = 0.85;  
             material.transparent = true;
-            material.side = THREE.DoubleSide; // Show both sides
+            material.side = THREE.DoubleSide;
             material.needsUpdate = true;
             
-            // Raise slightly to avoid z-fighting - increase offset
-            mesh.position.y += 0.1; // Increased from 0.05 to 0.1 for better visibility
+            // Raise slightly to avoid z-fighting
+            mesh.position.y += 0.01;
             
-            console.log(`Updated PV Module ${mesh.name || "unnamed"} in useVisibilityManager:`, {
+            // Apply module visuals if defined, otherwise use defaults
+            const visuals = measurement.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+            
+            console.log(`Updated PV Module area ${mesh.name || "unnamed"} in useVisibilityManager:`, {
               visible: mesh.visible,
               opacity: material.opacity,
               color: material.color.getHexString(),
               position: mesh.position.y,
-              hasRoofEdgeData: roofEdgeSegments.length > 0
+              hasRoofEdgeData: roofEdgeSegments.length > 0,
+              moduleVisuals: visuals
             });
           }
         }
         
-        // Special handling for PV module grid elements, now with roof edge alignment
-        if (mesh.userData.isPVModule || mesh.userData.isModuleLabel) {
+        // Special handling for individual PV module elements with enhanced visuals
+        if (mesh.userData.isPVModule && mesh instanceof THREE.Mesh) {
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
           
-          if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshBasicMaterial) {
+          // Apply enhanced visuals to individual module meshes
+          if (mesh.material instanceof THREE.MeshBasicMaterial) {
+            // Get visuals settings from parent measurement or use defaults
+            const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
+            const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+            
+            // Update module visuals with more realistic appearance
+            mesh.material.color.set(visuals.frameColor || 0x444444); // Frame color
             mesh.material.opacity = 0.95;
-            mesh.material.color.set(0x1E88E5);
             mesh.material.transparent = true;
-            mesh.material.side = THREE.DoubleSide;
             mesh.material.needsUpdate = true;
             
-            // Raise slightly to avoid z-fighting - increase offset
-            mesh.position.y += 0.1; // Increased from 0.05 to 0.1 for better visibility
+            // Raise slightly to avoid z-fighting with background area
+            mesh.position.y += 0.02;
             
-            console.log(`PV Module grid element updated in useVisibilityManager:`, {
+            console.log(`Enhanced PV Module element updated:`, {
               visible: mesh.visible,
-              opacity: mesh.material.opacity,
+              type: mesh.userData.moduleElementType || 'module',
               color: mesh.material.color.getHexString(),
-              position: mesh.position.y,
-              hasRoofEdgeData: roofEdgeSegments.length > 0
             });
           }
+        }
+        
+        // Special handling for module cell elements
+        if (mesh.userData.isPVModuleCell && mesh instanceof THREE.Mesh) {
+          const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
+          const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+          
+          if (mesh.material instanceof THREE.MeshBasicMaterial) {
+            mesh.material.color.set(visuals.cellColor || 0x225289); // Cell color
+            mesh.material.opacity = 1.0;
+            mesh.material.transparent = false;
+            mesh.material.needsUpdate = true;
+            
+            // Position just above the module frame
+            mesh.position.y += 0.022;
+          }
+        }
+        
+        // Special handling for module panel (background)
+        if (mesh.userData.isPVModulePanel && mesh instanceof THREE.Mesh) {
+          const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
+          const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+          
+          if (mesh.material instanceof THREE.MeshBasicMaterial) {
+            mesh.material.color.set(visuals.panelColor || 0x0a4b8f); // Panel color
+            mesh.material.opacity = 0.9;
+            mesh.material.transparent = true;
+            mesh.material.needsUpdate = true;
+            
+            // Position just above the module frame but below cells
+            mesh.position.y += 0.021;
+          }
+        }
+        
+        // Handle module label visibility
+        if (mesh.userData.isModuleLabel) {
+          mesh.visible = measurement.visible !== false && measurement.labelVisible !== false;
         }
       }
     });
