@@ -30,7 +30,7 @@ const Test = () => {
 
   return (
     <PointSnappingProvider>
-      <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
+      <div className="flex flex-col h-screen w-full bg-gradient-to-b from-background to-background overflow-hidden">
         {isPortrait && <OrientationWarning />}
         
         <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
@@ -74,8 +74,8 @@ const Test = () => {
           </div>
         </header>
         
-        {/* Main content area - removed bottom padding since footer is removed */}
-        <div className="flex-1 relative flex overflow-hidden">
+        {/* Main content area - takes full remaining height */}
+        <div className="flex-1 flex overflow-hidden">
           {/* Mobile menu overlay */}
           {isMobile && menuOpen && (
             <div 
@@ -109,8 +109,8 @@ const Test = () => {
             </div>
           )}
           
-          {/* SidebarProvider with screen height limitation */}
-          <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
+          {/* SidebarProvider with full height */}
+          <SidebarProvider defaultOpen={!isMobile} open={!isMobile} className="h-full">
             <main className="flex-1 relative w-full h-full">
               <ModelViewer 
                 fileUrl={testModelUrl} 

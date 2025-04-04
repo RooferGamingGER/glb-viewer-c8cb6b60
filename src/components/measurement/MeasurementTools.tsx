@@ -422,15 +422,15 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     toggleAllLabelsVisibility();
   };
 
-  // Component rendering
+  // Component rendering with full height sidebar
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
-          {/* Fixed Header - Tools Section */}
-          <div className="flex-shrink-0 border-b border-border/50 flex flex-col">
+          {/* Fixed Header - Tools Section - with flex-col and overflow handling */}
+          <div className="flex-1 overflow-hidden flex flex-col">
             <MeasurementToolControls 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool}
