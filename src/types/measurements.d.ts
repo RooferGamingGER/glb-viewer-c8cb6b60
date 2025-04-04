@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -101,10 +100,4 @@ export interface PVModuleInfo {
   roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
-  
-  // Added new properties for module positioning
-  moduleHeightOffset?: number; // Height offset from roof surface in meters
-  moduleRotation?: number;     // Rotation angle in degrees
-  modulePositionX?: number;    // X position offset in meters
-  modulePositionZ?: number;    // Z position offset in meters
 }

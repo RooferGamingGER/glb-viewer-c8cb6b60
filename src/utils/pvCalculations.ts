@@ -1,4 +1,3 @@
-
 import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 import * as THREE from 'three';
@@ -646,24 +645,14 @@ export const generatePVModuleGrid = (
   const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   
-  // Apply positioning offsets if defined, or use defaults
-  const positionXOffset = pvInfo.modulePositionX !== undefined ? pvInfo.modulePositionX : 0; 
-  const positionZOffset = pvInfo.modulePositionZ !== undefined ? pvInfo.modulePositionZ : 0;
-  
-  // Apply height offset or use default
-  const heightOffset = pvInfo.moduleHeightOffset !== undefined ? pvInfo.moduleHeightOffset : 0.3;
-  
   // Get the starting position (add edge distance to min coordinates)
-  const startX = (pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!)) + positionXOffset;
-  const startZ = (pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!)) + positionZOffset;
+  const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
+  const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
   // Standard orthogonal vectors (default alignment with coordinate system)
   let directionX = { x: 1, z: 0 };
   let directionZ = { x: 0, z: 1 };
   let alignmentAngle = 0;
-  
-  // Apply user-defined rotation if available
-  const userRotation = pvInfo.moduleRotation !== undefined ? pvInfo.moduleRotation : 0;
   
   // Versuche, eine Trauflinie (eave) zu finden, um die Module daran auszurichten
   if (roofEdgeSegments && roofEdgeSegments.length > 0) {
@@ -723,34 +712,6 @@ export const generatePVModuleGrid = (
     console.log("Keine Dachkanten-Segmente verfügbar, verwende Standard-Ausrichtung");
   }
   
-  // Apply user rotation if specified
-  if (userRotation !== 0) {
-    // Convert user rotation to radians
-    const rotationRad = userRotation * Math.PI / 180;
-    
-    // Create rotation matrix
-    const cosTheta = Math.cos(rotationRad);
-    const sinTheta = Math.sin(rotationRad);
-    
-    // Apply rotation to direction vectors
-    const rotatedDirX = {
-      x: directionX.x * cosTheta - directionX.z * sinTheta,
-      z: directionX.x * sinTheta + directionX.z * cosTheta
-    };
-    
-    const rotatedDirZ = {
-      x: directionZ.x * cosTheta - directionZ.z * sinTheta,
-      z: directionZ.x * sinTheta + directionZ.z * cosTheta
-    };
-    
-    // Update direction vectors
-    directionX = rotatedDirX;
-    directionZ = rotatedDirZ;
-    
-    // Update alignment angle for logging
-    alignmentAngle += userRotation;
-  }
-  
   console.log("PV Module Grid Generation mit Dachausrichtung:", {
     moduleWidth,
     moduleHeight,
@@ -760,9 +721,7 @@ export const generatePVModuleGrid = (
     columns: pvInfo.columns,
     orientation: pvInfo.orientation,
     baseY,
-    alignmentAngle,
-    heightOffset,
-    userRotation
+    alignmentAngle
   });
   
   // Generate module placement grid
@@ -776,8 +735,8 @@ export const generatePVModuleGrid = (
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
-      // Use the heightOffset for visible module display
-      const yOffset = heightOffset;
+      // IMPORTANT: Increase Y offset significantly to make modules more visible
+      const yOffset = 0.3; // 30cm above the roof surface for visibility
       
       // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
       const moduleCorners: Point[] = [
@@ -815,7 +774,7 @@ export const generatePVModuleGrid = (
   }
   
   // Add detailed debug logging to track module generation
-  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${heightOffset}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
+  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.3}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
   if (modulePoints.length > 0) {
     console.log("First module corners:", modulePoints[0]);
   }
