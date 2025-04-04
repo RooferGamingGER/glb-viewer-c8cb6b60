@@ -114,6 +114,25 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     return uniqueSegments.length;
   })();
   
+  // Count the number of solar/PV modules
+  const pvModuleCount = measurements.reduce((total, m) => {
+    if ((m.type === 'solar' || m.type === 'pvmodule') && m.pvModuleInfo?.moduleCount) {
+      return total + m.pvModuleInfo.moduleCount;
+    }
+    return total;
+  }, 0);
+  
+  // Calculate total power output
+  const totalPowerOutput = measurements.reduce((total, m) => {
+    if ((m.type === 'solar' || m.type === 'pvmodule') && m.pvModuleInfo?.pvMaterials?.totalPower) {
+      return total + m.pvModuleInfo.pvMaterials.totalPower;
+    }
+    return total;
+  }, 0);
+  
+  // Show PV information if we have PV modules
+  const hasPVModules = pvModuleCount > 0;
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -134,6 +153,11 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
             {areaCount > 0 
               ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
+            {hasPVModules && (
+              <span className="block mt-1 text-green-600 font-medium">
+                {pvModuleCount} PV-Module mit insgesamt {totalPowerOutput.toFixed(2)} kWp Leistung werden visualisiert.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
         
