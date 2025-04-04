@@ -23,11 +23,6 @@ export const useMeasurementToolToggle = (
       setEditMeasurementId(null);
       setEditingPointIndex(null);
       setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
-      
-      // Clear alignment edge from session storage when deactivating solar tool
-      if (mode === 'solar') {
-        sessionStorage.removeItem('pvAlignmentEdge');
-      }
     } else {
       // If a different tool is clicked, activate it
       setActiveMode(mode);
@@ -36,11 +31,6 @@ export const useMeasurementToolToggle = (
       setEditMeasurementId(null);
       setEditingPointIndex(null);
       setMeasurements(prev => prev.map(m => ({ ...m, editMode: false })));
-      
-      // Clear alignment edge from session storage when switching tools
-      if (activeMode === 'solar') {
-        sessionStorage.removeItem('pvAlignmentEdge');
-      }
     }
   }, [activeMode, clearCurrentPoints, setActiveMode, setEditMeasurementId, setEditingPointIndex, setMeasurements]);
 

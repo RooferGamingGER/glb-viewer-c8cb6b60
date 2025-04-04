@@ -1,11 +1,21 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { ArrowRightSquare, RotateCcw, Save, LayoutPanelTop } from "lucide-react";
+import { 
+  Check, 
+  Undo2, 
+  X,
+  Info,
+  Sun,
+  PanelLeft
+} from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
-import PVAlignmentSelector from './PVAlignmentSelector';
-import { useMeasurementContext } from '@/contexts/MeasurementContext';
-import { toast } from '@/components/ui/use-toast';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface RoofElementControlsProps {
   activeMode: MeasurementMode;
@@ -22,146 +32,149 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  const { measurements } = useMeasurementContext();
-  const [showAlignmentSelector, setShowAlignmentSelector] = useState(false);
-  const [alignmentEdge, setAlignmentEdge] = useState<{ from: Point; to: Point } | null>(null);
+  if (!activeMode || activeMode === 'none' || ['length', 'height', 'area'].includes(activeMode)) {
+    return null;
+  }
   
-  // Determine if we need minimum 3 points (area-based) or just 1 point (point-based)
-  const isAreaMode = activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney';
-  const isPointMode = activeMode === 'vent' || activeMode === 'hook';
-  
-  const requiredPoints = isAreaMode ? 3 : isPointMode ? 1 : 2;
-  
-  const handleFinalize = () => {
-    if (activeMode === 'solar' && !alignmentEdge) {
-      // For solar measurements, first show alignment selector
-      setShowAlignmentSelector(true);
-    } else {
-      // Proceed with measurement finalization directly
-      handleFinalizeMeasurement();
-      // Reset alignment state
-      setShowAlignmentSelector(false);
-      setAlignmentEdge(null);
+  const getRequiredPoints = (mode: MeasurementMode): number => {
+    switch(mode) {
+      case 'solar': 
+        return 3; // Flächenmessung
+      case 'skylight': 
+        return 4; // Vier Punkte für exakte Rechteckdefinition
+      case 'chimney': 
+        return 4; // Vier Punkte für genaue Vermessung
+      case 'pvmodule':
+        return 4; // Vier Punkte für exakte Moduldefinition
+      case 'vent': 
+      case 'hook': 
+      case 'other': 
+        return 1; // Positionsmarkierung
+      default: 
+        return 2;
     }
   };
-  
-  const handleAlignmentSet = (edge: { from: Point; to: Point }) => {
-    setAlignmentEdge(edge);
-    setShowAlignmentSelector(false);
+
+  const getInstructions = (mode: MeasurementMode): string => {
+    const requiredPoints = getRequiredPoints(mode);
+    const remainingPoints = Math.max(0, requiredPoints - currentPoints.length);
     
-    // Store the alignment info in sessionStorage for use during measurement finalization
-    sessionStorage.setItem('pvAlignmentEdge', JSON.stringify(edge));
-    
-    // Show toast and finalize measurement
-    toast({
-      title: "Ausrichtung festgelegt",
-      description: "Die PV-Module werden an der ausgewählten Kante ausgerichtet.",
-      duration: 3000
-    });
-    
-    // Now finalize the measurement with the alignment edge
-    handleFinalizeMeasurement();
-  };
-  
-  const handleCancelAlignment = () => {
-    setShowAlignmentSelector(false);
-    // Let the user continue defining the solar area
-  };
-  
-  const getTitle = () => {
-    switch (activeMode) {
-      case 'solar': return 'PV-Module/Solarbereich platzieren';
-      case 'skylight': return 'Dachfenster platzieren';
-      case 'chimney': return 'Schornstein platzieren';
-      case 'vent': return 'Entlüftung platzieren';
-      case 'hook': return 'Dachhaken platzieren';
-      default: return 'Dachelement platzieren';
+    switch(mode) {
+      case 'chimney':
+        if (currentPoints.length === 0) {
+          return "Markieren Sie die erste Ecke des Kaminausschnitts im Dach.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken des Kaminausschnitts. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else {
+          return "Kaminausschnitt vollständig definiert. Schließen Sie die Messung ab.";
+        }
+      
+      case 'skylight':
+        if (currentPoints.length === 0) {
+          return "Markieren Sie die erste Ecke des Dachfensters.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken des Dachfensters. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else {
+          return "Dachfenster vollständig definiert. Schließen Sie die Messung ab.";
+        }
+      
+      case 'pvmodule':
+        if (currentPoints.length === 0) {
+          return "Markieren Sie die erste Ecke der PV-Modulfläche.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken der PV-Modulfläche. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else {
+          return "PV-Modulfläche vollständig definiert. Berechnung wird nach Abschluss durchgeführt.";
+        }
+      
+      case 'solar':
+        return `Markieren Sie die Eckpunkte der Solaranlage. Noch ${remainingPoints} Punkt(e) benötigt.`;
+      
+      case 'vent':
+        return "Markieren Sie die Position des Lüfters.";
+        
+      case 'hook':
+        return "Markieren Sie die Position des Dachhakens.";
+        
+      case 'other':
+        return "Markieren Sie die Position der sonstigen Einbauten.";
+      
+      default:
+        return "Platzieren Sie die erforderlichen Messpunkte.";
     }
   };
-  
-  const getCompletionText = () => {
-    if (activeMode === 'solar') {
-      return 'PV-Fläche fertigstellen';
-    } else if (isAreaMode) {
-      return 'Fläche fertigstellen';
-    } else {
-      return 'Punkt setzen';
+
+  const canFinalize = (): boolean => {
+    return currentPoints.length >= getRequiredPoints(activeMode);
+  };
+
+  const getElementTitle = (mode: MeasurementMode): string => {
+    switch(mode) {
+      case 'chimney': return "Kaminausschnitt";
+      case 'skylight': return "Dachfenster";
+      case 'solar': return "Solaranlage";
+      case 'pvmodule': return "PV-Modul Fläche";
+      case 'vent': return "Lüfter";
+      case 'hook': return "Dachhaken";
+      case 'other': return "Sonstige Einbauten";
+      default: return "Element";
     }
   };
-  
+
+  // Flag um festzustellen, ob wir in einem Penetrationsmodus sind
+  const isPenetrationMode = ['vent', 'hook', 'other'].includes(activeMode);
+
   return (
-    <div className="p-3 border-b border-border/50">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-medium">{getTitle()}</h3>
-        <div className="text-xs text-muted-foreground">
-          {currentPoints.length}/{requiredPoints}+ Punkte
+    <div className="p-3 pb-0">
+      <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
+        <div className="text-sm font-medium mb-2 flex items-center justify-between">
+          <span>{getElementTitle(activeMode)}-Messung aktiv</span>
+          <span className="text-xs text-muted-foreground">
+            ({currentPoints.length} / {getRequiredPoints(activeMode)} Punkte)
+          </span>
+        </div>
+        
+        <div className="flex space-x-1 mb-1">
+          <Button
+            variant="default" 
+            size="sm"
+            className="flex-1"
+            onClick={handleFinalizeMeasurement}
+            disabled={!canFinalize()}
+            title="Messung abschließen"
+          >
+            <Check className="h-3 w-3 mr-1" />
+            Abschließen
+          </Button>
+          
+          <Button
+            variant="outline" 
+            size="sm"
+            className="flex-1"
+            onClick={handleUndoLastPoint}
+            disabled={currentPoints.length === 0}
+            title="Letzten Punkt rückgängig machen"
+          >
+            <Undo2 className="h-3 w-3 mr-1" />
+            Rückgängig
+          </Button>
+          
+          <Button
+            variant="outline" 
+            size="sm"
+            className="w-9"
+            onClick={clearCurrentPoints}
+            title={isPenetrationMode ? "Abbrechen und Werkzeug deaktivieren" : "Abbrechen"}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+        
+        <div className="flex items-center mt-2 text-xs text-muted-foreground">
+          <Info className="h-3 w-3 mr-1 flex-shrink-0" />
+          <span>{getInstructions(activeMode)}</span>
         </div>
       </div>
-      
-      {showAlignmentSelector ? (
-        <PVAlignmentSelector 
-          measurement={{ id: 'temp', type: 'solar', points: currentPoints, value: 0 }}
-          measurements={measurements}
-          onAlignmentSet={handleAlignmentSet}
-          onCancel={handleCancelAlignment}
-        />
-      ) : (
-        <>
-          <div className="mb-2 text-xs text-muted-foreground">
-            {isAreaMode ? (
-              "Klicken Sie auf das Dach, um die Eckpunkte des Elements zu definieren."
-            ) : (
-              "Klicken Sie auf das Dach, um die Position des Elements zu definieren."
-            )}
-          </div>
-          
-          <div className="flex justify-between space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleUndoLastPoint}
-              disabled={currentPoints.length === 0}
-            >
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs">Zurück</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearCurrentPoints}
-              disabled={currentPoints.length === 0}
-            >
-              <ArrowRightSquare className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs">Abbrechen</span>
-            </Button>
-            
-            {activeMode === 'solar' && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleFinalize}
-                disabled={currentPoints.length < requiredPoints}
-              >
-                <LayoutPanelTop className="h-3.5 w-3.5 mr-1" />
-                <span className="text-xs">{getCompletionText()}</span>
-              </Button>
-            )}
-            
-            {activeMode !== 'solar' && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleFinalizeMeasurement}
-                disabled={currentPoints.length < requiredPoints}
-              >
-                <Save className="h-3.5 w-3.5 mr-1" />
-                <span className="text-xs">{getCompletionText()}</span>
-              </Button>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 };

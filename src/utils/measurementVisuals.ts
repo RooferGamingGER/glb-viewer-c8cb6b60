@@ -1672,9 +1672,10 @@ function renderPVModuleGrid(
   const centroid = calculateCentroid(points3D);
   
   // Create text for power label
+  const orientationText = measurement.pvModuleInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat';
   const powerOutput = ((measurement.pvModuleInfo.moduleCount * (measurement.pvModuleInfo.pvModuleSpec?.power || 380)) / 1000).toFixed(2);
   
-  const powerLabel = `${measurement.pvModuleInfo.moduleCount} PV-Module\n${powerOutput} kWp`;
+  const powerLabel = `${measurement.pvModuleInfo.moduleCount} PV-Module (${orientationText})\n${powerOutput} kWp`;
   
   // Position label above the area
   centroid.y += LABEL_Y_OFFSET + 0.15;

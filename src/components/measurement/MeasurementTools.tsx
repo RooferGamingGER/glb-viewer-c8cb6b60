@@ -23,7 +23,7 @@ import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
 import EditingAlert from './EditingAlert';
 import RoofElementControls from './RoofElementControls';
-import { Measurement, Point } from '@/types/measurements';
+import { Measurement } from '@/types/measurements';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -119,21 +119,19 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   const [measurementGroups, setMeasurementGroups] = useState<THREE.Group[]>([]);
   
   useEffect(() => {
-    if (measurementsRef.current) {
-      setMeasurementGroups(getMeasurementGroups(measurementsRef.current));
-    }
-  }, [getMeasurementGroups, measurementsRef]);
+    setMeasurementGroups(getMeasurementGroups());
+  }, [getMeasurementGroups]);
 
   // Define the visual update function
   const updateVisualState = useCallback((updatedMeasurements: Measurement[], labelVisible: boolean) => {
     // Update all labels visibility
     if (labelsRef.current && segmentLabelsRef.current) {
-      updateAllLabelsVisibility(labelVisible, labelsRef.current, segmentLabelsRef.current);
+      updateAllLabelsVisibility(labelVisible);
     }
     
     // Update measurement markers visibility including PV areas
     if (measurementsRef.current) {
-      updateMeasurementMarkers(measurementsRef.current);
+      updateMeasurementMarkers();
     }
     
     // Ensure the measurements are rendered with their updated state
@@ -157,10 +155,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   const interactionHandlers = {
     addPoint,
     startPointEdit,
-    updateMeasurementPoint: (id: string, index: number, point: Point) => {
-      // This is a wrapper to match the required signature
-      updateMeasurementPoint(point);
-    }
+    updateMeasurementPoint
   };
 
   // Measurement interaction state
@@ -245,10 +240,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
 
   // Update visibility when allLabelsVisible changes
   useEffect(() => {
-    if (labelsRef.current && segmentLabelsRef.current) {
-      updateAllLabelsVisibility(allLabelsVisible, labelsRef.current, segmentLabelsRef.current);
-    }
-  }, [allLabelsVisible, updateAllLabelsVisibility, labelsRef, segmentLabelsRef]);
+    updateAllLabelsVisibility(allLabelsVisible);
+  }, [allLabelsVisible, updateAllLabelsVisibility]);
 
   // Handle label visibility based on edit mode
   useEffect(() => {
@@ -428,8 +421,6 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   // Handle label visibility toggling with direct visual update
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
-    // Fixed to return boolean as required by the type
-    return true;
   };
 
   // Component rendering

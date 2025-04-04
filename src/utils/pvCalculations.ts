@@ -1273,23 +1273,3 @@ export const calculateAnnualYieldWithOrientation = (
   // Calculate and return the annual yield
   return totalPower * yieldFactor;
 };
-
-/**
- * Create a default PVModuleInfo object with required properties
- */
-export function createDefaultPVModuleInfo(orientation: 'landscape' | 'portrait'): PVModuleInfo {
-  return {
-    moduleCount: 0,
-    moduleWidth: 0,
-    moduleHeight: 0,
-    modulesX: 0,
-    modulesY: 0,
-    spacing: 0.02,
-    orientation,
-    edgeDistance: 0.5,
-    moduleSpacing: 0.02,
-    coveragePercent: 85,
-    columns: 0,
-    rows: 0
-  };
-}
