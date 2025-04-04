@@ -715,7 +715,14 @@ export const generatePVModuleGrid = (
   let cornerPoints: Point[] = [];
   let roofPlanePoints: THREE.Vector3[] = [];
   
-  if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
+  // Verwendung der Original-Dachpunkte wenn vorhanden
+  if (pvInfo.points && pvInfo.points.length >= 3) {
+    cornerPoints = [...pvInfo.points];
+    roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    console.log("Verwende originale Dachpunkte für Ebenenberechnung:", cornerPoints);
+  }
+  // Fallback zu Dachecken aus Segmenten
+  else if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
     cornerPoints = [
       roofEdgeSegments[0].from,
       roofEdgeSegments[1].from,
@@ -723,9 +730,7 @@ export const generatePVModuleGrid = (
       roofEdgeSegments[3].from
     ];
     
-    // Konvertiere Punkte zu THREE.Vector3 für spätere Berechnungen
     roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
-    
     console.log("Dacheckpunkte extrahiert:", cornerPoints);
   } else {
     console.log("Nicht genügend Punkte für Dachflächenberechnung");
@@ -738,6 +743,10 @@ export const generatePVModuleGrid = (
     ];
     roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
   }
+
+  // Berechne die durchschnittliche Y-Koordinate der Dachpunkte
+  const avgY = cornerPoints.reduce((sum, p) => sum + p.y, 0) / cornerPoints.length;
+  console.log("Durchschnittliche Y-Koordinate der Dachfläche:", avgY);
 
   // Berechne die Ebene aus den ersten drei Punkten
   if (roofPlanePoints.length >= 3) {
@@ -757,6 +766,11 @@ export const generatePVModuleGrid = (
     }
     
     console.log("Normalenvektor der Dachfläche:", normalVector);
+    
+    // Neigungswinkel berechnen (in Grad)
+    const inclinationRad = Math.acos(normalVector.dot(new THREE.Vector3(0, 1, 0)));
+    const inclinationDeg = inclinationRad * (180 / Math.PI);
+    console.log("Dachneigung:", inclinationDeg.toFixed(2) + "°");
 
     // Berechne die Vektoren für die Ausrichtung des Gitters
     // Vector von P1 zu P2 (erste Richtung)
@@ -781,7 +795,7 @@ export const generatePVModuleGrid = (
 
     // Ausrichtungsvektor für Protokollierung
     const alignmentVector = new THREE.Vector3()
-      .subVectors(v1Projected, v2Projected)
+      .crossVectors(v1Projected, v2Projected)
       .normalize();
     
     console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
@@ -815,17 +829,38 @@ export const generatePVModuleGrid = (
 
         // Berechne die vier Eckpunkte des Moduls
         const p1 = moduleBasePoint.clone();
+        
+        // Projiziere die Punkte auf die Dachebene, um eine korrekte Höhe zu garantieren
+        const projectPointToPlane = (point: THREE.Vector3): THREE.Vector3 => {
+          // Berechne Abstand des Punktes zur Ebene
+          const distance = plane.distanceToPoint(point);
+          // Verschiebe den Punkt um diesen Abstand in Richtung der Ebene
+          return point.sub(normalVector.clone().multiplyScalar(distance));
+        };
+        
+        // Korrektur der Höhe eines Punktes durch Projektion
+        const p1Projected = projectPointToPlane(p1.clone());
         const p2 = moduleBasePoint.clone().add(v1Projected.clone().multiplyScalar(moduleWidth));
+        const p2Projected = projectPointToPlane(p2.clone());
         const p3 = moduleBasePoint.clone()
           .add(v1Projected.clone().multiplyScalar(moduleWidth))
           .add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p3Projected = projectPointToPlane(p3.clone());
         const p4 = moduleBasePoint.clone().add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p4Projected = projectPointToPlane(p4.clone());
+        
+        // Kleiner Offset nach oben hinzufügen, um Z-Fighting zu vermeiden (0.5cm)
+        const zFightingOffset = 0.005;
+        p1Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        p2Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        p3Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        p4Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         
         const moduleCorners: Point[] = [
-          { x: p1.x, y: p1.y, z: p1.z },
-          { x: p2.x, y: p2.y, z: p2.z },
-          { x: p3.x, y: p3.y, z: p3.z },
-          { x: p4.x, y: p4.y, z: p4.z }
+          { x: p1Projected.x, y: p1Projected.y, z: p1Projected.z },
+          { x: p2Projected.x, y: p2Projected.y, z: p2Projected.z },
+          { x: p3Projected.x, y: p3Projected.y, z: p3Projected.z },
+          { x: p4Projected.x, y: p4Projected.y, z: p4Projected.z }
         ];
         
         modulePoints.push(moduleCorners);
@@ -839,7 +874,7 @@ export const generatePVModuleGrid = (
     }
     
     // Debugging-Information
-    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentVector.angleTo(new THREE.Vector3(1, 0, 0)).toFixed(2)}°`);
+    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentVector.angleTo(new THREE.Vector3(1, 0, 0)).toFixed(2)}° und Neigung ${inclinationDeg.toFixed(2)}°`);
     if (modulePoints.length > 0) {
       console.log("Erste Modulecken:", modulePoints[0]);
     }
@@ -868,10 +903,8 @@ export const generatePVModuleGrid = (
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
-      // Verwende die Y-Koordinate aus den Dachpunkten, wenn vorhanden
-      const y = cornerPoints.length > 0 
-        ? cornerPoints.reduce((sum, p) => sum + p.y, 0) / cornerPoints.length
-        : baseY;
+      // Verwende die berechnete durchschnittliche Y-Koordinate (mit kleinem Offset)
+      const y = avgY + 0.005;  // 5mm über der Dachfläche
       
       // Berechne die vier Eckpunkte des Moduls mit Standard-Ausrichtung
       const moduleCorners: Point[] = [
