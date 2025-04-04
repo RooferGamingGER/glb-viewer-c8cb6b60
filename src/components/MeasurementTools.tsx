@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -421,28 +422,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             )}
           </div>
           
-          {/* Measurement list */}
-          <MeasurementSidebar
-            measurements={measurements}
-            toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-            toggleLabelVisibility={handleToggleLabelVisibility}
-            handleStartPointEdit={handleStartPointEdit}
-            handleDeleteMeasurement={handleDeleteMeasurement}
-            handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
-            editMeasurementId={editMeasurementId}
-            segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
-            onEditSegment={setEditingSegmentId}
-            movingPointInfo={movingPointInfo}
-            showTable={showTable}
-            handleClearMeasurements={handleClearMeasurements}
-            toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
-            allLabelsVisible={allLabelsVisible}
-            activeMode={activeMode}
-            handleMoveMeasurementUp={handleMoveMeasurementUp}
-            handleMoveMeasurementDown={handleMoveMeasurementDown}
-          />
+          {/* Measurement list is now directly integrated into the MeasurementToolControls component via tabs */}
         </div>
       </div>
     </div>

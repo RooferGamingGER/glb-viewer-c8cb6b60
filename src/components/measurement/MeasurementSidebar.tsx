@@ -1,13 +1,11 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
-import ExportPdfButton from './ExportPdfButton';
-import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import { Trash2, Eye, EyeOff } from 'lucide-react';
 import * as THREE from 'three';
 import { 
   AlertDialog,
@@ -73,7 +71,26 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
-        <h2 className="text-lg font-medium">Messungen</h2>
+        <div className="flex items-center">
+          <h2 className="text-lg font-medium">Messungen</h2>
+          
+          {toggleAllLabelsVisibility && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleAllLabelsVisibility}
+              className="ml-2 h-7 px-2"
+              title={allLabelsVisible ? "Beschriftungen ausblenden" : "Beschriftungen einblenden"}
+            >
+              {allLabelsVisible ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+        
         <div className="flex space-x-1">
           {measurements.length > 0 && (
             <AlertDialog>
