@@ -1,15 +1,17 @@
-
 import { useCallback } from 'react';
 import * as THREE from 'three';
 import { Measurement } from '@/types/measurements';
 import { useThreeJs } from '@/contexts/ThreeJsContext';
 import { toast } from '@/components/ui/use-toast';
+import { DEFAULT_MODULE_VISUALS, SELECTED_MODULE_VISUALS } from '@/utils/pvModuleRenderer';
 
 export const useVisibilityManager = (
   measurements: Measurement[],
   toggleMeasurementVisibility: (id: string) => void,
   toggleLabelVisibility: (id: string) => void,
-  allLabelsVisible: boolean
+  allLabelsVisible: boolean,
+  selectedModuleIndex: number | null = null,
+  selectedMeasurementId: string | null = null
 ) => {
   // Get Three.js object references from context
   const { 
@@ -158,16 +160,7 @@ export const useVisibilityManager = (
     const roofEdgeSegments = extractRoofEdgeSegments();
     
     // Default visual properties for PV modules
-    const defaultModuleVisuals = {
-      frameBorder: 0.02,          // 2cm frame border
-      frameColor: 0x444444,       // Dark grey frame
-      panelColor: 0x0a4b8f,       // Dark blue panel
-      cellRows: 6,                // 6 rows of cells
-      cellColumns: 10,            // 10 columns of cells
-      cellSpacing: 0.005,         // 5mm spacing between cells
-      cellColor: 0x225289,        // Slightly brighter blue for cells
-      busbarCount: 3              // 3 busbars per cell
-    };
+    const defaultModuleVisuals = DEFAULT_MODULE_VISUALS;
     
     // Update mesh visibilities for PV areas and other measurements
     measurementsRef.current.children.forEach(mesh => {
@@ -214,11 +207,20 @@ export const useVisibilityManager = (
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
           
+          const isSelected = 
+            selectedMeasurementId === mesh.userData.measurementId && 
+            selectedModuleIndex === mesh.userData.moduleIndex;
+          
           // Apply enhanced visuals to individual module meshes
           if (mesh.material instanceof THREE.MeshBasicMaterial) {
             // Get visuals settings from parent measurement or use defaults
             const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
-            const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+            let visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+            
+            // Apply selected visuals if this module is selected
+            if (isSelected) {
+              visuals = { ...visuals, ...SELECTED_MODULE_VISUALS };
+            }
             
             // Update module visuals with more realistic appearance
             mesh.material.color.set(visuals.frameColor || 0x444444); // Frame color
@@ -227,12 +229,13 @@ export const useVisibilityManager = (
             mesh.material.needsUpdate = true;
             
             // Raise slightly to avoid z-fighting with background area
-            mesh.position.y += 0.02;
+            mesh.position.y += isSelected ? 0.025 : 0.02;
             
             console.log(`Enhanced PV Module element updated:`, {
               visible: mesh.visible,
               type: mesh.userData.moduleElementType || 'module',
               color: mesh.material.color.getHexString(),
+              selected: isSelected
             });
           }
         }
@@ -240,7 +243,16 @@ export const useVisibilityManager = (
         // Special handling for module cell elements
         if (mesh.userData.isPVModuleCell && mesh instanceof THREE.Mesh) {
           const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
-          const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+          let visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+          
+          const isSelected = 
+            selectedMeasurementId === mesh.userData.measurementId && 
+            selectedModuleIndex === mesh.userData.moduleIndex;
+          
+          // Apply selected visuals if this module is selected
+          if (isSelected) {
+            visuals = { ...visuals, ...SELECTED_MODULE_VISUALS };
+          }
           
           if (mesh.material instanceof THREE.MeshBasicMaterial) {
             mesh.material.color.set(visuals.cellColor || 0x225289); // Cell color
@@ -249,14 +261,23 @@ export const useVisibilityManager = (
             mesh.material.needsUpdate = true;
             
             // Position just above the module frame
-            mesh.position.y += 0.022;
+            mesh.position.y += isSelected ? 0.027 : 0.022;
           }
         }
         
         // Special handling for module panel (background)
         if (mesh.userData.isPVModulePanel && mesh instanceof THREE.Mesh) {
           const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
-          const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+          let visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
+          
+          const isSelected = 
+            selectedMeasurementId === mesh.userData.measurementId && 
+            selectedModuleIndex === mesh.userData.moduleIndex;
+          
+          // Apply selected visuals if this module is selected
+          if (isSelected) {
+            visuals = { ...visuals, ...SELECTED_MODULE_VISUALS };
+          }
           
           if (mesh.material instanceof THREE.MeshBasicMaterial) {
             mesh.material.color.set(visuals.panelColor || 0x0a4b8f); // Panel color
@@ -265,19 +286,50 @@ export const useVisibilityManager = (
             mesh.material.needsUpdate = true;
             
             // Position just above the module frame but below cells
-            mesh.position.y += 0.021;
+            mesh.position.y += isSelected ? 0.026 : 0.021;
           }
         }
         
-        // Handle module label visibility
+        // Handle module label visibility and highlighting for selected modules
         if (mesh.userData.isModuleLabel) {
+          const isSelected = 
+            selectedMeasurementId === mesh.userData.measurementId && 
+            selectedModuleIndex === mesh.userData.moduleIndex;
+          
           mesh.visible = measurement.visible !== false && measurement.labelVisible !== false;
+          
+          // Highlight the label for selected modules
+          if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshBasicMaterial && mesh.material.map) {
+            // Update label texture for selected state
+            if (isSelected) {
+              const labelCanvas = document.createElement('canvas');
+              labelCanvas.width = 64;
+              labelCanvas.height = 64;
+              const ctx = labelCanvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#ffa500'; // Orange for selected
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${mesh.userData.moduleIndex + 1}`, 32, 32);
+                
+                // Update texture
+                const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                mesh.material.map.dispose();
+                mesh.material.map = labelTexture;
+                mesh.material.needsUpdate = true;
+                
+                // Raise selected label slightly higher
+                mesh.position.z = 0.004;
+              }
+            }
+          }
         }
       }
     });
     
     console.log(`PV Module visibility summary from useVisibilityManager: ${pvModulesVisible}/${pvModuleCount} modules visible`);
-  }, [measurements, measurementsRef, extractRoofEdgeSegments]);
+  }, [measurements, measurementsRef, extractRoofEdgeSegments, selectedMeasurementId, selectedModuleIndex]);
 
   // Get all measurement groups for temporary hiding during screenshots
   const getMeasurementGroups = useCallback(() => {
