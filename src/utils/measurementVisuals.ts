@@ -998,17 +998,55 @@ function renderAreaMeasurement(
   if (shouldCreateLabel) {
     // Calculate centroid for label position
     const centroid = calculateCentroid(points3D);
-    centroid.y += LABEL_Y_OFFSET; // Raise label for visibility
+    centroid.y += LABEL_Y_OFFSET * 1.5; // Extra height for solar labels
     
-    // Format area label
+    // Format area label with special indicators
     const labelText = formatMeasurementLabel(measurement.value, 'area');
     const label = createMeasurementLabel(labelText, centroid, true);
     
     // Store reference data
-    label.userData.measurementId = measurement.id;
+    label.userData = {
+      measurementId: measurement.id,
+      isSolarLabel: true
+    };
     
     // Add to labels group
     labelsRef.add(label);
+    
+    // If we have PV module info, create an additional info label
+    if (measurement.pvModuleInfo) {
+      const { moduleCount, columns, rows } = measurement.pvModuleInfo;
+      
+      if (moduleCount > 0) {
+        // Position the PV info label slightly below the main label
+        const infoLabelPos = new THREE.Vector3(
+          centroid.x, 
+          centroid.y - 0.15, 
+          centroid.z
+        );
+        
+        // Create info label with PV module details - Format values appropriately
+        const moduleCountStr = moduleCount.toString();
+        const rowsStr = rows ? rows.toString() : "?";
+        const colsStr = columns ? columns.toString() : "?";
+        
+        const infoLabel = createMeasurementLabel(
+          `PV-Module: ${moduleCountStr} (${rowsStr}×${colsStr})`, 
+          infoLabelPos, 
+          true,
+          PV_MODULE_COLORS.MODULE // Use solar blue color
+        );
+        
+        // Store reference data
+        infoLabel.userData = {
+          measurementId: measurement.id,
+          isPVInfoLabel: true
+        };
+        
+        // Add to labels group
+        labelsRef.add(infoLabel);
+      }
+    }
   }
   
   // Add segment labels if needed
@@ -1032,9 +1070,9 @@ function renderAreaMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       midpoint.y += LABEL_Y_OFFSET; // Raise label
       
-      // Create segment label - convert number to string for formatMeasurementLabel
+      // Create segment label - convert segment.length appropriately
       const segmentLabel = createMeasurementLabel(
-        formatMeasurementLabel(segment.length.toString(), 'length'), 
+        formatMeasurementLabel(Number(segment.length), 'length'), 
         midpoint, 
         true,
         0x555555 // Darker color for segment labels
@@ -1200,7 +1238,7 @@ function renderSolarMeasurement(
           centroid.z
         );
         
-        // Create info label with PV module details - Convert the values to strings
+        // Create info label with PV module details - Format values appropriately
         const moduleCountStr = moduleCount.toString();
         const rowsStr = rows ? rows.toString() : "?";
         const colsStr = columns ? columns.toString() : "?";
@@ -1245,9 +1283,9 @@ function renderSolarMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       midpoint.y += LABEL_Y_OFFSET; // Raise label
       
-      // Create segment label - convert number to string for formatMeasurementLabel
+      // Create segment label - convert segment.length appropriately
       const segmentLabel = createMeasurementLabel(
-        formatMeasurementLabel(segment.length.toString(), 'length'), 
+        formatMeasurementLabel(Number(segment.length), 'length'), 
         midpoint, 
         true,
         PV_MODULE_COLORS.BOUNDARY // Use solar boundary color
@@ -1512,7 +1550,7 @@ function renderPVModuleGrid(
   const modules: ModuleInfo[] = [];
   
   // Process each modulePoint (each module is defined by 4 corner points)
-  if (result.modulePoints) {
+  if (result && result.modulePoints && result.modulePoints.length > 0) {
     result.modulePoints.forEach((points, index) => {
       if (points.length !== 4) return; // Skip invalid modules
       
