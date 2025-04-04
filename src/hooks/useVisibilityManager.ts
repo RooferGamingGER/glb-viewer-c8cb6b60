@@ -34,9 +34,22 @@ export const useVisibilityManager = (
     edgeMeasurements.forEach(measurement => {
       if (measurement.points && measurement.points.length >= 2) {
         // Erstelle ein Segment zwischen den ersten beiden Punkten
+        // Convert Point to THREE.Vector3
+        const fromPoint = new THREE.Vector3(
+          measurement.points[0].x,
+          measurement.points[0].y,
+          measurement.points[0].z
+        );
+        
+        const toPoint = new THREE.Vector3(
+          measurement.points[1].x,
+          measurement.points[1].y,
+          measurement.points[1].z
+        );
+        
         segments.push({
-          from: measurement.points[0],
-          to: measurement.points[1]
+          from: fromPoint,
+          to: toPoint
         });
       }
     });
