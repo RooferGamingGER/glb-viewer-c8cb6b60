@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,7 +12,7 @@ import {
   Anchor,
   Droplet,
   Magnet,
-  Tool,
+  Wrench,
   LineChart
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
@@ -48,10 +47,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   setShowTable,
   onCategoryChange
 }) => {
-  // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
-  // State for the active tab
   const [activeTab, setActiveTab] = useState<string>("tools");
   
   const handleDownload = () => {
@@ -73,7 +70,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       <Tabs defaultValue="tools" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-2 mb-4">
           <TabsTrigger value="tools" className="flex items-center">
-            <Tool className="h-4 w-4 mr-2" />
+            <Wrench className="h-4 w-4 mr-2" />
             Werkzeuge
           </TabsTrigger>
           <TabsTrigger value="measurements" className="flex items-center">
@@ -83,7 +80,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </TabsList>
         
         <TabsContent value="tools" className="space-y-4">
-          {/* Standard measurement tools section */}
           <div>
             <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
             <div className="space-y-2">
@@ -125,7 +121,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </div>
           
-          {/* Solarplanung section */}
           <div>
             <div className="text-sm font-medium mb-2">Solarplanung</div>
             <div className="space-y-2">
@@ -143,7 +138,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </div>
           
-          {/* Point snap toggle */}
           <div>
             <Toggle
               pressed={snapEnabled}
@@ -161,7 +155,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           
           <Separator />
           
-          {/* Roof elements section */}
           <div>
             <div className="text-sm font-medium mb-2">Dachelemente</div>
             <div className="space-y-2">
@@ -191,7 +184,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           
           <Separator />
           
-          {/* Penetrations section */}
           <div>
             <div className="text-sm font-medium mb-2">Einbauten</div>
             <div className="space-y-2">
