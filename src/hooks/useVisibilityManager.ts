@@ -23,17 +23,23 @@ export const useVisibilityManager = (
 
   // Extrahiere Dachkanten (insbesondere die Traufe) für die Ausrichtung der PV-Module
   const extractRoofEdgeSegments = useCallback(() => {
-    // Suche nach Messungen vom Typ "eave" (Traufe) oder "ridge" (First)
-    const edgeMeasurements = measurements.filter(
-      m => m.type === 'eave' || m.type === 'ridge' || m.type === 'verge'
-    );
+    // Prioritäre Suche nach Messungen vom Typ "eave" (Traufe)
+    let eaveEdgeMeasurements = measurements.filter(m => m.type === 'eave');
+    
+    // Falls keine Traufe gefunden wurde, versuche andere Dachkanten
+    let edgeMeasurements = eaveEdgeMeasurements.length > 0 ? 
+      eaveEdgeMeasurements : 
+      measurements.filter(m => m.type === 'ridge' || m.type === 'verge');
     
     const segments: {from: THREE.Vector3, to: THREE.Vector3}[] = [];
+    
+    // Debug-Ausgabe zur Fehlerfindung
+    console.log(`Gefundene Dachkanten für Ausrichtung: ${edgeMeasurements.length}`, 
+      edgeMeasurements.map(m => ({type: m.type, id: m.id, points: m.points?.length})));
     
     // Extrahiere Segmente aus Messungen
     edgeMeasurements.forEach(measurement => {
       if (measurement.points && measurement.points.length >= 2) {
-        // Erstelle ein Segment zwischen den ersten beiden Punkten
         // Convert Point to THREE.Vector3
         const fromPoint = new THREE.Vector3(
           measurement.points[0].x,
@@ -50,6 +56,12 @@ export const useVisibilityManager = (
         segments.push({
           from: fromPoint,
           to: toPoint
+        });
+        
+        console.log(`Dachkante vom Typ ${measurement.type} für Ausrichtung verwendet:`, {
+          from: [fromPoint.x, fromPoint.y, fromPoint.z],
+          to: [toPoint.x, toPoint.y, toPoint.z],
+          length: new THREE.Vector3().subVectors(toPoint, fromPoint).length()
         });
       }
     });
@@ -222,6 +234,6 @@ export const useVisibilityManager = (
     updateMeasurementMarkers,
     updateLabelVisibility,
     getMeasurementGroups,
-    extractRoofEdgeSegments // Neue Funktion exportieren
+    extractRoofEdgeSegments
   };
 };

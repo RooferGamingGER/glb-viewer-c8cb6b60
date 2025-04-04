@@ -655,28 +655,53 @@ export const generatePVModuleGrid = (
   
   // Versuche, eine Trauflinie (eave) zu finden, um die Module daran auszurichten
   if (roofEdgeSegments && roofEdgeSegments.length > 0) {
-    // Suche nach einer geeigneten Kante (bevorzugt Traufe/eave)
-    const eaveSegment = roofEdgeSegments.find(segment => 
-      segment.from && segment.to && 
-      (Math.abs(segment.from.y - segment.to.y) < 0.2) // Traufe ist in etwa horizontal
-    );
+    // Wähle das längste Segment für eine stabilere Ausrichtung
+    let longestSegment = roofEdgeSegments[0];
+    let maxLength = 0;
     
-    if (eaveSegment) {
-      console.log("Trauflinie für Ausrichtung gefunden:", eaveSegment);
+    roofEdgeSegments.forEach(segment => {
+      const length = new THREE.Vector3().subVectors(segment.to, segment.from).length();
+      if (length > maxLength) {
+        maxLength = length;
+        longestSegment = segment;
+      }
+    });
+    
+    console.log("Längste Dachkante für Ausrichtung gefunden:", {
+      from: [longestSegment.from.x, longestSegment.from.y, longestSegment.from.z],
+      to: [longestSegment.to.x, longestSegment.to.y, longestSegment.to.z],
+      length: maxLength
+    });
+    
+    // Berechne Richtungsvektor entlang der Dachkante (nur in XZ-Ebene projiziert)
+    const dx = longestSegment.to.x - longestSegment.from.x;
+    const dz = longestSegment.to.z - longestSegment.from.z;
+    const length2D = Math.sqrt(dx * dx + dz * dz);
+    
+    if (length2D > 0.1) { // Mindestlänge für sinnvolle Ausrichtung
+      // Normalisierter Richtungsvektor entlang der Dachkante
+      directionX = { 
+        x: dx / length2D, 
+        z: dz / length2D 
+      };
       
-      // Berechne Richtungsvektor entlang der Traufe
-      directionX = calculateDirectionVector(eaveSegment.from, eaveSegment.to);
-      
-      // Berechne orthogonalen Vektor (90° gedreht) für die zweite Richtung
-      directionZ = { x: -directionX.z, z: directionX.x };
+      // Orthogonaler Vektor (90° gedreht) für die zweite Richtung
+      directionZ = { 
+        x: -directionX.z, 
+        z: directionX.x 
+      };
       
       // Berechne Winkel zur X-Achse für Debug-Zwecke
-      alignmentAngle = calculateAngle(directionX) * (180 / Math.PI);
+      alignmentAngle = Math.atan2(directionX.z, directionX.x) * (180 / Math.PI);
       
       console.log("Module werden ausgerichtet mit Winkel:", alignmentAngle, "Grad");
-      console.log("Richtungsvektoren:", { x: directionX, z: directionZ });
+      console.log("Richtungsvektoren:", { 
+        x: directionX, 
+        z: directionZ,
+        length2D
+      });
     } else {
-      console.log("Keine geeignete Trauflinie gefunden, verwende Standard-Ausrichtung");
+      console.log("Dachkante zu kurz für sinnvolle Ausrichtung, verwende Standard-Ausrichtung");
     }
   } else {
     console.log("Keine Dachkanten-Segmente verfügbar, verwende Standard-Ausrichtung");
@@ -715,7 +740,7 @@ export const generatePVModuleGrid = (
           y: baseY + yOffset,
           z
         },
-        { // Ecke 1 (rechte obere Ecke) - entlang der Traufe
+        { // Ecke 1 (rechte obere Ecke) - entlang der Dachkante
           x: x + moduleWidth * directionX.x,
           y: baseY + yOffset,
           z: z + moduleWidth * directionX.z
@@ -725,7 +750,7 @@ export const generatePVModuleGrid = (
           y: baseY + yOffset,
           z: z + moduleWidth * directionX.z + moduleHeight * directionZ.z
         },
-        { // Ecke 3 (linke untere Ecke) - orthogonal zur Traufe
+        { // Ecke 3 (linke untere Ecke) - orthogonal zur Dachkante
           x: x + moduleHeight * directionZ.x,
           y: baseY + yOffset,
           z: z + moduleHeight * directionZ.z
