@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from 'lucide-react';
@@ -156,20 +157,22 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
                 
                 // Orientation and inclination
                 if (pvInfo.roofDirection) {
-                  doc.text(`Ausrichtung: ${pvInfo.roofDirection} (${Math.round(pvInfo.roofAzimuth || 180)}°)`, 25, yPos);
+                  const roofAzimuth = pvInfo.roofAzimuth || 180;
+                  doc.text(`Ausrichtung: ${pvInfo.roofDirection} (${Math.round(roofAzimuth)}°)`, 25, yPos);
                   yPos += 8;
                 }
                 
                 if (pvInfo.roofInclination) {
-                  doc.text(`Dachneigung: ${Math.round(pvInfo.roofInclination)}°`, 25, yPos);
+                  const inclination = Number(pvInfo.roofInclination);
+                  doc.text(`Dachneigung: ${Math.round(inclination)}°`, 25, yPos);
                   yPos += 8;
                 }
                 
                 // Annual yield
-                const annualYield = pvInfo.yieldFactor 
-                  ? Math.round(totalPower * pvInfo.yieldFactor)
-                  : Math.round(totalPower * 950);
-                  
+                const yieldFactor = pvInfo.yieldFactor ? Number(pvInfo.yieldFactor) : 950;
+                const totalPowerNum = parseFloat(totalPower);
+                const annualYield = Math.round(totalPowerNum * yieldFactor);
+                
                 doc.text(`Jahresertrag: ca. ${annualYield} kWh/Jahr`, 25, yPos);
                 yPos += 15;
                 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -103,6 +104,17 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     };
     
     return displayNames[type] || type;
+  };
+  
+  // Helper function to update a specific segment within a measurement
+  const handleUpdateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
+    if (!measurement.segments) return;
+    
+    const updatedSegments = measurement.segments.map(seg => 
+      seg.id === segmentId ? { ...seg, ...data } : seg
+    );
+    
+    updateMeasurement(measurementId, { segments: updatedSegments });
   };
   
   // Render content specific to measurement type
@@ -276,8 +288,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           <SegmentList 
             segments={measurement.segments}
             measurementId={measurement.id}
-            updateMeasurement={updateMeasurement}
+            isOpen={segmentOpen}
+            toggleSegments={toggleSegments}
             onEditSegment={onEditSegment}
+            updateSegment={handleUpdateSegment}
           />
         </div>
       )}
