@@ -74,7 +74,8 @@ const Test = () => {
           </div>
         </header>
         
-        <div className="flex-1 relative flex overflow-hidden">
+        {/* Main content area with correct padding to prevent footer overlap */}
+        <div className="flex-1 relative flex overflow-hidden pb-8">
           {/* Mobile menu overlay */}
           {isMobile && menuOpen && (
             <div 
@@ -108,20 +109,18 @@ const Test = () => {
             </div>
           )}
           
-          <div className="flex flex-col flex-1 w-full overflow-hidden">
-            {/* Fixed SidebarProvider to ensure proper spacing for footer */}
-            <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
-              <main className="flex-1 relative w-full h-full">
-                <ModelViewer 
-                  fileUrl={testModelUrl} 
-                  fileName={testModelName} 
-                />
-              </main>
-            </SidebarProvider>
-          </div>
+          {/* SidebarProvider with modified style to account for footer */}
+          <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
+            <main className="flex-1 relative w-full h-full">
+              <ModelViewer 
+                fileUrl={testModelUrl} 
+                fileName={testModelName} 
+              />
+            </main>
+          </SidebarProvider>
         </div>
         
-        <footer className="glass-panel w-full py-2 px-4 border-t border-border/50 z-10 text-center text-xs text-muted-foreground">
+        <footer className="glass-panel w-full py-2 px-4 border-t border-border/50 z-5 text-center text-xs text-muted-foreground">
           <p>Demo-Version mit fest installiertem 3D-Modell | DrohnenGLB by RooferGaming®</p>
         </footer>
       </div>
