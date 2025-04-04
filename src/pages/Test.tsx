@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { toast } from 'sonner';
 
 const Test = () => {
   const navigate = useNavigate();
@@ -23,6 +24,14 @@ const Test = () => {
   useEffect(() => {
     setMenuOpen(false);
   }, [isPortrait]);
+
+  // Show a toast notification about the PV module fix
+  useEffect(() => {
+    toast.info(
+      "PV-Module-Sichtbarkeit verbessert. Bitte fügen Sie eine Solar-Messung hinzu und aktivieren Sie PV-Module, um die Änderungen zu sehen.",
+      { duration: 5000 }
+    );
+  }, []);
 
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
