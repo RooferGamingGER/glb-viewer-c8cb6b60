@@ -80,7 +80,6 @@ export interface PVModuleInfo {
   roofInclination?: number;   // Roof inclination in degrees 
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
-  alignedWithRidge?: boolean; // Whether the modules are aligned with the ridge line
 }
 
 export interface PVModuleSpec {

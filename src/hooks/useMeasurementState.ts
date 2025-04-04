@@ -149,7 +149,6 @@ export const useMeasurementState = (
     }
   }, [handlers]);
 
-  // Return all state and handlers
   return {
     showTable,
     setShowTable,
