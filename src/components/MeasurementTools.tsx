@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
@@ -377,7 +376,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           }}
         >
           {/* Fixed Header - Tools Section */}
-          <div className="flex-shrink-0 border-b border-border/50 flex flex-col overflow-y-auto">
+          <div className="flex-shrink-0 border-b border-border/50 flex flex-col">
             <MeasurementToolControls 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool}

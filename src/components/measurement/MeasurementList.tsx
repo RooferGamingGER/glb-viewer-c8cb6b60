@@ -45,18 +45,27 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   }
   
   // Group measurements by category
-  const standardMeasurements = measurements.filter(m => 
+  // 1. Dach (standard measurements: length, height, area)
+  const dachMeasurements = measurements.filter(m => 
     ['length', 'height', 'area'].includes(m.type)
   );
   
-  const roofElementMeasurements = measurements.filter(m => 
-    ['solar', 'chimney', 'skylight'].includes(m.type)
+  // 2. Solar (solar planning measurements)
+  const solarMeasurements = measurements.filter(m => 
+    ['solar'].includes(m.type)
   );
   
-  const penetrationMeasurements = measurements.filter(m => 
+  // 3. Dachelemente (skylight, chimney)
+  const dachelementeMeasurements = measurements.filter(m => 
+    ['skylight', 'chimney'].includes(m.type)
+  );
+  
+  // 4. Einbauten (vent, hook, other)
+  const einbautenMeasurements = measurements.filter(m => 
     ['vent', 'hook', 'other'].includes(m.type)
   );
   
+  // 5. Any other measurements not categorized
   const otherMeasurements = measurements.filter(m => 
     !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
   );
@@ -102,24 +111,32 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-      {/* Standard measurements */}
-      {renderMeasurementGroup("Standard Messungen", standardMeasurements, true)}
+      {/* Dach - Standard measurements */}
+      {renderMeasurementGroup("Dach", dachMeasurements, true)}
       
-      {/* Only show separator if there are multiple categories of measurements */}
-      {standardMeasurements.length > 0 && (roofElementMeasurements.length > 0 || penetrationMeasurements.length > 0) && (
+      {/* Separator if needed */}
+      {dachMeasurements.length > 0 && (solarMeasurements.length > 0 || dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
         <Separator className="my-3" />
       )}
       
-      {/* Roof elements */}
-      {renderMeasurementGroup("Dachelemente", roofElementMeasurements)}
+      {/* Solar - Solar planning */}
+      {renderMeasurementGroup("Solar", solarMeasurements)}
       
-      {/* Only show separator if needed */}
-      {roofElementMeasurements.length > 0 && penetrationMeasurements.length > 0 && (
+      {/* Separator if needed */}
+      {solarMeasurements.length > 0 && (dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
         <Separator className="my-3" />
       )}
       
-      {/* Penetrations */}
-      {renderMeasurementGroup("Einbauten", penetrationMeasurements)}
+      {/* Dachelemente - Roof elements */}
+      {renderMeasurementGroup("Dachelemente", dachelementeMeasurements)}
+      
+      {/* Separator if needed */}
+      {dachelementeMeasurements.length > 0 && einbautenMeasurements.length > 0 && (
+        <Separator className="my-3" />
+      )}
+      
+      {/* Einbauten - Installations */}
+      {renderMeasurementGroup("Einbauten", einbautenMeasurements)}
       
       {/* Other measurements not categorized (if any) */}
       {otherMeasurements.length > 0 && (

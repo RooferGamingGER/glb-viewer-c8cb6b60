@@ -257,7 +257,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </TabsContent>
           
-          <TabsContent value="measurements" className="mt-0 h-full overflow-auto">
+          <TabsContent value="measurements" className="mt-0 h-full overflow-y-auto">
             {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
              handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
               <MeasurementList 

@@ -137,6 +137,9 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
 
   // Flag um festzustellen, ob wir in einem Penetrationsmodus sind
   const isPenetrationMode = ['vent', 'hook', 'other'].includes(activeMode);
+  
+  // Flag to check if we're in solar planning mode with 4 points (ready to calculate)
+  const isSolarReadyToCalculate = activeMode === 'solar' && currentPoints.length === 4;
 
   return (
     <div className="p-3 pb-0">
@@ -185,7 +188,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         </div>
         
         {/* Add PV Module calculation button specifically for solar planning with 4 points */}
-        {activeMode === 'solar' && currentPoints.length === 4 && (
+        {isSolarReadyToCalculate && (
           <Button
             variant="default"
             size="sm"
