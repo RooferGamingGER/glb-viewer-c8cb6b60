@@ -116,8 +116,8 @@ export const useVisibilityManager = (
             material.side = THREE.DoubleSide; // Show both sides
             material.needsUpdate = true;
             
-            // Raise significantly to avoid z-fighting
-            mesh.position.y += 0.3;
+            // Raise slightly to avoid z-fighting
+            mesh.position.y += 0.01;
             
             console.log(`Updated PV Module ${mesh.name || "unnamed"} in useVisibilityManager:`, {
               visible: mesh.visible,
@@ -140,14 +140,13 @@ export const useVisibilityManager = (
             mesh.material.side = THREE.DoubleSide;
             mesh.material.needsUpdate = true;
             
-            // Raise significantly to avoid z-fighting
-            mesh.position.y += 0.3;
+            // Raise slightly to avoid z-fighting
+            mesh.position.y += 0.01;
             
             console.log(`Standalone PV Module updated in useVisibilityManager:`, {
               visible: mesh.visible,
               opacity: mesh.material.opacity,
-              color: mesh.material.color.getHexString(),
-              position: mesh.position.y
+              color: mesh.material.color.getHexString()
             });
           }
         }

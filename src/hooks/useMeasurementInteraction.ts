@@ -141,9 +141,7 @@ export const useMeasurementInteraction = (
       console.log("Updating PV module visibility when tool is enabled");
       
       const pvModules = refs.measurementsRef.current.children.filter(
-        child => child.userData && (child.userData.isPVModule || child.userData.measurementType === 'pvmodule' || 
-                                   (child.userData.measurementId && 
-                                    measurements.find(m => m.id === child.userData.measurementId)?.type === 'solar'))
+        child => child.userData && (child.userData.isPVModule || child.userData.measurementType === 'pvmodule')
       );
       
       console.log(`Found ${pvModules.length} PV module visualizations to update`);
@@ -163,13 +161,13 @@ export const useMeasurementInteraction = (
             module.material.side = THREE.DoubleSide; // Show both sides
             module.material.needsUpdate = true;
             
-            // Raise position significantly to avoid z-fighting
-            module.position.y += 0.3;
+            // Raise position slightly to avoid z-fighting
+            module.position.y += 0.01;
             
             console.log("Updated PV module material properties for better visibility:", {
               opacity: module.material.opacity,
               color: module.material.color.getHexString(),
-              position: module.position.y
+              position: module.position
             });
           }
         }
