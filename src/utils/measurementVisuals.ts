@@ -1575,26 +1575,56 @@ function renderPVModuleGrid(
     transparent: true
   });
   
-  // Create module meshes
+  // Create module meshes - this is where we're fixing the floating issue
   modulePoints.forEach((points, index) => {
-    // Create a shape from the four points
-    const shape = new THREE.Shape();
-    shape.moveTo(points[0].x, points[0].z);
-    for (let i = 1; i < 4; i++) {
-      shape.lineTo(points[i].x, points[i].z);
-    }
-    shape.lineTo(points[0].x, points[0].z);
+    // Instead of projecting to a shape and then setting Y values afterwards,
+    // we'll directly use the 3D coordinates to create a custom BufferGeometry
+
+    // Create a buffer geometry
+    const geometry = new THREE.BufferGeometry();
     
-    // Create geometry for the module
-    const geometry = new THREE.ShapeGeometry(shape);
+    // Define vertices for the module (4 corners, 2 triangles = 6 vertices)
+    // We need to define each vertex for each triangle separately for proper rendering
+    const vertices = new Float32Array([
+      // First triangle (bottom-right half of quad)
+      points[0].x, points[0].y, points[0].z, // bottom-left
+      points[1].x, points[1].y, points[1].z, // bottom-right
+      points[3].x, points[3].y, points[3].z, // top-right
+      
+      // Second triangle (top-left half of quad)
+      points[0].x, points[0].y, points[0].z, // bottom-left
+      points[3].x, points[3].y, points[3].z, // top-right
+      points[2].x, points[2].y, points[2].z  // top-left
+    ]);
     
-    // Adjust the vertices to have the correct Y value and X/Z positions
-    const positions = geometry.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i);
-      const z = positions.getY(i);
-      positions.setXYZ(i, x, baseY + PV_LINE_Y_OFFSET, z);
+    // Add a slight offset along the normal to prevent z-fighting with the roof mesh
+    // Calculate normal from the points (simplified as an approximate)
+    const normal = new THREE.Vector3()
+      .crossVectors(
+        new THREE.Vector3().subVectors(
+          new THREE.Vector3(points[1].x, points[1].y, points[1].z),
+          new THREE.Vector3(points[0].x, points[0].y, points[0].z)
+        ),
+        new THREE.Vector3().subVectors(
+          new THREE.Vector3(points[2].x, points[2].y, points[2].z),
+          new THREE.Vector3(points[0].x, points[0].y, points[0].z)
+        )
+      )
+      .normalize();
+    
+    // Apply a small offset (0.01 units) along the normal to every vertex
+    const OFFSET_DISTANCE = 0.01;
+    for (let i = 0; i < vertices.length; i += 3) {
+      vertices[i] += normal.x * OFFSET_DISTANCE;
+      vertices[i + 1] += normal.y * OFFSET_DISTANCE;
+      vertices[i + 2] += normal.z * OFFSET_DISTANCE;
     }
+    
+    // Set vertices
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    
+    // Compute vertex normals for proper lighting
+    geometry.computeVertexNormals();
     
     // Create mesh for the module
     const mesh = new THREE.Mesh(geometry, moduleMaterial);
@@ -1609,11 +1639,15 @@ function renderPVModuleGrid(
     
     measurementsRef.add(mesh);
     
-    // Add module number label
+    // Add module number label - calculate the actual center of the module
+    const centerX = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
+    const centerY = (points[0].y + points[1].y + points[2].y + points[3].y) / 4; 
+    const centerZ = (points[0].z + points[1].z + points[2].z + points[3].z) / 4;
+    
     const moduleCenter = new THREE.Vector3(
-      (points[0].x + points[2].x) / 2,
-      baseY + PV_LINE_Y_OFFSET + 0.05,
-      (points[0].z + points[2].z) / 2
+      centerX,
+      centerY + 0.03, // Small offset for visibility
+      centerZ
     );
     
     // Fixed: Convert color number to string using CSS hex format
@@ -1630,7 +1664,7 @@ function renderPVModuleGrid(
     labelsRef.add(moduleLabel);
   });
   
-  // Create lines for the grid
+  // Create lines for the grid - using the actual 3D coordinates
   gridLines.forEach((line, index) => {
     // First 4 * moduleCount lines are module borders, 
     // next 4 are boundary lines,
