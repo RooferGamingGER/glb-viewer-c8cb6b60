@@ -429,7 +429,6 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
-          {/* Fixed Header - Tools Section - with flex-col and overflow handling */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <MeasurementToolControls 
               activeMode={activeMode}
@@ -454,28 +453,32 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
             
             {/* Only render MeasurementControls for standard measurements */}
             {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
-              <MeasurementControls
-                activeMode={activeMode}
-                currentPoints={currentPoints}
-                handleFinalizeMeasurement={handleFinalizeMeasurement}
-                handleUndoLastPoint={handleUndoLastPoint}
-                clearCurrentPoints={clearCurrentPoints}
-              />
+              <div className="flex-shrink-0">
+                <MeasurementControls
+                  activeMode={activeMode}
+                  currentPoints={currentPoints}
+                  handleFinalizeMeasurement={handleFinalizeMeasurement}
+                  handleUndoLastPoint={handleUndoLastPoint}
+                  clearCurrentPoints={clearCurrentPoints}
+                />
+              </div>
             )}
             
             {/* Only render RoofElementControls for roof elements */}
             {isRoofElementMode && (
-              <RoofElementControls
-                activeMode={activeMode}
-                currentPoints={currentPoints}
-                handleFinalizeMeasurement={handleFinalizeMeasurement}
-                handleUndoLastPoint={handleUndoLastPoint}
-                clearCurrentPoints={clearCurrentPoints}
-              />
+              <div className="flex-shrink-0">
+                <RoofElementControls
+                  activeMode={activeMode}
+                  currentPoints={currentPoints}
+                  handleFinalizeMeasurement={handleFinalizeMeasurement}
+                  handleUndoLastPoint={handleUndoLastPoint}
+                  clearCurrentPoints={clearCurrentPoints}
+                />
+              </div>
             )}
             
             {(editMeasurementId || editingSegmentId || movingPointInfo) && (
-              <div className="p-3 pb-0">
+              <div className="p-3 pb-0 flex-shrink-0">
                 <EditingAlert 
                   editMeasurementId={editMeasurementId}
                   editingSegmentId={editingSegmentId}

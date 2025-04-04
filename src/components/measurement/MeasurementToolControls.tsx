@@ -112,7 +112,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <div className="p-3 flex flex-col h-full overflow-hidden">
       <Tabs defaultValue="tools" value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
-        <TabsList className="w-full grid grid-cols-3 mb-4">
+        <TabsList className="w-full grid grid-cols-3 mb-4 flex-shrink-0">
           <TabsTrigger value="tools" className="flex items-center">
             <Wrench className="h-4 w-4 mr-2" />
             Werkzeuge
@@ -128,9 +128,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </TabsList>
         
         <ScrollArea className="flex-1 pr-2">
-          <TabsContent value="tools" className="space-y-4 mt-0 h-full">
+          <TabsContent value="tools" className="space-y-4 mt-0 h-full flex flex-col">
             {/* Punktfang toggle moved to the top */}
-            <div>
+            <div className="flex-shrink-0">
               <Toggle
                 pressed={snapEnabled}
                 onPressedChange={handleToggleSnap}
@@ -145,7 +145,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </Toggle>
             </div>
             
-            <div>
+            <div className="flex-shrink-0">
               <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
               <div className="space-y-2">
                 <Button
@@ -186,7 +186,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </div>
             </div>
             
-            <div>
+            <div className="flex-shrink-0">
               <div className="text-sm font-medium mb-2">Solarplanung</div>
               <div className="space-y-2">
                 <Button
@@ -203,9 +203,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </div>
             </div>
             
-            <Separator />
+            <Separator className="flex-shrink-0" />
             
-            <div>
+            <div className="flex-shrink-0">
               <div className="text-sm font-medium mb-2">Dachelemente</div>
               <div className="space-y-2">
                 <Button
@@ -232,9 +232,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </div>
             </div>
             
-            <Separator />
+            <Separator className="flex-shrink-0" />
             
-            <div>
+            <div className="flex-shrink-0">
               <div className="text-sm font-medium mb-2">Einbauten</div>
               <div className="space-y-2">
                 <Button
@@ -273,8 +273,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </TabsContent>
           
-          <TabsContent value="measurements" className="space-y-4 mt-0">
-            <div className="grid grid-cols-2 gap-2 mb-4">
+          <TabsContent value="measurements" className="space-y-4 mt-0 h-full flex flex-col">
+            <div className="grid grid-cols-2 gap-2 mb-4 flex-shrink-0">
               <Button
                 variant={activeCategory === 'dach' ? "default" : "outline"} 
                 size="sm"
@@ -350,10 +350,10 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </TabsContent>
           
-          <TabsContent value="export" className="space-y-4 mt-0">
-            <div className="text-sm font-medium mb-2">Export-Optionen</div>
+          <TabsContent value="export" className="space-y-4 mt-0 h-full flex flex-col">
+            <div className="text-sm font-medium mb-2 flex-shrink-0">Export-Optionen</div>
             {measurements.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-2 flex-shrink-0">
                 <GenerateRoofPlanButton measurements={measurements} />
                 
                 <ExportPdfButton measurements={measurements} />
@@ -369,7 +369,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 </Button>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground italic text-center py-4">
+              <div className="text-sm text-muted-foreground italic text-center py-4 flex-shrink-0">
                 Keine Messungen vorhanden
               </div>
             )}
