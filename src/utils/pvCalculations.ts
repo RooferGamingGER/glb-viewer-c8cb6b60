@@ -585,7 +585,8 @@ export const calculatePVModulePlacement = (
   const startX = minX + edgeDistance;
   const startZ = minZ + edgeDistance;
   
-  return {
+  // Store the original points for accurate module placement
+  const result: PVModuleInfo = {
     moduleWidth,
     moduleHeight,
     moduleCount,
@@ -618,8 +619,11 @@ export const calculatePVModulePlacement = (
       height: moduleHeight,
       power: 425, // Default power value
       efficiency: 21.0 // Default efficiency value
-    }
+    },
+    points: [...points] // Store the original points for module placement
   };
+  
+  return result;
 };
 
 /**
@@ -713,13 +717,15 @@ export const generatePVModuleGrid = (
       .sub(normalVector.clone().multiplyScalar(v2.dot(normalVector)))
       .normalize();
 
-    // Ausrichtungswinkel für Protokollierung
-    const alignmentAngle = Math.atan2(v1Projected.z, v1Projected.x) * (180 / Math.PI);
+    // Ausrichtungsvektor für Protokollierung
+    const alignmentVector = new THREE.Vector3()
+      .subVectors(v1Projected, v2Projected)
+      .normalize();
     
     console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
       v1: v1Projected,
       v2: v2Projected,
-      alignmentAngle,
+      alignmentVector,
       normalVector
     });
 
@@ -771,7 +777,7 @@ export const generatePVModuleGrid = (
     }
     
     // Debugging-Information
-    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentAngle.toFixed(2)}°`);
+    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentVector.angleTo(new THREE.Vector3(1, 0, 0)).toFixed(2)}°`);
     if (modulePoints.length > 0) {
       console.log("Erste Modulecken:", modulePoints[0]);
     }
