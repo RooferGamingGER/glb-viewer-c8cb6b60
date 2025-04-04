@@ -7,6 +7,7 @@ import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
 import { useMeasurementEvents } from './useMeasurementEvents';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { createDetailedPVModules, calculateNormalVector } from '@/utils/pvModuleRenderer';
 
 /**
  * Main hook for measurement interactions - combines all other specialized hooks
@@ -33,7 +34,8 @@ export const useMeasurementInteraction = (
     updateMeasurementPoint: (id: string, index: number, point: Point) => void
   },
   editMeasurementId: string | null,
-  editingPointIndex: number | null
+  editingPointIndex: number | null,
+  selectedModuleIndex: number | null = null
 ) => {
   // Register scene with the point snapping context
   const { 
@@ -112,6 +114,61 @@ export const useMeasurementInteraction = (
       addPointIndicatorsRef
     }
   );
+
+  // Update PV module visualizations when selectedModuleIndex changes
+  useEffect(() => {
+    if (!enabled || !refs.measurementsRef.current || !scene) return;
+    
+    // Find all solar measurements with PV modules
+    const solarMeasurements = measurements.filter(
+      m => m.type === 'solar' && m.pvModuleInfo && m.pvModuleInfo.points
+    );
+    
+    // Update each solar measurement visualization
+    solarMeasurements.forEach(measurement => {
+      if (!measurement.pvModuleInfo || !measurement.pvModuleInfo.points) return;
+      
+      // Find existing PV module visualization
+      const existingVisualization = refs.measurementsRef.current?.children.find(
+        child => child.userData && 
+                child.userData.isPVModuleParent && 
+                child.userData.measurementId === measurement.id
+      );
+      
+      // If found, remove it
+      if (existingVisualization) {
+        refs.measurementsRef.current?.remove(existingVisualization);
+      }
+      
+      // Create new visualization with selected module index
+      const isSelectedMeasurement = measurement.id === editMeasurementId;
+      const useSelectedModule = isSelectedMeasurement ? selectedModuleIndex : null;
+      
+      const normal = calculateNormalVector(measurement.points);
+      const pvModuleGroup = createDetailedPVModules(
+        measurement.pvModuleInfo.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        0, // rotation
+        normal,
+        undefined, // use default visuals
+        measurement.id,
+        useSelectedModule
+      );
+      
+      pvModuleGroup.userData = {
+        ...pvModuleGroup.userData,
+        measurementType: 'pvmodule',
+        measurementId: measurement.id,
+        isPVModule: true
+      };
+      
+      // Add to scene
+      refs.measurementsRef.current?.add(pvModuleGroup);
+      
+      console.log(`Updated PV module visualization for ${measurement.id} with selected module ${useSelectedModule}`);
+    });
+  }, [measurements, refs.measurementsRef, scene, enabled, editMeasurementId, selectedModuleIndex]);
 
   // Clean up when enabled status changes
   useEffect(() => {

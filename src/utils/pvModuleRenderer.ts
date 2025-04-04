@@ -14,6 +14,13 @@ export const DEFAULT_MODULE_VISUALS = {
   busbarCount: 3              // 3 busbars per cell
 };
 
+// Colors for selected module
+const SELECTED_MODULE_COLORS = {
+  frameColor: 0x888888,       // Lighter grey frame
+  panelColor: 0x2980b9,       // Brighter blue panel
+  cellColor: 0x3498db,        // Even brighter blue for cells
+};
+
 /**
  * Creates a detailed PV module mesh with frame, panel and cells
  */
@@ -25,7 +32,8 @@ export const createDetailedPVModuleMesh = (
   normal: THREE.Vector3,
   visuals = DEFAULT_MODULE_VISUALS,
   measurementId: string,
-  moduleIndex: number
+  moduleIndex: number,
+  isSelected: boolean = false
 ): THREE.Group => {
   // Create a group to hold all module elements
   const moduleGroup = new THREE.Group();
@@ -33,13 +41,22 @@ export const createDetailedPVModuleMesh = (
   moduleGroup.userData = {
     isPVModule: true,
     measurementId: measurementId,
-    moduleIndex: moduleIndex
+    moduleIndex: moduleIndex,
+    isSelected: isSelected
   };
+  
+  // Use selected colors if the module is selected
+  const colors = isSelected ? {
+    ...visuals,
+    frameColor: SELECTED_MODULE_COLORS.frameColor,
+    panelColor: SELECTED_MODULE_COLORS.panelColor,
+    cellColor: SELECTED_MODULE_COLORS.cellColor
+  } : visuals;
   
   // 1. Create the module frame (outer rectangle)
   const frameGeometry = new THREE.PlaneGeometry(width, height);
   const frameMaterial = new THREE.MeshBasicMaterial({
-    color: visuals.frameColor,
+    color: colors.frameColor,
     side: THREE.DoubleSide,
     transparent: false
   });
@@ -49,7 +66,8 @@ export const createDetailedPVModuleMesh = (
     isPVModule: true,
     moduleElementType: 'frame',
     measurementId: measurementId,
-    moduleIndex: moduleIndex
+    moduleIndex: moduleIndex,
+    isSelected: isSelected
   };
   
   // 2. Create the module panel (inner rectangle)
@@ -57,17 +75,18 @@ export const createDetailedPVModuleMesh = (
   const innerHeight = height - (visuals.frameBorder * 2);
   const panelGeometry = new THREE.PlaneGeometry(innerWidth, innerHeight);
   const panelMaterial = new THREE.MeshBasicMaterial({
-    color: visuals.panelColor,
+    color: colors.panelColor,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.9
+    opacity: isSelected ? 0.95 : 0.9
   });
   const panelMesh = new THREE.Mesh(panelGeometry, panelMaterial);
   panelMesh.name = `pvModulePanel_${moduleIndex}`;
   panelMesh.userData = {
     isPVModulePanel: true,
     measurementId: measurementId,
-    moduleIndex: moduleIndex
+    moduleIndex: moduleIndex,
+    isSelected: isSelected
   };
   panelMesh.position.y = 0.001; // Slightly above frame
   
@@ -90,7 +109,7 @@ export const createDetailedPVModuleMesh = (
     for (let col = 0; col < visuals.cellColumns; col++) {
       const cellGeometry = new THREE.PlaneGeometry(cellWidth * 0.98, cellHeight * 0.98);
       const cellMaterial = new THREE.MeshBasicMaterial({
-        color: visuals.cellColor,
+        color: colors.cellColor,
         side: THREE.DoubleSide
       });
       const cell = new THREE.Mesh(cellGeometry, cellMaterial);
@@ -106,7 +125,8 @@ export const createDetailedPVModuleMesh = (
         measurementId: measurementId,
         moduleIndex: moduleIndex,
         row: row,
-        column: col
+        column: col,
+        isSelected: isSelected
       };
       
       cellGroup.add(cell);
@@ -146,7 +166,8 @@ export const createDetailedPVModules = (
   moduleRotation: number,
   roofNormal: THREE.Vector3,
   visuals = DEFAULT_MODULE_VISUALS,
-  measurementId: string
+  measurementId: string,
+  selectedModuleIndex: number | null = null
 ): THREE.Group => {
   const moduleParentGroup = new THREE.Group();
   moduleParentGroup.name = `pvModuleParent_${measurementId}`;
@@ -165,7 +186,8 @@ export const createDetailedPVModules = (
       roofNormal,
       visuals,
       measurementId,
-      index
+      index,
+      selectedModuleIndex === index
     );
     
     moduleParentGroup.add(moduleGroup);

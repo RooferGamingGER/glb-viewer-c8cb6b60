@@ -1,455 +1,265 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown, Image } from 'lucide-react';
-import { toast } from 'sonner';
+import { Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { Measurement } from '@/types/measurements';
-import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
-import { consolidatePenetrations, calculateRoofPlanScaleFactor, getRoofElementsSummary } from '@/utils/exportUtils';
-import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
-import { captureAreaMeasurement } from '@/utils/captureScreenshot';
-import { captureViewScreenshot, captureTopDownView } from '@/utils/captureViewScreenshot';
-import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
-import * as THREE from 'three';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Toggle } from "@/components/ui/toggle";
-import MeasurementTable from './MeasurementTable';
-import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from 'sonner';
+import { calculateBoundingBox } from '@/utils/measurementCalculations';
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
-  measurementGroups?: THREE.Group[];
 }
 
-const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
-  measurements,
-  measurementGroups
-}) => {
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [use2DRendering, setUse2DRendering] = useState(true);
-  const [includeRoofPlan, setIncludeRoofPlan] = useState(true);
-  const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
-  const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
-  const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
-  const dialogCloseRef = useRef<HTMLButtonElement>(null);
-  const {
-    scene,
-    camera,
-    renderer,
-    canvas
-  } = useThreeContext();
+const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({ measurements }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
   
-  const form = useForm<CoverPageData>({
-    defaultValues: {
-      title: 'Vermessungsbericht',
-      companyName: 'DrohnenGLB by RooferGaming',
-      projectNumber: '',
-      projectAddress: '',
-      clientName: '',
-      contactPerson: '',
-      contactEmail: '',
-      contactPhone: '',
-      creationDate: new Date().toISOString().split('T')[0],
-      notes: ''
-    }
-  });
-
-  useEffect(() => {
-    if (measurements.length > 0 && includeRoofPlan) {
-      generateRoofPlan();
-    }
-  }, [measurements, includeRoofPlan]);
-
-  useEffect(() => {
-    if (scene && camera && renderer) {
-      const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
-      if (screenshot) {
-        setTopDownScreenshot(screenshot);
-      }
-    }
-  }, [scene, camera, renderer, measurementGroups]);
-
-  const generateRoofPlan = () => {
-    if (measurements.length === 0) return;
+  const generatePdf = async () => {
+    setIsGenerating(true);
+    
     try {
-      const width = 3000; // Increased from 2480
-      const height = 2400; // Adjusted from 3508 for more appropriate aspect ratio
+      const doc = new jsPDF();
       
-      setOptimizedRoofPlanDimensions({width, height});
+      // Set document properties
+      doc.setProperties({
+        title: 'Messungen Export',
+        subject: 'Exportierte Messdaten',
+        author: '3D-Dachplaner',
+        keywords: 'messungen, dach, plan'
+      });
       
-      const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
-      setGeneratedRoofPlan(roofPlan);
-    } catch (error) {
-      console.error('Error generating roof plan:', error);
-    }
-  };
-
-  const hasCustomScreenshots = measurements.some(m => m.customScreenshots && m.customScreenshots.length > 0);
-  const lengthCount = measurements.filter(m => m.type === 'length').length;
-  const heightCount = measurements.filter(m => m.type === 'height').length;
-  const areaCount = measurements.filter(m => m.type === 'area').length;
-  const previewMeasurements = consolidatePenetrations(measurements);
-  const screenshotCount = measurements.reduce((total, m) => total + (m.customScreenshots?.length || 0), 0);
-
-  const handleExport = async () => {
-    if (measurements.length === 0) {
-      toast.error('Keine Messungen zum Exportieren vorhanden');
-      return;
-    }
-    setIsExporting(true);
-    setExportProgress(10);
-    try {
-      const areaMeasurements = measurements.filter(m => m.type === 'area');
-      const solarMeasurements = measurements.filter(m => m.type === 'solar');
-      const measurementsWithVisuals = [...measurements];
-      const perspCamera = asPerspectiveCamera(camera);
-      setExportProgress(20);
+      // Add title
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Messungen Export', 20, 20);
       
-      if (!topDownScreenshot && scene && camera && renderer) {
-        const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
-        if (screenshot) {
-          (measurementsWithVisuals as any).topDownScreenshot = screenshot;
-        }
-      } else if (topDownScreenshot) {
-        (measurementsWithVisuals as any).topDownScreenshot = topDownScreenshot;
-      }
+      // Add date
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Erstellt am: ${new Date().toLocaleDateString()}`, 20, 30);
       
-      for (let i = 0; i < areaMeasurements.length; i++) {
-        const measurement = areaMeasurements[i];
-        if (use2DRendering) {
-          const polygon2D = generatePolygon2D(measurement);
-          if (polygon2D) {
-            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
-            if (index !== -1) {
-              measurementsWithVisuals[index] = {
-                ...measurementsWithVisuals[index],
-                polygon2D,
-                screenshot: polygon2D
-              };
-            }
-          }
-        } else if (scene && perspCamera && renderer && canvas) {
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
-          if (screenshot) {
-            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
-            if (index !== -1) {
-              measurementsWithVisuals[index] = {
-                ...measurementsWithVisuals[index],
-                screenshot
-              };
-            }
-          }
-        }
-        setExportProgress(20 + Math.floor(i / areaMeasurements.length * 30));
-      }
-      
-      for (let i = 0; i < solarMeasurements.length; i++) {
-        const measurement = solarMeasurements[i];
-        if (use2DRendering) {
-          const polygon2D = generatePolygon2D(measurement);
-          if (polygon2D) {
-            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
-            if (index !== -1) {
-              measurementsWithVisuals[index] = {
-                ...measurementsWithVisuals[index],
-                polygon2D,
-                screenshot: polygon2D
-              };
-            }
-          }
-        } else if (scene && perspCamera && renderer && canvas) {
-          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
-          if (screenshot) {
-            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
-            if (index !== -1) {
-              measurementsWithVisuals[index] = {
-                ...measurementsWithVisuals[index],
-                screenshot
-              };
-            }
-          }
-        }
-      }
-      
-      setExportProgress(50);
-      if (includeRoofPlan) {
-        if (!generatedRoofPlan) {
-          const width = 3000; // Increased from 2480
-          const height = 2400; // Adjusted for appropriate aspect ratio
-          const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
-          if (roofPlan) {
-            (measurementsWithVisuals as any).roofPlan = roofPlan;
-            (measurementsWithVisuals as any).roofPlanDimensions = {width, height};
-          }
-        } else {
-          (measurementsWithVisuals as any).roofPlan = generatedRoofPlan;
-          (measurementsWithVisuals as any).roofPlanDimensions = optimizedRoofPlanDimensions;
-        }
+      // Create roof plan and add it to PDF
+      if (measurements.length > 0) {
+        // Find a measurement to use as reference for the bounding box
+        const referenceMeasurement = measurements.find(m => m.points && m.points.length > 0);
         
-        (measurementsWithVisuals as any).placeRoofPlanOnPage2 = true;
-        (measurementsWithVisuals as any).showRoofPlanWithoutHeader = true;
+        if (referenceMeasurement && referenceMeasurement.points) {
+          const boundingBox = calculateBoundingBox(referenceMeasurement.points);
+          const width = boundingBox.maxX - boundingBox.minX;
+          const height = boundingBox.maxZ - boundingBox.minZ;
+          
+          // Create a simple roof plan
+          const canvas = document.createElement('canvas');
+          canvas.width = 200;
+          canvas.height = 150;
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#333333';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Dachplan (Übersicht)', canvas.width / 2, canvas.height / 2);
+            
+            const roofPlanDataUrl = canvas.toDataURL('image/png');
+            
+            doc.addImage(roofPlanDataUrl, 'PNG', 20, 40, 50, 37.5); // Reduced size
+          }
+        }
       }
       
-      setExportProgress(70);
+      let yPos = 40;
       
-      const summary = getRoofElementsSummary(measurements);
-      (measurementsWithVisuals as any).summary = summary;
+      // Add a section for each measurement type
+      const measurementTypes = ['area', 'solar', 'length', 'height', 'skylight', 'chimney', 'vent', 'hook', 'other'];
       
-      // Add flag to skip table of contents
-      (measurementsWithVisuals as any).skipTableOfContents = true;
-      
-      const coverData = form.getValues();
-      const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
-      setExportProgress(100);
-      if (success) {
-        toast.success('PDF wurde erfolgreich erstellt');
-        setTimeout(() => {
-          dialogCloseRef.current?.click();
-        }, 1000);
-      } else {
-        toast.error('Fehler beim Erstellen des PDFs');
-      }
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Ein Fehler ist beim Exportieren aufgetreten');
-    } finally {
-      setTimeout(() => {
-        setIsExporting(false);
-        setExportProgress(0);
-      }, 1000);
-    }
-  };
-
-  return <Dialog>
-      <DialogTrigger asChild>
-        <Button className="w-full flex items-center gap-2">
-          <FileDown className="h-4 w-4" />
-          <span>PDF </span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] fixed max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Vermessungsbericht exportieren</DialogTitle>
-          <DialogDescription>
-            Bitte fülle die folgenden Informationen aus, um den Bericht zu erstellen.
-          </DialogDescription>
-        </DialogHeader>
+      for (const type of measurementTypes) {
+        const typeMeasurements = measurements.filter(m => m.type === type);
+        if (typeMeasurements.length === 0) continue;
         
-        <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="info">Berichtsinfos</TabsTrigger>
-            <TabsTrigger value="preview">
-              Messungen ({measurements.length})
-            </TabsTrigger>
-            {hasCustomScreenshots && <TabsTrigger value="screenshots">
-                Screenshots ({screenshotCount})
-              </TabsTrigger>}
-          </TabsList>
+        // Add section header
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${type.charAt(0).toUpperCase() + type.slice(1)} Messungen`, 20, 20);
+        
+        yPos = 30;
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        
+        for (const measurement of typeMeasurements) {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Messung ID: ${measurement.id}`, 20, yPos);
+          doc.setFont('helvetica', 'normal');
+          yPos += 8;
           
-          <TabsContent value="info">
-            <Form {...form}>
-              <div className="grid gap-4 py-2">
-                <FormField control={form.control} name="title" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>Berichtstitel</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Vermessungsbericht" {...field} />
-                      </FormControl>
-                    </FormItem>} />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="projectNumber" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Projektnummer</FormLabel>
-                        <FormControl>
-                          <Input placeholder="z.B. P2023-001" {...field} />
-                        </FormControl>
-                      </FormItem>} />
-                  
-                  <FormField control={form.control} name="creationDate" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Erstellungsdatum</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                      </FormItem>} />
-                </div>
-                
-                <FormField control={form.control} name="projectAddress" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>Objektadresse</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Straße, PLZ Ort" {...field} />
-                      </FormControl>
-                    </FormItem>} />
-                
-                <h3 className="text-base font-medium mt-2">Kundendaten</h3>
-                
-                <FormField control={form.control} name="clientName" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>Auftraggeber</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Name des Auftraggebers" {...field} />
-                      </FormControl>
-                    </FormItem>} />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="contactPerson" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Ansprechpartner</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Name des Ansprechpartners" {...field} />
-                        </FormControl>
-                      </FormItem>} />
-                  
-                  <FormField control={form.control} name="contactPhone" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Telefon</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Telefonnummer" {...field} />
-                        </FormControl>
-                      </FormItem>} />
-                </div>
-                
-                <FormField control={form.control} name="contactEmail" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>E-Mail</FormLabel>
-                      <FormControl>
-                        <Input placeholder="E-Mail-Adresse" {...field} />
-                      </FormControl>
-                    </FormItem>} />
-                
-                <FormField control={form.control} name="notes" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>Bemerkungen (erscheint auf separater Seite)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Zusätzliche Informationen zum Projekt..." 
-                          className="resize-none h-24" 
-                          {...field} 
-                        />
-                      </FormControl>
-                    </FormItem>} />
-                
-                <div className="flex flex-col space-y-4 mt-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch id="use-2d-rendering" checked={use2DRendering} onCheckedChange={setUse2DRendering} />
-                    <label htmlFor="use-2d-rendering" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      2D-Rendering für Flächendarstellung verwenden
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch id="include-roof-plan" checked={includeRoofPlan} onCheckedChange={value => {
-                    setIncludeRoofPlan(value);
-                    if (value && !generatedRoofPlan) {
-                      generateRoofPlan();
-                    }
-                  }} />
-                    <label htmlFor="include-roof-plan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Dachplan auf eigener Seite darstellen
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </Form>
-          </TabsContent>
+          doc.text(`Typ: ${measurement.type}`, 25, yPos);
+          yPos += 8;
           
-          <TabsContent value="preview">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className="bg-secondary/40 p-3 rounded-md text-center">
-                    <div className="text-lg font-semibold">{lengthCount}</div>
-                    <div className="text-xs">Längenmessungen</div>
-                  </div>
-                  <div className="bg-secondary/40 p-3 rounded-md text-center">
-                    <div className="text-lg font-semibold">{heightCount}</div>
-                    <div className="text-xs">Höhenmessungen</div>
-                  </div>
-                  <div className="bg-secondary/40 p-3 rounded-md text-center">
-                    <div className="text-lg font-semibold">{areaCount}</div>
-                    <div className="text-xs">Flächenmessungen</div>
-                  </div>
-                </div>
-                
-                <ScrollArea className="h-[300px]">
-                  <MeasurementTable measurements={previewMeasurements} />
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          doc.text(`Wert: ${measurement.value.toFixed(2)} ${measurement.unit || 'm'}`, 25, yPos);
+          yPos += 8;
           
-          {hasCustomScreenshots && <TabsContent value="screenshots">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-2">Benutzerdefinierte Screenshots</h3>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Die folgenden Screenshots werden im PDF-Bericht als zusätzliche Visualisierungen angezeigt.
-                    </p>
+          if (measurement.description) {
+            doc.text(`Beschreibung: ${measurement.description}`, 25, yPos);
+            yPos += 8;
+          }
+          
+          if (measurement.points && measurement.points.length > 0) {
+            doc.text('Punkte:', 25, yPos);
+            yPos += 8;
+            
+            measurement.points.forEach((point, index) => {
+              doc.text(`  ${index + 1}: X=${point.x.toFixed(2)}, Y=${point.y.toFixed(2)}, Z=${point.z.toFixed(2)}`, 25, yPos);
+              yPos += 6;
+            });
+          }
+          
+          // Special handling for solar measurements - include PV module info
+          if (type === 'solar') {
+            for (const measurement of typeMeasurements) {
+              // Add PV module information if available
+              if (measurement.pvModuleInfo) {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('PV-Anlagendetails:', 20, yPos + 10);
+                doc.setFont('helvetica', 'normal');
+                
+                const pvInfo = measurement.pvModuleInfo;
+                yPos += 20;
+                
+                // Module specifications
+                doc.text(`Modulgröße: ${pvInfo.moduleWidth.toFixed(2)} × ${pvInfo.moduleHeight.toFixed(2)} m`, 25, yPos);
+                yPos += 8;
+                
+                doc.text(`Modulanzahl: ${pvInfo.moduleCount}`, 25, yPos);
+                yPos += 8;
+                
+                if (pvInfo.columns && pvInfo.rows) {
+                  doc.text(`Modulraster: ${pvInfo.columns} × ${pvInfo.rows}`, 25, yPos);
+                  yPos += 8;
+                }
+                
+                doc.text(`Flächennutzung: ${pvInfo.coveragePercent.toFixed(1)}%`, 25, yPos);
+                yPos += 8;
+                
+                // Power information
+                const modulePower = pvInfo.pvModuleSpec?.power || 425;
+                const totalPower = (pvInfo.moduleCount * modulePower / 1000).toFixed(1);
+                
+                doc.text(`Leistung: ${totalPower} kWp (${pvInfo.moduleCount} Module × ${modulePower} Wp)`, 25, yPos);
+                yPos += 8;
+                
+                // Orientation and inclination
+                if (pvInfo.roofDirection) {
+                  doc.text(`Ausrichtung: ${pvInfo.roofDirection} (${Math.round(pvInfo.roofAzimuth || 180)}°)`, 25, yPos);
+                  yPos += 8;
+                }
+                
+                if (pvInfo.roofInclination) {
+                  doc.text(`Dachneigung: ${Math.round(pvInfo.roofInclination)}°`, 25, yPos);
+                  yPos += 8;
+                }
+                
+                // Annual yield
+                const annualYield = pvInfo.yieldFactor 
+                  ? Math.round(totalPower * pvInfo.yieldFactor)
+                  : Math.round(totalPower * 950);
+                  
+                doc.text(`Jahresertrag: ca. ${annualYield} kWh/Jahr`, 25, yPos);
+                yPos += 15;
+                
+                // Materials if available
+                if (pvInfo.pvMaterials) {
+                  doc.setFontSize(11);
+                  doc.setFont('helvetica', 'bold');
+                  doc.text('Materialliste:', 20, yPos);
+                  doc.setFont('helvetica', 'normal');
+                  yPos += 10;
+                  
+                  const materials = pvInfo.pvMaterials;
+                  
+                  // Mounting system
+                  doc.text('Befestigungssystem:', 25, yPos);
+                  yPos += 8;
+                  
+                  const mounting = materials.mountingSystem;
+                  doc.text(`${mounting.railLength} m Montageschienen`, 30, yPos); yPos += 6;
+                  doc.text(`${mounting.roofHookCount} Dachhaken`, 30, yPos); yPos += 6;
+                  doc.text(`${mounting.middleClampCount} Mittelklemmen`, 30, yPos); yPos += 6;
+                  doc.text(`${mounting.endClampCount} Endklemmen`, 30, yPos); yPos += 6;
+                  doc.text(`${mounting.railConnectorCount} Schienenverbinder`, 30, yPos); yPos += 10;
+                  
+                  // Electrical system
+                  doc.text('Elektrik:', 25, yPos);
+                  yPos += 8;
+                  
+                  const electrical = materials.electricalSystem;
+                  doc.text(`${electrical.stringCount} Stränge mit je ${electrical.modulesPerString} Modulen`, 30, yPos); yPos += 6;
+                  doc.text(`${electrical.stringCableLength} m DC-Kabel`, 30, yPos); yPos += 6;
+                  doc.text(`${electrical.mainCableLength} m Hauptkabel`, 30, yPos); yPos += 6;
+                  doc.text(`${electrical.inverterCount} Wechselrichter (${electrical.inverterPower} kW)`, 30, yPos); yPos += 6;
+                  
+                  // Add page if needed
+                  if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                  }
+                  
+                  // Notes
+                  if (materials.notes && materials.notes.length > 0) {
+                    yPos += 4;
+                    doc.text('Hinweise:', 25, yPos);
+                    yPos += 8;
                     
-                    <ScrollArea className="h-[300px] border rounded-md p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {measurements.map(measurement => {
-                          if (!measurement.customScreenshots || measurement.customScreenshots.length === 0) {
-                            return null;
-                          }
-                          return <div key={measurement.id} className="space-y-2">
-                              <h4 className="text-xs font-medium">
-                                {measurement.description || `Messung ${measurement.id.substring(0, 5)}`}
-                              </h4>
-                              <div className="grid grid-cols-1 gap-2">
-                                {measurement.customScreenshots.map((screenshot, index) => <div key={index} className="border rounded-md overflow-hidden">
-                                    <img src={screenshot} alt={`Screenshot ${index + 1}`} className="w-full h-32 object-cover" />
-                                  </div>)}
-                              </div>
-                            </div>;
-                        })}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>}
-        </Tabs>
-        
-        {isExporting && <div className="mt-4">
-            <Progress value={exportProgress} className="w-full" />
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              {exportProgress === 100 ? 'PDF fertiggestellt!' : 'PDF wird erstellt...'}
-            </p>
-          </div>}
-        
-        <DialogFooter className="mt-4">
-          <DialogClose asChild>
-            <Button ref={dialogCloseRef} variant="outline" disabled={isExporting}>
-              Abbrechen
-            </Button>
-          </DialogClose>
-          <Button onClick={handleExport} disabled={isExporting}>
-            {isExporting ? 'Wird exportiert...' : 'PDF exportieren'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>;
+                    materials.notes.forEach(note => {
+                      doc.text(`• ${note}`, 30, yPos);
+                      yPos += 6;
+                    });
+                  }
+                }
+              }
+              
+              yPos += 15;
+              
+              // Check if we need a new page
+              if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+              }
+            }
+          }
+        }
+      }
+      
+      // Finalize PDF
+      const filename = `Messungen_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(filename);
+      toast.success('PDF erfolgreich erstellt und heruntergeladen');
+    } catch (error) {
+      console.error('Fehler beim Erstellen des PDFs:', error);
+      toast.error('Ein Fehler ist beim Erstellen des PDFs aufgetreten');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="w-full"
+      onClick={generatePdf}
+      disabled={measurements.length === 0 || isGenerating}
+    >
+      <Download className="h-4 w-4 mr-2" />
+      {isGenerating ? 'Wird generiert...' : 'Als PDF exportieren'}
+    </Button>
+  );
 };
 
 export default ExportPdfButton;

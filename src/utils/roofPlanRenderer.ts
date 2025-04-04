@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -287,11 +286,11 @@ export const createCombinedRoofPlan = (
     const colors: Record<string, { fill: string; stroke: string }> = {
       'area': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#666666' },
       'solar': { fill: 'rgba(0, 180, 0, 0.2)', stroke: '#006600' },
-      'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, // More vivid for skylights
+      'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, 
       'chimney': { fill: 'rgba(180, 0, 0, 0.2)', stroke: '#990000' },
-      'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  // Added vent
-      'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, // Added hook
-      'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' }, // Added other
+      'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' }, 
+      'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, 
+      'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' }, 
       'default': { fill: 'rgba(200, 200, 200, 0.2)', stroke: '#888888' }
     };
     
@@ -385,6 +384,17 @@ export const createCombinedRoofPlan = (
           ctx, 
           points2D.map(p => ({ x: toCanvasX(p.x), y: toCanvasY(p.y) })),
           colorSet.stroke
+        );
+      }
+      
+      // For solar measurements, draw PV module grid
+      if (measurement.type === 'solar' && measurement.pvModuleInfo && measurement.pvModuleInfo.points) {
+        drawPVModules(
+          ctx, 
+          measurement, 
+          points2D,
+          toCanvasX, 
+          toCanvasY
         );
       }
     });
@@ -699,4 +709,86 @@ function drawDisclaimer(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   ctx.fillText(disclaimerText, width / 2, height - 10);
+}
+
+/**
+ * Draws PV modules on the roof plan
+ */
+function drawPVModules(
+  ctx: CanvasRenderingContext2D,
+  measurement: Measurement,
+  points2D: Point2D[],
+  toCanvasX: (x: number) => number,
+  toCanvasY: (y: number) => number
+): void {
+  if (!measurement.pvModuleInfo || !measurement.pvModuleInfo.points) return;
+  
+  const { moduleWidth, moduleHeight, moduleCount, points } = measurement.pvModuleInfo;
+  
+  // Calculate scale factor from 3D to 2D (approximately)
+  const boundingBox = calculateBoundingBox(points2D);
+  const originalBoundingBox = calculateBoundingBox(measurement.points);
+  
+  // Approximate scale factor
+  const scaleX = (boundingBox.maxX - boundingBox.minX) / (originalBoundingBox.maxX - originalBoundingBox.minX);
+  const scaleZ = (boundingBox.maxY - boundingBox.minY) / (originalBoundingBox.maxZ - originalBoundingBox.minZ);
+  const scale = (scaleX + scaleZ) / 2;
+  
+  const scaledWidth = moduleWidth * scale;
+  const scaledHeight = moduleHeight * scale;
+  
+  // Draw each module
+  points.forEach((point, index) => {
+    // Approximate 2D position for the module
+    const x = boundingBox.minX + (point.x - originalBoundingBox.minX) * scaleX;
+    const y = boundingBox.minY + (point.z - originalBoundingBox.minZ) * scaleZ;
+    
+    // Draw module rectangle
+    ctx.fillStyle = 'rgba(30, 144, 255, 0.4)';  // Light blue, semi-transparent
+    ctx.strokeStyle = '#1E90FF';  // Blue outline
+    ctx.lineWidth = 1;
+    
+    // Draw the module as a rectangle
+    ctx.fillRect(
+      toCanvasX(x) - scaledWidth / 2, 
+      toCanvasY(y) - scaledHeight / 2, 
+      scaledWidth, 
+      scaledHeight
+    );
+    ctx.strokeRect(
+      toCanvasX(x) - scaledWidth / 2, 
+      toCanvasY(y) - scaledHeight / 2, 
+      scaledWidth, 
+      scaledHeight
+    );
+  });
+  
+  // Draw module count label
+  ctx.font = 'bold 24px Arial';
+  ctx.fillStyle = '#1E90FF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  // Calculate centroid of points2D
+  const centroidX = points2D.reduce((sum, p) => sum + p.x, 0) / points2D.length;
+  const centroidY = points2D.reduce((sum, p) => sum + p.y, 0) / points2D.length;
+  
+  // Add white background for label
+  const moduleCountText = `${moduleCount} PV-Module`;
+  const textWidth = ctx.measureText(moduleCountText).width;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.fillRect(
+    toCanvasX(centroidX) - textWidth / 2 - 10,
+    toCanvasY(centroidY) - 15,
+    textWidth + 20,
+    30
+  );
+  
+  // Draw module count text
+  ctx.fillStyle = '#1E90FF';
+  ctx.fillText(
+    moduleCountText, 
+    toCanvasX(centroidX),
+    toCanvasY(centroidY)
+  );
 }
