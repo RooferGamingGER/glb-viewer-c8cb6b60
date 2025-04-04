@@ -711,17 +711,17 @@ export const generatePVModuleGrid = (
   const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
 
-  // Extract the roof corner points
+  // Extrahiere die vier Eckpunkte der Dachfläche
   let cornerPoints: Point[] = [];
   let roofPlanePoints: THREE.Vector3[] = [];
   
-  // Use original roof points if available
+  // Verwendung der Original-Dachpunkte wenn vorhanden
   if (pvInfo.points && pvInfo.points.length >= 3) {
     cornerPoints = [...pvInfo.points];
     roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
-    console.log("Using original roof points for plane calculation:", cornerPoints);
+    console.log("Verwende originale Dachpunkte für Ebenenberechnung:", cornerPoints);
   }
-  // Fallback to roof edges from segments
+  // Fallback zu Dachecken aus Segmenten
   else if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
     cornerPoints = [
       roofEdgeSegments[0].from,
@@ -731,10 +731,10 @@ export const generatePVModuleGrid = (
     ];
     
     roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
-    console.log("Extracted roof corner points:", cornerPoints);
+    console.log("Dacheckpunkte extrahiert:", cornerPoints);
   } else {
-    console.log("Not enough points for roof surface calculation");
-    // Fallback: Use pvInfo bounds to create a default rectangle
+    console.log("Nicht genügend Punkte für Dachflächenberechnung");
+    // Fallback: Verwende die pvInfo Begrenzungen um ein Default-Rechteck zu erstellen
     cornerPoints = [
       { x: pvInfo.minX || 0, y: baseY, z: pvInfo.minZ || 0 },
       { x: pvInfo.maxX || 1, y: baseY, z: pvInfo.minZ || 0 },
@@ -744,11 +744,11 @@ export const generatePVModuleGrid = (
     roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
   }
 
-  // Calculate average Y of the roof points
+  // Berechne die durchschnittliche Y-Koordinate der Dachpunkte
   const avgY = cornerPoints.reduce((sum, p) => sum + p.y, 0) / cornerPoints.length;
-  console.log("Average Y-coordinate of roof surface:", avgY);
+  console.log("Durchschnittliche Y-Koordinate der Dachfläche:", avgY);
 
-  // Calculate the roof plane from the points
+  // Berechne die Ebene aus den ersten drei Punkten
   if (roofPlanePoints.length >= 3) {
     const plane = new THREE.Plane();
     plane.setFromCoplanarPoints(
@@ -757,164 +757,105 @@ export const generatePVModuleGrid = (
       roofPlanePoints[2]
     );
     
-    // Get roof normal vector (ensure it points up)
+    // Normalenvektor der Dachfläche
     const normalVector = plane.normal.clone();
+    
+    // Stellen Sie sicher, dass der Normalenvektor nach oben zeigt (positive Y-Komponente)
     if (normalVector.y < 0) {
       normalVector.negate();
     }
     
-    console.log("Roof normal vector:", normalVector);
+    console.log("Normalenvektor der Dachfläche:", normalVector);
     
-    // Calculate roof inclination in degrees
+    // Neigungswinkel berechnen (in Grad)
     const inclinationRad = Math.acos(normalVector.dot(new THREE.Vector3(0, 1, 0)));
     const inclinationDeg = inclinationRad * (180 / Math.PI);
-    console.log("Roof inclination:", inclinationDeg.toFixed(2) + "°");
+    console.log("Dachneigung:", inclinationDeg.toFixed(2) + "°");
 
-    // IMPROVED ALIGNMENT: Find ridge/eave points by Y-height
-    // Sort points by Y-coordinate to identify ridge (highest) and eave (lowest)
-    const sortedByHeight = [...cornerPoints].sort((a, b) => b.y - a.y);
-    
-    // The highest points are likely ridge points
-    const ridgePoints = [sortedByHeight[0]];
-    // Find other points close to the ridge height (within 10% of roof height)
-    const heightRange = Math.abs(sortedByHeight[0].y - sortedByHeight[sortedByHeight.length - 1].y);
-    for (let i = 1; i < sortedByHeight.length; i++) {
-      if (Math.abs(sortedByHeight[0].y - sortedByHeight[i].y) < heightRange * 0.1) {
-        ridgePoints.push(sortedByHeight[i]);
-      }
-    }
-    
-    // The lowest points are likely eave points
-    const eavePoints = [sortedByHeight[sortedByHeight.length - 1]];
-    // Find other points close to the eave height
-    for (let i = sortedByHeight.length - 2; i >= 0; i--) {
-      if (Math.abs(sortedByHeight[sortedByHeight.length - 1].y - sortedByHeight[i].y) < heightRange * 0.1) {
-        eavePoints.push(sortedByHeight[i]);
-      }
-    }
-    
-    console.log("Ridge points:", ridgePoints);
-    console.log("Eave points:", eavePoints);
-    
-    // Create primary alignment vector (horizontal direction along ridge/eave)
-    let primaryDirectionVector: THREE.Vector3;
-    
-    // If we found at least 2 ridge or eave points, use them to define the alignment
-    if (ridgePoints.length >= 2) {
-      // Use ridge for alignment
-      primaryDirectionVector = new THREE.Vector3(
-        ridgePoints[1].x - ridgePoints[0].x,
-        0, // Force horizontal by setting Y to 0
-        ridgePoints[1].z - ridgePoints[0].z
-      ).normalize();
-      console.log("Using ridge for primary alignment");
-    } else if (eavePoints.length >= 2) {
-      // Use eave for alignment
-      primaryDirectionVector = new THREE.Vector3(
-        eavePoints[1].x - eavePoints[0].x,
-        0, // Force horizontal by setting Y to 0
-        eavePoints[1].z - eavePoints[0].z
-      ).normalize();
-      console.log("Using eave for primary alignment");
-    } else {
-      // Fallback: find the longest horizontal edge
-      let maxLength = 0;
-      let longestEdgeVector = new THREE.Vector3(1, 0, 0);
-      
-      // Check each pair of points
-      for (let i = 0; i < cornerPoints.length; i++) {
-        const p1 = cornerPoints[i];
-        const p2 = cornerPoints[(i + 1) % cornerPoints.length];
-        
-        // Create a horizontal vector (ignore Y difference)
-        const edgeVector = new THREE.Vector3(
-          p2.x - p1.x,
-          0,
-          p2.z - p1.z
-        );
-        
-        const length = edgeVector.length();
-        if (length > maxLength) {
-          maxLength = length;
-          longestEdgeVector = edgeVector.clone().normalize();
-        }
-      }
-      
-      primaryDirectionVector = longestEdgeVector;
-      console.log("Using longest horizontal edge for alignment");
-    }
-    
-    // Project the primary direction vector onto the roof plane
-    // This makes it follow the roof slope while maintaining its horizontal direction
-    const primaryProjected = new THREE.Vector3().copy(primaryDirectionVector)
-      .sub(normalVector.clone().multiplyScalar(primaryDirectionVector.dot(normalVector)))
+    // Berechne die Vektoren für die Ausrichtung des Gitters
+    // Vector von P1 zu P2 (erste Richtung)
+    const v1 = new THREE.Vector3()
+      .subVectors(roofPlanePoints[1], roofPlanePoints[0])
       .normalize();
     
-    // Calculate secondary direction vector (perpendicular to primary within roof plane)
-    const secondaryProjected = new THREE.Vector3()
-      .crossVectors(normalVector, primaryProjected)
+    // Vector von P1 zu P4 (zweite Richtung)
+    const v2 = new THREE.Vector3()
+      .subVectors(roofPlanePoints[3], roofPlanePoints[0])
       .normalize();
     
-    console.log("Module grid alignment vectors:", {
-      primaryDirection: primaryProjected,
-      secondaryDirection: secondaryProjected,
+    // Stelle sicher, dass die Vektoren orthogonal zum Normalenvektor sind
+    // (d.h. sie liegen in der Dachebene)
+    const v1Projected = new THREE.Vector3().copy(v1)
+      .sub(normalVector.clone().multiplyScalar(v1.dot(normalVector)))
+      .normalize();
+    
+    const v2Projected = new THREE.Vector3().copy(v2)
+      .sub(normalVector.clone().multiplyScalar(v2.dot(normalVector)))
+      .normalize();
+
+    // Ausrichtungsvektor für Protokollierung
+    const alignmentVector = new THREE.Vector3()
+      .crossVectors(v1Projected, v2Projected)
+      .normalize();
+    
+    console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
+      v1: v1Projected,
+      v2: v2Projected,
+      alignmentVector,
       normalVector
     });
 
-    // Choose a starting point (we'll use the first corner point)
-    const startPoint = new THREE.Vector3(
-      cornerPoints[0].x,
-      cornerPoints[0].y,
-      cornerPoints[0].z
-    );
+    // Get the starting position (erster Punkt der Dachfläche)
+    const startPoint = roofPlanePoints[0].clone();
     
-    // Add edge distance offset in both directions
-    const edgeOffset = pvInfo.edgeDistance || 0.1; // Default 10cm edge distance
-    startPoint.add(primaryProjected.clone().multiplyScalar(edgeOffset))
-              .add(secondaryProjected.clone().multiplyScalar(edgeOffset));
+    // Füge einen kleinen Versatz für den Abstand zum Rand hinzu
+    const edgeOffset = pvInfo.edgeDistance || 0.1; // 10cm Standard-Randabstand
+    startPoint.add(v1Projected.clone().multiplyScalar(edgeOffset))
+              .add(v2Projected.clone().multiplyScalar(edgeOffset));
     
-    console.log("Starting point for modules:", startPoint);
+    console.log("Startpunkt für Module:", startPoint);
 
-    // Generate the module placement grid with improved alignment
+    // Generiere das Modul-Platzierungsgitter
     for (let row = 0; row < pvInfo.rows!; row++) {
       for (let col = 0; col < pvInfo.columns!; col++) {
-        // Calculate offset based on column and row
-        const primaryOffset = col * (moduleWidth + (pvInfo.moduleSpacing || 0));
-        const secondaryOffset = row * (moduleHeight + (pvInfo.moduleSpacing || 0));
+        // Berechne den Offset basierend auf Spalte und Zeile
+        const xOffset = col * (moduleWidth + (pvInfo.moduleSpacing || 0));
+        const zOffset = row * (moduleHeight + (pvInfo.moduleSpacing || 0));
         
-        // Calculate base point for this module
+        // Berechne den Basisvektor für dieses Modul
         const moduleBasePoint = new THREE.Vector3().copy(startPoint)
-          .add(primaryProjected.clone().multiplyScalar(primaryOffset))
-          .add(secondaryProjected.clone().multiplyScalar(secondaryOffset));
+          .add(v1Projected.clone().multiplyScalar(xOffset))
+          .add(v2Projected.clone().multiplyScalar(zOffset));
 
-        // Calculate the four corners of the module
+        // Berechne die vier Eckpunkte des Moduls
         const p1 = moduleBasePoint.clone();
         
-        // Project points to the roof plane for correct height
+        // Projiziere die Punkte auf die Dachebene, um eine korrekte Höhe zu garantieren
         const projectPointToPlane = (point: THREE.Vector3): THREE.Vector3 => {
+          // Berechne Abstand des Punktes zur Ebene
           const distance = plane.distanceToPoint(point);
-          return point.clone().sub(normalVector.clone().multiplyScalar(distance));
+          // Verschiebe den Punkt um diesen Abstand in Richtung der Ebene
+          return point.sub(normalVector.clone().multiplyScalar(distance));
         };
         
-        // Calculate all four corners with proper projection
-        const p1Projected = projectPointToPlane(p1);
-        const p2 = moduleBasePoint.clone().add(primaryProjected.clone().multiplyScalar(moduleWidth));
-        const p2Projected = projectPointToPlane(p2);
+        // Korrektur der Höhe eines Punktes durch Projektion
+        const p1Projected = projectPointToPlane(p1.clone());
+        const p2 = moduleBasePoint.clone().add(v1Projected.clone().multiplyScalar(moduleWidth));
+        const p2Projected = projectPointToPlane(p2.clone());
         const p3 = moduleBasePoint.clone()
-          .add(primaryProjected.clone().multiplyScalar(moduleWidth))
-          .add(secondaryProjected.clone().multiplyScalar(moduleHeight));
-        const p3Projected = projectPointToPlane(p3);
-        const p4 = moduleBasePoint.clone().add(secondaryProjected.clone().multiplyScalar(moduleHeight));
-        const p4Projected = projectPointToPlane(p4);
+          .add(v1Projected.clone().multiplyScalar(moduleWidth))
+          .add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p3Projected = projectPointToPlane(p3.clone());
+        const p4 = moduleBasePoint.clone().add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p4Projected = projectPointToPlane(p4.clone());
         
-        // Add small offset to prevent z-fighting (0.5cm above roof)
+        // Kleiner Offset nach oben hinzufügen, um Z-Fighting zu vermeiden (0.5cm)
         const zFightingOffset = 0.005;
         p1Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p2Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p3Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p4Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         
-        // Convert to Point objects
         const moduleCorners: Point[] = [
           { x: p1Projected.x, y: p1Projected.y, z: p1Projected.z },
           { x: p2Projected.x, y: p2Projected.y, z: p2Projected.z },
@@ -922,10 +863,9 @@ export const generatePVModuleGrid = (
           { x: p4Projected.x, y: p4Projected.y, z: p4Projected.z }
         ];
         
-        // Add to the module points array
         modulePoints.push(moduleCorners);
         
-        // Add grid lines for module outline visualization
+        // Füge Gitterlinien für die Umrissvisualisierung jedes Moduls hinzu
         gridLines.push({ from: moduleCorners[0], to: moduleCorners[1] });
         gridLines.push({ from: moduleCorners[1], to: moduleCorners[2] });
         gridLines.push({ from: moduleCorners[2], to: moduleCorners[3] });
@@ -933,18 +873,17 @@ export const generatePVModuleGrid = (
       }
     }
     
-    // Debug information
-    const alignmentAngle = Math.atan2(primaryProjected.z, primaryProjected.x) * (180 / Math.PI);
-    console.log(`${modulePoints.length} PV modules generated with alignment angle ${alignmentAngle.toFixed(2)}° and inclination ${inclinationDeg.toFixed(2)}°`);
+    // Debugging-Information
+    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentVector.angleTo(new THREE.Vector3(1, 0, 0)).toFixed(2)}° und Neigung ${inclinationDeg.toFixed(2)}°`);
     if (modulePoints.length > 0) {
-      console.log("First module corners:", modulePoints[0]);
+      console.log("Erste Modulecken:", modulePoints[0]);
     }
     
     return { modulePoints, gridLines };
   }
   
-  // Fallback to simplified 2D placement if we can't calculate the roof plane
-  console.warn("Falling back to simplified 2D placement");
+  // Fallback bei Problemen mit der Ebenenberechnung: Verwende eine vereinfachte 2D-Platzierung
+  console.warn("Fallback zur vereinfachten 2D-Platzierung");
   
   // Get the starting position (add edge distance to min coordinates)
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
@@ -1333,8 +1272,7 @@ export const calculateRoofOrientation = (points: Point[]): {
     
     // Calculate inclination (roof pitch)
     // Angle between normal vector and vertical (Y) axis
-    const inclinationRad = Math.acos(Math.abs(normal.y));
-    const inclinationDeg = inclinationRad * (180 / Math.PI);
+    const inclination = Math.acos(Math.abs(normal.y)) * (180 / Math.PI);
     
     // Project the normal vector onto the XZ plane for azimuth calculation
     const projectedNormal = {
@@ -1362,14 +1300,14 @@ export const calculateRoofOrientation = (points: Point[]): {
     console.log("Roof orientation calculated:", {
       azimuth,
       direction,
-      inclination: inclinationDeg,
+      inclination,
       normalVector: normal
     });
     
     return { 
       azimuth, 
       direction,
-      inclination: inclinationDeg
+      inclination
     };
   } catch (error) {
     console.error("Error calculating roof orientation:", error);
