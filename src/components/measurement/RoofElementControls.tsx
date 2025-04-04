@@ -142,7 +142,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   const isSolarReadyToCalculate = activeMode === 'solar' && currentPoints.length === 4;
 
   return (
-    <div className="p-3 pb-0">
+    <div className="p-3">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
         <div className="text-sm font-medium mb-2 flex items-center justify-between">
           <span>{getElementTitle(activeMode)}-Messung aktiv</span>
@@ -202,7 +202,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         )}
         
         {/* Improved text container with better text wrapping and overflow handling */}
-        <div className="flex items-start mt-2 text-xs text-muted-foreground">
+        <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">
           <Info className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
           <span className="whitespace-normal break-words">{getInstructions(activeMode)}</span>
         </div>

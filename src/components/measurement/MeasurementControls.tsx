@@ -37,7 +37,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   
   // Standard measurement controls for length, height, area
   return (
-    <div className="p-3 pb-0">
+    <div className="p-3">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
         <div className="text-sm font-medium mb-2">
           {activeMode === 'length' && "Längenmessung aktiv"}
@@ -93,7 +93,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
         </div>
         
         {activeMode === 'area' && (
-          <div className="flex items-start mt-2 text-xs text-muted-foreground">
+          <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">
             <span className="whitespace-normal break-words">
               Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
               Mindestens 3 Punkte werden benötigt.
