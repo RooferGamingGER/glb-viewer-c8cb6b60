@@ -1,6 +1,15 @@
 
 import * as THREE from 'three';
-import { Measurement, Point, Point2D } from '@/types/measurements';
+import { Measurement } from '@/types/measurements';
+
+// Define the Point2D interface since it's missing
+interface Point2D {
+  x: number;
+  y: number;
+}
+
+// Use the Point type from the measurements types
+import { Point } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
 import { calculateBoundingBox, calculateCentroid } from './measurementCalculations';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName } from '@/utils/exportUtils';
@@ -287,15 +296,16 @@ export const createCombinedRoofPlan = (
     const colors: Record<string, { fill: string; stroke: string }> = {
       'area': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#666666' },
       'solar': { fill: 'rgba(0, 180, 0, 0.2)', stroke: '#006600' },
-      'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, // More vivid for skylights
+      'pvmodule': { fill: 'rgba(0, 120, 200, 0.2)', stroke: '#004080' }, // Add color for PV modules
+      'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, 
       'chimney': { fill: 'rgba(180, 0, 0, 0.2)', stroke: '#990000' },
-      'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  // Added vent
-      'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, // Added hook
-      'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' }, // Added other
+      'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  
+      'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, 
+      'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' },
       'default': { fill: 'rgba(200, 200, 200, 0.2)', stroke: '#888888' }
     };
     
-    // Define segment type colors - similar to the reference image
+    // Define segment type colors
     const segmentColors: Record<string, string> = {
       'ridge': '#FF0000', // First - Red
       'first': '#FF0000', // First - Red (alternative name)
@@ -317,7 +327,7 @@ export const createCombinedRoofPlan = (
     const usedMeasurementTypes = new Set<string>();
     
     // First pass: Draw all roof areas (sorted with basic areas first, special elements later)
-    const sortOrder = ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'];
+    const sortOrder = ['area', 'solar', 'pvmodule', 'skylight', 'chimney', 'vent', 'hook', 'other'];
     
     // Sort the measurements by type
     const sortedMeasurements = [...projectedMeasurements].sort((a, b) => {
@@ -353,7 +363,7 @@ export const createCombinedRoofPlan = (
       ctx.stroke();
     });
     
-    // Second pass: Draw all special areas (solar, skylight, chimney, etc.)
+    // Second pass: Draw all special areas and PV modules
     sortedMeasurements.forEach(({ measurement, points2D }) => {
       if (measurement.type === 'area') return; // Skip regular areas, already drawn
       
@@ -386,6 +396,181 @@ export const createCombinedRoofPlan = (
           points2D.map(p => ({ x: toCanvasX(p.x), y: toCanvasY(p.y) })),
           colorSet.stroke
         );
+      }
+    });
+    
+    // Draw all PV modules from area measurements that have PV module info
+    sortedMeasurements.forEach(({ measurement, points2D, centroid }) => {
+      if (measurement.type !== 'area' || !measurement.pvModuleInfo) return;
+      
+      const pvInfo = measurement.pvModuleInfo;
+      
+      if (!pvInfo.moduleCount || pvInfo.moduleCount <= 0) return;
+      
+      // Draw individual modules if we have position data
+      if (pvInfo.points && pvInfo.points.length > 0) {
+        // Convert module points to 2D coordinates
+        let modulePoints2D: Point2D[] = [];
+        if (useTopDownView) {
+          // For top-down view, simply use x and z coordinates
+          modulePoints2D = pvInfo.points.map(p => ({ x: p.x, y: p.z }));
+        } else {
+          // For projection view, use the same projection method as for measurements
+          const p1 = new THREE.Vector3(measurement.points[0].x, measurement.points[0].y, measurement.points[0].z);
+          const p2 = new THREE.Vector3(measurement.points[1].x, measurement.points[1].y, measurement.points[1].z);
+          const p3 = new THREE.Vector3(measurement.points[2].x, measurement.points[2].y, measurement.points[2].z);
+          
+          const v1 = new THREE.Vector3().subVectors(p2, p1);
+          const v2 = new THREE.Vector3().subVectors(p3, p1);
+          const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+          
+          // Project module points to 2D using the same plane as the measurement
+          modulePoints2D = projectPointsTo2D(pvInfo.points, normal);
+        }
+        
+        // Draw each module as a rectangle
+        const moduleWidth = pvInfo.moduleWidth || 1.0;
+        const moduleHeight = pvInfo.moduleHeight || 1.7;
+        const moduleSpacing = pvInfo.moduleSpacing || 0.02;
+        
+        // Draw modules with a grid pattern
+        for (let i = 0; i < modulePoints2D.length; i += 4) {
+          if (i + 3 >= modulePoints2D.length) continue; // Ensure we have 4 corners
+          
+          // Draw module rectangle
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(modulePoints2D[i].x), toCanvasY(modulePoints2D[i].y));
+          ctx.lineTo(toCanvasX(modulePoints2D[i+1].x), toCanvasY(modulePoints2D[i+1].y));
+          ctx.lineTo(toCanvasX(modulePoints2D[i+2].x), toCanvasY(modulePoints2D[i+2].y));
+          ctx.lineTo(toCanvasX(modulePoints2D[i+3].x), toCanvasY(modulePoints2D[i+3].y));
+          ctx.closePath();
+          
+          // Fill with blue color
+          ctx.fillStyle = 'rgba(30, 144, 255, 0.6)';
+          ctx.fill();
+          
+          // Draw the border
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#0066cc';
+          ctx.stroke();
+          
+          // Draw cell grid pattern (simplified)
+          const cellRows = 6;
+          const cellCols = 10;
+          
+          // Calculate corner points
+          const corners = [
+            { x: toCanvasX(modulePoints2D[i].x), y: toCanvasY(modulePoints2D[i].y) },
+            { x: toCanvasX(modulePoints2D[i+1].x), y: toCanvasY(modulePoints2D[i+1].y) },
+            { x: toCanvasX(modulePoints2D[i+2].x), y: toCanvasY(modulePoints2D[i+2].y) },
+            { x: toCanvasX(modulePoints2D[i+3].x), y: toCanvasY(modulePoints2D[i+3].y) }
+          ];
+          
+          // Draw cell pattern (simplified for 2D plan view)
+          ctx.strokeStyle = 'rgba(0, 50, 150, 0.5)';
+          ctx.lineWidth = 0.5;
+          
+          // Draw horizontal lines
+          for (let row = 1; row < cellRows; row++) {
+            const t = row / cellRows;
+            ctx.beginPath();
+            ctx.moveTo(
+              corners[0].x * (1-t) + corners[3].x * t,
+              corners[0].y * (1-t) + corners[3].y * t
+            );
+            ctx.lineTo(
+              corners[1].x * (1-t) + corners[2].x * t,
+              corners[1].y * (1-t) + corners[2].y * t
+            );
+            ctx.stroke();
+          }
+          
+          // Draw vertical lines
+          for (let col = 1; col < cellCols; col++) {
+            const t = col / cellCols;
+            ctx.beginPath();
+            ctx.moveTo(
+              corners[0].x * (1-t) + corners[1].x * t,
+              corners[0].y * (1-t) + corners[1].y * t
+            );
+            ctx.lineTo(
+              corners[3].x * (1-t) + corners[2].x * t,
+              corners[3].y * (1-t) + corners[2].y * t
+            );
+            ctx.stroke();
+          }
+        }
+      } else {
+        // If we don't have specific module positions, draw a blue overlay with a grid pattern
+        // to indicate approximate module placement
+        
+        // Get the bounding box of the roof area
+        let minX = Math.min(...points2D.map(p => p.x));
+        let minY = Math.min(...points2D.map(p => p.y));
+        let maxX = Math.max(...points2D.map(p => p.x));
+        let maxY = Math.max(...points2D.map(p => p.y));
+        
+        // Draw PV area overlay
+        ctx.beginPath();
+        ctx.moveTo(toCanvasX(points2D[0].x), toCanvasY(points2D[0].y));
+        
+        for (let i = 1; i < points2D.length; i++) {
+          ctx.lineTo(toCanvasX(points2D[i].x), toCanvasY(points2D[i].y));
+        }
+        
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(30, 144, 255, 0.3)';
+        ctx.fill();
+        
+        // Draw a grid pattern for the modules
+        ctx.save();
+        ctx.clip(); // Clip to the area shape
+        
+        const gridSize = 0.5; // Grid size in meters
+        ctx.strokeStyle = 'rgba(0, 100, 200, 0.4)';
+        ctx.lineWidth = 1;
+        
+        // Draw vertical grid lines
+        for (let x = Math.floor(minX / gridSize) * gridSize; x <= maxX; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(x), toCanvasY(minY));
+          ctx.lineTo(toCanvasX(x), toCanvasY(maxY));
+          ctx.stroke();
+        }
+        
+        // Draw horizontal grid lines
+        for (let y = Math.floor(minY / gridSize) * gridSize; y <= maxY; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(minX), toCanvasY(y));
+          ctx.lineTo(toCanvasX(maxX), toCanvasY(y));
+          ctx.stroke();
+        }
+        
+        ctx.restore();
+        
+        // Add a label in the center showing the number of modules
+        ctx.font = 'bold 24px Arial';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Create a white background for the text
+        const moduleText = `${pvInfo.moduleCount} PV-Module`;
+        const textMetrics = ctx.measureText(moduleText);
+        const textWidth = textMetrics.width;
+        const textHeight = 24; // Approximate height based on font size
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillRect(
+          toCanvasX(centroid.x) - textWidth/2 - 10,
+          toCanvasY(centroid.y) - textHeight/2 - 5,
+          textWidth + 20,
+          textHeight + 10
+        );
+        
+        // Draw the text
+        ctx.fillStyle = '#0066cc';
+        ctx.fillText(moduleText, toCanvasX(centroid.x), toCanvasY(centroid.y));
       }
     });
     
@@ -482,6 +667,11 @@ export const createCombinedRoofPlan = (
     
     // Fourth pass: Draw measurement labels, points and areas in the center
     sortedMeasurements.forEach(({ measurement, points2D, centroid }) => {
+      // Skip labels for areas that have PV module info - we'll add a specialized label
+      if (measurement.type === 'area' && measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
+        return;
+      }
+      
       // Draw the vertices - INCREASED SIZE for better visibility on A4
       points2D.forEach((point, index) => {
         ctx.beginPath();
@@ -537,6 +727,55 @@ export const createCombinedRoofPlan = (
       ctx.font = 'bold 28px Arial'; // Increased from 24px to 28px
       ctx.fillStyle = '#222222';
       ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 46); // Adjusted position for larger text
+    });
+    
+    // Special pass: Draw PV module area labels with additional info
+    sortedMeasurements.forEach(({ measurement, centroid }) => {
+      if (measurement.type !== 'area' || !measurement.pvModuleInfo || !measurement.pvModuleInfo.moduleCount) return;
+      
+      const pvInfo = measurement.pvModuleInfo;
+      
+      // Calculate total power
+      const modulePower = (pvInfo.pvModuleSpec?.power || 390) / 1000; // kWp per module
+      const totalPower = modulePower * pvInfo.moduleCount;
+      
+      // Prepare label texts
+      const labelText = measurement.description || "PV-Anlage";
+      const valueText = `${measurement.value.toFixed(2)} m²`;
+      const moduleText = `${pvInfo.moduleCount} Module / ${totalPower.toFixed(2)} kWp`;
+      
+      // Set font for measuring text width
+      ctx.font = 'bold 30px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Calculate text widths
+      const labelWidth = ctx.measureText(labelText).width;
+      const valueWidth = ctx.measureText(valueText).width;
+      const moduleWidth = ctx.measureText(moduleText).width;
+      const maxWidth = Math.max(labelWidth, valueWidth, moduleWidth);
+      
+      // Draw white background for all three text lines
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(
+        toCanvasX(centroid.x) - maxWidth / 2 - 10,
+        toCanvasY(centroid.y) - 50,
+        maxWidth + 20,
+        100  // Height for three lines of text
+      );
+      
+      // Draw label text
+      ctx.fillStyle = '#0066cc';  // Blue color for PV labels
+      ctx.fillText(labelText, toCanvasX(centroid.x), toCanvasY(centroid.y) - 30);
+      
+      // Draw area value
+      ctx.font = 'bold 28px Arial';
+      ctx.fillStyle = '#222222';
+      ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y));
+      
+      // Draw module count and power output
+      ctx.fillStyle = '#0066cc';
+      ctx.fillText(moduleText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 30);
     });
     
     // Add a disclaimer below the plan

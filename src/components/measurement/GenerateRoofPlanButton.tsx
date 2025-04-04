@@ -96,6 +96,11 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     m.points.length >= 3
   ).length;
   
+  // Count PV module areas
+  const pvModuleCount = measurements.filter(m => 
+    m.type === 'area' && m.pvModuleInfo && m.pvModuleInfo.moduleCount && m.pvModuleInfo.moduleCount > 0
+  ).length;
+  
   // Count segments, considering shared segments only once
   const uniqueSegmentCount = (() => {
     // Collect all segments
@@ -132,7 +137,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
           <DialogTitle>Dachplan - Draufsicht</DialogTitle>
           <DialogDescription>
             {areaCount > 0 
-              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
+              ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten, ${pvModuleCount} PV-Anlagen und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
           </DialogDescription>
         </DialogHeader>
