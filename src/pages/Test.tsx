@@ -108,11 +108,10 @@ const Test = () => {
             </div>
           )}
           
-          {/* Modified SidebarProvider to use a container with flex-1 and ensuring proper spacing for footer */}
           <div className="flex flex-col flex-1 w-full overflow-hidden">
+            {/* Fixed SidebarProvider to ensure proper spacing for footer */}
             <SidebarProvider defaultOpen={!isMobile} open={!isMobile}>
               <main className="flex-1 relative w-full h-full">
-                {/* Display the permanent test model with touch-friendly controls */}
                 <ModelViewer 
                   fileUrl={testModelUrl} 
                   fileName={testModelName} 

@@ -15,7 +15,9 @@ import {
   Magnet,
   Wrench,
   LineChart,
-  FileDown
+  FileDown,
+  Home,
+  LayoutGrid
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import ExportPdfButton from './ExportPdfButton';
@@ -78,6 +80,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   const [activeTab, setActiveTab] = useState<string>("tools");
+  const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
   
   const handleDownload = () => {
     if (measurements.length === 0) return;
@@ -92,6 +95,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       : "Punktfang deaktiviert: Punkte werden exakt platziert"
     );
   };
+
+  const handleCategoryChange = (category: string | undefined) => {
+    setActiveCategory(category === activeCategory ? undefined : category);
+    if (onCategoryChange) {
+      onCategoryChange(category === activeCategory ? '' : category);
+    }
+  };
+
+  // Count measurements by category
+  const dachCount = measurements.filter(m => ['length', 'height', 'area'].includes(m.type)).length;
+  const solarCount = measurements.filter(m => ['solar'].includes(m.type)).length;
+  const dachelementeCount = measurements.filter(m => ['skylight', 'chimney'].includes(m.type)).length;
+  const einbautenCount = measurements.filter(m => ['vent', 'hook', 'other'].includes(m.type)).length;
 
   return (
     <div className="p-3 flex flex-col h-full overflow-hidden">
@@ -257,26 +273,81 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </TabsContent>
           
-          <TabsContent value="measurements" className="mt-0 h-full overflow-y-auto">
-            {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
-             handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
-              <MeasurementList 
-                measurements={measurements}
-                toggleMeasurementVisibility={toggleMeasurementVisibility}
-                toggleLabelVisibility={toggleLabelVisibility}
-                handleStartPointEdit={handleStartPointEdit}
-                handleDeleteMeasurement={handleDeleteMeasurement}
-                handleDeletePoint={handleDeletePoint}
-                updateMeasurement={updateMeasurement}
-                editMeasurementId={editMeasurementId}
-                segmentsOpen={segmentsOpen}
-                toggleSegments={toggleSegments}
-                onEditSegment={onEditSegment}
-                movingPointInfo={movingPointInfo}
-                handleMoveMeasurementUp={handleMoveMeasurementUp}
-                handleMoveMeasurementDown={handleMoveMeasurementDown}
-              />
-            )}
+          <TabsContent value="measurements" className="space-y-4 mt-0">
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <Button
+                variant={activeCategory === 'dach' ? "default" : "outline"} 
+                size="sm"
+                className="w-full flex justify-start"
+                onClick={() => handleCategoryChange('dach')}
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Dach ({dachCount})
+              </Button>
+              
+              <Button
+                variant={activeCategory === 'solar' ? "default" : "outline"} 
+                size="sm"
+                className="w-full flex justify-start"
+                onClick={() => handleCategoryChange('solar')}
+              >
+                <Sun className="h-4 w-4 mr-2" />
+                Solar ({solarCount})
+              </Button>
+              
+              <Button
+                variant={activeCategory === 'dachelemente' ? "default" : "outline"} 
+                size="sm"
+                className="w-full flex justify-start"
+                onClick={() => handleCategoryChange('dachelemente')}
+              >
+                <SplitSquareVertical className="h-4 w-4 mr-2" />
+                Dachelemente ({dachelementeCount})
+              </Button>
+              
+              <Button
+                variant={activeCategory === 'einbauten' ? "default" : "outline"} 
+                size="sm"
+                className="w-full flex justify-start"
+                onClick={() => handleCategoryChange('einbauten')}
+              >
+                <Anchor className="h-4 w-4 mr-2" />
+                Einbauten ({einbautenCount})
+              </Button>
+              
+              <Button
+                variant={activeCategory === undefined ? "default" : "outline"} 
+                size="sm"
+                className="w-full col-span-2 flex justify-center"
+                onClick={() => handleCategoryChange(undefined)}
+              >
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Alle anzeigen
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
+               handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
+                <MeasurementList 
+                  measurements={measurements}
+                  toggleMeasurementVisibility={toggleMeasurementVisibility}
+                  toggleLabelVisibility={toggleLabelVisibility}
+                  handleStartPointEdit={handleStartPointEdit}
+                  handleDeleteMeasurement={handleDeleteMeasurement}
+                  handleDeletePoint={handleDeletePoint}
+                  updateMeasurement={updateMeasurement}
+                  editMeasurementId={editMeasurementId}
+                  segmentsOpen={segmentsOpen}
+                  toggleSegments={toggleSegments}
+                  onEditSegment={onEditSegment}
+                  movingPointInfo={movingPointInfo}
+                  handleMoveMeasurementUp={handleMoveMeasurementUp}
+                  handleMoveMeasurementDown={handleMoveMeasurementDown}
+                  activeCategory={activeCategory}
+                />
+              )}
+            </div>
           </TabsContent>
           
           <TabsContent value="export" className="space-y-4 mt-0">

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
@@ -18,6 +19,7 @@ interface MeasurementListProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
+  activeCategory?: string;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -34,7 +36,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   onEditSegment,
   movingPointInfo,
   handleMoveMeasurementUp,
-  handleMoveMeasurementDown
+  handleMoveMeasurementDown,
+  activeCategory
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) {
     return (
@@ -108,7 +111,40 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
       </div>
     );
   };
+
+  // Filter measurements based on activeCategory if provided
+  if (activeCategory) {
+    switch (activeCategory) {
+      case 'dach':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Dach", dachMeasurements, true)}
+          </div>
+        );
+      case 'solar':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Solar", solarMeasurements, true)}
+          </div>
+        );
+      case 'dachelemente':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
+          </div>
+        );
+      case 'einbauten':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
+          </div>
+        );
+      default:
+        break;
+    }
+  }
   
+  // Default rendering with all categories
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full px-2">
       {/* Dach - Standard measurements */}
