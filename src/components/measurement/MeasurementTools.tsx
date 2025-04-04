@@ -18,12 +18,12 @@ import {
 } from '@/utils/measurementVisuals';
 
 // Import components
-import MeasurementSidebar from './MeasurementSidebar';
 import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
 import EditingAlert from './EditingAlert';
 import RoofElementControls from './RoofElementControls';
 import { Measurement } from '@/types/measurements';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -423,85 +423,93 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     toggleAllLabelsVisibility();
   };
 
-  // Component rendering
+  // Calculate if we need to show notifications in the footer
+  const showNotifications = (editMeasurementId || editingSegmentId || movingPointInfo || 
+                            (activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode)) || 
+                            isRoofElementMode);
+
+  // Component rendering with improved sidebar structure
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
-          {/* Fixed Header - Tools Section */}
-          <div className="flex-shrink-0 border-b border-border/50">
-            <MeasurementToolControls 
-              activeMode={activeMode}
-              toggleMeasurementTool={toggleMeasurementTool}
-              editMeasurementId={editMeasurementId}
-              measurements={measurements}
-              showTable={showTable}
-              setShowTable={setShowTable}
-            />
+          {/* Main structure with proper scrolling and fixed notification area */}
+          <div className="flex flex-col h-full">
+            {/* Top scrollable area for tools */}
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="p-3">
+                  <MeasurementToolControls 
+                    activeMode={activeMode}
+                    toggleMeasurementTool={toggleMeasurementTool}
+                    editMeasurementId={editMeasurementId}
+                    measurements={measurements}
+                    showTable={showTable}
+                    setShowTable={setShowTable}
+                    toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+                    toggleLabelVisibility={handleToggleLabelVisibility}
+                    handleStartPointEdit={handleStartPointEdit}
+                    handleDeleteMeasurement={handleDeleteMeasurement}
+                    handleDeletePoint={handleDeletePoint}
+                    updateMeasurement={updateMeasurement}
+                    segmentsOpen={segmentsOpen}
+                    toggleSegments={toggleSegments}
+                    onEditSegment={setEditingSegmentId}
+                    movingPointInfo={movingPointInfo}
+                    handleMoveMeasurementUp={handleMoveMeasurementUp}
+                    handleMoveMeasurementDown={handleMoveMeasurementDown}
+                  />
+                </div>
+              </ScrollArea>
+            </div>
             
-            {/* Only render MeasurementControls for standard measurements */}
-            {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
-              <MeasurementControls
-                activeMode={activeMode}
-                currentPoints={currentPoints}
-                handleFinalizeMeasurement={handleFinalizeMeasurement}
-                handleUndoLastPoint={handleUndoLastPoint}
-                clearCurrentPoints={clearCurrentPoints}
-              />
-            )}
-            
-            {/* Only render RoofElementControls for roof elements */}
-            {isRoofElementMode && (
-              <RoofElementControls
-                activeMode={activeMode}
-                currentPoints={currentPoints}
-                handleFinalizeMeasurement={handleFinalizeMeasurement}
-                handleUndoLastPoint={handleUndoLastPoint}
-                clearCurrentPoints={clearCurrentPoints}
-              />
-            )}
-            
-            {(editMeasurementId || editingSegmentId || movingPointInfo) && (
-              <div className="p-3 pb-0">
-                <EditingAlert 
-                  editMeasurementId={editMeasurementId}
-                  editingSegmentId={editingSegmentId}
-                  movingPointInfo={movingPointInfo}
-                  handleCancelEditing={handleCancelEditingWithCleanup}
-                  editingAreaMeasurement={editMeasurementId ? 
-                    measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
-                    measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
-                    : false}
-                />
+            {/* Bottom notification area with independent scrolling when needed */}
+            {showNotifications && (
+              <div className="border-t border-border/30 overflow-visible">
+                <ScrollArea className="max-h-[240px]">
+                  {/* Standard measurement controls */}
+                  {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
+                    <MeasurementControls
+                      activeMode={activeMode}
+                      currentPoints={currentPoints}
+                      handleFinalizeMeasurement={handleFinalizeMeasurement}
+                      handleUndoLastPoint={handleUndoLastPoint}
+                      clearCurrentPoints={clearCurrentPoints}
+                    />
+                  )}
+                  
+                  {/* Roof element controls */}
+                  {isRoofElementMode && (
+                    <RoofElementControls
+                      activeMode={activeMode}
+                      currentPoints={currentPoints}
+                      handleFinalizeMeasurement={handleFinalizeMeasurement}
+                      handleUndoLastPoint={handleUndoLastPoint}
+                      clearCurrentPoints={clearCurrentPoints}
+                    />
+                  )}
+                  
+                  {/* Editing alert */}
+                  {(editMeasurementId || editingSegmentId || movingPointInfo) && (
+                    <div className="p-3">
+                      <EditingAlert 
+                        editMeasurementId={editMeasurementId}
+                        editingSegmentId={editingSegmentId}
+                        movingPointInfo={movingPointInfo}
+                        handleCancelEditing={handleCancelEditingWithCleanup}
+                        editingAreaMeasurement={editMeasurementId ? 
+                          measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
+                          measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
+                          : false}
+                      />
+                    </div>
+                  )}
+                </ScrollArea>
               </div>
             )}
           </div>
-          
-          {/* Measurement list with measurement groups prop */}
-          <MeasurementSidebar
-            measurements={measurements}
-            toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-            toggleLabelVisibility={handleToggleLabelVisibility}
-            handleStartPointEdit={handleStartPointEdit}
-            handleDeleteMeasurement={handleDeleteMeasurement}
-            handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
-            editMeasurementId={editMeasurementId}
-            segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
-            onEditSegment={setEditingSegmentId}
-            movingPointInfo={movingPointInfo}
-            showTable={showTable}
-            handleClearMeasurements={handleClearMeasurements}
-            toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
-            allLabelsVisible={allLabelsVisible}
-            activeMode={activeMode}
-            handleMoveMeasurementUp={handleMoveMeasurementUp}
-            handleMoveMeasurementDown={handleMoveMeasurementDown}
-            measurementGroups={measurementGroups}
-          />
         </div>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
+import { findLargestRectangle } from './rectangleFinder';
+import * as THREE from 'three';
 
 // Default PV module dimensions in meters
 export const DEFAULT_MODULE_WIDTH = 1.041;
@@ -270,6 +272,37 @@ const calculateDistance3D = (p1: Point, p2: Point): number => {
 };
 
 /**
+ * Berechne den Richtungsvektor zwischen zwei Punkten in der XZ-Ebene
+ * @param p1 - Startpunkt
+ * @param p2 - Endpunkt
+ * @returns Normalisierter Richtungsvektor {x, z}
+ */
+const calculateDirectionVector = (p1: Point, p2: Point): {x: number, z: number} => {
+  const dx = p2.x - p1.x;
+  const dz = p2.z - p1.z;
+  
+  // Länge des Vektors berechnen
+  const length = Math.sqrt(dx * dx + dz * dz);
+  
+  // Normalisieren (Einheitsvektor)
+  if (length === 0) return {x: 1, z: 0}; // Standardrichtung, falls Punkte identisch
+  
+  return {
+    x: dx / length,
+    z: dz / length
+  };
+};
+
+/**
+ * Berechne den Winkel (in Radiant) zwischen dem Richtungsvektor und der X-Achse
+ * @param direction - Richtungsvektor {x, z}
+ * @returns Winkel in Radiant
+ */
+const calculateAngle = (direction: {x: number, z: number}): number => {
+  return Math.atan2(direction.z, direction.x);
+};
+
+/**
  * Find parallel line segments in a quadrilateral
  * @param points - Array of 4 points defining the quadrilateral 
  * @returns An object with pairs of parallel sides
@@ -310,6 +343,7 @@ const findParallelSides = (points: Point[]): {
  * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
  * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
  * @param roofEdgeInfo - Optional roof edge measurements from ridge, eave, verge
+ * @param findOptimalRectangle - Whether to find the optimal rectangle within the points (default: false)
  * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
@@ -325,43 +359,9 @@ export const calculatePVModulePlacement = (
     hasAllEdges: boolean;
     isValid?: boolean;
     validationMessage?: string;
-  }
+  },
+  findOptimalRectangle: boolean = true
 ): PVModuleInfo => {
-  // Enforce exactly 4 points for PV module calculation
-  if (points.length !== 4) {
-    console.warn(`PV module calculation expects exactly 4 points, got ${points.length}. Using subset or adding points to make a quadrilateral.`);
-    
-    // If we have more than 4 points, take just the first 4
-    if (points.length > 4) {
-      points = points.slice(0, 4);
-    } 
-    // If we have fewer than 4 points, try to create a rectangle
-    else if (points.length < 4) {
-      // We need at least 2 points to create a rectangle
-      if (points.length < 2) {
-        console.error("Cannot create PV module area with fewer than 2 points");
-        // Create a default small rectangle as fallback
-        const defaultPoint = points.length > 0 ? points[0] : { x: 0, y: 0, z: 0 };
-        points = [
-          defaultPoint,
-          { x: defaultPoint.x + 1, y: defaultPoint.y, z: defaultPoint.z },
-          { x: defaultPoint.x + 1, y: defaultPoint.y, z: defaultPoint.z + 1 },
-          { x: defaultPoint.x, y: defaultPoint.y, z: defaultPoint.z + 1 }
-        ];
-      } else {
-        // Create a rectangle using first two points as diagonal corners
-        const p1 = points[0];
-        const p2 = points[1];
-        points = [
-          p1,
-          { x: p2.x, y: p1.y, z: p1.z },
-          p2,
-          { x: p1.x, y: p1.y, z: p2.z }
-        ];
-      }
-    }
-  }
-
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
   
@@ -371,6 +371,7 @@ export const calculatePVModulePlacement = (
   let boundingHeight: number;
   let boundingLength: number;
   let manualDimensions = false;
+  let optimizedPoints = [...points];
   
   // Calculate minimum and maximum coordinates for visualization
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -415,66 +416,158 @@ export const calculatePVModulePlacement = (
       availableLength
     });
   } else {
-    // Calculate dimensions based on the shape of the polygon (fallback)
-    
-    // Make sure we're working with a quadrilateral (4 points)
-    // If not, we'll create a representative quadrilateral
-    let quadPoints = [...points];
-    
-    try {
-      // Find parallel sides using the new approach
-      const parallelSides = findParallelSides(quadPoints);
+    // For complex shapes, try to find the largest inscribed rectangle if more than 4 points
+    if (findOptimalRectangle && points.length > 4) {
+      console.log("Finding optimal rectangle for complex roof shape with", points.length, "points");
       
-      // Calculate width and length as average of parallel sides
-      const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
-      const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+      // Find the largest rectangle inside the polygon
+      optimizedPoints = findLargestRectangle(points);
       
-      // Assign width and length (width should be shorter than length by convention)
-      if (width1 < width2) {
-        boundingHeight = width1;
-        boundingLength = width2;
+      if (optimizedPoints.length === 4) {
+        console.log("Found optimal rectangle within complex shape");
+        
+        // Use the optimized points for further calculations
+        const dimensions = calculateQuadrilateralDimensions(optimizedPoints);
+        boundingHeight = dimensions.width;
+        boundingLength = dimensions.length;
+        
+        // Derive the available area by accounting for edge distances
+        availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
+        availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+        
+        console.log("Optimized rectangle dimensions:", {
+          boundingHeight,
+          boundingLength,
+          availableWidth,
+          availableLength
+        });
       } else {
-        boundingHeight = width2;
-        boundingLength = width1;
+        console.warn("Failed to find optimal rectangle, falling back to normal calculation");
+        
+        // Calculate dimensions based on the shape of the polygon (fallback)
+        // Make sure we're working with a quadrilateral (4 points)
+        // If not, we'll create a representative quadrilateral
+        let quadPoints = [...points];
+        
+        try {
+          // Find parallel sides using the new approach
+          const parallelSides = findParallelSides(quadPoints);
+          
+          // Calculate width and length as average of parallel sides
+          const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
+          const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+          
+          // Assign width and length (width should be shorter than length by convention)
+          if (width1 < width2) {
+            boundingHeight = width1;
+            boundingLength = width2;
+          } else {
+            boundingHeight = width2;
+            boundingLength = width1;
+          }
+          
+          console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
+        } catch (error) {
+          console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+          
+          // Fallback to the quadrilateral dimensions calculation
+          const dimensions = calculateQuadrilateralDimensions(quadPoints);
+          boundingHeight = dimensions.width;
+          boundingLength = dimensions.length;
+          
+          console.log("Fallback dimensions:", dimensions);
+        }
+        
+        // Derive the available area by accounting for edge distances
+        availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
+        availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
       }
       
-      console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
-    } catch (error) {
-      console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+      // Sanity check: make sure our available area is reasonable given the total area
+      const availableArea = availableWidth * availableLength;
       
-      // Fallback to the quadrilateral dimensions calculation
-      const dimensions = calculateQuadrilateralDimensions(quadPoints);
-      boundingHeight = dimensions.width;
-      boundingLength = dimensions.length;
+      // If the available area is significantly larger than the actual area, adjust dimensions
+      if (availableArea > area * 1.5) {
+        // Scale dimensions based on the actual area
+        const scaleFactor = Math.sqrt(area / availableArea);
+        availableWidth *= scaleFactor;
+        availableLength *= scaleFactor;
+        
+        // Update bounding dimensions
+        boundingHeight = availableWidth + (2 * edgeDistance);
+        boundingLength = availableLength + (2 * edgeDistance);
+        
+        console.log("Dimensions adjusted after area sanity check:", {
+          scaleFactor,
+          availableWidth,
+          availableLength,
+          boundingHeight, 
+          boundingLength
+        });
+      }
+    } else {
+      // Original code for regular shapes or when not using optimization
+      // Calculate dimensions based on the shape of the polygon (fallback)
       
-      console.log("Fallback dimensions:", dimensions);
-    }
-    
-    // Derive the available area by accounting for edge distances
-    availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
-    availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
-    
-    // Sanity check: make sure our available area is reasonable given the total area
-    const availableArea = availableWidth * availableLength;
-    
-    // If the available area is significantly larger than the actual area, adjust dimensions
-    if (availableArea > area * 1.5) {
-      // Scale dimensions based on the actual area
-      const scaleFactor = Math.sqrt(area / availableArea);
-      availableWidth *= scaleFactor;
-      availableLength *= scaleFactor;
+      // Make sure we're working with a quadrilateral (4 points)
+      // If not, we'll create a representative quadrilateral
+      let quadPoints = [...points];
       
-      // Update bounding dimensions
-      boundingHeight = availableWidth + (2 * edgeDistance);
-      boundingLength = availableLength + (2 * edgeDistance);
+      try {
+        // Find parallel sides using the new approach
+        const parallelSides = findParallelSides(quadPoints);
+        
+        // Calculate width and length as average of parallel sides
+        const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
+        const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+        
+        // Assign width and length (width should be shorter than length by convention)
+        if (width1 < width2) {
+          boundingHeight = width1;
+          boundingLength = width2;
+        } else {
+          boundingHeight = width2;
+          boundingLength = width1;
+        }
+        
+        console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
+      } catch (error) {
+        console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+        
+        // Fallback to the quadrilateral dimensions calculation
+        const dimensions = calculateQuadrilateralDimensions(quadPoints);
+        boundingHeight = dimensions.width;
+        boundingLength = dimensions.length;
+        
+        console.log("Fallback dimensions:", dimensions);
+      }
       
-      console.log("Dimensions adjusted after area sanity check:", {
-        scaleFactor,
-        availableWidth,
-        availableLength,
-        boundingHeight, 
-        boundingLength
-      });
+      // Derive the available area by accounting for edge distances
+      availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
+      availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+      
+      // Sanity check: make sure our available area is reasonable given the total area
+      const availableArea = availableWidth * availableLength;
+      
+      // If the available area is significantly larger than the actual area, adjust dimensions
+      if (availableArea > area * 1.5) {
+        // Scale dimensions based on the actual area
+        const scaleFactor = Math.sqrt(area / availableArea);
+        availableWidth *= scaleFactor;
+        availableLength *= scaleFactor;
+        
+        // Update bounding dimensions
+        boundingHeight = availableWidth + (2 * edgeDistance);
+        boundingLength = availableLength + (2 * edgeDistance);
+        
+        console.log("Dimensions adjusted after area sanity check:", {
+          scaleFactor,
+          availableWidth,
+          availableLength,
+          boundingHeight, 
+          boundingLength
+        });
+      }
     }
   }
   
@@ -490,7 +583,8 @@ export const calculatePVModulePlacement = (
     moduleHeight,
     edgeDistance,
     moduleSpacing,
-    roofEdgeInfo
+    roofEdgeInfo,
+    optimizedPointsUsed: points.length !== optimizedPoints.length
   });
   
   // CORRECTED ORIENTATION DEFINITIONS:
@@ -553,7 +647,8 @@ export const calculatePVModulePlacement = (
   const startX = minX + edgeDistance;
   const startZ = minZ + edgeDistance;
   
-  return {
+  // Store the original points for accurate module placement
+  const result: PVModuleInfo = {
     moduleWidth,
     moduleHeight,
     moduleCount,
@@ -586,86 +681,249 @@ export const calculatePVModulePlacement = (
       height: moduleHeight,
       power: 425, // Default power value
       efficiency: 21.0 // Default efficiency value
-    }
+    },
+    points: findOptimalRectangle && optimizedPoints.length === 4 ? [...optimizedPoints] : [...points] // Store the optimized points if available, otherwise original points
   };
+  
+  return result;
 };
 
 /**
- * Generate the grid points for PV module placement
+ * Generate the grid points for PV module placement aligned with roof edges
  * 
  * @param pvInfo - PV module information
  * @param baseY - The Y-coordinate (height) to place the modules at
+ * @param roofEdgeSegments - Optional array of roof edge segments to align with
  * @returns Array of module corner points and grid lines
  */
-export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
+export const generatePVModuleGrid = (
+  pvInfo: PVModuleInfo, 
+  baseY: number,
+  roofEdgeSegments?: {from: Point, to: Point}[]
+): {
   modulePoints: Point[][],  // Array of 4 points for each module
   gridLines: {from: Point, to: Point}[]  // Lines for the grid
 } => {
   const modulePoints: Point[][] = [];
   const gridLines: {from: Point, to: Point}[] = [];
   
-  // Determine module dimensions based on CORRECTED orientation definitions:
-  // Landscape (Querformat): Module's LONGER side (height) is aligned with the roof's LENGTH (ridge/eave)
-  // Portrait (Hochformat): Module's LONGER side (height) is aligned with the roof's HEIGHT (verge/Ortgang)
-  
+  // Determine module dimensions based on orientation
   const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
+
+  // Extrahiere die vier Eckpunkte der Dachfläche
+  let cornerPoints: Point[] = [];
+  let roofPlanePoints: THREE.Vector3[] = [];
+  
+  // Verwendung der Original-Dachpunkte wenn vorhanden
+  if (pvInfo.points && pvInfo.points.length >= 3) {
+    cornerPoints = [...pvInfo.points];
+    roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    console.log("Verwende originale Dachpunkte für Ebenenberechnung:", cornerPoints);
+  }
+  // Fallback zu Dachecken aus Segmenten
+  else if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
+    cornerPoints = [
+      roofEdgeSegments[0].from,
+      roofEdgeSegments[1].from,
+      roofEdgeSegments[2].from,
+      roofEdgeSegments[3].from
+    ];
+    
+    roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    console.log("Dacheckpunkte extrahiert:", cornerPoints);
+  } else {
+    console.log("Nicht genügend Punkte für Dachflächenberechnung");
+    // Fallback: Verwende die pvInfo Begrenzungen um ein Default-Rechteck zu erstellen
+    cornerPoints = [
+      { x: pvInfo.minX || 0, y: baseY, z: pvInfo.minZ || 0 },
+      { x: pvInfo.maxX || 1, y: baseY, z: pvInfo.minZ || 0 },
+      { x: pvInfo.maxX || 1, y: baseY, z: pvInfo.maxZ || 1 },
+      { x: pvInfo.minX || 0, y: baseY, z: pvInfo.maxZ || 1 }
+    ];
+    roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  }
+
+  // Berechne die durchschnittliche Y-Koordinate der Dachpunkte
+  const avgY = cornerPoints.reduce((sum, p) => sum + p.y, 0) / cornerPoints.length;
+  console.log("Durchschnittliche Y-Koordinate der Dachfläche:", avgY);
+
+  // Berechne die Ebene aus den ersten drei Punkten
+  if (roofPlanePoints.length >= 3) {
+    const plane = new THREE.Plane();
+    plane.setFromCoplanarPoints(
+      roofPlanePoints[0],
+      roofPlanePoints[1],
+      roofPlanePoints[2]
+    );
+    
+    // Normalenvektor der Dachfläche
+    const normalVector = plane.normal.clone();
+    
+    // Stellen Sie sicher, dass der Normalenvektor nach oben zeigt (positive Y-Komponente)
+    if (normalVector.y < 0) {
+      normalVector.negate();
+    }
+    
+    console.log("Normalenvektor der Dachfläche:", normalVector);
+    
+    // Neigungswinkel berechnen (in Grad)
+    const inclinationRad = Math.acos(normalVector.dot(new THREE.Vector3(0, 1, 0)));
+    const inclinationDeg = inclinationRad * (180 / Math.PI);
+    console.log("Dachneigung:", inclinationDeg.toFixed(2) + "°");
+
+    // Berechne die Vektoren für die Ausrichtung des Gitters
+    // Vector von P1 zu P2 (erste Richtung)
+    const v1 = new THREE.Vector3()
+      .subVectors(roofPlanePoints[1], roofPlanePoints[0])
+      .normalize();
+    
+    // Vector von P1 zu P4 (zweite Richtung)
+    const v2 = new THREE.Vector3()
+      .subVectors(roofPlanePoints[3], roofPlanePoints[0])
+      .normalize();
+    
+    // Stelle sicher, dass die Vektoren orthogonal zum Normalenvektor sind
+    // (d.h. sie liegen in der Dachebene)
+    const v1Projected = new THREE.Vector3().copy(v1)
+      .sub(normalVector.clone().multiplyScalar(v1.dot(normalVector)))
+      .normalize();
+    
+    const v2Projected = new THREE.Vector3().copy(v2)
+      .sub(normalVector.clone().multiplyScalar(v2.dot(normalVector)))
+      .normalize();
+
+    // Ausrichtungsvektor für Protokollierung
+    const alignmentVector = new THREE.Vector3()
+      .crossVectors(v1Projected, v2Projected)
+      .normalize();
+    
+    console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
+      v1: v1Projected,
+      v2: v2Projected,
+      alignmentVector,
+      normalVector
+    });
+
+    // Get the starting position (erster Punkt der Dachfläche)
+    const startPoint = roofPlanePoints[0].clone();
+    
+    // Füge einen kleinen Versatz für den Abstand zum Rand hinzu
+    const edgeOffset = pvInfo.edgeDistance || 0.1; // 10cm Standard-Randabstand
+    startPoint.add(v1Projected.clone().multiplyScalar(edgeOffset))
+              .add(v2Projected.clone().multiplyScalar(edgeOffset));
+    
+    console.log("Startpunkt für Module:", startPoint);
+
+    // Generiere das Modul-Platzierungsgitter
+    for (let row = 0; row < pvInfo.rows!; row++) {
+      for (let col = 0; col < pvInfo.columns!; col++) {
+        // Berechne den Offset basierend auf Spalte und Zeile
+        const xOffset = col * (moduleWidth + (pvInfo.moduleSpacing || 0));
+        const zOffset = row * (moduleHeight + (pvInfo.moduleSpacing || 0));
+        
+        // Berechne den Basisvektor für dieses Modul
+        const moduleBasePoint = new THREE.Vector3().copy(startPoint)
+          .add(v1Projected.clone().multiplyScalar(xOffset))
+          .add(v2Projected.clone().multiplyScalar(zOffset));
+
+        // Berechne die vier Eckpunkte des Moduls
+        const p1 = moduleBasePoint.clone();
+        
+        // Projiziere die Punkte auf die Dachebene, um eine korrekte Höhe zu garantieren
+        const projectPointToPlane = (point: THREE.Vector3): THREE.Vector3 => {
+          // Berechne Abstand des Punktes zur Ebene
+          const distance = plane.distanceToPoint(point);
+          // Verschiebe den Punkt um diesen Abstand in Richtung der Ebene
+          return point.sub(normalVector.clone().multiplyScalar(distance));
+        };
+        
+        // Korrektur der Höhe eines Punktes durch Projektion
+        const p1Projected = projectPointToPlane(p1.clone());
+        const p2 = moduleBasePoint.clone().add(v1Projected.clone().multiplyScalar(moduleWidth));
+        const p2Projected = projectPointToPlane(p2.clone());
+        const p3 = moduleBasePoint.clone()
+          .add(v1Projected.clone().multiplyScalar(moduleWidth))
+          .add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p3Projected = projectPointToPlane(p3.clone());
+        const p4 = moduleBasePoint.clone().add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p4Projected = projectPointToPlane(p4.clone());
+        
+        // Kleiner Offset nach oben hinzufügen, um Z-Fighting zu vermeiden (0.5cm)
+        const zFightingOffset = 0.005;
+        p1Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        p2Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        p3Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        p4Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
+        
+        const moduleCorners: Point[] = [
+          { x: p1Projected.x, y: p1Projected.y, z: p1Projected.z },
+          { x: p2Projected.x, y: p2Projected.y, z: p2Projected.z },
+          { x: p3Projected.x, y: p3Projected.y, z: p3Projected.z },
+          { x: p4Projected.x, y: p4Projected.y, z: p4Projected.z }
+        ];
+        
+        modulePoints.push(moduleCorners);
+        
+        // Füge Gitterlinien für die Umrissvisualisierung jedes Moduls hinzu
+        gridLines.push({ from: moduleCorners[0], to: moduleCorners[1] });
+        gridLines.push({ from: moduleCorners[1], to: moduleCorners[2] });
+        gridLines.push({ from: moduleCorners[2], to: moduleCorners[3] });
+        gridLines.push({ from: moduleCorners[3], to: moduleCorners[0] });
+      }
+    }
+    
+    // Debugging-Information
+    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentVector.angleTo(new THREE.Vector3(1, 0, 0)).toFixed(2)}° und Neigung ${inclinationDeg.toFixed(2)}°`);
+    if (modulePoints.length > 0) {
+      console.log("Erste Modulecken:", modulePoints[0]);
+    }
+    
+    return { modulePoints, gridLines };
+  }
+  
+  // Fallback bei Problemen mit der Ebenenberechnung: Verwende eine vereinfachte 2D-Platzierung
+  console.warn("Fallback zur vereinfachten 2D-Platzierung");
   
   // Get the starting position (add edge distance to min coordinates)
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
-  // Generate module placement grid
+  // Standard-Richtungsvektoren (ohne Ausrichtung)
+  const directionX = { x: 1, z: 0 };
+  const directionZ = { x: 0, z: 1 };
+  
+  // Generiere das Modul-Platzierungsgitter mit Standard-Ausrichtung
   for (let row = 0; row < pvInfo.rows!; row++) {
     for (let col = 0; col < pvInfo.columns!; col++) {
-      // Calculate position of this module
-      const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
-      const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
+      // Berechne die Basisposition dieses Moduls
+      const xOffset = col * (moduleWidth + pvInfo.moduleSpacing!);
+      const zOffset = row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Create 4 corner points for this module
+      const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
+      const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
+      
+      // Verwende die berechnete durchschnittliche Y-Koordinate (mit kleinem Offset)
+      const y = avgY + 0.005;  // 5mm über der Dachfläche
+      
+      // Berechne die vier Eckpunkte des Moduls mit Standard-Ausrichtung
       const moduleCorners: Point[] = [
-        { x, y: baseY + 0.02, z },  // Top-left
-        { x: x + moduleWidth, y: baseY + 0.02, z },  // Top-right
-        { x: x + moduleWidth, y: baseY + 0.02, z: z + moduleHeight },  // Bottom-right
-        { x, y: baseY + 0.02, z: z + moduleHeight }  // Bottom-left
+        { x, y, z },
+        { x: x + moduleWidth, y, z },
+        { x: x + moduleWidth, y, z: z + moduleHeight },
+        { x, y, z: z + moduleHeight }
       ];
       
       modulePoints.push(moduleCorners);
       
-      // Add grid lines for this module
+      // Füge Gitterlinien hinzu
       for (let i = 0; i < 4; i++) {
-        const from = moduleCorners[i];
-        const to = moduleCorners[(i + 1) % 4];
-        gridLines.push({ from, to });
+        gridLines.push({
+          from: moduleCorners[i],
+          to: moduleCorners[(i + 1) % 4]
+        });
       }
     }
-  }
-  
-  // Add boundary lines showing the edge distance
-  const boundaryPoints = [
-    { x: pvInfo.minX, y: baseY + 0.01, z: pvInfo.minZ },
-    { x: pvInfo.maxX, y: baseY + 0.01, z: pvInfo.minZ },
-    { x: pvInfo.maxX, y: baseY + 0.01, z: pvInfo.maxZ },
-    { x: pvInfo.minX, y: baseY + 0.01, z: pvInfo.maxZ }
-  ];
-  
-  // Add available area boundary lines inside edge distance
-  const availableAreaPoints = [
-    { x: startX, y: baseY + 0.01, z: startZ },
-    { x: startX + pvInfo.availableWidth, y: baseY + 0.01, z: startZ },
-    { x: startX + pvInfo.availableWidth, y: baseY + 0.01, z: startZ + pvInfo.availableLength },
-    { x: startX, y: baseY + 0.01, z: startZ + pvInfo.availableLength }
-  ];
-  
-  // Add boundary lines
-  for (let i = 0; i < 4; i++) {
-    const from = boundaryPoints[i];
-    const to = boundaryPoints[(i + 1) % 4];
-    gridLines.push({ from, to });
-    
-    const availFrom = availableAreaPoints[i];
-    const availTo = availableAreaPoints[(i + 1) % 4];
-    gridLines.push({ from: availFrom, to: availTo });
   }
   
   return { modulePoints, gridLines };

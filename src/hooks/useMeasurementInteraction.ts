@@ -120,8 +120,60 @@ export const useMeasurementInteraction = (
       clearAddPointIndicators();
       clearSnapIndicator();
       setMovingPointInfo(null);
+      
+      // Ensure all PV module visualizations are cleared when disabling the tool
+      if (refs.measurementsRef.current) {
+        console.log("Cleaning up PV module visualizations on disable");
+        refs.measurementsRef.current.children.forEach(child => {
+          if (child.userData && child.userData.isPVModule) {
+            console.log("Removing PV module visualization:", child.name || "unnamed");
+            refs.measurementsRef.current?.remove(child);
+          }
+        });
+      }
     }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
+  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo, refs]);
+
+  // Special handling for PV module visibility
+  useEffect(() => {
+    if (enabled && refs.measurementsRef.current) {
+      // Ensure PV modules are visible when the measurement tool is enabled
+      console.log("Updating PV module visibility when tool is enabled");
+      
+      const pvModules = refs.measurementsRef.current.children.filter(
+        child => child.userData && (child.userData.isPVModule || child.userData.measurementType === 'pvmodule')
+      );
+      
+      console.log(`Found ${pvModules.length} PV module visualizations to update`);
+      
+      pvModules.forEach(module => {
+        // Find the corresponding measurement to check its visibility
+        const measurement = measurements.find(m => m.id === module.userData.measurementId);
+        if (measurement) {
+          module.visible = measurement.visible !== false;
+          console.log(`Setting PV module ${module.name || 'unnamed'} visibility to ${module.visible}`);
+          
+          // Enhance visibility with increased material opacity
+          if (module instanceof THREE.Mesh && module.material instanceof THREE.MeshBasicMaterial) {
+            module.material.opacity = 0.95; // Increased from 0.9 for better visibility
+            module.material.color.set(0x0EA5E9); // Bright blue color
+            module.material.transparent = true;
+            module.material.side = THREE.DoubleSide; // Show both sides
+            module.material.needsUpdate = true;
+            
+            // Raise position slightly to avoid z-fighting
+            module.position.y += 0.01;
+            
+            console.log("Updated PV module material properties for better visibility:", {
+              opacity: module.material.opacity,
+              color: module.material.color.getHexString(),
+              position: module.position
+            });
+          }
+        }
+      });
+    }
+  }, [enabled, measurements, refs.measurementsRef]);
 
   return {
     movingPointInfo,

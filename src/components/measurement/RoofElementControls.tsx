@@ -7,7 +7,8 @@ import {
   X,
   Info,
   Sun,
-  PanelLeft
+  PanelLeft,
+  Zap
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
 import { 
@@ -39,7 +40,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   const getRequiredPoints = (mode: MeasurementMode): number => {
     switch(mode) {
       case 'solar': 
-        return 3; // Flächenmessung
+        return 4; // Exact 4 points for Solarplanung
       case 'skylight': 
         return 4; // Vier Punkte für exakte Rechteckdefinition
       case 'chimney': 
@@ -88,7 +89,15 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         }
       
       case 'solar':
-        return `Markieren Sie die Eckpunkte der Solaranlage. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        if (currentPoints.length === 0) {
+          return "Markieren Sie die erste Ecke der Solarfläche.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken der Solarfläche. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else if (currentPoints.length === 4) {
+          return "Solarfläche vollständig definiert. Schließen Sie die Messung ab.";
+        } else {
+          return "Exakt 4 Punkte für die Solarfläche werden benötigt.";
+        }
       
       case 'vent':
         return "Markieren Sie die Position des Lüfters.";
@@ -105,7 +114,12 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   };
 
   const canFinalize = (): boolean => {
-    return currentPoints.length >= getRequiredPoints(activeMode);
+    const requiredPoints = getRequiredPoints(activeMode);
+    if (activeMode === 'solar') {
+      // For solar, we require exactly 4 points
+      return currentPoints.length === 4;
+    }
+    return currentPoints.length >= requiredPoints;
   };
 
   const getElementTitle = (mode: MeasurementMode): string => {
@@ -123,9 +137,12 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
 
   // Flag um festzustellen, ob wir in einem Penetrationsmodus sind
   const isPenetrationMode = ['vent', 'hook', 'other'].includes(activeMode);
+  
+  // Flag to check if we're in solar planning mode with 4 points (ready to calculate)
+  const isSolarReadyToCalculate = activeMode === 'solar' && currentPoints.length === 4;
 
   return (
-    <div className="p-3 pb-0">
+    <div className="p-3">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
         <div className="text-sm font-medium mb-2 flex items-center justify-between">
           <span>{getElementTitle(activeMode)}-Messung aktiv</span>
@@ -170,9 +187,24 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
           </Button>
         </div>
         
-        <div className="flex items-center mt-2 text-xs text-muted-foreground">
-          <Info className="h-3 w-3 mr-1 flex-shrink-0" />
-          <span>{getInstructions(activeMode)}</span>
+        {/* Add PV Module calculation button specifically for solar planning with 4 points */}
+        {isSolarReadyToCalculate && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full mt-1 bg-green-600 hover:bg-green-700"
+            onClick={handleFinalizeMeasurement}
+            title="PV-Module berechnen"
+          >
+            <Zap className="h-3 w-3 mr-1" />
+            PV-Module berechnen
+          </Button>
+        )}
+        
+        {/* Improved text container with better text wrapping and overflow handling */}
+        <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">
+          <Info className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+          <span className="whitespace-normal break-words">{getInstructions(activeMode)}</span>
         </div>
       </div>
     </div>

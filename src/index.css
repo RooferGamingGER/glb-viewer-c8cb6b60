@@ -155,7 +155,29 @@
     @apply border-primary bg-primary/5 scale-[1.01] shadow-md;
   }
   
-  /* Add specific styles for improved label visibility in PDF exports */
+  .measurement-sidebar {
+    @apply h-full flex flex-col;
+    min-height: 0;
+  }
+  
+  .measurement-content {
+    @apply flex-1 min-h-0 overflow-hidden;
+  }
+  
+  .measurement-notification {
+    @apply border-t border-border/30 overflow-visible;
+    max-height: 60vh;
+  }
+  
+  .instruction-text {
+    @apply whitespace-normal break-words overflow-visible;
+    word-break: break-word;
+  }
+  
+  .instruction-icon {
+    @apply flex-shrink-0 mt-0.5;
+  }
+  
   .pdf-export-label {
     font-weight: bold !important;
     font-size: 14pt !important;
@@ -190,7 +212,6 @@
     max-height: 100%;
   }
   
-  /* Enlarged text for measurement labels in exports */
   .export-measurement-text {
     font-size: 12pt !important;
     font-weight: bold !important;
@@ -199,7 +220,6 @@
     border-radius: 2px !important;
   }
   
-  /* PDF export specific styles */
   .pdf-section {
     page-break-inside: avoid;
   }

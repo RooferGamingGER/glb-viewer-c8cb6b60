@@ -58,12 +58,12 @@ interface MeasurementItemProps {
   handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
-  segmentsOpen: Record<string, boolean>;
+  segmentsOpen: boolean;
   toggleSegments: (id: string) => void;
   onEditSegment: (segmentId: string) => void;
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
-  handleMoveMeasurementUp?: (id: string) => void;
-  handleMoveMeasurementDown?: (id: string) => void;
+  handleMoveUp?: (id: string) => void;
+  handleMoveDown?: (id: string) => void;
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -79,14 +79,15 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   toggleSegments,
   onEditSegment,
   movingPointInfo,
-  handleMoveMeasurementUp,
-  handleMoveMeasurementDown
+  handleMoveUp,
+  handleMoveDown
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
   const [showPVDetails, setShowPVDetails] = useState(false);
   const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
+  const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
 
   const updateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
     if (!measurement.segments) return;
@@ -166,7 +167,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       undefined,
       undefined,
       DEFAULT_EDGE_DISTANCE,
-      DEFAULT_MODULE_SPACING
+      DEFAULT_MODULE_SPACING,
+      undefined,
+      undefined,
+      useOptimalRectangle
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
   };
@@ -183,7 +187,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         measurement.pvModuleInfo.moduleHeight,
         measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
         measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
-        dimensions
+        dimensions,
+        undefined,
+        useOptimalRectangle
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -201,7 +207,31 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         measurement.pvModuleInfo.manualDimensions ? {
           width: measurement.pvModuleInfo.userDefinedWidth || 0,
           length: measurement.pvModuleInfo.userDefinedLength || 0
-        } : undefined
+        } : undefined,
+        undefined,
+        useOptimalRectangle
+      );
+      
+      updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
+    }
+  };
+
+  const handleOptimalRectangleToggle = (enabled: boolean) => {
+    setUseOptimalRectangle(enabled);
+    
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+        measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+        measurement.pvModuleInfo.manualDimensions ? {
+          width: measurement.pvModuleInfo.userDefinedWidth || 0,
+          length: measurement.pvModuleInfo.userDefinedLength || 0
+        } : undefined,
+        undefined,
+        enabled
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -422,7 +452,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         updatedInfo.manualDimensions ? {
                           width: updatedInfo.userDefinedWidth || 0,
                           length: updatedInfo.userDefinedLength || 0
-                        } : undefined
+                        } : undefined,
+                        undefined,
+                        useOptimalRectangle
                       );
                       
                       updateMeasurement(measurement.id, { 
@@ -435,6 +467,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                   onDimensionsChange={handlePVDimensionsChange}
                   pvModuleInfo={measurement.pvModuleInfo}
                   onSpacingChange={handlePVSpacingChange}
+                  onOptimalRectangleToggle={handleOptimalRectangleToggle}
                 />
               </div>
             </div>
@@ -468,7 +501,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1">
                     <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3)}m</div>
                     <div><strong>Begrenzungslänge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
+                    <div className="col-span-2"><strong>Begrenzungsfl��che:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
                     
                     <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
                     <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
@@ -578,7 +611,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         </Button>
       )}
       
-      {(isRoofElement || isPenetration) && handleMoveMeasurementUp && handleMoveMeasurementDown && (
+      {(isRoofElement || isPenetration) && handleMoveUp && handleMoveDown && (
         <div className="flex justify-end space-x-1 mt-1 mb-2">
           <TooltipProvider>
             <Tooltip>
@@ -587,7 +620,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                   variant="ghost" 
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => handleMoveMeasurementUp(measurement.id)}
+                  onClick={() => handleMoveUp(measurement.id)}
                 >
                   <MoveUp className="h-3 w-3" />
                 </Button>
@@ -603,7 +636,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                   variant="ghost" 
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => handleMoveMeasurementDown(measurement.id)}
+                  onClick={() => handleMoveDown(measurement.id)}
                 >
                   <MoveDown className="h-3 w-3" />
                 </Button>
@@ -705,7 +738,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         <SegmentList 
           measurementId={measurement.id}
           segments={measurement.segments}
-          isOpen={segmentsOpen[measurement.id] || false}
+          isOpen={segmentsOpen}
           toggleSegments={toggleSegments}
           onEditSegment={onEditSegment}
           updateSegment={updateSegment}

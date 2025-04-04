@@ -29,7 +29,7 @@ export const projectMeasurementsTo2D = (
 } => {
   // Include all relevant measurement types: area, solar, skylight, chimney, vent, hook, other
   const relevantMeasurements = measurements.filter(m => 
-    ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type) && 
+    ['area', 'solar', 'pvmodule', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type) && 
     m.points && 
     m.points.length >= 3
   );
@@ -190,6 +190,176 @@ const projectMeasurementsTopDown = (measurements: Measurement[]): {
 };
 
 /**
+ * Project PV module positions to 2D for rendering
+ */
+const projectPVModulesTo2D = (
+  measurement: Measurement,
+  points2D: Point2D[],
+  toCanvasX: (x: number) => number,
+  toCanvasY: (y: number) => number
+): { 
+  moduleRects: { x: number, y: number, width: number, height: number, rotation: number }[],
+  moduleBounds: { minX: number, minY: number, maxX: number, maxY: number } | null
+} => {
+  if (!measurement.pvModuleInfo || 
+      !measurement.pvModuleInfo.moduleCorners ||
+      measurement.pvModuleInfo.moduleCorners.length === 0) {
+    return { moduleRects: [], moduleBounds: null };
+  }
+  
+  const moduleRects: { x: number, y: number, width: number, height: number, rotation: number }[] = [];
+  let minX = Number.MAX_VALUE;
+  let minY = Number.MAX_VALUE;
+  let maxX = Number.MIN_VALUE;
+  let maxY = Number.MIN_VALUE;
+  
+  // Debug info
+  console.log(`Projecting ${measurement.pvModuleInfo.moduleCorners.length} modules for ${measurement.type}`);
+  
+  // For each module, process its corner points
+  measurement.pvModuleInfo.moduleCorners.forEach((cornerPoints, index) => {
+    if (cornerPoints.length !== 4) {
+      console.warn(`Module ${index} has ${cornerPoints.length} corners instead of 4`);
+      return;
+    }
+    
+    // Project the four corners to 2D for the top-down view
+    const corners2D: Point2D[] = cornerPoints.map(point => {
+      // For top-down view, use X and Z coordinates
+      return { x: point.x, y: point.z };
+    });
+    
+    // Calculate the center point of the module
+    const centerX = corners2D.reduce((sum, p) => sum + p.x, 0) / 4;
+    const centerY = corners2D.reduce((sum, p) => sum + p.y, 0) / 4;
+    
+    // Calculate width and height based on the corners
+    const left = Math.min(...corners2D.map(p => p.x));
+    const right = Math.max(...corners2D.map(p => p.x));
+    const top = Math.min(...corners2D.map(p => p.y));
+    const bottom = Math.max(...corners2D.map(p => p.y));
+    
+    const width = right - left;
+    const height = bottom - top;
+    
+    // Update bounds
+    minX = Math.min(minX, left);
+    maxX = Math.max(maxX, right);
+    minY = Math.min(minY, top);
+    maxY = Math.max(maxY, bottom);
+    
+    // Approximate rotation based on the orientation of the first two corners
+    const dx = corners2D[1].x - corners2D[0].x;
+    const dy = corners2D[1].y - corners2D[0].y;
+    const rotation = Math.atan2(dy, dx);
+    
+    // Add the module rectangle with canvas coordinates
+    moduleRects.push({
+      x: toCanvasX(centerX),
+      y: toCanvasY(centerY),
+      width: width * 0.95, // Less reduction for better visibility
+      height: height * 0.95, // Less reduction for better visibility
+      rotation: rotation
+    });
+  });
+  
+  const moduleBounds = moduleRects.length > 0 ? { minX, minY, maxX, maxY } : null;
+  
+  console.log(`Generated ${moduleRects.length} module rects for rendering`);
+  return { moduleRects, moduleBounds };
+};
+
+/**
+ * Draws PV modules as rectangles on the canvas
+ */
+const drawPVModules = (
+  ctx: CanvasRenderingContext2D,
+  moduleRects: { x: number, y: number, width: number, height: number, rotation: number }[],
+  scale: number
+) => {
+  // Skip if no modules
+  if (moduleRects.length === 0) {
+    console.log('No module rects to draw');
+    return;
+  }
+  
+  console.log(`Drawing ${moduleRects.length} PV modules`);
+  
+  // Define improved PV module style
+  const moduleStrokeColor = '#0047AB'; // Darker blue outline (cobalt blue)
+  const moduleFillColor = '#4F94CD'; // Medium blue fill (steel blue)
+  
+  ctx.save();
+  
+  moduleRects.forEach(module => {
+    ctx.save();
+    
+    // Move to the center of the module
+    ctx.translate(module.x, module.y);
+    
+    // Rotate if needed
+    if (module.rotation) {
+      ctx.rotate(module.rotation);
+    }
+    
+    // Draw the module rectangle
+    const halfWidth = (module.width * scale) / 2;
+    const halfHeight = (module.height * scale) / 2;
+    
+    // Draw the module with a border
+    ctx.lineWidth = 1.5; // Thicker border
+    ctx.strokeStyle = moduleStrokeColor;
+    ctx.fillStyle = moduleFillColor;
+    
+    // Draw rectangle centered at origin (0,0) after translation
+    ctx.beginPath();
+    ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Add a simple grid pattern to represent solar cells
+    const cellColumns = 6;
+    const cellRows = 10;
+    const cellWidth = (halfWidth * 2) / cellColumns;
+    const cellHeight = (halfHeight * 2) / cellRows;
+    
+    ctx.lineWidth = 0.7; // Slightly thicker grid lines
+    ctx.strokeStyle = 'rgba(0, 0, 128, 0.6)'; // Darker, more visible grid lines
+    
+    // Draw vertical grid lines
+    for (let i = 1; i < cellColumns; i++) {
+      const x = -halfWidth + (i * cellWidth);
+      ctx.beginPath();
+      ctx.moveTo(x, -halfHeight);
+      ctx.lineTo(x, halfHeight);
+      ctx.stroke();
+    }
+    
+    // Draw horizontal grid lines
+    for (let i = 1; i < cellRows; i++) {
+      const y = -halfHeight + (i * cellHeight);
+      ctx.beginPath();
+      ctx.moveTo(-halfWidth, y);
+      ctx.lineTo(halfWidth, y);
+      ctx.stroke();
+    }
+    
+    // Add a light reflection effect
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.beginPath();
+    ctx.moveTo(-halfWidth, -halfHeight);
+    ctx.lineTo(-halfWidth + halfWidth, -halfHeight);
+    ctx.lineTo(-halfWidth + (halfWidth / 2), -halfHeight + (halfHeight / 2));
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+  });
+  
+  ctx.restore();
+};
+
+/**
  * Creates a combined 2D roof plan of all measurements
  * @param measurements - Array of measurements to include in the plan
  * @param width - Width of the output canvas in pixels
@@ -287,6 +457,7 @@ export const createCombinedRoofPlan = (
     const colors: Record<string, { fill: string; stroke: string }> = {
       'area': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#666666' },
       'solar': { fill: 'rgba(0, 180, 0, 0.2)', stroke: '#006600' },
+      'pvmodule': { fill: 'rgba(0, 120, 255, 0.2)', stroke: '#0044AA' },
       'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, // More vivid for skylights
       'chimney': { fill: 'rgba(180, 0, 0, 0.2)', stroke: '#990000' },
       'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  // Added vent
@@ -317,7 +488,7 @@ export const createCombinedRoofPlan = (
     const usedMeasurementTypes = new Set<string>();
     
     // First pass: Draw all roof areas (sorted with basic areas first, special elements later)
-    const sortOrder = ['area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'];
+    const sortOrder = ['area', 'solar', 'pvmodule', 'skylight', 'chimney', 'vent', 'hook', 'other'];
     
     // Sort the measurements by type
     const sortedMeasurements = [...projectedMeasurements].sort((a, b) => {
@@ -353,9 +524,11 @@ export const createCombinedRoofPlan = (
       ctx.stroke();
     });
     
-    // Second pass: Draw all special areas (solar, skylight, chimney, etc.)
+    // Second pass: Draw all special areas (skylight, chimney, etc. except for PV),
+    // as we'll handle the PV areas separately to add modules
     sortedMeasurements.forEach(({ measurement, points2D }) => {
-      if (measurement.type === 'area') return; // Skip regular areas, already drawn
+      // Skip regular areas and PV areas for now
+      if (measurement.type === 'area' || measurement.type === 'solar' || measurement.type === 'pvmodule') return;
       
       const colorSet = colors[measurement.type] || colors.default;
       usedMeasurementTypes.add(measurement.type);
@@ -389,7 +562,54 @@ export const createCombinedRoofPlan = (
       }
     });
     
-    // Third pass: Draw all measurement segments
+    // Third pass: Handle PV areas differently - draw module rectangles instead of just the area
+    sortedMeasurements.forEach(({ measurement, points2D }) => {
+      if (measurement.type !== 'solar' && measurement.type !== 'pvmodule') return;
+      
+      // Log for debugging
+      console.log(`Processing PV area: ${measurement.id}, type: ${measurement.type}`);
+      
+      // Initially draw the outline of the area as a lightweight reference
+      const colorSet = colors[measurement.type] || colors.default;
+      usedMeasurementTypes.add(measurement.type);
+      
+      // Draw a very subtle outline
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(points2D[0].x), toCanvasY(points2D[0].y));
+      
+      for (let i = 1; i < points2D.length; i++) {
+        ctx.lineTo(toCanvasX(points2D[i].x), toCanvasY(points2D[i].y));
+      }
+      
+      ctx.closePath();
+      
+      // Apply a very light fill
+      ctx.fillStyle = 'rgba(220, 240, 255, 0.1)';
+      ctx.fill();
+      
+      // Draw a dashed outline to indicate the border of the PV area
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#2277AA';
+      ctx.setLineDash([5, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]); // Reset line dash
+      
+      // Draw PV modules if available
+      if (measurement.pvModuleInfo) {
+        // Get module rectangles
+        const { moduleRects } = projectPVModulesTo2D(
+          measurement, 
+          points2D, 
+          toCanvasX, 
+          toCanvasY
+        );
+        
+        // Draw all modules
+        drawPVModules(ctx, moduleRects, 1);
+      }
+    });
+    
+    // Fourth pass: Draw all measurement segments
     sortedMeasurements.forEach(({ measurement, points2D }) => {
       if (!measurement.segments) return;
       
@@ -480,7 +700,7 @@ export const createCombinedRoofPlan = (
       }
     });
     
-    // Fourth pass: Draw measurement labels, points and areas in the center
+    // Fifth pass: Draw measurement labels, points and areas in the center
     sortedMeasurements.forEach(({ measurement, points2D, centroid }) => {
       // Draw the vertices - INCREASED SIZE for better visibility on A4
       points2D.forEach((point, index) => {
@@ -499,7 +719,18 @@ export const createCombinedRoofPlan = (
       
       // Draw the measurement ID/label in the center
       const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
-      const valueText = `${measurement.value.toFixed(2)} m²`;
+      const valueText = `${measurement.value ? measurement.value.toFixed(2) : "0.00"} m²`;
+      
+      // Add PV module info for solar areas
+      let pvText = "";
+      if ((measurement.type === 'solar' || measurement.type === 'pvmodule') && 
+          measurement.pvModuleInfo?.moduleCount) {
+        pvText = `${measurement.pvModuleInfo.moduleCount} Module`;
+        if (measurement.pvModuleInfo?.pvMaterials?.totalPower) {
+          // Ensure proper formatting with 2 decimal places
+          pvText += ` / ${measurement.pvModuleInfo.pvMaterials.totalPower.toFixed(2)} kWp`;
+        }
+      }
       
       // INCREASED font size for better readability
       ctx.font = 'bold 30px Arial'; // Increased from 26px to 30px
@@ -509,7 +740,8 @@ export const createCombinedRoofPlan = (
       // Add a white background behind text for better readability
       const labelWidth = ctx.measureText(labelText).width;
       const valueWidth = ctx.measureText(valueText).width;
-      const maxWidth = Math.max(labelWidth, valueWidth);
+      const pvWidth = pvText ? ctx.measureText(pvText).width : 0;
+      const maxWidth = Math.max(labelWidth, valueWidth, pvWidth);
       
       // Draw white background for label text
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
@@ -537,6 +769,22 @@ export const createCombinedRoofPlan = (
       ctx.font = 'bold 28px Arial'; // Increased from 24px to 28px
       ctx.fillStyle = '#222222';
       ctx.fillText(valueText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 46); // Adjusted position for larger text
+      
+      // Draw PV module info text if available
+      if (pvText) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(
+          toCanvasX(centroid.x) - maxWidth / 2 - 10,
+          toCanvasY(centroid.y) + 70,
+          maxWidth + 20,
+          44  // Height for the PV text
+        );
+        
+        // Draw the PV text in a slightly different color
+        ctx.font = 'bold 26px Arial';
+        ctx.fillStyle = '#005500'; // Green color for PV info
+        ctx.fillText(pvText, toCanvasX(centroid.x), toCanvasY(centroid.y) + 90);
+      }
     });
     
     // Add a disclaimer below the plan

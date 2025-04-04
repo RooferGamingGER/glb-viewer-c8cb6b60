@@ -30,6 +30,7 @@ export const useMeasurementState = (
   const [showTable, setShowTable] = useState<boolean>(false);
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
+  const [moduleVisualsDetailLevel, setModuleVisualsDetailLevel] = useState<'simple' | 'detailed'>('detailed');
 
   // Handler for toggling segment visibility
   const toggleSegments = useCallback((id: string) => {
@@ -38,6 +39,12 @@ export const useMeasurementState = (
       [id]: !prev[id]
     }));
   }, []);
+
+  // Handler for toggling PV module visual detail level
+  const toggleModuleVisualsDetailLevel = useCallback(() => {
+    setModuleVisualsDetailLevel(prev => prev === 'simple' ? 'detailed' : 'simple');
+    toast.info(`PV-Modul Darstellung: ${moduleVisualsDetailLevel === 'simple' ? 'Detailliert' : 'Einfach'}`);
+  }, [moduleVisualsDetailLevel]);
 
   // Handler for clearing all measurements with confirmation
   const handleClearMeasurements = useCallback(() => {
@@ -149,12 +156,32 @@ export const useMeasurementState = (
     }
   }, [handlers]);
 
+  // Handler for updating PV module visuals
+  const handleUpdateModuleVisuals = useCallback((id: string, visuals: any) => {
+    const measurement = measurements.find(m => m.id === id);
+    if (!measurement || !measurement.pvModuleInfo) return;
+    
+    handlers.updateMeasurement(id, {
+      pvModuleInfo: {
+        ...measurement.pvModuleInfo,
+        moduleVisuals: {
+          ...measurement.pvModuleInfo.moduleVisuals,
+          ...visuals
+        }
+      }
+    });
+    
+    toast.info('PV-Modul Darstellung aktualisiert');
+  }, [measurements, handlers]);
+
   return {
     showTable,
     setShowTable,
     segmentsOpen,
     editingSegmentId,
     setEditingSegmentId,
+    moduleVisualsDetailLevel,
+    toggleModuleVisualsDetailLevel,
     toggleSegments,
     handleClearMeasurements,
     handleFinalizeMeasurement,
@@ -164,6 +191,7 @@ export const useMeasurementState = (
     handleDeleteMeasurement,
     handleDeletePoint,
     handleMoveMeasurementUp,
-    handleMoveMeasurementDown
+    handleMoveMeasurementDown,
+    handleUpdateModuleVisuals
   };
 };
