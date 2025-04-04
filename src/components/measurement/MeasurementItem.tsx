@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -46,7 +47,6 @@ import {
   PV_MODULE_TEMPLATES,
   calculateAnnualYield
 } from '@/utils/pvCalculations';
-import PVModuleSelect from './PVModuleSelect';
 import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 
 interface MeasurementItemProps {
@@ -238,6 +238,37 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
     }
   };
 
+  // Function to handle module selection
+  const handleModuleSelect = (moduleSpec: any) => {
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = {
+        ...measurement.pvModuleInfo,
+        moduleWidth: moduleSpec.width,
+        moduleHeight: moduleSpec.height,
+        pvModuleSpec: moduleSpec
+      };
+      
+      const recalculatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        moduleSpec.width,
+        moduleSpec.height,
+        updatedInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+        updatedInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+        updatedInfo.manualDimensions ? {
+          width: updatedInfo.userDefinedWidth || 0,
+          length: updatedInfo.userDefinedLength || 0
+        } : undefined,
+        undefined,
+        useOptimalRectangle
+      );
+      
+      updateMeasurement(measurement.id, { 
+        pvModuleInfo: recalculatedInfo,
+        pvModuleSpec: moduleSpec
+      });
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     switch(type) {
       case 'dormer': return <House className="h-4 w-4 mr-1" />;
@@ -423,7 +454,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                 <Zap className="h-4 w-4 mr-1 text-blue-600" />
                 <span className="font-medium">PV-Planung</span>
               </div>
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center">
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -432,43 +463,6 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                 >
                   <Info className="h-3 w-3" />
                 </Button>
-                
-                <PVModuleSelect 
-                  onModuleSelect={(moduleSpec) => {
-                    if (measurement.pvModuleInfo) {
-                      const updatedInfo = {
-                        ...measurement.pvModuleInfo,
-                        moduleWidth: moduleSpec.width,
-                        moduleHeight: moduleSpec.height,
-                        pvModuleSpec: moduleSpec
-                      };
-                      
-                      const recalculatedInfo = calculatePVModulePlacement(
-                        measurement.points,
-                        moduleSpec.width,
-                        moduleSpec.height,
-                        updatedInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
-                        updatedInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
-                        updatedInfo.manualDimensions ? {
-                          width: updatedInfo.userDefinedWidth || 0,
-                          length: updatedInfo.userDefinedLength || 0
-                        } : undefined,
-                        undefined,
-                        useOptimalRectangle
-                      );
-                      
-                      updateMeasurement(measurement.id, { 
-                        pvModuleInfo: recalculatedInfo,
-                        pvModuleSpec: moduleSpec
-                      });
-                    }
-                  }}
-                  currentModule={measurement.pvModuleSpec || PV_MODULE_TEMPLATES[0]}
-                  onDimensionsChange={handlePVDimensionsChange}
-                  pvModuleInfo={measurement.pvModuleInfo}
-                  onSpacingChange={handlePVSpacingChange}
-                  onOptimalRectangleToggle={handleOptimalRectangleToggle}
-                />
               </div>
             </div>
             

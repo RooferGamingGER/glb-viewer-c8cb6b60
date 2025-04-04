@@ -32,6 +32,7 @@ interface PVModuleSelectProps {
   onSpacingChange?: (spacing: { edgeDistance: number, moduleSpacing: number }) => void;
   onOptimalRectangleToggle?: (enabled: boolean) => void;
   onCalculateMaterials?: (inverterDistance?: number) => void;
+  disabled?: boolean;
 }
 
 const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
@@ -41,7 +42,8 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   pvModuleInfo,
   onSpacingChange,
   onOptimalRectangleToggle,
-  onCalculateMaterials
+  onCalculateMaterials,
+  disabled = false
 }) => {
   const [selectedModule, setSelectedModule] = useState<PVModuleSpec>(
     currentModule || PV_MODULE_TEMPLATES[0]
@@ -98,7 +100,7 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6">
+        <Button variant="ghost" size="icon" className="h-6 w-6" disabled={disabled}>
           <Settings2 className="h-3 w-3" />
         </Button>
       </DialogTrigger>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
@@ -249,6 +250,9 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
         measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
       );
   
+  // Check if materials list has already been calculated
+  const materialsCalculated = !!measurement.pvModuleInfo.pvMaterials;
+
   return (
     <div className="pt-2">
       <PVPlanningDisclaimer 
@@ -270,6 +274,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           onDimensionsChange={handleDimensionsChange}
           onSpacingChange={handleSpacingChange}
           onCalculateMaterials={handleCalculateMaterials}
+          disabled={materialsCalculated}
         />
       </div>
       
@@ -340,25 +345,27 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
             </div>
             
             <div className="mt-2 pt-2 border-t text-xs">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full h-7"
-                onClick={() => handleCalculateMaterials()}
-                disabled={calculatingMaterials}
-              >
-                {calculatingMaterials ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Berechnung läuft...
-                  </>
-                ) : (
-                  <>
-                    <PackageIcon className="h-3 w-3 mr-1" />
-                    Materialliste berechnen
-                  </>
-                )}
-              </Button>
+              {!materialsCalculated && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full h-7"
+                  onClick={() => handleCalculateMaterials()}
+                  disabled={calculatingMaterials}
+                >
+                  {calculatingMaterials ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Berechnung läuft...
+                    </>
+                  ) : (
+                    <>
+                      <PackageIcon className="h-3 w-3 mr-1" />
+                      Materialliste berechnen
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -424,7 +431,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           ) : measurement.pvModuleInfo.pvMaterials ? (
             <PVMaterialsList 
               materials={measurement.pvModuleInfo.pvMaterials}
-              onCalculate={() => handleCalculateMaterials()}
+              onCalculate={null}
             />
           ) : (
             <div className="p-4 text-center">
