@@ -735,8 +735,8 @@ export const generatePVModuleGrid = (
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
-      // IMPORTANT: Increase Y offset significantly to make modules more visible
-      const yOffset = 0.3; // 30cm above the roof surface for visibility
+      // Reduced module height offset from 30cm to 5cm above the roof surface for better visibility
+      const yOffset = 0.05; // 5cm above the roof surface
       
       // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
       const moduleCorners: Point[] = [
@@ -774,7 +774,7 @@ export const generatePVModuleGrid = (
   }
   
   // Add detailed debug logging to track module generation
-  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.3}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
+  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.05}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
   if (modulePoints.length > 0) {
     console.log("First module corners:", modulePoints[0]);
   }
