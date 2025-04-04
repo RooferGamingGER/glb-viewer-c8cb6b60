@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '@/components/ModelViewer';
@@ -7,7 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { Measurement } from '@/types/measurements';
+import { Measurement, PVModuleInfo } from '@/types/measurements';
 import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { toast } from '@/components/ui/use-toast';
 
