@@ -400,18 +400,23 @@ export const useMeasurementCore = () => {
         break;
         
       case 'solar':
-        const solarArea = calculateArea(points);
-        const segments = generateSegments(points);
-        
-        measurementData = {
-          value: solarArea,
-          label: formatMeasurement(solarArea, 'area'),
-          segments,
-          dimensions: {
-            area: solarArea
-          },
-          labelVisible: allLabelsVisible
-        };
+        if (points.length >= 4) {
+          const solarArea = calculateArea(points);
+          const segments = generateSegments(points);
+          
+          measurementData = {
+            value: solarArea,
+            label: formatMeasurement(solarArea, 'area'),
+            segments,
+            dimensions: {
+              area: solarArea
+            },
+            labelVisible: allLabelsVisible
+          };
+        } else {
+          toast.error("Für Solarplanung werden genau 4 Punkte benötigt.");
+          return;
+        }
         break;
         
       case 'pvmodule':
@@ -531,6 +536,13 @@ export const useMeasurementCore = () => {
       toast.success(`Kamin-Messung abgeschlossen - Messwerkzeug deaktiviert`);
     } else if (currentMode === 'chimney' && updatedPoints.length > 0 && updatedPoints.length < 4) {
       toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
+    }
+    
+    if (currentMode === 'solar' && updatedPoints.length === 4) {
+      createRoofElementMeasurement(currentMode, updatedPoints);
+      toast.success(`Solarplanung-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+    } else if (currentMode === 'solar' && updatedPoints.length > 0 && updatedPoints.length < 4) {
+      toast.info(`Punkt ${updatedPoints.length} von 4 für Solarplanung platziert`);
     }
     
     if (currentMode === 'pvmodule' && updatedPoints.length === 4) {
@@ -655,7 +667,7 @@ export const useMeasurementCore = () => {
         return undefined;
       }
     }
-    else if (activeMode === 'solar' && points.length >= 3) {
+    else if (activeMode === 'solar' && points.length >= 4) {
       const validation = validatePolygon(points);
       if (!validation.valid) {
         toast.error(validation.message || 'Ungültiges Polygon');
@@ -726,7 +738,7 @@ export const useMeasurementCore = () => {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
-        'solar': 3,
+        'solar': 4,
         'pvmodule': 4,
         'vent': 1,
         'hook': 1,
@@ -846,9 +858,10 @@ export const useMeasurementCore = () => {
       } else {
         toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
         
-        if (['skylight', 'chimney', 'pvmodule'].includes(activeMode)) {
+        if (['skylight', 'chimney', 'pvmodule', 'solar'].includes(activeMode)) {
           const elementName = activeMode === 'skylight' ? 'Dachfenster' : 
-                              activeMode === 'chimney' ? 'Kamin' : 'PV-Modul';
+                              activeMode === 'chimney' ? 'Kamin' : 
+                              activeMode === 'solar' ? 'Solarplanung' : 'PV-Modul';
           toast.error(`Für ${elementName} werden genau 4 Punkte benötigt.`);
         }
         return undefined;

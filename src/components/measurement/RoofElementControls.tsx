@@ -39,7 +39,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   const getRequiredPoints = (mode: MeasurementMode): number => {
     switch(mode) {
       case 'solar': 
-        return 3; // Flächenmessung
+        return 4; // Changed from 3 to 4 for Solarplanung
       case 'skylight': 
         return 4; // Vier Punkte für exakte Rechteckdefinition
       case 'chimney': 
@@ -88,7 +88,13 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         }
       
       case 'solar':
-        return `Markieren Sie die Eckpunkte der Solaranlage. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        if (currentPoints.length === 0) {
+          return "Markieren Sie die erste Ecke der Solarfläche.";
+        } else if (currentPoints.length < 4) {
+          return `Markieren Sie die weiteren Ecken der Solarfläche. Noch ${remainingPoints} Punkt(e) benötigt.`;
+        } else {
+          return "Solarfläche vollständig definiert. Schließen Sie die Messung ab.";
+        }
       
       case 'vent':
         return "Markieren Sie die Position des Lüfters.";

@@ -69,8 +69,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const { toast } = useToast();
   
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-3 pt-3 pb-2">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-shrink-0 flex items-center justify-between px-3 pt-3 pb-2">
         <div className="flex items-center">
           <h2 className="text-lg font-medium">Messungen</h2>
           
@@ -121,8 +121,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
       
       <Separator className="mb-2" />
       
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full pr-2">
+      <ScrollArea className="flex-1 pr-2 h-[calc(100vh-180px)]">
+        <div className="px-2 pb-4">
           {showTable ? (
             <MeasurementTable 
               measurements={measurements} 
@@ -151,8 +151,8 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
               handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
           )}
-        </ScrollArea>
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 };

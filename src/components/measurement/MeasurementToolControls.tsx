@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, 
@@ -24,6 +25,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MeasurementToolControlsProps {
   activeMode: MeasurementMode;
@@ -66,8 +68,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   };
 
   return (
-    <div className="p-3">
-      <Tabs defaultValue="tools" value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <div className="p-3 flex flex-col h-full overflow-hidden">
+      <Tabs defaultValue="tools" value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
         <TabsList className="w-full grid grid-cols-2 mb-4">
           <TabsTrigger value="tools" className="flex items-center">
             <Wrench className="h-4 w-4 mr-2" />
@@ -79,174 +81,176 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="tools" className="space-y-4">
-          <div>
-            <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
-            <div className="space-y-2">
-              <Button
-                variant={activeMode === 'length' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('length')}
-                disabled={!!editMeasurementId}
-                title="Längenmessung"
-              >
-                <Ruler className="h-4 w-4 mr-2" />
-                Länge
-              </Button>
-              
-              <Button
-                variant={activeMode === 'height' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('height')}
-                disabled={!!editMeasurementId}
-                title="Höhenmessung"
-              >
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                Höhe
-              </Button>
-              
-              <Button
-                variant={activeMode === 'area' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('area')}
-                disabled={!!editMeasurementId}
-                title="Flächenmessung"
-              >
-                <Square className="h-4 w-4 mr-2" />
-                Fläche
-              </Button>
+        <ScrollArea className="flex-1 pr-2">
+          <TabsContent value="tools" className="space-y-4 mt-0 h-full">
+            <div>
+              <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
+              <div className="space-y-2">
+                <Button
+                  variant={activeMode === 'length' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('length')}
+                  disabled={!!editMeasurementId}
+                  title="Längenmessung"
+                >
+                  <Ruler className="h-4 w-4 mr-2" />
+                  Länge
+                </Button>
+                
+                <Button
+                  variant={activeMode === 'height' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('height')}
+                  disabled={!!editMeasurementId}
+                  title="Höhenmessung"
+                >
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  Höhe
+                </Button>
+                
+                <Button
+                  variant={activeMode === 'area' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('area')}
+                  disabled={!!editMeasurementId}
+                  title="Flächenmessung"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  Fläche
+                </Button>
+              </div>
             </div>
-          </div>
-          
-          <div>
-            <div className="text-sm font-medium mb-2">Solarplanung</div>
-            <div className="space-y-2">
-              <Button
-                variant={activeMode === 'solar' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('solar')}
-                disabled={!!editMeasurementId}
-                title="Solarplanung"
-              >
-                <Sun className="h-4 w-4 mr-2" />
-                Solarplanung
-              </Button>
+            
+            <div>
+              <div className="text-sm font-medium mb-2">Solarplanung</div>
+              <div className="space-y-2">
+                <Button
+                  variant={activeMode === 'solar' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('solar')}
+                  disabled={!!editMeasurementId}
+                  title="Solarplanung"
+                >
+                  <Sun className="h-4 w-4 mr-2" />
+                  Solarplanung
+                </Button>
+              </div>
             </div>
-          </div>
-          
-          <div>
-            <Toggle
-              pressed={snapEnabled}
-              onPressedChange={handleToggleSnap}
-              size="sm"
-              variant={snapEnabled ? "customActive" : "outline"}
-              aria-label="Punktfang ein/aus"
-              title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-              className="w-full justify-start"
-            >
-              <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-              Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-            </Toggle>
-          </div>
-          
-          <Separator />
-          
-          <div>
-            <div className="text-sm font-medium mb-2">Dachelemente</div>
-            <div className="space-y-2">
-              <Button
-                variant={activeMode === 'skylight' ? "default" : "outline"} 
+            
+            <div>
+              <Toggle
+                pressed={snapEnabled}
+                onPressedChange={handleToggleSnap}
                 size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('skylight')}
-                disabled={!!editMeasurementId}
+                variant={snapEnabled ? "customActive" : "outline"}
+                aria-label="Punktfang ein/aus"
+                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+                className="w-full justify-start"
               >
-                <SplitSquareVertical className="h-4 w-4 mr-2" />
-                Dachfenster
-              </Button>
-              
-              <Button
-                variant={activeMode === 'chimney' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('chimney')}
-                disabled={!!editMeasurementId}
-              >
-                <Cylinder className="h-4 w-4 mr-2" />
-                Kamin
-              </Button>
+                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+              </Toggle>
             </div>
-          </div>
+            
+            <Separator />
+            
+            <div>
+              <div className="text-sm font-medium mb-2">Dachelemente</div>
+              <div className="space-y-2">
+                <Button
+                  variant={activeMode === 'skylight' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('skylight')}
+                  disabled={!!editMeasurementId}
+                >
+                  <SplitSquareVertical className="h-4 w-4 mr-2" />
+                  Dachfenster
+                </Button>
+                
+                <Button
+                  variant={activeMode === 'chimney' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('chimney')}
+                  disabled={!!editMeasurementId}
+                >
+                  <Cylinder className="h-4 w-4 mr-2" />
+                  Kamin
+                </Button>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div>
+              <div className="text-sm font-medium mb-2">Einbauten</div>
+              <div className="space-y-2">
+                <Button
+                  variant={activeMode === 'vent' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('vent')}
+                  disabled={!!editMeasurementId}
+                >
+                  <Wind className="h-4 w-4 mr-2" />
+                  Lüfter
+                </Button>
+                
+                <Button
+                  variant={activeMode === 'hook' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('hook')}
+                  disabled={!!editMeasurementId}
+                >
+                  <Anchor className="h-4 w-4 mr-2" />
+                  Haken
+                </Button>
+                
+                <Button
+                  variant={activeMode === 'other' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('other')}
+                  disabled={!!editMeasurementId}
+                >
+                  <Droplet className="h-4 w-4 mr-2" />
+                  Sonstiges
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
           
-          <Separator />
-          
-          <div>
-            <div className="text-sm font-medium mb-2">Einbauten</div>
-            <div className="space-y-2">
-              <Button
-                variant={activeMode === 'vent' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('vent')}
-                disabled={!!editMeasurementId}
-              >
-                <Wind className="h-4 w-4 mr-2" />
-                Lüfter
-              </Button>
-              
-              <Button
-                variant={activeMode === 'hook' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('hook')}
-                disabled={!!editMeasurementId}
-              >
-                <Anchor className="h-4 w-4 mr-2" />
-                Haken
-              </Button>
-              
-              <Button
-                variant={activeMode === 'other' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => toggleMeasurementTool('other')}
-                disabled={!!editMeasurementId}
-              >
-                <Droplet className="h-4 w-4 mr-2" />
-                Sonstiges
-              </Button>
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="measurements" className="space-y-4">
-          <div className="text-sm font-medium mb-2">Messungen</div>
-          {measurements.length > 0 ? (
-            <div className="space-y-2">
-              <GenerateRoofPlanButton measurements={measurements} />
-              
-              <ExportPdfButton measurements={measurements} />
-              
-              <Button
-                variant="outline" 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={handleDownload}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Als CSV exportieren
-              </Button>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground italic text-center py-4">
-              Keine Messungen vorhanden
-            </div>
-          )}
-        </TabsContent>
+          <TabsContent value="measurements" className="space-y-4 mt-0">
+            <div className="text-sm font-medium mb-2">Messungen</div>
+            {measurements.length > 0 ? (
+              <div className="space-y-2">
+                <GenerateRoofPlanButton measurements={measurements} />
+                
+                <ExportPdfButton measurements={measurements} />
+                
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={handleDownload}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Als CSV exportieren
+                </Button>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground italic text-center py-4">
+                Keine Messungen vorhanden
+              </div>
+            )}
+          </TabsContent>
+        </ScrollArea>
       </Tabs>
     </div>
   );
