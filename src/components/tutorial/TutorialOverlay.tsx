@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
@@ -40,14 +39,14 @@ interface TutorialStep {
 const TutorialOverlay: React.FC = () => {
   const [showTutorial, setShowTutorial] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
-  
+
   const tutorialSteps: TutorialStep[] = [
     {
       title: "Willkommen bei DrohnenGLB",
       description: (
         <div className="space-y-3">
           <p>
-            Willkommen zum Tutorial für DrohnenGLB - Ihre moderne Lösung für 
+            Willkommen zum Tutorial für DrohnenGLB - Ihre moderne Lösung für
             präzise Dachmessungen und Solarplanung.
           </p>
           <p>
@@ -236,7 +235,7 @@ const TutorialOverlay: React.FC = () => {
             Sie haben alle Schritte des Tutorials abgeschlossen!
           </p>
           <p>
-            Sie können das Tutorial jederzeit erneut aufrufen, indem Sie auf das Hilfe-Symbol 
+            Sie können das Tutorial jederzeit erneut aufrufen, indem Sie auf das Hilfe-Symbol
             in der oberen Leiste klicken.
           </p>
           <p>
@@ -312,8 +311,8 @@ const TutorialOverlay: React.FC = () => {
           {tutorialSteps[currentStep].description}
         </CardContent>
         <CardFooter className="px-6 py-4 bg-muted/40 flex justify-between">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handlePrevious}
             disabled={currentStep === 0}
           >
