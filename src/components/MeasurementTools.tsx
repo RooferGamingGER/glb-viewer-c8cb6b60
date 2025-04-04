@@ -377,7 +377,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           }}
         >
           {/* Fixed Header - Tools Section */}
-          <div className="flex-shrink-0 border-b border-border/50 flex flex-col">
+          <div className="flex-shrink-0 border-b border-border/50 flex flex-col overflow-y-auto">
             <MeasurementToolControls 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool}
