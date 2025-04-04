@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { MeasurementMode, Measurement, Point } from '@/types/measurements';
 import { toast } from 'sonner';
@@ -149,6 +148,7 @@ export const useMeasurementState = (
     }
   }, [handlers]);
 
+  // Return all state and handlers
   return {
     showTable,
     setShowTable,
