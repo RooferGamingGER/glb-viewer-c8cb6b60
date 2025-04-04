@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -421,6 +420,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   // Handle label visibility toggling with direct visual update
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
+    return true; // Return true to satisfy the boolean return type
   };
 
   // Component rendering

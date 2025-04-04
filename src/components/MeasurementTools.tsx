@@ -26,6 +26,8 @@ import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
 
+import { Point } from '@/types/measurements';
+
 interface MeasurementToolsProps {
   enabled: boolean;
   scene: THREE.Scene;

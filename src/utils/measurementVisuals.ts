@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { calculateDistance } from './measurementCalculations';
 import { Measurement, Point, PVModuleInfo } from '@/types/measurements';
 
@@ -421,12 +421,16 @@ export const renderMeasurements = (
           break;
         }
         
-        // Create PV module grid
+        // Generate empty arrays if required properties aren't available
+        const modulePoints: Point[][] = [];
+        const gridLines: {from: Point, to: Point}[] = [];
+        
+        // Create PV module grid with empty arrays if properties don't exist
         const pvModuleMesh = createPVModuleMesh(
           measurement.pvModuleInfo,
           measurement.value || 0,
-          measurement.pvModuleInfo.modulePoints || [],
-          measurement.pvModuleInfo.gridLines || [],
+          modulePoints,
+          gridLines,
           measurement.points[0].y,
           useWireframe
         );

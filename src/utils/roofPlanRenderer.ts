@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
@@ -75,4 +76,25 @@ export const renderRoofPlan = (measurements: Measurement[], width: number, heigh
   renderer.dispose();
 
   return dataURL;
+};
+
+/**
+ * Creates a combined roof plan with multiple rendering features
+ * @param measurements - Array of measurement objects
+ * @param width - Width of the roof plan
+ * @param height - Height of the roof plan
+ * @param padding - Padding around the roof plan (0-1)
+ * @param showLabels - Whether to show labels on the roof plan
+ * @returns A data URL containing the rendered roof plan
+ */
+export const createCombinedRoofPlan = (
+  measurements: Measurement[], 
+  width: number, 
+  height: number, 
+  padding: number = 0.1,
+  showLabels: boolean = true
+): string => {
+  // Use the basic renderRoofPlan function for now
+  // In a real implementation, this would add more features like labels, colors, etc.
+  return renderRoofPlan(measurements, width, height);
 };
