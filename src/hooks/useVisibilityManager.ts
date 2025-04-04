@@ -23,21 +23,21 @@ export const useVisibilityManager = (
 
   // Extrahiere Dachkanten (insbesondere die Traufe) für die Ausrichtung der PV-Module
   const extractRoofEdgeSegments = useCallback(() => {
-    // Verbesserte Priorisierung der Messungen vom Typ "eave" (Traufe)
+    // Prioritäre Suche nach Messungen vom Typ "eave" (Traufe)
     let eaveEdgeMeasurements = measurements.filter(m => m.type === 'eave');
     
-    // Wenn keine Traufe gefunden wurde, suche nach alternativen Dachkanten
+    // Falls keine Traufe gefunden wurde, versuche andere Dachkanten
     let edgeMeasurements = eaveEdgeMeasurements.length > 0 ? 
       eaveEdgeMeasurements : 
       measurements.filter(m => m.type === 'ridge' || m.type === 'verge');
     
     const segments: {from: THREE.Vector3, to: THREE.Vector3}[] = [];
     
-    // Verbesserte Debug-Ausgabe zur Fehlerfindung
-    console.log(`Extrahierte Dachkanten für Ausrichtung: ${edgeMeasurements.length}`, 
+    // Debug-Ausgabe zur Fehlerfindung
+    console.log(`Gefundene Dachkanten für Ausrichtung: ${edgeMeasurements.length}`, 
       edgeMeasurements.map(m => ({type: m.type, id: m.id, points: m.points?.length})));
     
-    // Extrahiere Segmente aus Messungen - sortiere nach Länge, um die längste Kante zuerst zu verwenden
+    // Extrahiere Segmente aus Messungen
     edgeMeasurements.forEach(measurement => {
       if (measurement.points && measurement.points.length >= 2) {
         // Convert Point to THREE.Vector3
@@ -53,39 +53,18 @@ export const useVisibilityManager = (
           measurement.points[1].z
         );
         
-        // Berechne die Länge der Kante für spätere Sortierung
-        const length = new THREE.Vector3().subVectors(toPoint, fromPoint).length();
-        
         segments.push({
           from: fromPoint,
           to: toPoint
         });
         
-        console.log(`Dachkante vom Typ ${measurement.type} für Ausrichtung gefunden:`, {
+        console.log(`Dachkante vom Typ ${measurement.type} für Ausrichtung verwendet:`, {
           from: [fromPoint.x, fromPoint.y, fromPoint.z],
           to: [toPoint.x, toPoint.y, toPoint.z],
-          length: length
+          length: new THREE.Vector3().subVectors(toPoint, fromPoint).length()
         });
       }
     });
-    
-    // Sortiere Segmente nach Länge (absteigend), damit die längste Kante zuerst verwendet wird
-    segments.sort((a, b) => {
-      const lengthA = new THREE.Vector3().subVectors(a.to, a.from).length();
-      const lengthB = new THREE.Vector3().subVectors(b.to, b.from).length();
-      return lengthB - lengthA; // Absteigend sortieren
-    });
-    
-    // Wenn Segmente gefunden wurden, logge das längste für Debugging
-    if (segments.length > 0) {
-      const longest = segments[0];
-      const length = new THREE.Vector3().subVectors(longest.to, longest.from).length();
-      console.log(`Längste Dachkante für Ausrichtung wird verwendet:`, {
-        from: [longest.from.x, longest.from.y, longest.from.z],
-        to: [longest.to.x, longest.to.y, longest.to.z],
-        length: length
-      });
-    }
     
     return segments;
   }, [measurements]);
