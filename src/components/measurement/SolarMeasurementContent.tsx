@@ -333,10 +333,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   : "30°"}
               </div>
               
-              <div className="text-muted-foreground">Jahresertrag:</div>
-              <div>
-                {annualYield.toFixed(0)} kWh/Jahr
-              </div>
+              <div><strong>Geschätzter Jahresertrag:</strong> {calculateAnnualYieldWithOrientation(
+                calculatePVPower(measurement.pvModuleInfo.moduleCount, measurement.pvModuleInfo.pvModuleSpec?.power || 425),
+                measurement.pvModuleInfo
+              ).toFixed(0)} kWh/Jahr</div>
             </div>
             
             <div className="mt-2 pt-2 border-t text-xs">

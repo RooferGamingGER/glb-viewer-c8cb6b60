@@ -1,5 +1,50 @@
 
 /**
+ * Constants for PV module calculations
+ */
+export const DEFAULT_EDGE_DISTANCE = 0.5; // Default edge distance in meters
+export const DEFAULT_MODULE_SPACING = 0.02; // Default spacing between modules in meters
+
+/**
+ * PV module templates with standard specifications
+ */
+export const PV_MODULE_TEMPLATES = [
+  {
+    name: "Standard 425Wp",
+    power: 425,
+    width: 1.134, // Width in meters
+    height: 1.722, // Height in meters
+    weight: 21.9, // Weight in kg
+    efficiency: 21.3, // Efficiency in percent
+    warranty: 25, // Warranty in years
+    type: "Monokristallin",
+    manufacturer: "Standard"
+  },
+  {
+    name: "Premium 450Wp",
+    power: 450,
+    width: 1.134,
+    height: 1.722,
+    weight: 22.5,
+    efficiency: 22.6,
+    warranty: 30,
+    type: "Monokristallin",
+    manufacturer: "Premium"
+  },
+  {
+    name: "Eco 380Wp",
+    power: 380,
+    width: 1.096,
+    height: 1.677,
+    weight: 19.8,
+    efficiency: 20.1,
+    warranty: 20,
+    type: "Polykristallin",
+    manufacturer: "Eco"
+  }
+];
+
+/**
  * Calculates the total power output in kWp for a given number of PV modules
  * @param moduleCount - Number of PV modules
  * @param modulePower - Power per module in Wp (default 390Wp)
@@ -83,4 +128,213 @@ export const calculateModuleLayout = (
     columns,
     totalCount
   };
+};
+
+/**
+ * Calculates the placement of PV modules on a roof surface
+ * @param points - Array of points defining the roof surface
+ * @param moduleWidth - Width of a single module (m)
+ * @param moduleHeight - Height of a single module (m)
+ * @param edgeDistance - Distance from edge of roof (m)
+ * @param moduleSpacing - Spacing between modules (m)
+ * @param manualDimensions - Optional manual dimensions for the area
+ * @param pvModuleSpec - Optional module specification
+ * @param useOptimalRectangle - Whether to use optimal rectangle for irregular shapes
+ * @returns PV module placement information
+ */
+export const calculatePVModulePlacement = (
+  points: any[],
+  moduleWidth: number = 1.0,
+  moduleHeight: number = 1.7,
+  edgeDistance: number = DEFAULT_EDGE_DISTANCE,
+  moduleSpacing: number = DEFAULT_MODULE_SPACING,
+  manualDimensions?: { width: number, length: number },
+  pvModuleSpec?: any,
+  useOptimalRectangle: boolean = true
+): any => {
+  // Implementation for calculating module placement
+  // This is a placeholder implementation
+  const boundingWidth = manualDimensions?.width || 10;
+  const boundingLength = manualDimensions?.length || 15;
+  
+  // Calculate available area after accounting for edge distance
+  const availableWidth = boundingWidth - (2 * edgeDistance);
+  const availableLength = boundingLength - (2 * edgeDistance);
+  
+  // Try both orientations and pick the one that fits more modules
+  const portraitLayout = calculateModuleLayout(
+    availableWidth,
+    availableLength,
+    moduleWidth,
+    moduleHeight,
+    'portrait',
+    moduleSpacing
+  );
+  
+  const landscapeLayout = calculateModuleLayout(
+    availableWidth,
+    availableLength,
+    moduleWidth,
+    moduleHeight,
+    'landscape',
+    moduleSpacing
+  );
+  
+  // Choose the orientation that fits more modules
+  const usePortrait = portraitLayout.totalCount >= landscapeLayout.totalCount;
+  const layout = usePortrait ? portraitLayout : landscapeLayout;
+  const orientation = usePortrait ? 'portrait' : 'landscape';
+  
+  // Calculate coverage percentage
+  const moduleArea = moduleWidth * moduleHeight;
+  const totalModuleArea = layout.totalCount * moduleArea;
+  const roofArea = boundingWidth * boundingLength;
+  const coveragePercent = (totalModuleArea / roofArea) * 100;
+  
+  return {
+    moduleWidth,
+    moduleHeight,
+    moduleCount: layout.totalCount,
+    rows: layout.rows,
+    columns: layout.columns,
+    orientation,
+    edgeDistance,
+    moduleSpacing,
+    boundingWidth,
+    boundingLength,
+    availableWidth,
+    availableLength,
+    coveragePercent,
+    manualDimensions: !!manualDimensions,
+    userDefinedWidth: manualDimensions?.width,
+    userDefinedLength: manualDimensions?.length,
+    pvModuleSpec: pvModuleSpec || PV_MODULE_TEMPLATES[0]
+  };
+};
+
+/**
+ * Formats PV module information for display
+ * @param pvModuleInfo - PV module information
+ * @returns Formatted string
+ */
+export const formatPVModuleInfo = (pvModuleInfo: any): string => {
+  if (!pvModuleInfo) return "Keine PV-Informationen verfügbar";
+  
+  return `${pvModuleInfo.moduleCount} Module (${pvModuleInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat'}, ${pvModuleInfo.coveragePercent.toFixed(1)}% Abdeckung)`;
+};
+
+/**
+ * Calculates roof orientation based on measurements
+ * @param measurement - Measurement object containing points
+ * @returns Roof orientation
+ */
+export const calculateRoofOrientation = (measurement: any): string => {
+  // Placeholder implementation
+  return "Süd";
+};
+
+/**
+ * Calculates annual yield considering roof orientation
+ * @param powerKWp - System power in kWp
+ * @param orientation - Module orientation ('portrait' or 'landscape')
+ * @returns Annual energy yield in kWh
+ */
+export const calculateAnnualYieldWithOrientation = (powerKWp: number, orientation: string): number => {
+  // Different yield factors based on orientation
+  const yieldFactors: Record<string, number> = {
+    'hochformat': 950,
+    'querformat': 920,
+    'portrait': 950,
+    'landscape': 920
+  };
+  
+  const yieldFactor = yieldFactors[orientation.toLowerCase()] || 950;
+  return calculateAnnualYield(powerKWp, yieldFactor);
+};
+
+/**
+ * Updates PV module information with orientation data
+ * @param pvModuleInfo - PV module information
+ * @param orientation - Roof orientation
+ * @returns Updated PV module information
+ */
+export const updatePVModuleInfoWithOrientation = (pvModuleInfo: any, orientation: string): any => {
+  // Placeholder implementation
+  return pvModuleInfo;
+};
+
+/**
+ * Extracts roof edge measurements from measurements array
+ * @param measurements - Array of measurements
+ * @returns Roof edge information
+ */
+export const extractRoofEdgeMeasurements = (measurements: any[]): any => {
+  // Placeholder implementation
+  return {
+    roofEdges: [],
+    totalLength: 0
+  };
+};
+
+/**
+ * Calculates PV materials needed based on module information
+ * @param pvModuleInfo - PV module information
+ * @param inverterDistance - Distance to inverter (m)
+ * @returns PV materials list
+ */
+export const calculatePVMaterials = (pvModuleInfo: any, inverterDistance: number = 10): any => {
+  // Placeholder implementation
+  return {
+    modules: {
+      count: pvModuleInfo.moduleCount,
+      type: pvModuleInfo.pvModuleSpec?.name || "Standard"
+    },
+    mountingSystem: {
+      rails: Math.ceil(pvModuleInfo.columns * 2),
+      clamps: pvModuleInfo.moduleCount * 4,
+      hooks: Math.ceil(pvModuleInfo.columns * 1.5)
+    },
+    electrical: {
+      dcCableLength: Math.ceil(pvModuleInfo.moduleCount * 2 + inverterDistance * 2),
+      connectors: Math.ceil(pvModuleInfo.moduleCount / 2),
+      inverter: pvModuleInfo.moduleCount > 10 ? "15kW" : "10kW"
+    }
+  };
+};
+
+/**
+ * Formats PV materials for display
+ * @param materials - PV materials
+ * @returns Formatted materials
+ */
+export const formatPVMaterials = (materials: any): any => {
+  // Placeholder implementation
+  return materials;
+};
+
+/**
+ * Generates a grid of PV modules for visualization
+ * @param pvModuleInfo - PV module information
+ * @returns Grid for visualization
+ */
+export const generatePVModuleGrid = (pvModuleInfo: any): any[] => {
+  // Placeholder implementation to generate module positions for visualization
+  const modules = [];
+  const { rows, columns, moduleWidth, moduleHeight, orientation, edgeDistance, moduleSpacing } = pvModuleInfo;
+  
+  const actualWidth = orientation === 'portrait' ? moduleWidth : moduleHeight;
+  const actualHeight = orientation === 'portrait' ? moduleHeight : moduleWidth;
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns; col++) {
+      modules.push({
+        x: edgeDistance + col * (actualWidth + moduleSpacing),
+        y: edgeDistance + row * (actualHeight + moduleSpacing),
+        width: actualWidth,
+        height: actualHeight
+      });
+    }
+  }
+  
+  return modules;
 };
