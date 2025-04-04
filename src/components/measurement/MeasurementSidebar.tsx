@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/types/measurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Trash2, Magnet } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import * as THREE from 'three';
@@ -19,7 +20,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
@@ -72,7 +72,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const { toast } = useToast();
   
   // Use our centralized point snapping hook
-  const { snapEnabled, setSnapEnabled } = usePointSnapping();
+  const { snapEnabled } = usePointSnapping();
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
@@ -158,7 +158,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           {measurements.length > 0 && (
             <div className="mt-4 space-y-2 px-2">
               <GenerateRoofPlanButton measurements={measurements} />
-              <ExportPdfButton measurements={measurements} />
+              <ExportPdfButton measurements={measurements} measurementGroups={measurementGroups} />
             </div>
           )}
         </ScrollArea>
