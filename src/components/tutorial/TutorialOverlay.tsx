@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
@@ -30,6 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useTutorial } from '@/contexts/TutorialContext';
 
 interface TutorialStep {
   title: string;
@@ -42,8 +42,7 @@ interface TutorialOverlayProps {
 }
 
 const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ showButton = true }) => {
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const { showTutorial, setShowTutorial, currentStep, setCurrentStep, totalSteps } = useTutorial();
 
   const tutorialSteps: TutorialStep[] = [
     {
@@ -256,7 +255,6 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ showButton = true }) 
     if (currentStep < tutorialSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // End of tutorial
       setShowTutorial(false);
     }
   };
