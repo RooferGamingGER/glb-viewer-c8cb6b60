@@ -31,6 +31,7 @@ interface PVModuleSelectProps {
   pvModuleInfo?: PVModuleInfo;
   onSpacingChange?: (spacing: { edgeDistance: number, moduleSpacing: number }) => void;
   onOptimalRectangleToggle?: (enabled: boolean) => void;
+  onCalculateMaterials?: (inverterDistance?: number) => void;
 }
 
 const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
@@ -39,7 +40,8 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   onDimensionsChange,
   pvModuleInfo,
   onSpacingChange,
-  onOptimalRectangleToggle
+  onOptimalRectangleToggle,
+  onCalculateMaterials
 }) => {
   const [selectedModule, setSelectedModule] = useState<PVModuleSpec>(
     currentModule || PV_MODULE_TEMPLATES[0]
