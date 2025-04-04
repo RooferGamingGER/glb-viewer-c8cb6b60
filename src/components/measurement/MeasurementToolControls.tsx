@@ -105,7 +105,13 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             Fläche
           </Button>
         </div>
-        
+      </div>
+      
+      <Separator className="my-3" />
+      
+      {/* Punktfang section */}
+      <div className="mb-4">
+        <h3 className="text-sm font-medium mb-2">Punktfang</h3>
         <Toggle
           pressed={snapEnabled}
           onPressedChange={handleToggleSnap}
@@ -206,20 +212,23 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         <>
           <Separator className="my-3" />
           
-          <div className="grid grid-cols-3 gap-2">
-            <GenerateRoofPlanButton measurements={measurements} />
-            
-            <ExportPdfButton measurements={measurements} />
-            
-            <Button
-              variant="outline" 
-              size="sm"
-              className="w-full"
-              onClick={handleDownload}
-            >
-              <Download className="h-4 w-4 mr-1" />
-              CSV
-            </Button>
+          <div className="mb-4">
+            <h3 className="text-sm font-medium mb-2">Messungen</h3>
+            <div className="grid grid-cols-3 gap-2">
+              <GenerateRoofPlanButton measurements={measurements} />
+              
+              <ExportPdfButton measurements={measurements} />
+              
+              <Button
+                variant="outline" 
+                size="sm"
+                className="w-full"
+                onClick={handleDownload}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                CSV
+              </Button>
+            </div>
           </div>
         </>
       )}
