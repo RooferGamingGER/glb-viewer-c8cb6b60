@@ -1,4 +1,5 @@
 
+
 export interface Point {
   x: number;
   y: number;
@@ -115,3 +116,4 @@ export interface Measurement {
   powerOutput?: number;
   pvModuleInfo?: PVModuleInfo;
 }
+
