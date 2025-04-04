@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Ruler, Square, ArrowUpDown, Home, Sun } from "lucide-react";
+import { Ruler, Square, ArrowUpDown, Home, Sun, AirVent, Hook, CircleDot } from "lucide-react";
 import { MeasurementMode } from '@/types/measurements';
 import SolarPlanningButton from './SolarPlanningButton';
 
@@ -108,6 +108,49 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         >
           <Home className="h-4 w-4 mr-1" />
           <span className="text-xs">Kamin</span>
+        </ToggleGroupItem>
+      </ToggleGroup>
+      
+      {/* Add Penetrations Section */}
+      <div className="flex items-center justify-between mt-3 mb-1">
+        <h3 className="text-sm font-medium">Einbauten</h3>
+      </div>
+      
+      <ToggleGroup type="single" className="flex justify-between" value={activeMode}>
+        <ToggleGroupItem 
+          value="vent" 
+          aria-label="Lüfter"
+          onClick={() => toggleMeasurementTool('vent')}
+          className="flex-1 h-9"
+          variant="outline"
+          data-state={activeMode === 'vent' ? 'on' : 'off'}
+        >
+          <AirVent className="h-4 w-4 mr-1" />
+          <span className="text-xs">Lüfter</span>
+        </ToggleGroupItem>
+        
+        <ToggleGroupItem 
+          value="hook" 
+          aria-label="Dachhaken"
+          onClick={() => toggleMeasurementTool('hook')}
+          className="flex-1 h-9"
+          variant="outline"
+          data-state={activeMode === 'hook' ? 'on' : 'off'}
+        >
+          <Hook className="h-4 w-4 mr-1" />
+          <span className="text-xs">Haken</span>
+        </ToggleGroupItem>
+        
+        <ToggleGroupItem 
+          value="other" 
+          aria-label="Sonstiges"
+          onClick={() => toggleMeasurementTool('other')}
+          className="flex-1 h-9"
+          variant="outline"
+          data-state={activeMode === 'other' ? 'on' : 'off'}
+        >
+          <CircleDot className="h-4 w-4 mr-1" />
+          <span className="text-xs">Sonstiges</span>
         </ToggleGroupItem>
       </ToggleGroup>
     </div>
