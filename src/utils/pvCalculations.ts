@@ -4,20 +4,20 @@ import { findLargestRectangle } from './rectangleFinder';
 import * as THREE from 'three';
 
 // Default PV module dimensions in meters
-export const DEFAULT_MODULE_WIDTH = 1.041;
-export const DEFAULT_MODULE_HEIGHT = 1.767;
+export const DEFAULT_MODULE_WIDTH = 1.140;
+export const DEFAULT_MODULE_HEIGHT = 1.770
 
 // Default distances in meters
-export const DEFAULT_EDGE_DISTANCE = 0.1;  // 10cm from roof edge
+export const DEFAULT_EDGE_DISTANCE = 0.20;  // 10cm from roof edge
 export const DEFAULT_MODULE_SPACING = 0.05;  // 5cm between modules
 
 // Common PV module templates that users can select from
 export const PV_MODULE_TEMPLATES: PVModuleSpec[] = [
   {
-    name: "Standard (425W)",
-    width: 1.04,
-    height: 1.77,
-    power: 425,
+    name: "Standard (450W)",
+    width: 1.140,
+    height: 1.770,
+    power: 450,
     efficiency: 21.0
   }
 ];
@@ -676,10 +676,10 @@ export const calculatePVModulePlacement = (
     edgeInfoValid: roofEdgeInfo ? (roofEdgeInfo.isValid !== false) : undefined,
     edgeInfoMessage: roofEdgeInfo?.validationMessage,
     pvModuleSpec: {
-      name: "Standard (425W)", // The required 'name' property
+      name: "Standard (450)", // The required 'name' property
       width: moduleWidth,
       height: moduleHeight,
-      power: 425, // Default power value
+      power: 450, // Default power value
       efficiency: 21.0 // Default efficiency value
     },
     points: findOptimalRectangle && optimizedPoints.length === 4 ? [...optimizedPoints] : [...points] // Store the optimized points if available, otherwise original points
@@ -1010,7 +1010,7 @@ export const calculateElectricalSystem = (
   inverterDistance: number = 10
 ): PVElectricalSystem => {
   // Get module power
-  const modulePower = pvInfo.pvModuleSpec?.power || 425; // Watts
+  const modulePower = pvInfo.pvModuleSpec?.power || 450; // Watts
   const totalPower = (pvInfo.moduleCount * modulePower) / 1000; // kWp
   
   // Calculate optimal string size
@@ -1088,7 +1088,7 @@ export const calculatePVMaterials = (
   }
   
   // Calculate total power
-  const modulePower = pvInfo.pvModuleSpec.power || 425; // Watts
+  const modulePower = pvInfo.pvModuleSpec.power || 450; // Watts
   const totalPower = (pvInfo.moduleCount * modulePower) / 1000; // kWp
   
   // Calculate mounting system
