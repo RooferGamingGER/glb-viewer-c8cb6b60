@@ -87,6 +87,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
   const [showPVDetails, setShowPVDetails] = useState(false);
   const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
+  const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
 
   const updateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
     if (!measurement.segments) return;
@@ -166,7 +167,10 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       undefined,
       undefined,
       DEFAULT_EDGE_DISTANCE,
-      DEFAULT_MODULE_SPACING
+      DEFAULT_MODULE_SPACING,
+      undefined,
+      undefined,
+      useOptimalRectangle
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
   };
@@ -183,7 +187,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         measurement.pvModuleInfo.moduleHeight,
         measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
         measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
-        dimensions
+        dimensions,
+        undefined,
+        useOptimalRectangle
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -201,7 +207,31 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         measurement.pvModuleInfo.manualDimensions ? {
           width: measurement.pvModuleInfo.userDefinedWidth || 0,
           length: measurement.pvModuleInfo.userDefinedLength || 0
-        } : undefined
+        } : undefined,
+        undefined,
+        useOptimalRectangle
+      );
+      
+      updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
+    }
+  };
+
+  const handleOptimalRectangleToggle = (enabled: boolean) => {
+    setUseOptimalRectangle(enabled);
+    
+    if (measurement.pvModuleInfo) {
+      const updatedInfo = calculatePVModulePlacement(
+        measurement.points,
+        measurement.pvModuleInfo.moduleWidth,
+        measurement.pvModuleInfo.moduleHeight,
+        measurement.pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE,
+        measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
+        measurement.pvModuleInfo.manualDimensions ? {
+          width: measurement.pvModuleInfo.userDefinedWidth || 0,
+          length: measurement.pvModuleInfo.userDefinedLength || 0
+        } : undefined,
+        undefined,
+        enabled
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -422,7 +452,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                         updatedInfo.manualDimensions ? {
                           width: updatedInfo.userDefinedWidth || 0,
                           length: updatedInfo.userDefinedLength || 0
-                        } : undefined
+                        } : undefined,
+                        undefined,
+                        useOptimalRectangle
                       );
                       
                       updateMeasurement(measurement.id, { 
@@ -435,6 +467,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
                   onDimensionsChange={handlePVDimensionsChange}
                   pvModuleInfo={measurement.pvModuleInfo}
                   onSpacingChange={handlePVSpacingChange}
+                  onOptimalRectangleToggle={handleOptimalRectangleToggle}
                 />
               </div>
             </div>

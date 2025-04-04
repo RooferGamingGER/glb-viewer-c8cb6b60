@@ -1,411 +1,224 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { PVModuleSpec, PVModuleInfo, PVMaterials } from '@/types/measurements';
+import { Label } from "@/components/ui/label";
+import { PVModuleInfo, PVModuleSpec } from '@/types/measurements';
 import { PV_MODULE_TEMPLATES, DEFAULT_EDGE_DISTANCE, DEFAULT_MODULE_SPACING } from '@/utils/pvCalculations';
-import { Settings, Ruler, AlertTriangle, Zap, Maximize2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import PVMaterialsList from './PVMaterialsList';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 interface PVModuleSelectProps {
-  onModuleSelect: (module: PVModuleSpec) => void;
+  onModuleSelect: (moduleSpec: PVModuleSpec) => void;
   currentModule?: PVModuleSpec;
-  onDimensionsChange?: (dimensions: {width: number, length: number}) => void;
+  onDimensionsChange?: (dimensions: { width: number, length: number }) => void;
   pvModuleInfo?: PVModuleInfo;
-  onSpacingChange?: (spacing: {edgeDistance: number, moduleSpacing: number}) => void;
-  onCalculateMaterials?: (inverterDistance: number) => void;
+  onSpacingChange?: (spacing: { edgeDistance: number, moduleSpacing: number }) => void;
+  onOptimalRectangleToggle?: (enabled: boolean) => void;
 }
 
-const PVModuleSelect: React.FC<PVModuleSelectProps> = ({ 
+const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   onModuleSelect,
   currentModule,
   onDimensionsChange,
   pvModuleInfo,
   onSpacingChange,
-  onCalculateMaterials
+  onOptimalRectangleToggle
 }) => {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(
-    currentModule?.name || PV_MODULE_TEMPLATES[0].name
+  const [selectedModule, setSelectedModule] = useState<PVModuleSpec>(
+    currentModule || PV_MODULE_TEMPLATES[0]
   );
-  const [customModule, setCustomModule] = useState<PVModuleSpec>({
-    name: "Benutzerdefiniert",
-    width: currentModule?.width || 1.04,
-    height: currentModule?.height || 1.77,
-    power: currentModule?.power || 425,
-    efficiency: currentModule?.efficiency || 21.0
-  });
-  const [isCustom, setIsCustom] = useState<boolean>(false);
-  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState("module");
+  
+  const [manualWidth, setManualWidth] = useState<number>(
+    pvModuleInfo?.userDefinedWidth || 0
+  );
+  
+  const [manualLength, setManualLength] = useState<number>(
+    pvModuleInfo?.userDefinedLength || 0
+  );
+  
   const [useManualDimensions, setUseManualDimensions] = useState<boolean>(
     pvModuleInfo?.manualDimensions || false
   );
-  const [availableWidth, setAvailableWidth] = useState<number>(
-    pvModuleInfo?.userDefinedWidth || pvModuleInfo?.availableWidth || 4.0
-  );
-  const [availableLength, setAvailableLength] = useState<number>(
-    pvModuleInfo?.userDefinedLength || pvModuleInfo?.availableLength || 5.0
-  );
+  
   const [edgeDistance, setEdgeDistance] = useState<number>(
     pvModuleInfo?.edgeDistance || DEFAULT_EDGE_DISTANCE
   );
+  
   const [moduleSpacing, setModuleSpacing] = useState<number>(
     pvModuleInfo?.moduleSpacing || DEFAULT_MODULE_SPACING
   );
-  const [inverterDistance, setInverterDistance] = useState<number>(10); // Default 10m
+
+  const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
   
-  useEffect(() => {
-    if (pvModuleInfo) {
-      setUseManualDimensions(pvModuleInfo.manualDimensions || false);
-      setAvailableWidth(pvModuleInfo.userDefinedWidth || pvModuleInfo.availableWidth || 4.0);
-      setAvailableLength(pvModuleInfo.userDefinedLength || pvModuleInfo.availableLength || 5.0);
-      setEdgeDistance(pvModuleInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
-      setModuleSpacing(pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING);
-    }
-  }, [pvModuleInfo]);
-  
-  const handleTemplateChange = (value: string) => {
-    setSelectedTemplate(value);
-    setIsCustom(value === "custom");
+  const handleModuleSelect = (value: string) => {
+    const selectedModuleSpec = PV_MODULE_TEMPLATES.find(m => m.name === value) || PV_MODULE_TEMPLATES[0];
+    setSelectedModule(selectedModuleSpec);
+    onModuleSelect(selectedModuleSpec);
   };
   
-  const handleCustomChange = (field: keyof PVModuleSpec, value: number | string) => {
-    setCustomModule(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handleDimensionChange = (dimension: 'width' | 'length', value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue > 0) {
-      if (dimension === 'width') {
-        setAvailableWidth(numValue);
-      } else {
-        setAvailableLength(numValue);
-      }
-    }
-  };
-  
-  const handleSpacingChange = (type: 'edge' | 'module', value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0) {
-      if (type === 'edge') {
-        setEdgeDistance(numValue);
-      } else {
-        setModuleSpacing(numValue);
-      }
-    }
-  };
-  
-  const handleInverterDistanceChange = (value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0) {
-      setInverterDistance(numValue);
-    }
-  };
-  
-  const handleMaterialsCalculation = () => {
-    if (onCalculateMaterials) {
-      onCalculateMaterials(inverterDistance);
-    }
-  };
-  
-  const handleSubmit = () => {
-    const selectedModule = isCustom 
-      ? customModule 
-      : PV_MODULE_TEMPLATES.find(m => m.name === selectedTemplate) || PV_MODULE_TEMPLATES[0];
-    
-    onModuleSelect(selectedModule);
-    
-    if (useManualDimensions && onDimensionsChange) {
-      onDimensionsChange({
-        width: availableWidth,
-        length: availableLength
+  const handleDimensionsSubmit = () => {
+    if (onDimensionsChange && useManualDimensions) {
+      onDimensionsChange({ 
+        width: parseFloat(manualWidth.toString()) || 0, 
+        length: parseFloat(manualLength.toString()) || 0 
       });
     }
     
     if (onSpacingChange) {
       onSpacingChange({
-        edgeDistance,
-        moduleSpacing
+        edgeDistance: parseFloat(edgeDistance.toString()) || DEFAULT_EDGE_DISTANCE,
+        moduleSpacing: parseFloat(moduleSpacing.toString()) || DEFAULT_MODULE_SPACING
       });
     }
-    
-    setDialogOpen(false);
+
+    if (onOptimalRectangleToggle) {
+      onOptimalRectangleToggle(useOptimalRectangle);
+    }
   };
-  
-  const hasEdgeInfoValidationIssues = pvModuleInfo?.edgeInfoValid === false && pvModuleInfo?.edgeInfoMessage;
-  
+
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-auto h-8">
-          <Settings className="h-4 w-4 mr-1" />
-          <span>PV-Modul</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6">
+          <Settings2 className="h-3 w-3" />
         </Button>
       </DialogTrigger>
+      
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>PV-Modul auswählen</DialogTitle>
+          <DialogTitle>PV-Modul Einstellungen</DialogTitle>
           <DialogDescription>
-            Wählen Sie ein Modul aus den Vorlagen oder definieren Sie ein benutzerdefiniertes Modul.
+            Konfigurieren Sie die Parameter für die PV-Modulberechnung.
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="module">Modul</TabsTrigger>
-            <TabsTrigger value="dimensions">Abmessungen</TabsTrigger>
-            <TabsTrigger value="spacing">Abstände</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="module" className="py-4">
-            <div className="space-y-4">
-              <RadioGroup 
-                value={isCustom ? "custom" : selectedTemplate} 
-                onValueChange={handleTemplateChange}
-              >
-                {PV_MODULE_TEMPLATES.map((template) => (
-                  <div 
-                    key={template.name} 
-                    className="flex items-center justify-between space-x-2 border p-3 rounded-md"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value={template.name} id={template.name.replace(/\s/g, '')} />
-                      <Label htmlFor={template.name.replace(/\s/g, '')} className="flex-grow">
-                        {template.name}
-                      </Label>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {template.width.toFixed(2)}m × {template.height.toFixed(2)}m, {template.power}W
-                    </div>
-                  </div>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Modultyp</Label>
+            <Select
+              value={selectedModule.name}
+              onValueChange={handleModuleSelect}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Modul auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {PV_MODULE_TEMPLATES.map((module) => (
+                  <SelectItem key={module.name} value={module.name}>
+                    {module.name} - {module.power}W ({module.width.toFixed(3)}m × {module.height.toFixed(3)}m)
+                  </SelectItem>
                 ))}
-                
-                <div className="flex items-center space-x-2 border p-3 rounded-md">
-                  <RadioGroupItem value="custom" id="custom" />
-                  <Label htmlFor="custom">
-                    Benutzerdefiniertes Modul
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Manuelle Abmessungen</Label>
+              <Switch 
+                checked={useManualDimensions}
+                onCheckedChange={setUseManualDimensions}
+              />
+            </div>
+            
+            {useManualDimensions && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="manualWidth" className="text-xs">
+                    Breite (m)
                   </Label>
+                  <Input 
+                    id="manualWidth" 
+                    type="number" 
+                    value={manualWidth || ''}
+                    onChange={(e) => setManualWidth(parseFloat(e.target.value) || 0)}
+                    min={0}
+                    step={0.1}
+                  />
                 </div>
-              </RadioGroup>
-              
-              {isCustom && (
-                <div className="border p-3 rounded-md mt-2 space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="width">Breite (m)</Label>
-                      <Input
-                        id="width"
-                        type="number"
-                        step="0.001"
-                        min="0.5"
-                        max="2"
-                        value={customModule.width}
-                        onChange={(e) => handleCustomChange('width', parseFloat(e.target.value))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="height">Höhe (m)</Label>
-                      <Input
-                        id="height"
-                        type="number"
-                        step="0.001"
-                        min="0.5"
-                        max="2.5"
-                        value={customModule.height}
-                        onChange={(e) => handleCustomChange('height', parseFloat(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="power">Leistung (W)</Label>
-                      <Input
-                        id="power"
-                        type="number"
-                        step="5"
-                        min="50"
-                        max="1000"
-                        value={customModule.power}
-                        onChange={(e) => handleCustomChange('power', parseInt(e.target.value))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="efficiency">Wirkungsgrad (%)</Label>
-                      <Input
-                        id="efficiency"
-                        type="number"
-                        step="0.1"
-                        min="10"
-                        max="30"
-                        value={customModule.efficiency}
-                        onChange={(e) => handleCustomChange('efficiency', parseFloat(e.target.value))}
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-1">
+                  <Label htmlFor="manualLength" className="text-xs">
+                    Länge (m)
+                  </Label>
+                  <Input 
+                    id="manualLength" 
+                    type="number" 
+                    value={manualLength || ''}
+                    onChange={(e) => setManualLength(parseFloat(e.target.value) || 0)}
+                    min={0}
+                    step={0.1}
+                  />
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Optimal-Rechteck verwenden</Label>
+              <Switch 
+                checked={useOptimalRectangle}
+                onCheckedChange={setUseOptimalRectangle}
+              />
             </div>
-          </TabsContent>
+            <div className="text-xs text-muted-foreground">
+              Berechnet automatisch die optimale rechteckige Fläche bei komplexen Dachformen
+            </div>
+          </div>
           
-          <TabsContent value="dimensions" className="py-4">
-            <div className="space-y-4">
-              {hasEdgeInfoValidationIssues && (
-                <Alert variant="warning" className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="ml-2">
-                    {pvModuleInfo?.edgeInfoMessage}
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="flex items-center space-x-2 mb-4">
-                <Checkbox 
-                  id="useManualDimensions" 
-                  checked={useManualDimensions}
-                  onCheckedChange={(checked) => setUseManualDimensions(checked as boolean)}
-                />
-                <Label htmlFor="useManualDimensions" className="font-medium">
-                  Manuelle Abmessungen verwenden
+          <div className="space-y-2">
+            <Label>Abstände</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edgeDistance" className="text-xs">
+                  Randabstand (m)
                 </Label>
+                <Input 
+                  id="edgeDistance" 
+                  type="number" 
+                  value={edgeDistance}
+                  onChange={(e) => setEdgeDistance(parseFloat(e.target.value) || DEFAULT_EDGE_DISTANCE)}
+                  min={0}
+                  step={0.02}
+                />
               </div>
-              
-              {useManualDimensions && (
-                <div className="border p-3 rounded-md space-y-3">
-                  <div className="flex items-center justify-start mb-2">
-                    <Ruler className="h-4 w-4 mr-2 text-blue-600" />
-                    <span className="text-sm font-medium">Verfügbare Installationsfläche</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="availableWidth">Breite (m)</Label>
-                      <Input
-                        id="availableWidth"
-                        type="number"
-                        step="0.01"
-                        min="0.5"
-                        value={availableWidth}
-                        onChange={(e) => handleDimensionChange('width', e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="availableLength">Länge (m)</Label>
-                      <Input
-                        id="availableLength"
-                        type="number"
-                        step="0.01"
-                        min="0.5"
-                        value={availableLength}
-                        onChange={(e) => handleDimensionChange('length', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="text-sm text-muted-foreground mt-2 p-2 bg-blue-50/10 border border-blue-100 rounded">
-                    <p>Geben Sie die exakten Abmessungen der nutzbaren Fläche an. Diese werden anstelle der automatisch berechneten Werte verwendet.</p>
-                  </div>
-                </div>
-              )}
-              
-              {!useManualDimensions && pvModuleInfo && (
-                <div className="p-3 border rounded-md bg-gray-50/30">
-                  <h3 className="text-sm font-medium mb-2">Automatisch berechnete Abmessungen:</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><strong>Breite:</strong> {pvModuleInfo.availableWidth?.toFixed(2) || "-"} m</div>
-                    <div><strong>Länge:</strong> {pvModuleInfo.availableLength?.toFixed(2) || "-"} m</div>
-                    <div><strong>Fläche:</strong> {pvModuleInfo.actualArea?.toFixed(2) || "-"} m²</div>
-                  </div>
-                  
-                  {pvModuleInfo.boundingWidth && pvModuleInfo.boundingLength && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <h3 className="text-sm font-medium mb-2">Begrenzungsabmessungen:</h3>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>Breite:</strong> {pvModuleInfo.boundingWidth.toFixed(2)} m</div>
-                        <div><strong>Länge:</strong> {pvModuleInfo.boundingLength.toFixed(2)} m</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="spacing" className="py-4">
-            <div className="space-y-4">
-              <div className="border p-3 rounded-md space-y-3">
-                <div className="flex items-center justify-start mb-2">
-                  <Maximize2 className="h-4 w-4 mr-2 text-green-600" />
-                  <span className="text-sm font-medium">Abstandseinstellungen</span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edgeDistance">Randabstand (m)</Label>
-                    <Input
-                      id="edgeDistance"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="1"
-                      value={edgeDistance}
-                      onChange={(e) => handleSpacingChange('edge', e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="moduleSpacing">Modulabstand (m)</Label>
-                    <Input
-                      id="moduleSpacing"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="0.5"
-                      value={moduleSpacing}
-                      onChange={(e) => handleSpacingChange('module', e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                <div className="text-sm text-muted-foreground mt-2 p-2 bg-green-50/10 border border-green-100 rounded">
-                  <p>Randabstand: Abstand von der Dachkante zu den Modulen.</p>
-                  <p>Modulabstand: Abstand zwischen einzelnen Modulen.</p>
-                  <p className="mt-2 font-medium">Orientierungen:</p>
-                  <p>Hochformat: Längere Modulseite parallel zum Ortgang</p>
-                  <p>Querformat: Längere Modulseite parallel zur Traufe</p>
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="moduleSpacing" className="text-xs">
+                  Modulabstand (m)
+                </Label>
+                <Input 
+                  id="moduleSpacing" 
+                  type="number" 
+                  value={moduleSpacing}
+                  onChange={(e) => setModuleSpacing(parseFloat(e.target.value) || DEFAULT_MODULE_SPACING)}
+                  min={0}
+                  step={0.01}
+                />
               </div>
-              
-              {pvModuleInfo && (
-                <div className="p-3 border rounded-md bg-gray-50/30">
-                  <h3 className="text-sm font-medium mb-2">Aktuelle Einstellungen:</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><strong>Randabstand:</strong> {pvModuleInfo.edgeDistance?.toFixed(2) || DEFAULT_EDGE_DISTANCE.toFixed(2)} m</div>
-                    <div><strong>Modulabstand:</strong> {pvModuleInfo.moduleSpacing?.toFixed(2) || DEFAULT_MODULE_SPACING.toFixed(2)} m</div>
-                  </div>
-                </div>
-              )}
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
         
         <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>
-            Abbrechen
-          </Button>
-          <Button type="button" variant="default" onClick={handleSubmit}>
-            Bestätigen
+          <Button onClick={handleDimensionsSubmit}>
+            Anwenden
           </Button>
         </DialogFooter>
       </DialogContent>

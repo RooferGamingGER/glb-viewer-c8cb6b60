@@ -1,5 +1,6 @@
 import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
+import { findLargestRectangle } from './rectangleFinder';
 import * as THREE from 'three';
 
 // Default PV module dimensions in meters
@@ -342,6 +343,7 @@ const findParallelSides = (points: Point[]): {
  * @param moduleSpacing - Spacing between modules in meters (default: 0.05m)
  * @param userDimensions - Optional user-provided dimensions for non-rectangular areas
  * @param roofEdgeInfo - Optional roof edge measurements from ridge, eave, verge
+ * @param findOptimalRectangle - Whether to find the optimal rectangle within the points (default: false)
  * @returns Information about PV module placement
  */
 export const calculatePVModulePlacement = (
@@ -357,43 +359,9 @@ export const calculatePVModulePlacement = (
     hasAllEdges: boolean;
     isValid?: boolean;
     validationMessage?: string;
-  }
+  },
+  findOptimalRectangle: boolean = true
 ): PVModuleInfo => {
-  // Enforce exactly 4 points for PV module calculation
-  if (points.length !== 4) {
-    console.warn(`PV module calculation expects exactly 4 points, got ${points.length}. Using subset or adding points to make a quadrilateral.`);
-    
-    // If we have more than 4 points, take just the first 4
-    if (points.length > 4) {
-      points = points.slice(0, 4);
-    } 
-    // If we have fewer than 4 points, try to create a rectangle
-    else if (points.length < 4) {
-      // We need at least 2 points to create a rectangle
-      if (points.length < 2) {
-        console.error("Cannot create PV module area with fewer than 2 points");
-        // Create a default small rectangle as fallback
-        const defaultPoint = points.length > 0 ? points[0] : { x: 0, y: 0, z: 0 };
-        points = [
-          defaultPoint,
-          { x: defaultPoint.x + 1, y: defaultPoint.y, z: defaultPoint.z },
-          { x: defaultPoint.x + 1, y: defaultPoint.y, z: defaultPoint.z + 1 },
-          { x: defaultPoint.x, y: defaultPoint.y, z: defaultPoint.z + 1 }
-        ];
-      } else {
-        // Create a rectangle using first two points as diagonal corners
-        const p1 = points[0];
-        const p2 = points[1];
-        points = [
-          p1,
-          { x: p2.x, y: p1.y, z: p1.z },
-          p2,
-          { x: p1.x, y: p1.y, z: p2.z }
-        ];
-      }
-    }
-  }
-
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
   
@@ -403,6 +371,7 @@ export const calculatePVModulePlacement = (
   let boundingHeight: number;
   let boundingLength: number;
   let manualDimensions = false;
+  let optimizedPoints = [...points];
   
   // Calculate minimum and maximum coordinates for visualization
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -447,66 +416,158 @@ export const calculatePVModulePlacement = (
       availableLength
     });
   } else {
-    // Calculate dimensions based on the shape of the polygon (fallback)
-    
-    // Make sure we're working with a quadrilateral (4 points)
-    // If not, we'll create a representative quadrilateral
-    let quadPoints = [...points];
-    
-    try {
-      // Find parallel sides using the new approach
-      const parallelSides = findParallelSides(quadPoints);
+    // For complex shapes, try to find the largest inscribed rectangle if more than 4 points
+    if (findOptimalRectangle && points.length > 4) {
+      console.log("Finding optimal rectangle for complex roof shape with", points.length, "points");
       
-      // Calculate width and length as average of parallel sides
-      const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
-      const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+      // Find the largest rectangle inside the polygon
+      optimizedPoints = findLargestRectangle(points);
       
-      // Assign width and length (width should be shorter than length by convention)
-      if (width1 < width2) {
-        boundingHeight = width1;
-        boundingLength = width2;
+      if (optimizedPoints.length === 4) {
+        console.log("Found optimal rectangle within complex shape");
+        
+        // Use the optimized points for further calculations
+        const dimensions = calculateQuadrilateralDimensions(optimizedPoints);
+        boundingHeight = dimensions.width;
+        boundingLength = dimensions.length;
+        
+        // Derive the available area by accounting for edge distances
+        availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
+        availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+        
+        console.log("Optimized rectangle dimensions:", {
+          boundingHeight,
+          boundingLength,
+          availableWidth,
+          availableLength
+        });
       } else {
-        boundingHeight = width2;
-        boundingLength = width1;
+        console.warn("Failed to find optimal rectangle, falling back to normal calculation");
+        
+        // Calculate dimensions based on the shape of the polygon (fallback)
+        // Make sure we're working with a quadrilateral (4 points)
+        // If not, we'll create a representative quadrilateral
+        let quadPoints = [...points];
+        
+        try {
+          // Find parallel sides using the new approach
+          const parallelSides = findParallelSides(quadPoints);
+          
+          // Calculate width and length as average of parallel sides
+          const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
+          const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+          
+          // Assign width and length (width should be shorter than length by convention)
+          if (width1 < width2) {
+            boundingHeight = width1;
+            boundingLength = width2;
+          } else {
+            boundingHeight = width2;
+            boundingLength = width1;
+          }
+          
+          console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
+        } catch (error) {
+          console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+          
+          // Fallback to the quadrilateral dimensions calculation
+          const dimensions = calculateQuadrilateralDimensions(quadPoints);
+          boundingHeight = dimensions.width;
+          boundingLength = dimensions.length;
+          
+          console.log("Fallback dimensions:", dimensions);
+        }
+        
+        // Derive the available area by accounting for edge distances
+        availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
+        availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
       }
       
-      console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
-    } catch (error) {
-      console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+      // Sanity check: make sure our available area is reasonable given the total area
+      const availableArea = availableWidth * availableLength;
       
-      // Fallback to the quadrilateral dimensions calculation
-      const dimensions = calculateQuadrilateralDimensions(quadPoints);
-      boundingHeight = dimensions.width;
-      boundingLength = dimensions.length;
+      // If the available area is significantly larger than the actual area, adjust dimensions
+      if (availableArea > area * 1.5) {
+        // Scale dimensions based on the actual area
+        const scaleFactor = Math.sqrt(area / availableArea);
+        availableWidth *= scaleFactor;
+        availableLength *= scaleFactor;
+        
+        // Update bounding dimensions
+        boundingHeight = availableWidth + (2 * edgeDistance);
+        boundingLength = availableLength + (2 * edgeDistance);
+        
+        console.log("Dimensions adjusted after area sanity check:", {
+          scaleFactor,
+          availableWidth,
+          availableLength,
+          boundingHeight, 
+          boundingLength
+        });
+      }
+    } else {
+      // Original code for regular shapes or when not using optimization
+      // Calculate dimensions based on the shape of the polygon (fallback)
       
-      console.log("Fallback dimensions:", dimensions);
-    }
-    
-    // Derive the available area by accounting for edge distances
-    availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
-    availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
-    
-    // Sanity check: make sure our available area is reasonable given the total area
-    const availableArea = availableWidth * availableLength;
-    
-    // If the available area is significantly larger than the actual area, adjust dimensions
-    if (availableArea > area * 1.5) {
-      // Scale dimensions based on the actual area
-      const scaleFactor = Math.sqrt(area / availableArea);
-      availableWidth *= scaleFactor;
-      availableLength *= scaleFactor;
+      // Make sure we're working with a quadrilateral (4 points)
+      // If not, we'll create a representative quadrilateral
+      let quadPoints = [...points];
       
-      // Update bounding dimensions
-      boundingHeight = availableWidth + (2 * edgeDistance);
-      boundingLength = availableLength + (2 * edgeDistance);
+      try {
+        // Find parallel sides using the new approach
+        const parallelSides = findParallelSides(quadPoints);
+        
+        // Calculate width and length as average of parallel sides
+        const width1 = (parallelSides.pair1.length1 + parallelSides.pair1.length2) / 2;
+        const width2 = (parallelSides.pair2.length1 + parallelSides.pair2.length2) / 2;
+        
+        // Assign width and length (width should be shorter than length by convention)
+        if (width1 < width2) {
+          boundingHeight = width1;
+          boundingLength = width2;
+        } else {
+          boundingHeight = width2;
+          boundingLength = width1;
+        }
+        
+        console.log("Calculated from parallel sides:", { boundingHeight, boundingLength });
+      } catch (error) {
+        console.warn("Error calculating parallel sides, falling back to quadrilateral dimensions", error);
+        
+        // Fallback to the quadrilateral dimensions calculation
+        const dimensions = calculateQuadrilateralDimensions(quadPoints);
+        boundingHeight = dimensions.width;
+        boundingLength = dimensions.length;
+        
+        console.log("Fallback dimensions:", dimensions);
+      }
       
-      console.log("Dimensions adjusted after area sanity check:", {
-        scaleFactor,
-        availableWidth,
-        availableLength,
-        boundingHeight, 
-        boundingLength
-      });
+      // Derive the available area by accounting for edge distances
+      availableWidth = Math.max(0, boundingHeight - (2 * edgeDistance));
+      availableLength = Math.max(0, boundingLength - (2 * edgeDistance));
+      
+      // Sanity check: make sure our available area is reasonable given the total area
+      const availableArea = availableWidth * availableLength;
+      
+      // If the available area is significantly larger than the actual area, adjust dimensions
+      if (availableArea > area * 1.5) {
+        // Scale dimensions based on the actual area
+        const scaleFactor = Math.sqrt(area / availableArea);
+        availableWidth *= scaleFactor;
+        availableLength *= scaleFactor;
+        
+        // Update bounding dimensions
+        boundingHeight = availableWidth + (2 * edgeDistance);
+        boundingLength = availableLength + (2 * edgeDistance);
+        
+        console.log("Dimensions adjusted after area sanity check:", {
+          scaleFactor,
+          availableWidth,
+          availableLength,
+          boundingHeight, 
+          boundingLength
+        });
+      }
     }
   }
   
@@ -522,7 +583,8 @@ export const calculatePVModulePlacement = (
     moduleHeight,
     edgeDistance,
     moduleSpacing,
-    roofEdgeInfo
+    roofEdgeInfo,
+    optimizedPointsUsed: points.length !== optimizedPoints.length
   });
   
   // CORRECTED ORIENTATION DEFINITIONS:
@@ -620,7 +682,7 @@ export const calculatePVModulePlacement = (
       power: 425, // Default power value
       efficiency: 21.0 // Default efficiency value
     },
-    points: [...points] // Store the original points for module placement
+    points: findOptimalRectangle && optimizedPoints.length === 4 ? [...optimizedPoints] : [...points] // Store the optimized points if available, otherwise original points
   };
   
   return result;
