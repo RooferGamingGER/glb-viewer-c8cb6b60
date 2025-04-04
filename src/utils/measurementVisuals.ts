@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Point, Measurement } from '@/hooks/useMeasurements';
 import {
@@ -849,7 +850,767 @@ function renderHeightMeasurement(
     sphere.position.copy(point);
     sphere.renderOrder = 3;
     
-    // Add userData for interactive selection
+    // Add userData for interactive selection - HIER WAR DER FEHLER
     sphere.userData = {
       isMeasurementPoint: true,
-      measurementId:
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
+    measurementsRef.add(sphere);
+  });
+  
+  // Only create a new label if needed
+  if (shouldCreateLabel) {
+    // Height is specifically the Y-axis difference
+    const height = Math.abs(point2.y - point1.y);
+    
+    // Add text label positioned beside the vertical line
+    const labelPos = new THREE.Vector3(
+      higherPoint.x + 0.2, 
+      (higherPoint.y + lowerPoint.y) / 2, 
+      higherPoint.z
+    );
+    
+    const labelText = formatMeasurementLabel(measurement.value, 'height');
+    const label = createMeasurementLabel(labelText, labelPos, true);
+    
+    // Store measurement ID in user data for reference
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+}
+
+/**
+ * Renders an area measurement
+ */
+function renderAreaMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group,
+  labelsRef: THREE.Group,
+  segmentLabelsRef: THREE.Group,
+  shouldCreateLabel: boolean,
+  shouldCreateSegmentLabels: boolean
+) {
+  // Convert points to THREE.Vector3 array
+  const points3D = measurement.points.map(point => 
+    new THREE.Vector3(point.x, point.y + LINE_Y_OFFSET, point.z)
+  );
+  
+  if (points3D.length < 3) return; // Need at least 3 points for an area
+  
+  // Create a shape for filled polygon
+  const shape = new THREE.Shape();
+  shape.moveTo(points3D[0].x, points3D[0].z); // Note: using X and Z for 2D shape
+  
+  for (let i = 1; i < points3D.length; i++) {
+    shape.lineTo(points3D[i].x, points3D[i].z);
+  }
+  
+  shape.closePath();
+  
+  // Create geometry from shape
+  const shapeGeometry = new THREE.ShapeGeometry(shape);
+  
+  // Adjust vertices to match original Y positions
+  const positionAttribute = shapeGeometry.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < positionAttribute.count; i++) {
+    const x = positionAttribute.getX(i);
+    const z = positionAttribute.getY(i); // ShapeGeometry uses Y as Z
+    
+    // Find closest original point for Y value
+    let closestPoint = points3D[0];
+    let minDist = Infinity;
+    
+    for (const point of points3D) {
+      const dist = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.z - z, 2));
+      if (dist < minDist) {
+        minDist = dist;
+        closestPoint = point;
+      }
+    }
+    
+    // Set the Y position
+    positionAttribute.setY(i, closestPoint.y);
+    // Correct Z which is actually Y in the ShapeGeometry
+    positionAttribute.setZ(i, z);
+  }
+  
+  // Create material for the area
+  const areaMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffaa00,
+    transparent: true,
+    opacity: 0.4,
+    side: THREE.DoubleSide
+  });
+  
+  // Create mesh
+  const areaMesh = new THREE.Mesh(shapeGeometry, areaMaterial);
+  areaMesh.userData = {
+    isMeasurement: true,
+    measurementId: measurement.id,
+    measurementType: 'area'
+  };
+  measurementsRef.add(areaMesh);
+  
+  // Draw outline
+  const outlinePoints = [...points3D, points3D[0]]; // Close the loop
+  const outlineGeometry = new THREE.BufferGeometry().setFromPoints(outlinePoints);
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xff7700,
+    linewidth: 2,
+    opacity: 0.8,
+    transparent: true
+  });
+  const outline = new THREE.Line(outlineGeometry, outlineMaterial);
+  outline.userData = {
+    isMeasurement: true,
+    measurementId: measurement.id,
+    measurementType: 'area'
+  };
+  outline.renderOrder = 2;
+  measurementsRef.add(outline);
+  
+  // Add points at each vertex
+  measurement.points.forEach((point, index) => {
+    const vertexGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+    const vertexMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff7700,
+      opacity: 0.9,
+      transparent: true
+    });
+    const vertex = new THREE.Mesh(vertexGeometry, vertexMaterial);
+    vertex.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
+    vertex.renderOrder = 3;
+    
+    // Add userData for interactive selection
+    vertex.userData = {
+      isMeasurementPoint: true,
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
+    measurementsRef.add(vertex);
+  });
+  
+  // Create labels if needed
+  if (shouldCreateLabel) {
+    // Calculate centroid for label position
+    const centroid = calculateCentroid(points3D);
+    centroid.y += LABEL_Y_OFFSET; // Raise label for visibility
+    
+    // Format area label
+    const labelText = formatMeasurementLabel(measurement.value, 'area');
+    const label = createMeasurementLabel(labelText, centroid, true);
+    
+    // Store reference data
+    label.userData.measurementId = measurement.id;
+    
+    // Add to labels group
+    labelsRef.add(label);
+  }
+  
+  // Add segment labels if needed
+  if (shouldCreateSegmentLabels && measurement.segments) {
+    measurement.segments.forEach((segment, segmentIndex) => {
+      const startPoint = measurement.points[segment.startPointIndex];
+      const endPoint = measurement.points[segment.endPointIndex];
+      
+      const p1 = new THREE.Vector3(startPoint.x, startPoint.y + LINE_Y_OFFSET, startPoint.z);
+      const p2 = new THREE.Vector3(endPoint.x, endPoint.y + LINE_Y_OFFSET, endPoint.z);
+      
+      // Calculate midpoint for label
+      const midpoint = calculateMidpoint(p1, p2);
+      midpoint.y += LABEL_Y_OFFSET; // Raise label
+      
+      // Create segment label
+      const segmentLabel = createMeasurementLabel(
+        formatMeasurementLabel(segment.length, 'length'), 
+        midpoint, 
+        true,
+        0x555555 // Darker color for segment labels
+      );
+      
+      // Store reference data
+      segmentLabel.userData = {
+        measurementId: measurement.id,
+        segmentIndex
+      };
+      
+      // Add to segment labels group
+      segmentLabelsRef.add(segmentLabel);
+    });
+  }
+}
+
+/**
+ * Renders a solar measurement with PV modules
+ */
+function renderSolarMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group,
+  labelsRef: THREE.Group,
+  segmentLabelsRef: THREE.Group,
+  shouldCreateLabel: boolean,
+  shouldCreateSegmentLabels: boolean
+) {
+  // First render the base area similar to a regular area measurement
+  // but with a different color scheme
+  
+  // Convert points to THREE.Vector3 array
+  const points3D = measurement.points.map(point => 
+    new THREE.Vector3(point.x, point.y + PV_LINE_Y_OFFSET, point.z)
+  );
+  
+  if (points3D.length < 3) return; // Need at least 3 points for an area
+  
+  // Create a shape for filled polygon
+  const shape = new THREE.Shape();
+  shape.moveTo(points3D[0].x, points3D[0].z); // Note: using X and Z for 2D shape
+  
+  for (let i = 1; i < points3D.length; i++) {
+    shape.lineTo(points3D[i].x, points3D[i].z);
+  }
+  
+  shape.closePath();
+  
+  // Create geometry from shape
+  const shapeGeometry = new THREE.ShapeGeometry(shape);
+  
+  // Adjust vertices to match original Y positions
+  const positionAttribute = shapeGeometry.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < positionAttribute.count; i++) {
+    const x = positionAttribute.getX(i);
+    const z = positionAttribute.getY(i); // ShapeGeometry uses Y as Z
+    
+    // Find closest original point for Y value
+    let closestPoint = points3D[0];
+    let minDist = Infinity;
+    
+    for (const point of points3D) {
+      const dist = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.z - z, 2));
+      if (dist < minDist) {
+        minDist = dist;
+        closestPoint = point;
+      }
+    }
+    
+    // Set the Y position with increased offset for PV modules
+    positionAttribute.setY(i, closestPoint.y + PV_LINE_Y_OFFSET);
+    // Correct Z which is actually Y in the ShapeGeometry
+    positionAttribute.setZ(i, z);
+  }
+  
+  // Create solar area material with enhanced blue color
+  const solarMaterial = new THREE.MeshBasicMaterial({
+    color: PV_MODULE_COLORS.AVAILABLE_AREA,
+    transparent: true,
+    opacity: 0.6,
+    side: THREE.DoubleSide
+  });
+  
+  // Create mesh
+  const solarMesh = new THREE.Mesh(shapeGeometry, solarMaterial);
+  solarMesh.renderOrder = 1;
+  solarMesh.userData = {
+    isMeasurement: true,
+    measurementId: measurement.id,
+    measurementType: 'solar'
+  };
+  measurementsRef.add(solarMesh);
+  
+  // Draw outline with brighter color
+  const outlinePoints = [...points3D, points3D[0]]; // Close the loop
+  const outlineGeometry = new THREE.BufferGeometry().setFromPoints(outlinePoints);
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: PV_MODULE_COLORS.BOUNDARY,
+    linewidth: 3, // Thicker line
+    opacity: 0.9,  // Higher opacity
+    transparent: true
+  });
+  const outline = new THREE.Line(outlineGeometry, outlineMaterial);
+  outline.renderOrder = 2;
+  outline.userData = {
+    isMeasurement: true,
+    measurementId: measurement.id,
+    measurementType: 'solar'
+  };
+  measurementsRef.add(outline);
+  
+  // Add points at each vertex with solar color
+  measurement.points.forEach((point, index) => {
+    const vertexGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+    const vertexMaterial = new THREE.MeshBasicMaterial({
+      color: PV_MODULE_COLORS.BOUNDARY,
+      opacity: 0.9,
+      transparent: true
+    });
+    const vertex = new THREE.Mesh(vertexGeometry, vertexMaterial);
+    // Adding additional Y-offset for better visibility
+    vertex.position.set(point.x, point.y + PV_LINE_Y_OFFSET, point.z);
+    vertex.renderOrder = 3;
+    
+    // Add userData for interactive selection
+    vertex.userData = {
+      isMeasurementPoint: true,
+      measurementId: measurement.id,
+      pointIndex: index
+    };
+    
+    measurementsRef.add(vertex);
+  });
+  
+  // Create main label if needed
+  if (shouldCreateLabel) {
+    // Calculate centroid for label position
+    const centroid = calculateCentroid(points3D);
+    centroid.y += LABEL_Y_OFFSET * 1.5; // Extra height for solar labels
+    
+    // Format solar area label with special indicators
+    const labelText = formatMeasurementLabel(measurement.value, 'solar');
+    const label = createMeasurementLabel(labelText, centroid, true);
+    
+    // Store reference data
+    label.userData = {
+      measurementId: measurement.id,
+      isSolarLabel: true
+    };
+    
+    // Add to labels group
+    labelsRef.add(label);
+    
+    // If we have PV module info, create an additional info label
+    if (measurement.pvModuleInfo) {
+      const { moduleCount, moduleRows, moduleCols } = measurement.pvModuleInfo;
+      
+      if (moduleCount > 0) {
+        // Position the PV info label slightly below the main label
+        const infoLabelPos = new THREE.Vector3(
+          centroid.x, 
+          centroid.y - 0.15, 
+          centroid.z
+        );
+        
+        // Create info label with PV module details
+        const infoLabel = createMeasurementLabel(
+          `PV-Module: ${moduleCount} (${moduleRows}×${moduleCols})`, 
+          infoLabelPos, 
+          true,
+          PV_MODULE_COLORS.MODULE // Use solar blue color
+        );
+        
+        // Store reference data
+        infoLabel.userData = {
+          measurementId: measurement.id,
+          isPVInfoLabel: true
+        };
+        
+        // Add to labels group
+        labelsRef.add(infoLabel);
+      }
+    }
+  }
+  
+  // Add segment labels if needed (similar to area measurement)
+  if (shouldCreateSegmentLabels && measurement.segments) {
+    measurement.segments.forEach((segment, segmentIndex) => {
+      const startPoint = measurement.points[segment.startPointIndex];
+      const endPoint = measurement.points[segment.endPointIndex];
+      
+      const p1 = new THREE.Vector3(startPoint.x, startPoint.y + PV_LINE_Y_OFFSET, startPoint.z);
+      const p2 = new THREE.Vector3(endPoint.x, endPoint.y + PV_LINE_Y_OFFSET, endPoint.z);
+      
+      // Calculate midpoint for label
+      const midpoint = calculateMidpoint(p1, p2);
+      midpoint.y += LABEL_Y_OFFSET; // Raise label
+      
+      // Create segment label
+      const segmentLabel = createMeasurementLabel(
+        formatMeasurementLabel(segment.length, 'length'), 
+        midpoint, 
+        true,
+        PV_MODULE_COLORS.BOUNDARY // Use solar boundary color
+      );
+      
+      // Store reference data
+      segmentLabel.userData = {
+        measurementId: measurement.id,
+        segmentIndex
+      };
+      
+      // Add to segment labels group
+      segmentLabelsRef.add(segmentLabel);
+    });
+  }
+}
+
+/**
+ * Renders a roof element (skylight, chimney, etc.)
+ */
+function renderRoofElementMeasurement(
+  measurement: Measurement,
+  measurementsRef: THREE.Group,
+  labelsRef: THREE.Group,
+  shouldCreateLabel: boolean
+) {
+  // Use different rendering depending on the roof element type
+  if (measurement.points.length === 1) {
+    // Single point markers (vents, hooks, etc.)
+    const point = measurement.points[0];
+    const markerPosition = new THREE.Vector3(point.x, point.y + 0.1, point.z);
+    
+    // Select color based on type
+    let markerColor;
+    switch(measurement.type) {
+      case 'vent': markerColor = 0x00ffff; break;
+      case 'hook': markerColor = 0xff00ff; break;
+      default: markerColor = 0xffaa00; break;
+    }
+    
+    // Create appropriate marker
+    const marker = createRoofElementMarker(markerPosition, measurement.type, markerColor, 0.15);
+    
+    // Add userData for interaction
+    marker.userData = {
+      isMeasurement: true,
+      measurementId: measurement.id,
+      measurementType: measurement.type
+    };
+    
+    measurementsRef.add(marker);
+    
+    // Add label
+    if (shouldCreateLabel) {
+      const labelPos = new THREE.Vector3(point.x, point.y + 0.3, point.z);
+      const labelText = measurement.type.charAt(0).toUpperCase() + measurement.type.slice(1);
+      const label = createMeasurementLabel(labelText, labelPos, true);
+      
+      // Store reference data
+      label.userData.measurementId = measurement.id;
+      
+      // Add to labels group
+      labelsRef.add(label);
+    }
+  } 
+  else if (measurement.points.length >= 3) {
+    // Area-based roof elements (skylights, chimneys)
+    // Convert points to THREE.Vector3 array
+    const points3D = measurement.points.map(point => 
+      new THREE.Vector3(point.x, point.y + 0.05, point.z)
+    );
+    
+    // Create a shape
+    const shape = new THREE.Shape();
+    shape.moveTo(points3D[0].x, points3D[0].z);
+    
+    for (let i = 1; i < points3D.length; i++) {
+      shape.lineTo(points3D[i].x, points3D[i].z);
+    }
+    
+    shape.closePath();
+    
+    // Create geometry
+    const shapeGeometry = new THREE.ShapeGeometry(shape);
+    
+    // Adjust vertices Y positions
+    const positionAttribute = shapeGeometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i);
+      const z = positionAttribute.getY(i);
+      
+      // Find closest original point
+      let closestPoint = points3D[0];
+      let minDist = Infinity;
+      
+      for (const point of points3D) {
+        const dist = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.z - z, 2));
+        if (dist < minDist) {
+          minDist = dist;
+          closestPoint = point;
+        }
+      }
+      
+      // Set Y position
+      positionAttribute.setY(i, closestPoint.y + 0.05);
+      positionAttribute.setZ(i, z);
+    }
+    
+    // Create material
+    let elementColor;
+    let elementHeight = 0.1;
+    
+    switch(measurement.type) {
+      case 'skylight':
+        elementColor = 0xff8800;
+        elementHeight = 0.05;
+        break;
+      case 'chimney':
+        elementColor = 0xff0000;
+        elementHeight = 0.3;
+        break;
+      default:
+        elementColor = 0xffaa00;
+        elementHeight = 0.1;
+        break;
+    }
+    
+    const elementMaterial = new THREE.MeshBasicMaterial({
+      color: elementColor,
+      transparent: true,
+      opacity: 0.7
+    });
+    
+    // Create mesh
+    const elementMesh = new THREE.Mesh(shapeGeometry, elementMaterial);
+    
+    // For chimneys, extrude upward
+    if (measurement.type === 'chimney') {
+      // Create extrusion geometry
+      const extrudeSettings = {
+        steps: 1,
+        depth: elementHeight,
+        bevelEnabled: false
+      };
+      
+      const extrudeGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      
+      // Adjust for correct positioning
+      extrudeGeometry.translate(0, points3D[0].y, 0);
+      
+      // Create extruded mesh
+      const extrudedMesh = new THREE.Mesh(extrudeGeometry, elementMaterial);
+      extrudedMesh.userData = {
+        isMeasurement: true,
+        measurementId: measurement.id,
+        measurementType: measurement.type
+      };
+      
+      measurementsRef.add(extrudedMesh);
+    } else {
+      // For non-extruded elements
+      elementMesh.userData = {
+        isMeasurement: true,
+        measurementId: measurement.id,
+        measurementType: measurement.type
+      };
+      
+      measurementsRef.add(elementMesh);
+    }
+    
+    // Add outline
+    const outlinePoints = [...points3D, points3D[0]]; // Close the loop
+    const outlineGeometry = new THREE.BufferGeometry().setFromPoints(outlinePoints);
+    const outlineMaterial = new THREE.LineBasicMaterial({
+      color: elementColor,
+      linewidth: 2,
+      opacity: 0.9,
+      transparent: true
+    });
+    const outline = new THREE.Line(outlineGeometry, outlineMaterial);
+    outline.userData = {
+      isMeasurement: true,
+      measurementId: measurement.id,
+      measurementType: measurement.type
+    };
+    
+    measurementsRef.add(outline);
+    
+    // Add points at vertices
+    measurement.points.forEach((point, index) => {
+      const vertexGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+      const vertexMaterial = new THREE.MeshBasicMaterial({
+        color: elementColor,
+        opacity: 0.9,
+        transparent: true
+      });
+      const vertex = new THREE.Mesh(vertexGeometry, vertexMaterial);
+      vertex.position.set(point.x, point.y + 0.05, point.z);
+      
+      // Add userData for interactive selection
+      vertex.userData = {
+        isMeasurementPoint: true,
+        measurementId: measurement.id,
+        pointIndex: index
+      };
+      
+      measurementsRef.add(vertex);
+    });
+    
+    // Add label if needed
+    if (shouldCreateLabel) {
+      const centroid = calculateCentroid(points3D);
+      centroid.y += 0.25; // Raise label
+      
+      // Format label with type indicator
+      const typeLabel = measurement.type.charAt(0).toUpperCase() + measurement.type.slice(1);
+      const areaText = formatMeasurementLabel(measurement.value, measurement.type);
+      const labelText = `${typeLabel}: ${areaText}`;
+      
+      const label = createMeasurementLabel(labelText, centroid, true);
+      
+      // Store reference data
+      label.userData.measurementId = measurement.id;
+      
+      // Add to labels group
+      labelsRef.add(label);
+    }
+  }
+}
+
+/**
+ * Renders PV module grid for a solar measurement
+ */
+function renderPVModuleGrid(
+  measurement: Measurement,
+  measurementsRef: THREE.Group,
+  labelsRef: THREE.Group
+) {
+  // Only continue if we have valid PV module info
+  if (!measurement.pvModuleInfo || !measurement.pvModuleInfo.moduleCount || measurement.pvModuleInfo.moduleCount <= 0) {
+    console.log(`No valid PV module info for measurement ${measurement.id}`);
+    return;
+  }
+  
+  console.log(`Rendering PV module grid for ${measurement.id} with ${measurement.pvModuleInfo.moduleCount} modules`);
+  
+  // Generate PV module grid using the utility function
+  const { modules, gridLines } = generatePVModuleGrid(measurement);
+  
+  if (!modules || modules.length === 0) {
+    console.log(`No modules generated for measurement ${measurement.id}`);
+    return;
+  }
+  
+  console.log(`Generated ${modules.length} PV modules for rendering`);
+  
+  // Add each PV module as a mesh
+  modules.forEach((moduleInfo, index) => {
+    // Create geometry for the module
+    const geometry = new THREE.BoxGeometry(
+      moduleInfo.size.width,
+      0.03, // Thin box
+      moduleInfo.size.height
+    );
+    
+    // Create material with improved visibility
+    const material = new THREE.MeshBasicMaterial({
+      color: PV_MODULE_COLORS.MODULE,
+      transparent: true,
+      opacity: 0.95, // Higher opacity for better visibility
+      side: THREE.DoubleSide // Show both sides
+    });
+    
+    // Create mesh
+    const moduleMesh = new THREE.Mesh(geometry, material);
+    
+    // Position and rotate according to moduleInfo
+    moduleMesh.position.set(
+      moduleInfo.center.x,
+      moduleInfo.center.y + PV_LINE_Y_OFFSET, // Increased Y offset for visibility
+      moduleInfo.center.z
+    );
+    
+    moduleMesh.rotation.set(
+      moduleInfo.rotation.x,
+      moduleInfo.rotation.y,
+      moduleInfo.rotation.z
+    );
+    
+    // Name the mesh for debugging
+    moduleMesh.name = `PVModule_${measurement.id}_${index}`;
+    
+    // Store metadata in userData
+    moduleMesh.userData = {
+      isPVModule: true,
+      measurementId: measurement.id,
+      moduleIndex: index,
+      measurementType: 'pvmodule'
+    };
+    
+    // Set high render order to ensure visibility
+    moduleMesh.renderOrder = 5;
+    
+    // Add to measurements group
+    measurementsRef.add(moduleMesh);
+    
+    console.log(`Added PV module mesh at position:`, {
+      x: moduleInfo.center.x,
+      y: moduleInfo.center.y + PV_LINE_Y_OFFSET,
+      z: moduleInfo.center.z
+    });
+  });
+  
+  // Add grid lines
+  if (gridLines && gridLines.length > 0) {
+    console.log(`Adding ${gridLines.length} grid lines`);
+    
+    gridLines.forEach((line, index) => {
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(line.start.x, line.start.y + PV_LINE_Y_OFFSET, line.start.z),
+        new THREE.Vector3(line.end.x, line.end.y + PV_LINE_Y_OFFSET, line.end.z)
+      ]);
+      
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: PV_MODULE_COLORS.GRID,
+        linewidth: 1,
+        opacity: 0.7,
+        transparent: true
+      });
+      
+      const gridLine = new THREE.Line(lineGeometry, lineMaterial);
+      gridLine.renderOrder = 4;
+      
+      gridLine.userData = {
+        isPVGridLine: true,
+        measurementId: measurement.id
+      };
+      
+      measurementsRef.add(gridLine);
+    });
+  }
+  
+  // Add corner markers for enhanced visibility
+  if (modules.length > 0) {
+    console.log(`Adding corner markers for PV module area`);
+    
+    const cornerGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+    const cornerMaterial = new THREE.MeshBasicMaterial({
+      color: PV_MODULE_COLORS.MODULE,
+      opacity: 0.95,
+      transparent: true
+    });
+    
+    // Get the boundary corners and add markers
+    const corners = [
+      modules[0], // Top-left
+      modules[measurement.pvModuleInfo.moduleRows - 1], // Top-right
+      modules[modules.length - 1], // Bottom-right
+      modules[modules.length - measurement.pvModuleInfo.moduleRows] // Bottom-left
+    ];
+    
+    corners.forEach((moduleInfo, index) => {
+      const cornerMarker = new THREE.Mesh(cornerGeometry, cornerMaterial);
+      
+      cornerMarker.position.set(
+        moduleInfo.center.x,
+        moduleInfo.center.y + PV_LINE_Y_OFFSET + 0.05, // Slightly above modules
+        moduleInfo.center.z
+      );
+      
+      cornerMarker.userData = {
+        isPVCornerMarker: true,
+        measurementId: measurement.id,
+        cornerIndex: index
+      };
+      
+      cornerMarker.renderOrder = 6;
+      
+      measurementsRef.add(cornerMarker);
+    });
+  }
+  
+  console.log(`Completed rendering PV module grid for ${measurement.id}`);
+}
+
