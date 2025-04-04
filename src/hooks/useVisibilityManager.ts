@@ -12,31 +12,31 @@ export const useVisibilityManager = (
   allLabelsVisible: boolean
 ) => {
   // Define the updateLabelVisibility function first
-  const updateLabelVisibility = useCallback((measurement: Measurement) => {
-    if (!labelsRef.current || !segmentLabelsRef.current) return;
+  const updateLabelVisibility = useCallback((measurement: Measurement, labelsRef: THREE.Group | null, segmentLabelsRef: THREE.Group | null) => {
+    if (!labelsRef || !segmentLabelsRef) return;
     
     // Update all labels related to this measurement
-    labelsRef.current.children.forEach(label => {
+    labelsRef.children.forEach(label => {
       if (label.userData && label.userData.measurementId === measurement.id) {
         label.visible = measurement.visible !== false && measurement.labelVisible !== false;
       }
     });
     
     // Update segment labels if applicable
-    segmentLabelsRef.current.children.forEach(label => {
+    segmentLabelsRef.children.forEach(label => {
       if (label.userData && label.userData.measurementId === measurement.id) {
         label.visible = measurement.visible !== false && measurement.labelVisible !== false;
       }
     });
-  }, [labelsRef, segmentLabelsRef]);
+  }, []);
 
   // Define the updateMeasurementMarkers function before using it
-  const updateMeasurementMarkers = useCallback(() => {
-    if (!measurementsRef.current) return;
+  const updateMeasurementMarkers = useCallback((measurementsRef: THREE.Group | null) => {
+    if (!measurementsRef) return;
     
     measurements.forEach(measurement => {
       // Find the corresponding visual representation
-      const meshGroup = measurementsRef.current.children.find(
+      const meshGroup = measurementsRef.children.find(
         child => child.userData && child.userData.measurementId === measurement.id
       );
       
@@ -55,36 +55,36 @@ export const useVisibilityManager = (
         }
       }
     });
-  }, [measurements, measurementsRef]);
+  }, [measurements]);
 
   // Now we can use the functions above
-  const handleToggleMeasurementVisibility = useCallback((id: string) => {
+  const handleToggleMeasurementVisibility = useCallback((id: string, measurementsRef: THREE.Group | null, labelsRef: THREE.Group | null, segmentLabelsRef: THREE.Group | null) => {
     toggleMeasurementVisibility(id);
     
     // Find measurement to update visuals
     const measurement = measurements.find(m => m.id === id);
     if (measurement) {
       // Update markers visibility
-      updateMeasurementMarkers();
+      updateMeasurementMarkers(measurementsRef);
       
       // Update label visibility
-      updateLabelVisibility(measurement);
+      updateLabelVisibility(measurement, labelsRef, segmentLabelsRef);
     }
   }, [measurements, toggleMeasurementVisibility, updateMeasurementMarkers, updateLabelVisibility]);
 
-  const handleToggleLabelVisibility = useCallback((id: string) => {
+  const handleToggleLabelVisibility = useCallback((id: string, labelsRef: THREE.Group | null, segmentLabelsRef: THREE.Group | null) => {
     toggleLabelVisibility(id);
     
     // Find measurement to update visuals
     const measurement = measurements.find(m => m.id === id);
     if (measurement) {
       // Update label visibility
-      updateLabelVisibility(measurement);
+      updateLabelVisibility(measurement, labelsRef, segmentLabelsRef);
     }
   }, [measurements, toggleLabelVisibility, updateLabelVisibility]);
 
-  const updateAllLabelsVisibility = useCallback((visible: boolean) => {
-    if (!labelsRef.current || !segmentLabelsRef.current) return;
+  const updateAllLabelsVisibility = useCallback((visible: boolean, labelsRef: THREE.Group | null, segmentLabelsRef: THREE.Group | null) => {
+    if (!labelsRef || !segmentLabelsRef) return;
     
     // Process all measurements
     measurements.forEach(measurement => {
@@ -92,36 +92,36 @@ export const useVisibilityManager = (
       if (measurement.visible === false) return;
       
       // Update main labels
-      labelsRef.current.children.forEach(label => {
+      labelsRef.children.forEach(label => {
         if (label.userData && label.userData.measurementId === measurement.id) {
           label.visible = visible;
         }
       });
       
       // Update segment labels
-      segmentLabelsRef.current.children.forEach(label => {
+      segmentLabelsRef.children.forEach(label => {
         if (label.userData && label.userData.measurementId === measurement.id) {
           label.visible = visible;
         }
       });
     });
-  }, [measurements, labelsRef, segmentLabelsRef]);
+  }, [measurements]);
 
   // Function to get all measurement groups for export
-  const getMeasurementGroups = useCallback(() => {
-    if (!measurementsRef.current) return [];
+  const getMeasurementGroups = useCallback((measurementsRef: THREE.Group | null) => {
+    if (!measurementsRef) return [];
     
     const groups: THREE.Group[] = [];
     
     // Find all measurement groups
-    measurementsRef.current.children.forEach(child => {
+    measurementsRef.children.forEach(child => {
       if (child instanceof THREE.Group && child.userData && child.userData.measurementId) {
         groups.push(child as THREE.Group);
       }
     });
     
     return groups;
-  }, [measurementsRef]);
+  }, []);
 
   // Make sure we return all the needed functions
   return {

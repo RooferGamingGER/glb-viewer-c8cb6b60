@@ -94,10 +94,10 @@ export interface PVMaterials {
 
 export interface PVModuleInfo {
   moduleCount: number;
-  modulesX?: number;
-  modulesY?: number;
+  modulesX: number;
+  modulesY: number;
   orientation: 'landscape' | 'portrait';
-  spacing?: number;
+  spacing: number;
   pvModuleSpec?: PVModuleSpec;
   alignmentEdge?: {
     from: Point;

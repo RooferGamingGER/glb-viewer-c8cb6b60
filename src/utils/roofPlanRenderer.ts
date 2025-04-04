@@ -1,4 +1,6 @@
-import { Measurement, Point, Point2D } from '@/types/measurements';
+import * as THREE from 'three';
+import { Measurement, Segment, Point } from '@/types/measurements';
+import { Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
 import { calculateBoundingBox, calculateCentroid } from './measurementCalculations';
 import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName } from '@/utils/exportUtils';

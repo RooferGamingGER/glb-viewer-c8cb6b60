@@ -553,3 +553,13 @@ export const countTotalSegments = (measurements: Measurement[]): number => {
     }).length;
   }, 0);
 };
+
+/**
+ * Find and fix the line that's causing the string/string[] error
+ * For example, if it's part of a function that handles measurement notes:
+ */
+export function formatMeasurementNotes(measurement: Measurement): string[] {
+  // Make sure to return a string array even if the input is a single string
+  if (!measurement.notes) return [];
+  return Array.isArray(measurement.notes) ? measurement.notes : [measurement.notes];
+}
