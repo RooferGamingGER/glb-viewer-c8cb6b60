@@ -649,67 +649,60 @@ export const generatePVModuleGrid = (
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
-  // Standard orthogonal vectors (default alignment with coordinate system)
-  let directionX = { x: 1, z: 0 };
-  let directionZ = { x: 0, z: 1 };
+  // Direction vectors for grid alignment - will be calculated from the area points
+  let directionX = { x: 1, z: 0 };  // Default direction along X axis
+  let directionZ = { x: 0, z: 1 };  // Default direction along Z axis
   let alignmentAngle = 0;
   
-  // Versuche, eine Trauflinie (eave) zu finden, um die Module daran auszurichten
-  if (roofEdgeSegments && roofEdgeSegments.length > 0) {
-    // Wähle das längste Segment für eine stabilere Ausrichtung
-    let longestSegment = roofEdgeSegments[0];
-    let maxLength = 0;
+  // If we have at least 4 points, use them to define the grid orientation
+  if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
+    // Get the four corner points of the area
+    const p1 = roofEdgeSegments[0].from;
+    const p2 = roofEdgeSegments[1].from;
+    const p3 = roofEdgeSegments[2].from;
+    const p4 = roofEdgeSegments[3].from;
     
-    roofEdgeSegments.forEach(segment => {
-      // Create THREE.Vector3 objects to calculate length
-      const from = new THREE.Vector3(segment.from.x, segment.from.y, segment.from.z);
-      const to = new THREE.Vector3(segment.to.x, segment.to.y, segment.to.z);
-      const length = new THREE.Vector3().subVectors(to, from).length();
-      
-      if (length > maxLength) {
-        maxLength = length;
-        longestSegment = segment;
-      }
-    });
+    // Calculate vectors for two adjacent sides
+    const v1 = {  // Vector from P1 to P2
+      x: p2.x - p1.x,
+      z: p2.z - p1.z
+    };
     
-    console.log("Längste Dachkante für Ausrichtung gefunden:", {
-      from: [longestSegment.from.x, longestSegment.from.y, longestSegment.from.z],
-      to: [longestSegment.to.x, longestSegment.to.y, longestSegment.to.z],
-      length: maxLength
-    });
+    const v2 = {  // Vector from P1 to P4
+      x: p4.x - p1.x,
+      z: p4.z - p1.z
+    };
     
-    // Berechne Richtungsvektor entlang der Dachkante (nur in XZ-Ebene projiziert)
-    const dx = longestSegment.to.x - longestSegment.from.x;
-    const dz = longestSegment.to.z - longestSegment.from.z;
-    const length2D = Math.sqrt(dx * dx + dz * dz);
+    // Normalize the vectors
+    const v1Length = Math.sqrt(v1.x * v1.x + v1.z * v1.z);
+    const v2Length = Math.sqrt(v2.x * v2.x + v2.z * v2.z);
     
-    if (length2D > 0.1) { // Mindestlänge für sinnvolle Ausrichtung
-      // Normalisierter Richtungsvektor entlang der Dachkante
-      directionX = { 
-        x: dx / length2D, 
-        z: dz / length2D 
+    if (v1Length > 0.1 && v2Length > 0.1) {
+      // Use the first vector as directionX
+      directionX = {
+        x: v1.x / v1Length,
+        z: v1.z / v1Length
       };
       
-      // Orthogonaler Vektor (90° gedreht) für die zweite Richtung
-      directionZ = { 
-        x: -directionX.z, 
-        z: directionX.x 
+      // Use the second vector as directionZ 
+      directionZ = {
+        x: v2.x / v2Length,
+        z: v2.z / v2Length
       };
       
-      // Berechne Winkel zur X-Achse für Debug-Zwecke
+      // Calculate alignment angle for logging
       alignmentAngle = Math.atan2(directionX.z, directionX.x) * (180 / Math.PI);
       
-      console.log("Module werden ausgerichtet mit Winkel:", alignmentAngle, "Grad");
-      console.log("Richtungsvektoren:", { 
-        x: directionX, 
-        z: directionZ,
-        length2D
+      console.log("Module grid aligned to area points:", {
+        directionX,
+        directionZ,
+        alignmentAngle
       });
     } else {
-      console.log("Dachkante zu kurz für sinnvolle Ausrichtung, verwende Standard-Ausrichtung");
+      console.log("Area points too close together, using default alignment");
     }
   } else {
-    console.log("Keine Dachkanten-Segmente verfügbar, verwende Standard-Ausrichtung");
+    console.log("Not enough area points available, using default alignment");
   }
   
   console.log("PV Module Grid Generation mit Dachausrichtung:", {
@@ -727,35 +720,35 @@ export const generatePVModuleGrid = (
   // Generate module placement grid
   for (let row = 0; row < pvInfo.rows!; row++) {
     for (let col = 0; col < pvInfo.columns!; col++) {
-      // Berechne die Basisposition dieses Moduls im Standard-Koordinatensystem
+      // Calculate the base position of this module in the standard coordinate system
       const xOffset = col * (moduleWidth + pvInfo.moduleSpacing!);
       const zOffset = row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Transformiere die Position gemäß der Dachausrichtung
+      // Transform the position according to the roof alignment
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
       // Reduced module height offset from 30cm to 5cm above the roof surface for better visibility
       const yOffset = 0.05; // 5cm above the roof surface
       
-      // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
+      // Calculate the four corner points of the module with correct alignment
       const moduleCorners: Point[] = [
-        { // Ecke 0 (linke obere Ecke)
+        { // Corner 0 (top left corner)
           x,
           y: baseY + yOffset,
           z
         },
-        { // Ecke 1 (rechte obere Ecke) - entlang der Dachkante
+        { // Corner 1 (top right corner) - along the first direction
           x: x + moduleWidth * directionX.x,
           y: baseY + yOffset,
           z: z + moduleWidth * directionX.z
         },
-        { // Ecke 2 (rechte untere Ecke) - diagonal
+        { // Corner 2 (bottom right corner) - diagonal
           x: x + moduleWidth * directionX.x + moduleHeight * directionZ.x,
           y: baseY + yOffset,
           z: z + moduleWidth * directionX.z + moduleHeight * directionZ.z
         },
-        { // Ecke 3 (linke untere Ecke) - orthogonal zur Dachkante
+        { // Corner 3 (bottom left corner) - along the second direction
           x: x + moduleHeight * directionZ.x,
           y: baseY + yOffset,
           z: z + moduleHeight * directionZ.z
