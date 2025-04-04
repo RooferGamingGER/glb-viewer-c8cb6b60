@@ -1333,7 +1333,8 @@ export const calculateRoofOrientation = (points: Point[]): {
     
     // Calculate inclination (roof pitch)
     // Angle between normal vector and vertical (Y) axis
-    const inclinationRad = Math.acos(Math.abs(normal.y)) * (180 / Math.PI);
+    const inclinationRad = Math.acos(Math.abs(normal.y));
+    const inclinationDeg = inclinationRad * (180 / Math.PI);
     
     // Project the normal vector onto the XZ plane for azimuth calculation
     const projectedNormal = {
@@ -1361,14 +1362,14 @@ export const calculateRoofOrientation = (points: Point[]): {
     console.log("Roof orientation calculated:", {
       azimuth,
       direction,
-      inclination,
+      inclination: inclinationDeg,
       normalVector: normal
     });
     
     return { 
       azimuth, 
       direction,
-      inclination
+      inclination: inclinationDeg
     };
   } catch (error) {
     console.error("Error calculating roof orientation:", error);
