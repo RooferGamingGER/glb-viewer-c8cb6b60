@@ -1,6 +1,5 @@
-
 import * as THREE from 'three';
-import { Point, Measurement } from '@/hooks/useMeasurements';
+import { Point, Measurement, Segment, PVModuleInfo } from '@/types/measurements';
 import {
   createMeasurementLabel,
   formatMeasurementLabel,
@@ -1015,8 +1014,16 @@ function renderAreaMeasurement(
   // Add segment labels if needed
   if (shouldCreateSegmentLabels && measurement.segments) {
     measurement.segments.forEach((segment, segmentIndex) => {
-      const startPoint = measurement.points[segment.startPointIndex];
-      const endPoint = measurement.points[segment.endPointIndex];
+      // In segment, points is an array of two points: [start, end]
+      const startPoint = measurement.points.find(p => 
+        p.x === segment.points[0].x && p.y === segment.points[0].y && p.z === segment.points[0].z
+      );
+      const endPoint = measurement.points.find(p => 
+        p.x === segment.points[1].x && p.y === segment.points[1].y && p.z === segment.points[1].z
+      );
+      
+      // Skip if we can't find the points (shouldn't happen)
+      if (!startPoint || !endPoint) return;
       
       const p1 = new THREE.Vector3(startPoint.x, startPoint.y + LINE_Y_OFFSET, startPoint.z);
       const p2 = new THREE.Vector3(endPoint.x, endPoint.y + LINE_Y_OFFSET, endPoint.z);
@@ -1025,7 +1032,7 @@ function renderAreaMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       midpoint.y += LABEL_Y_OFFSET; // Raise label
       
-      // Create segment label
+      // Create segment label - use string version of segment type for formatMeasurementLabel
       const segmentLabel = createMeasurementLabel(
         formatMeasurementLabel(segment.length, 'length'), 
         midpoint, 
@@ -1183,7 +1190,7 @@ function renderSolarMeasurement(
     
     // If we have PV module info, create an additional info label
     if (measurement.pvModuleInfo) {
-      const { moduleCount, moduleRows, moduleCols } = measurement.pvModuleInfo;
+      const { moduleCount, columns, rows } = measurement.pvModuleInfo;
       
       if (moduleCount > 0) {
         // Position the PV info label slightly below the main label
@@ -1193,9 +1200,13 @@ function renderSolarMeasurement(
           centroid.z
         );
         
-        // Create info label with PV module details
+        // Create info label with PV module details - Convert the values to strings
+        const moduleCountStr = `${moduleCount}`;
+        const rowsStr = rows ? `${rows}` : "?";
+        const colsStr = columns ? `${columns}` : "?";
+        
         const infoLabel = createMeasurementLabel(
-          `PV-Module: ${moduleCount} (${moduleRows}×${moduleCols})`, 
+          `PV-Module: ${moduleCountStr} (${rowsStr}×${colsStr})`, 
           infoLabelPos, 
           true,
           PV_MODULE_COLORS.MODULE // Use solar blue color
@@ -1216,8 +1227,16 @@ function renderSolarMeasurement(
   // Add segment labels if needed (similar to area measurement)
   if (shouldCreateSegmentLabels && measurement.segments) {
     measurement.segments.forEach((segment, segmentIndex) => {
-      const startPoint = measurement.points[segment.startPointIndex];
-      const endPoint = measurement.points[segment.endPointIndex];
+      // In segment, points is an array of two points: [start, end]
+      const startPoint = measurement.points.find(p => 
+        p.x === segment.points[0].x && p.y === segment.points[0].y && p.z === segment.points[0].z
+      );
+      const endPoint = measurement.points.find(p => 
+        p.x === segment.points[1].x && p.y === segment.points[1].y && p.z === segment.points[1].z
+      );
+      
+      // Skip if we can't find the points
+      if (!startPoint || !endPoint) return;
       
       const p1 = new THREE.Vector3(startPoint.x, startPoint.y + PV_LINE_Y_OFFSET, startPoint.z);
       const p2 = new THREE.Vector3(endPoint.x, endPoint.y + PV_LINE_Y_OFFSET, endPoint.z);
@@ -1226,7 +1245,7 @@ function renderSolarMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       midpoint.y += LABEL_Y_OFFSET; // Raise label
       
-      // Create segment label
+      // Create segment label - convert to string for the first parameter
       const segmentLabel = createMeasurementLabel(
         formatMeasurementLabel(segment.length, 'length'), 
         midpoint, 
@@ -1476,12 +1495,53 @@ function renderPVModuleGrid(
   console.log(`Rendering PV module grid for ${measurement.id} with ${measurement.pvModuleInfo.moduleCount} modules`);
   
   // Generate PV module grid using the utility function
-  const { modules, gridLines } = generatePVModuleGrid(measurement);
+  const result = generatePVModuleGrid(measurement);
   
-  if (!modules || modules.length === 0) {
+  if (!result || !result.modulePoints || result.modulePoints.length === 0) {
     console.log(`No modules generated for measurement ${measurement.id}`);
     return;
   }
+  
+  // Create our own module definitions from the modulePoints
+  type ModuleInfo = {
+    center: THREE.Vector3;
+    size: { width: number; height: number };
+    rotation: THREE.Vector3;
+  };
+  
+  const modules: ModuleInfo[] = [];
+  
+  // Process each modulePoint (each module is defined by 4 corner points)
+  result.modulePoints.forEach((points, index) => {
+    if (points.length !== 4) return; // Skip invalid modules
+    
+    // Calculate center
+    const center = new THREE.Vector3(0, 0, 0);
+    points.forEach(point => {
+      center.x += point.x;
+      center.y += point.y;
+      center.z += point.z;
+    });
+    center.divideScalar(4);
+    
+    // Estimate width and height
+    const width = Math.sqrt(
+      Math.pow(points[1].x - points[0].x, 2) + 
+      Math.pow(points[1].z - points[0].z, 2)
+    );
+    
+    const height = Math.sqrt(
+      Math.pow(points[3].x - points[0].x, 2) + 
+      Math.pow(points[3].z - points[0].z, 2)
+    );
+    
+    // Create module info
+    modules.push({
+      center,
+      size: { width, height },
+      rotation: new THREE.Vector3(0, 0, 0) // Default rotation
+    });
+  });
   
   console.log(`Generated ${modules.length} PV modules for rendering`);
   
@@ -1543,13 +1603,13 @@ function renderPVModuleGrid(
   });
   
   // Add grid lines
-  if (gridLines && gridLines.length > 0) {
-    console.log(`Adding ${gridLines.length} grid lines`);
+  if (result.gridLines && result.gridLines.length > 0) {
+    console.log(`Adding ${result.gridLines.length} grid lines`);
     
-    gridLines.forEach((line, index) => {
+    result.gridLines.forEach((line, index) => {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(line.start.x, line.start.y + PV_LINE_Y_OFFSET, line.start.z),
-        new THREE.Vector3(line.end.x, line.end.y + PV_LINE_Y_OFFSET, line.end.z)
+        new THREE.Vector3(line.from.x, line.from.y + PV_LINE_Y_OFFSET, line.from.z),
+        new THREE.Vector3(line.to.x, line.to.y + PV_LINE_Y_OFFSET, line.to.z)
       ]);
       
       const lineMaterial = new THREE.LineBasicMaterial({
@@ -1582,15 +1642,26 @@ function renderPVModuleGrid(
       transparent: true
     });
     
+    // Calculate rows and cols if available
+    const rows = measurement.pvModuleInfo.rows || Math.round(Math.sqrt(modules.length));
+    const cols = measurement.pvModuleInfo.columns || Math.round(modules.length / rows);
+    
     // Get the boundary corners and add markers
-    const corners = [
-      modules[0], // Top-left
-      modules[measurement.pvModuleInfo.moduleRows - 1], // Top-right
-      modules[modules.length - 1], // Bottom-right
-      modules[modules.length - measurement.pvModuleInfo.moduleRows] // Bottom-left
+    // Estimate corner indices based on the available modules
+    const cornerIndices = [
+      0,                          // Top-left
+      cols - 1,                   // Top-right
+      modules.length - 1,         // Bottom-right
+      modules.length - cols       // Bottom-left
     ];
     
-    corners.forEach((moduleInfo, index) => {
+    // Filter valid indices
+    const validCornerIndices = cornerIndices.filter(i => i >= 0 && i < modules.length);
+    
+    validCornerIndices.forEach((index, cornerIdx) => {
+      if (index < 0 || index >= modules.length) return;
+      
+      const moduleInfo = modules[index];
       const cornerMarker = new THREE.Mesh(cornerGeometry, cornerMaterial);
       
       cornerMarker.position.set(
@@ -1602,7 +1673,7 @@ function renderPVModuleGrid(
       cornerMarker.userData = {
         isPVCornerMarker: true,
         measurementId: measurement.id,
-        cornerIndex: index
+        cornerIndex: cornerIdx
       };
       
       cornerMarker.renderOrder = 6;
@@ -1613,4 +1684,3 @@ function renderPVModuleGrid(
   
   console.log(`Completed rendering PV module grid for ${measurement.id}`);
 }
-
