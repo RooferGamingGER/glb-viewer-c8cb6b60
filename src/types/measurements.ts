@@ -1,163 +1,65 @@
-import * as THREE from 'three';
 
-export type MeasurementMode = 
-  | 'length' 
-  | 'height' 
-  | 'area' 
-  | 'none' 
-  | 'chimney'   // Kamin
-  | 'skylight'  // Dachfenster
-  | 'solar'     // Solaranlage
-  | 'vent'      // Lüfter (nur Markierung)
-  | 'hook'      // Dachhaken
-  | 'other'     // Sonstige Einbauten
-  | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
-  | 'ridge'     // First
-  | 'eave'      // Traufe
-  | 'verge'     // Ortgang
-  | 'valley'    // Kehle
-  | 'hip';      // Grat
-
-export interface Point {
+export type Point = {
   x: number;
   y: number;
   z: number;
-}
+};
 
-export interface MeasurementPoint {
-  position: THREE.Vector3;
-  worldPosition: THREE.Vector3;
-}
-
-export interface Segment {
+export type Segment = {
   id: string;
   points: [Point, Point];
   length: number;
-  label?: string;
   inclination?: number;
-  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
-  shared?: boolean;            // Indicates if this segment is shared with another measurement
-  sharedWithSegmentId?: string; // ID of the segment this is shared with
-  isOriginal?: boolean;        // For shared segments, indicates if this is the "original" one
-}
+  label?: string;
+};
 
-export interface Point2D {
-  x: number;
-  y: number;
-}
+export type PVModuleSpec = {
+  width: number;
+  height: number;
+  power: number;
+  name: string;
+};
 
-export interface PVModuleInfo {
-  moduleWidth: number;      // Module width in meters
-  moduleHeight: number;     // Module height in meters
-  moduleCount: number;      // Number of modules that can fit
-  coveragePercent: number;  // Coverage percentage of the roof area
-  orientation: 'portrait' | 'landscape'; // Module orientation
-  edgeDistance?: number;    // Distance from roof edge in meters
-  moduleSpacing?: number;   // Spacing between modules in meters
-  columns?: number;         // Number of columns (modules across width)
-  rows?: number;            // Number of rows (modules across length)
-  boundingWidth?: number;   // Width of the bounding box for the area
-  boundingLength?: number;  // Length of the bounding box for the area
-  boundingHeight?: number;  // Added: Height of the bounding box (replacing width)
-  availableWidth?: number;  // Available width after edge distance
-  availableLength?: number; // Available length after edge distance
-  startX?: number;         // Starting X position for grid (after edge distance)
-  startZ?: number;         // Starting Z position for grid (after edge distance)
-  minX?: number;           // Minimum X of the bounding box
-  maxX?: number;           // Maximum X of the bounding box
-  minZ?: number;           // Minimum Z of the bounding box
-  maxZ?: number;           // Maximum Z of the bounding box
-  actualArea?: number;      // The actual area (not just bounding box)
-  pvModuleSpec?: PVModuleSpec; // Reference to the module specification used
-  manualDimensions?: boolean; // Flag to indicate if dimensions were manually set
-  userDefinedWidth?: number;  // User-defined available width in meters
-  userDefinedLength?: number; // User-defined available length in meters
-  edgeInfoValid?: boolean;    // Whether the edge measurements are valid
-  edgeInfoMessage?: string;   // Validation message for edge measurements
-  pvMaterials?: PVMaterials;  // Materials needed for the PV system
-  roofAzimuth?: number;       // Azimuth angle in degrees (0=North, 90=East, 180=South, 270=West)
-  roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)
-  roofInclination?: number;   // Roof inclination in degrees 
-  yieldFactor?: number;       // Yield factor in kWh/kWp per year
-}
+export type PVModuleInfo = {
+  moduleCount: number;
+  modulesX: number;
+  modulesY: number;
+  orientation: 'landscape' | 'portrait';
+  spacing: number;
+  pvModuleSpec?: PVModuleSpec;
+  alignmentEdge?: {
+    from: Point;
+    to: Point;
+  };
+};
 
-export interface PVModuleSpec {
-  name: string;             // Module name/model
-  width: number;            // Width in meters
-  height: number;           // Height in meters
-  power: number;            // Power in watts
-  efficiency: number;       // Efficiency percentage
-}
-
-export interface PVMountingSystem {
-  railLength: number;         // Total length of mounting rails in meters
-  roofHookCount: number;      // Number of roof hooks needed
-  middleClampCount: number;   // Number of middle clamps
-  endClampCount: number;      // Number of end clamps
-  railConnectorCount: number; // Number of rail connectors
-}
-
-export interface PVElectricalSystem {
-  stringCableLength: number;  // Total length of string cables in meters
-  mainCableLength: number;    // Length of main DC cables in meters
-  acCableLength: number;      // Length of AC cables in meters
-  connectorPairCount: number; // Number of MC4 connector pairs
-  inverterCount: number;      // Number of inverters needed
-  inverterPower: number;      // Power rating of inverter(s) in kW
-  stringCount: number;        // Number of strings
-  modulesPerString: number;   // Modules per string
-}
-
-export interface PVMaterials {
-  totalModuleCount: number;     // Total number of modules
-  totalPower: number;           // Total power in kWp
-  moduleSpec: PVModuleSpec;     // Module specification
-  mountingSystem: PVMountingSystem;     // Mounting system components
-  electricalSystem: PVElectricalSystem; // Electrical system components
-  includesSurgeProtection: boolean;     // Whether surge protection is included
-  includesMonitoringSystem: boolean;    // Whether monitoring system is included
-  notes: string[];                      // Additional notes or recommendations
-}
-
-export interface Measurement {
+export type Measurement = {
   id: string;
-  type: MeasurementMode;
+  type: MeasurementType;
   points: Point[];
   value: number;
+  editMode?: boolean;
   label?: string;
+  segments?: Segment[];
   visible?: boolean;
   labelVisible?: boolean;
-  editMode?: boolean;
-  unit?: string;
-  description?: string;
-  segments?: Segment[];
-  inclination?: number;
-  
-  subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
-  dimensions?: {         // Specific dimensions for roof elements
-    width?: number;
-    length?: number;
-    height?: number;
-    diameter?: number;
-    area?: number;
-    perimeter?: number;  // Adding perimeter to dimensions
-  };
-  position?: {           // Reference position
-    x: number;
-    y: number;
-    z: number;
-  };
-  count?: number;        // For elements that need counting (e.g., vents)
-  relatedMeasurements?: string[]; // IDs of related measurements
-  penetrationType?: 'vent' | 'hook' | 'other'; // Type of penetration
-  notes?: string;        // Additional notes for the measurement
-  screenshot?: string;   // Base64 data URL of measurement screenshot for PDF export
-  polygon2D?: string;    // Base64 data URL of 2D polygon rendering for PDF export
-  
-  customScreenshots?: string[];  // Array of base64 data URLs for custom screenshots
-  
-  pvModuleInfo?: PVModuleInfo; // Information about PV module placement
+  pvModuleInfo?: PVModuleInfo;
+};
 
-  pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
-  powerOutput?: number;   // Power output in watts for this module
-}
+export type MeasurementType = 
+  'length' | 
+  'height' | 
+  'area' | 
+  'solar' | 
+  'skylight' | 
+  'chimney' | 
+  'vent' | 
+  'hook' |
+  'eave' |
+  'ridge' |
+  'verge' |
+  'valley' |
+  'pvmodule' |
+  'other';
+
+export type MeasurementMode = MeasurementType | 'none';

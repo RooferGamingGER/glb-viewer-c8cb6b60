@@ -1,28 +1,23 @@
-
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { MeasurementMode, Measurement, Point, Segment, PVMaterials } from '@/types/measurements';
-import { useMeasurements } from '@/hooks/useMeasurements';
-import { 
-  isMeasurementType as checkMeasurementType, 
-  ExtendedMeasurementMode,
-  isMeasurementOfType,
-  isValidPoint
-} from '@/types/measurementTypes';
+import React, { createContext, useState, useCallback, useContext } from 'react';
+import { nanoid } from 'nanoid';
+import {
+  MeasurementMode,
+  Point,
+  Measurement,
+  Segment
+} from '@/types/measurements';
+import { calculateArea, generateSegments } from '@/utils/measurementCalculations';
 
 // Define the context type
 interface MeasurementContextType {
-  // State
   measurements: Measurement[];
   currentPoints: Point[];
-  setCurrentPoints: React.Dispatch<React.SetStateAction<Point[]>>;
   activeMode: MeasurementMode;
   editMeasurementId: string | null;
   editingPointIndex: number | null;
   allMeasurementsVisible: boolean;
   allLabelsVisible: boolean;
-  calculatingMaterials: boolean;
   
-  // Actions
   addPoint: (point: Point) => void;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
   clearMeasurements: () => void;
@@ -37,150 +32,364 @@ interface MeasurementContextType {
   updateSegment: (measurementId: string, segmentId: string, segmentData: Partial<Segment>) => void;
   deleteMeasurement: (id: string) => void;
   deletePoint: (measurementId: string, pointIndex: number) => void;
-  undoLastPoint: () => boolean;
-  startPointEdit: (id: string, pointIndex: number) => void;
-  updateMeasurementPoint: (measurementId: string, pointIndex: number, newPoint: Point) => void;
+  undoLastPoint: () => void;
+  startPointEdit: (measurementId: string, pointIndex: number) => void;
+  updateMeasurementPoint: (point: Point) => void;
   cancelEditing: () => void;
   moveMeasurementUp: (id: string) => void;
   moveMeasurementDown: (id: string) => void;
-  getRoofEdgeInfo: () => any;
-  calculatePVMaterialsForMeasurement: (measurementId: string, inverterDistance?: number) => PVMaterials | undefined;
-  findAndLinkSharedSegments: (updatedMeasurements: Measurement[]) => Measurement[];
   
-  // Visual state update function
   setUpdateVisualState: (fn: (updatedMeasurements: Measurement[], labelVisibility: boolean) => void) => void;
-  
-  // Utilities
-  getNearestPointIndex: (points: Point[], point: Point, threshold?: number) => number;
-  calculateSegmentLength: (segment: Segment) => number;
 }
 
 // Create the context with a default value
 const MeasurementContext = createContext<MeasurementContextType | undefined>(undefined);
 
-// Provider component
-export const MeasurementProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const measurementUtils = useMeasurements();
-  
-  return (
-    <MeasurementContext.Provider value={measurementUtils}>
-      {children}
-    </MeasurementContext.Provider>
-  );
-};
-
-// Custom hook to use the measurement context
-export const useMeasurementContext = (): MeasurementContextType => {
+// Hook for using the MeasurementContext
+export const useMeasurementContext = () => {
   const context = useContext(MeasurementContext);
-  
-  if (context === undefined) {
-    throw new Error('useMeasurementContext must be used within a MeasurementProvider');
+  if (!context) {
+    throw new Error("useMeasurementContext must be used within a MeasurementProvider");
   }
-  
   return context;
 };
 
-// Helper function to get display name for measurement type
-export const getMeasurementTypeDisplayName = (type: MeasurementMode | ExtendedMeasurementMode): string => {
-  const displayNames: Record<string, string> = {
-    'length': 'Länge',
-    'height': 'Höhe',
-    'area': 'Fläche',
-    'chimney': 'Kamin',
-    'skylight': 'Dachfenster',
-    'solar': 'Solaranlage',
-    'pvmodule': 'PV-Modul',
-    'vent': 'Lüfter',
-    'hook': 'Dachhaken',
-    'other': 'Sonstige',
-    'ridge': 'First',
-    'eave': 'Traufe',
-    'verge': 'Ortgang',
-    'valley': 'Kehle',
-    'hip': 'Grat',
-    'none': 'Keine'
-  };
+export const MeasurementProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  // State variables
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
+  const [activeMode, setActiveMode] = useState<MeasurementMode>('none');
+  const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
+  const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
+  const [allMeasurementsVisible, setAllMeasurementsVisible] = useState<boolean>(true);
+  const [allLabelsVisible, setAllLabelsVisible] = useState<boolean>(true);
+
+  // Function to add a point to the current measurement
+  const addPoint = useCallback((point: Point) => {
+    setCurrentPoints(prev => [...prev, point]);
+  }, []);
+
+  // Function to toggle the active measurement tool
+  const toggleMeasurementTool = useCallback((mode: MeasurementMode) => {
+    setActiveMode(mode);
+    setCurrentPoints([]);
+  }, []);
+
+  // Function to clear all measurements
+  const clearMeasurements = useCallback(() => {
+    setMeasurements([]);
+  }, []);
+
+  // Function to clear the current points
+  const clearCurrentPoints = useCallback(() => {
+    setCurrentPoints([]);
+  }, []);
+
+  // Function to finalize the current measurement
+  const finalizeMeasurement = useCallback(() => {
+    if (currentPoints.length === 0) return;
+
+    let measurementValue = 0;
+    let segments: Segment[] = [];
+
+    // Check if we have a stored alignment edge
+    let alignmentEdge = null;
+    try {
+      const storedEdge = sessionStorage.getItem('pvAlignmentEdge');
+      if (storedEdge) {
+        alignmentEdge = JSON.parse(storedEdge);
+        // Clear it after use
+        sessionStorage.removeItem('pvAlignmentEdge');
+      }
+    } catch (error) {
+      console.error('Error parsing stored alignment edge:', error);
+    }
+
+    // Different calculations based on measurement type
+    if (activeMode === 'length' && currentPoints.length >= 2) {
+      measurementValue = Math.sqrt(
+        Math.pow(currentPoints[1].x - currentPoints[0].x, 2) +
+        Math.pow(currentPoints[1].y - currentPoints[0].y, 2) +
+        Math.pow(currentPoints[1].z - currentPoints[0].z, 2)
+      );
+
+      const newMeasurement: Measurement = {
+        id: nanoid(),
+        type: activeMode,
+        points: [...currentPoints],
+        value: measurementValue
+      };
+
+      setMeasurements(prev => [...prev, newMeasurement]);
+    } 
+    else if (activeMode === 'height' && currentPoints.length >= 2) {
+      measurementValue = Math.abs(currentPoints[1].y - currentPoints[0].y);
+
+      const newMeasurement: Measurement = {
+        id: nanoid(),
+        type: activeMode,
+        points: [...currentPoints],
+        value: measurementValue
+      };
+
+      setMeasurements(prev => [...prev, newMeasurement]);
+    } 
+    else if ((activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') && currentPoints.length >= 3) {
+      // Calculate area value
+      measurementValue = calculateArea(currentPoints);
+      
+      // Generate segments for the area's outline
+      segments = generateSegments(currentPoints);
+      
+      // For solar measurements, add PV module information
+      let pvModuleInfo = undefined;
+      if (activeMode === 'solar') {
+        // Get standard module spec
+        const moduleSpec = {
+          width: 1.7, // meters
+          height: 1.0, // meters
+          power: 380, // watts
+          name: "Standardmodul 380W"
+        };
+        
+        // Calculate approximate module count based on area
+        const moduleArea = moduleSpec.width * moduleSpec.height;
+        const availableArea = measurementValue * 0.9; // 90% of roof area assuming some margin
+        
+        const estimatedModuleCount = Math.floor(availableArea / moduleArea);
+        
+        // Simple layout: try to approximate sqrt for a square-ish layout
+        let modulesX = Math.floor(Math.sqrt(estimatedModuleCount));
+        let modulesY = Math.floor(estimatedModuleCount / modulesX);
+        
+        if (modulesX * modulesY < estimatedModuleCount && modulesY > 0) {
+          modulesX += 1;
+        }
+        
+        pvModuleInfo = {
+          moduleCount: modulesX * modulesY,
+          modulesX,
+          modulesY,
+          orientation: 'landscape',
+          spacing: 0.02, // 2cm between modules
+          pvModuleSpec: moduleSpec,
+          // Add alignment edge if available
+          alignmentEdge: alignmentEdge
+        };
+        
+        console.log("Created PV module information:", pvModuleInfo);
+      }
+      
+      // Create the new measurement
+      const newMeasurement: Measurement = {
+        id: nanoid(),
+        type: activeMode,
+        points: [...currentPoints],
+        value: measurementValue,
+        segments,
+        pvModuleInfo
+      };
+      
+      setMeasurements(prev => [...prev, newMeasurement]);
+    }
+    else if ((activeMode === 'vent' || activeMode === 'hook' || activeMode === 'other') && currentPoints.length >= 1) {
+      // Point-based measurements just need a single point
+      const newMeasurement: Measurement = {
+        id: nanoid(),
+        type: activeMode,
+        points: [...currentPoints],
+        value: 0 // No specific value for point-based elements
+      };
+      
+      setMeasurements(prev => [...prev, newMeasurement]);
+    }
+
+    // Clear current points after finalizing
+    setCurrentPoints([]);
+
+    return undefined;
+  }, [currentPoints, activeMode, setMeasurements, calculateArea, generateSegments]);
+
+  // Function to toggle the visibility of a measurement
+  const toggleMeasurementVisibility = useCallback((id: string) => {
+    setMeasurements(prev =>
+      prev.map(m =>
+        m.id === id ? { ...m, visible: m.visible === false } : m
+      )
+    );
+  }, []);
+
+  // Function to toggle the visibility of a label
+  const toggleLabelVisibility = useCallback((id: string) => {
+    setMeasurements(prev =>
+      prev.map(m =>
+        m.id === id ? { ...m, labelVisible: m.labelVisible === false } : m
+      )
+    );
+  }, []);
+
+  // Function to toggle the visibility of all measurements
+  const toggleAllMeasurementsVisibility = useCallback(() => {
+    setAllMeasurementsVisible(prev => !prev);
+    setMeasurements(prev =>
+      prev.map(m => ({ ...m, visible: !allMeasurementsVisible }))
+    );
+  }, [allMeasurementsVisible]);
+
+  // Function to toggle the visibility of all labels
+  const toggleAllLabelsVisibility = useCallback(() => {
+    setAllLabelsVisible(prev => !prev);
+    setMeasurements(prev =>
+      prev.map(m => ({ ...m, labelVisible: !allLabelsVisible }))
+    );
+  }, [allLabelsVisible]);
+
+  // Function to toggle edit mode for a measurement
+  const toggleEditMode = useCallback((id: string) => {
+    setEditMeasurementId(id);
+  }, []);
+
+  // Function to update a measurement
+  const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
+    setMeasurements(prev =>
+      prev.map(m => (m.id === id ? { ...m, ...data } : m))
+    );
+  }, []);
+
+  // Function to update a segment
+  const updateSegment = useCallback((measurementId: string, segmentId: string, segmentData: Partial<Segment>) => {
+    setMeasurements(prev =>
+      prev.map(m => {
+        if (m.id === measurementId && m.segments) {
+          return {
+            ...m,
+            segments: m.segments.map(s => (s.id === segmentId ? { ...s, ...segmentData } : s))
+          };
+        }
+        return m;
+      })
+    );
+  }, []);
+
+  // Function to delete a measurement
+  const deleteMeasurement = useCallback((id: string) => {
+    setMeasurements(prev => prev.filter(m => m.id !== id));
+  }, []);
+
+  // Function to delete a point from a measurement
+  const deletePoint = useCallback((measurementId: string, pointIndex: number) => {
+    setMeasurements(prev =>
+      prev.map(m => {
+        if (m.id === measurementId) {
+          const updatedPoints = [...m.points];
+          updatedPoints.splice(pointIndex, 1);
+          return { ...m, points: updatedPoints };
+        }
+        return m;
+      })
+    );
+  }, []);
+
+  // Function to undo the last added point
+  const undoLastPoint = useCallback(() => {
+    setCurrentPoints(prev => prev.slice(0, -1));
+  }, []);
+
+  // Function to start editing a point
+  const startPointEdit = useCallback((measurementId: string, pointIndex: number) => {
+    setEditMeasurementId(measurementId);
+    setEditingPointIndex(pointIndex);
+  }, []);
+
+  // Function to update a measurement point
+  const updateMeasurementPoint = useCallback((point: Point) => {
+    if (editMeasurementId && editingPointIndex !== null) {
+      setMeasurements(prev =>
+        prev.map(m => {
+          if (m.id === editMeasurementId) {
+            const updatedPoints = [...m.points];
+            updatedPoints[editingPointIndex] = point;
+            return { ...m, points: updatedPoints };
+          }
+          return m;
+        })
+      );
+      setEditMeasurementId(null);
+      setEditingPointIndex(null);
+    }
+  }, [editMeasurementId, editingPointIndex]);
+
+  // Function to cancel editing
+  const cancelEditing = useCallback(() => {
+    setEditMeasurementId(null);
+    setEditingPointIndex(null);
+  }, []);
+
+  const moveMeasurementUp = useCallback((id: string) => {
+    setMeasurements(prev => {
+      const index = prev.findIndex(m => m.id === id);
+      if (index <= 0) return prev; // Already at the top or not found
+
+      const newMeasurements = [...prev];
+      const temp = newMeasurements[index];
+      newMeasurements[index] = newMeasurements[index - 1];
+      newMeasurements[index - 1] = temp;
+
+      return newMeasurements;
+    });
+  }, []);
+
+  const moveMeasurementDown = useCallback((id: string) => {
+    setMeasurements(prev => {
+      const index = prev.findIndex(m => m.id === id);
+      if (index < 0 || index >= prev.length - 1) return prev; // Not found or already at the bottom
+
+      const newMeasurements = [...prev];
+      const temp = newMeasurements[index];
+      newMeasurements[index] = newMeasurements[index + 1];
+      newMeasurements[index + 1] = temp;
+
+      return newMeasurements;
+    });
+  }, []);
   
-  return displayNames[type] || type;
-};
+  const setUpdateVisualState = useCallback((fn: (updatedMeasurements: Measurement[], labelVisibility: boolean) => void) => {
+    // This function is intentionally left empty.
+    // The actual implementation will be provided by the MeasurementTools component.
+  }, []);
 
-// Helper function to check if a measurement is a roof element
-export const isRoofElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return [
-    'chimney', 'skylight', 'solar', 'vent', 'hook', 'other', 'pvmodule'
-  ].includes(type as string);
-};
-
-// Helper function to check if a measurement is a roof edge
-export const isRoofEdge = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return [
-    'ridge', 'eave', 'verge', 'valley', 'hip'
-  ].includes(type as string);
-};
-
-// Helper function to check if a measurement is a standard measurement
-export const isStandardMeasurement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['length', 'height', 'area'].includes(type as string);
-};
-
-// Helper function to check if a measurement is a point-based element
-export const isPointElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['vent', 'hook', 'other'].includes(type as string);
-};
-
-// Helper function to check if a measurement is a quadrilateral element
-export const isQuadrilateralElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['chimney', 'skylight', 'pvmodule'].includes(type as string);
-};
-
-// Helper function to check if a measurement is an area-based element
-export const isAreaElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['area', 'solar'].includes(type as string);
-};
-
-// Helper function to check if a measurement is a line-based element
-export const isLineElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['length', 'height', 'ridge', 'eave', 'verge', 'valley', 'hip'].includes(type as string);
-};
-
-// Helper function to get the required number of points for a measurement type
-export const getRequiredPointsForType = (type: MeasurementMode | ExtendedMeasurementMode): number => {
-  if (isPointElement(type)) return 1;
-  if (isLineElement(type)) return 2;
-  if (isQuadrilateralElement(type)) return 4;
-  if (isAreaElement(type)) return 3;
-  return 0;
-};
-
-// Helper function to check if a measurement type is valid for a given number of points
-export const isValidPointCountForType = (type: MeasurementMode | ExtendedMeasurementMode, pointCount: number): boolean => {
-  const requiredPoints = getRequiredPointsForType(type);
-  
-  if (requiredPoints === 0) return true;
-  if (isAreaElement(type)) return pointCount >= requiredPoints;
-  if (isQuadrilateralElement(type)) return pointCount === requiredPoints;
-  return pointCount >= requiredPoints;
-};
-
-// Helper function to get the color for a measurement type
-export const getMeasurementTypeColor = (type: MeasurementMode | ExtendedMeasurementMode): string => {
-  const colors: Record<string, string> = {
-    'length': '#3b82f6', // blue-500
-    'height': '#10b981', // emerald-500
-    'area': '#8b5cf6', // violet-500
-    'chimney': '#ef4444', // red-500
-    'skylight': '#f59e0b', // amber-500
-    'solar': '#06b6d4', // cyan-500
-    'pvmodule': '#06b6d4', // cyan-500
-    'vent': '#ec4899', // pink-500
-    'hook': '#f97316', // orange-500
-    'other': '#6366f1', // indigo-500
-    'ridge': '#0ea5e9', // sky-500
-    'eave': '#14b8a6', // teal-500
-    'verge': '#a855f7', // purple-500
-    'valley': '#f43f5e', // rose-500
-    'hip': '#84cc16', // lime-500
-  };
-  
-  return colors[type] || '#6b7280'; // gray-500 as default
+  return (
+    <MeasurementContext.Provider value={{
+      measurements,
+      currentPoints,
+      activeMode,
+      editMeasurementId,
+      editingPointIndex,
+      allMeasurementsVisible,
+      allLabelsVisible,
+      addPoint,
+      toggleMeasurementTool,
+      clearMeasurements,
+      clearCurrentPoints,
+      finalizeMeasurement,
+      toggleMeasurementVisibility,
+      toggleLabelVisibility,
+      toggleAllMeasurementsVisibility,
+      toggleAllLabelsVisibility,
+      toggleEditMode,
+      updateMeasurement,
+      updateSegment,
+      deleteMeasurement,
+      deletePoint,
+      undoLastPoint,
+      startPointEdit,
+      updateMeasurementPoint,
+      cancelEditing,
+      moveMeasurementUp,
+      moveMeasurementDown,
+      setUpdateVisualState
+    }}>
+      {children}
+    </MeasurementContext.Provider>
+  );
 };

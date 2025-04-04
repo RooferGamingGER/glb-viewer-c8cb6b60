@@ -21,23 +21,59 @@ export const useVisibilityManager = (
     getAllGroups
   } = useThreeJs();
 
-  // Extrahiere Dachkanten (insbesondere die Traufe) für die Ausrichtung der PV-Module
+  // Extract roof edge segments (particularly the eave) for PV module alignment
   const extractRoofEdgeSegments = useCallback(() => {
-    // Prioritäre Suche nach Messungen vom Typ "eave" (Traufe)
+    // Check if we have a stored alignment edge from the manual selection
+    const storedAlignmentEdge = sessionStorage.getItem('pvAlignmentEdge');
+    
+    if (storedAlignmentEdge) {
+      try {
+        const alignmentEdge = JSON.parse(storedAlignmentEdge);
+        if (alignmentEdge && alignmentEdge.from && alignmentEdge.to) {
+          const fromPoint = new THREE.Vector3(
+            alignmentEdge.from.x, 
+            alignmentEdge.from.y, 
+            alignmentEdge.from.z
+          );
+          
+          const toPoint = new THREE.Vector3(
+            alignmentEdge.to.x, 
+            alignmentEdge.to.y, 
+            alignmentEdge.to.z
+          );
+          
+          console.log('Using manually selected alignment edge:', {
+            from: [fromPoint.x, fromPoint.y, fromPoint.z],
+            to: [toPoint.x, toPoint.y, toPoint.z],
+            length: new THREE.Vector3().subVectors(toPoint, fromPoint).length()
+          });
+          
+          // Return it as the only segment to use for alignment
+          return [{
+            from: fromPoint,
+            to: toPoint
+          }];
+        }
+      } catch (error) {
+        console.error('Error parsing stored alignment edge:', error);
+      }
+    }
+    
+    // Priority search for "eave" (Traufe) measurements
     let eaveEdgeMeasurements = measurements.filter(m => m.type === 'eave');
     
-    // Falls keine Traufe gefunden wurde, versuche andere Dachkanten
+    // If no eave found, try other roof edges
     let edgeMeasurements = eaveEdgeMeasurements.length > 0 ? 
       eaveEdgeMeasurements : 
       measurements.filter(m => m.type === 'ridge' || m.type === 'verge');
     
     const segments: {from: THREE.Vector3, to: THREE.Vector3}[] = [];
     
-    // Debug-Ausgabe zur Fehlerfindung
-    console.log(`Gefundene Dachkanten für Ausrichtung: ${edgeMeasurements.length}`, 
+    // Debug output for troubleshooting
+    console.log(`Found roof edges for alignment: ${edgeMeasurements.length}`, 
       edgeMeasurements.map(m => ({type: m.type, id: m.id, points: m.points?.length})));
     
-    // Extrahiere Segmente aus Messungen
+    // Extract segments from measurements
     edgeMeasurements.forEach(measurement => {
       if (measurement.points && measurement.points.length >= 2) {
         // Convert Point to THREE.Vector3
@@ -58,7 +94,7 @@ export const useVisibilityManager = (
           to: toPoint
         });
         
-        console.log(`Dachkante vom Typ ${measurement.type} für Ausrichtung verwendet:`, {
+        console.log(`Roof edge of type ${measurement.type} used for alignment:`, {
           from: [fromPoint.x, fromPoint.y, fromPoint.z],
           to: [toPoint.x, toPoint.y, toPoint.z],
           length: new THREE.Vector3().subVectors(toPoint, fromPoint).length()
@@ -66,7 +102,12 @@ export const useVisibilityManager = (
       }
     });
     
-    return segments;
+    // Sort segments by length (descending) - prioritize longer edges
+    return segments.sort((a, b) => {
+      const lengthA = new THREE.Vector3().subVectors(a.to, a.from).length();
+      const lengthB = new THREE.Vector3().subVectors(b.to, b.from).length();
+      return lengthB - lengthA;
+    });
   }, [measurements]);
 
   // Toggle visibility of a measurement on screen
@@ -86,7 +127,7 @@ export const useVisibilityManager = (
         duration: 2000,
       });
     }
-  }, [toggleMeasurementVisibility, measurements]);
+  }, [toggleMeasurementVisibility, measurements, updateMeasurementMarkers]);
 
   // Toggle label visibility
   const handleToggleLabelVisibility = useCallback((id: string) => {
@@ -94,7 +135,7 @@ export const useVisibilityManager = (
 
     // Update label visibility in Three.js
     updateLabelVisibility(id);
-  }, [toggleLabelVisibility]);
+  }, [toggleLabelVisibility, updateLabelVisibility]);
 
   // Update all labels visibility
   const updateAllLabelsVisibility = useCallback((visible: boolean) => {
@@ -154,7 +195,7 @@ export const useVisibilityManager = (
     let pvModuleCount = 0;
     let pvModulesVisible = 0;
     
-    // Extrahiere Dachkantensegmente für die Ausrichtung von PV-Modulen
+    // Extract roof edge segments for PV module alignment
     const roofEdgeSegments = extractRoofEdgeSegments();
     
     // Update mesh visibilities for PV areas and other measurements
