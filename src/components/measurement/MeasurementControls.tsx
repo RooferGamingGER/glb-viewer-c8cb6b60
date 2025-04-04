@@ -93,9 +93,11 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
         </div>
         
         {activeMode === 'area' && (
-          <div className="text-xs text-muted-foreground mt-1">
-            Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
-            Mindestens 3 Punkte werden benötigt.
+          <div className="flex items-start mt-2 text-xs text-muted-foreground">
+            <span className="whitespace-normal break-words">
+              Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
+              Mindestens 3 Punkte werden benötigt.
+            </span>
           </div>
         )}
       </div>

@@ -435,36 +435,38 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
         >
-          {/* Main content area with scroll */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            {/* Tool controls - always visible */}
-            <div className="flex-shrink-0">
-              <MeasurementToolControls 
-                activeMode={activeMode}
-                toggleMeasurementTool={toggleMeasurementTool}
-                editMeasurementId={editMeasurementId}
-                measurements={measurements}
-                showTable={showTable}
-                setShowTable={setShowTable}
-                toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-                toggleLabelVisibility={handleToggleLabelVisibility}
-                handleStartPointEdit={handleStartPointEdit}
-                handleDeleteMeasurement={handleDeleteMeasurement}
-                handleDeletePoint={handleDeletePoint}
-                updateMeasurement={updateMeasurement}
-                segmentsOpen={segmentsOpen}
-                toggleSegments={toggleSegments}
-                onEditSegment={setEditingSegmentId}
-                movingPointInfo={movingPointInfo}
-                handleMoveMeasurementUp={handleMoveMeasurementUp}
-                handleMoveMeasurementDown={handleMoveMeasurementDown}
-              />
-            </div>
+          {/* Split the sidebar into upper tools section and lower notifications section */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Upper tools section with scroll */}
+            <ScrollArea className="flex-1 overflow-y-auto">
+              <div className="p-3 pb-0">
+                <MeasurementToolControls 
+                  activeMode={activeMode}
+                  toggleMeasurementTool={toggleMeasurementTool}
+                  editMeasurementId={editMeasurementId}
+                  measurements={measurements}
+                  showTable={showTable}
+                  setShowTable={setShowTable}
+                  toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+                  toggleLabelVisibility={handleToggleLabelVisibility}
+                  handleStartPointEdit={handleStartPointEdit}
+                  handleDeleteMeasurement={handleDeleteMeasurement}
+                  handleDeletePoint={handleDeletePoint}
+                  updateMeasurement={updateMeasurement}
+                  segmentsOpen={segmentsOpen}
+                  toggleSegments={toggleSegments}
+                  onEditSegment={setEditingSegmentId}
+                  movingPointInfo={movingPointInfo}
+                  handleMoveMeasurementUp={handleMoveMeasurementUp}
+                  handleMoveMeasurementDown={handleMoveMeasurementDown}
+                />
+              </div>
+            </ScrollArea>
             
-            {/* Notification area - always at the bottom, not scrolling */}
+            {/* Bottom notifications section - fixed position, always visible */}
             {showNotifications && (
-              <div className="flex-shrink-0 mt-auto border-t border-border/30">
-                {/* Only render MeasurementControls for standard measurements */}
+              <div className="flex-shrink-0 border-t border-border/30 max-h-48 overflow-y-auto">
+                {/* Standard measurement controls */}
                 {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
                   <MeasurementControls
                     activeMode={activeMode}
@@ -475,7 +477,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
                   />
                 )}
                 
-                {/* Only render RoofElementControls for roof elements */}
+                {/* Roof element controls */}
                 {isRoofElementMode && (
                   <RoofElementControls
                     activeMode={activeMode}
@@ -486,8 +488,9 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
                   />
                 )}
                 
+                {/* Editing alert */}
                 {(editMeasurementId || editingSegmentId || movingPointInfo) && (
-                  <div className="p-3">
+                  <div className="p-3 pb-0">
                     <EditingAlert 
                       editMeasurementId={editMeasurementId}
                       editingSegmentId={editingSegmentId}

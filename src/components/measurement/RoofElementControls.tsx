@@ -201,9 +201,10 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
           </Button>
         )}
         
-        <div className="flex items-center mt-2 text-xs text-muted-foreground">
-          <Info className="h-3 w-3 mr-1 flex-shrink-0" />
-          <span>{getInstructions(activeMode)}</span>
+        {/* Improved text container with better text wrapping and overflow handling */}
+        <div className="flex items-start mt-2 text-xs text-muted-foreground">
+          <Info className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+          <span className="whitespace-normal break-words">{getInstructions(activeMode)}</span>
         </div>
       </div>
     </div>
