@@ -1032,9 +1032,9 @@ function renderAreaMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       midpoint.y += LABEL_Y_OFFSET; // Raise label
       
-      // Create segment label - use string version of segment type for formatMeasurementLabel
+      // Create segment label - convert number to string for formatMeasurementLabel
       const segmentLabel = createMeasurementLabel(
-        formatMeasurementLabel(segment.length, 'length'), 
+        formatMeasurementLabel(segment.length.toString(), 'length'), 
         midpoint, 
         true,
         0x555555 // Darker color for segment labels
@@ -1201,9 +1201,9 @@ function renderSolarMeasurement(
         );
         
         // Create info label with PV module details - Convert the values to strings
-        const moduleCountStr = `${moduleCount}`;
-        const rowsStr = rows ? `${rows}` : "?";
-        const colsStr = columns ? `${columns}` : "?";
+        const moduleCountStr = moduleCount.toString();
+        const rowsStr = rows ? rows.toString() : "?";
+        const colsStr = columns ? columns.toString() : "?";
         
         const infoLabel = createMeasurementLabel(
           `PV-Module: ${moduleCountStr} (${rowsStr}×${colsStr})`, 
@@ -1245,9 +1245,9 @@ function renderSolarMeasurement(
       const midpoint = calculateMidpoint(p1, p2);
       midpoint.y += LABEL_Y_OFFSET; // Raise label
       
-      // Create segment label - convert to string for the first parameter
+      // Create segment label - convert number to string for formatMeasurementLabel
       const segmentLabel = createMeasurementLabel(
-        formatMeasurementLabel(segment.length, 'length'), 
+        formatMeasurementLabel(segment.length.toString(), 'length'), 
         midpoint, 
         true,
         PV_MODULE_COLORS.BOUNDARY // Use solar boundary color
@@ -1512,36 +1512,38 @@ function renderPVModuleGrid(
   const modules: ModuleInfo[] = [];
   
   // Process each modulePoint (each module is defined by 4 corner points)
-  result.modulePoints.forEach((points, index) => {
-    if (points.length !== 4) return; // Skip invalid modules
-    
-    // Calculate center
-    const center = new THREE.Vector3(0, 0, 0);
-    points.forEach(point => {
-      center.x += point.x;
-      center.y += point.y;
-      center.z += point.z;
+  if (result.modulePoints) {
+    result.modulePoints.forEach((points, index) => {
+      if (points.length !== 4) return; // Skip invalid modules
+      
+      // Calculate center
+      const center = new THREE.Vector3(0, 0, 0);
+      points.forEach(point => {
+        center.x += point.x;
+        center.y += point.y;
+        center.z += point.z;
+      });
+      center.divideScalar(4);
+      
+      // Estimate width and height
+      const width = Math.sqrt(
+        Math.pow(points[1].x - points[0].x, 2) + 
+        Math.pow(points[1].z - points[0].z, 2)
+      );
+      
+      const height = Math.sqrt(
+        Math.pow(points[3].x - points[0].x, 2) + 
+        Math.pow(points[3].z - points[0].z, 2)
+      );
+      
+      // Create module info
+      modules.push({
+        center,
+        size: { width, height },
+        rotation: new THREE.Vector3(0, 0, 0) // Default rotation
+      });
     });
-    center.divideScalar(4);
-    
-    // Estimate width and height
-    const width = Math.sqrt(
-      Math.pow(points[1].x - points[0].x, 2) + 
-      Math.pow(points[1].z - points[0].z, 2)
-    );
-    
-    const height = Math.sqrt(
-      Math.pow(points[3].x - points[0].x, 2) + 
-      Math.pow(points[3].z - points[0].z, 2)
-    );
-    
-    // Create module info
-    modules.push({
-      center,
-      size: { width, height },
-      rotation: new THREE.Vector3(0, 0, 0) // Default rotation
-    });
-  });
+  }
   
   console.log(`Generated ${modules.length} PV modules for rendering`);
   
