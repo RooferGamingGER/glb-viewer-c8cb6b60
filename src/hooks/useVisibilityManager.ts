@@ -21,6 +21,29 @@ export const useVisibilityManager = (
     getAllGroups
   } = useThreeJs();
 
+  // Extrahiere Dachkanten (insbesondere die Traufe) für die Ausrichtung der PV-Module
+  const extractRoofEdgeSegments = useCallback(() => {
+    // Suche nach Messungen vom Typ "eave" (Traufe) oder "ridge" (First)
+    const edgeMeasurements = measurements.filter(
+      m => m.type === 'eave' || m.type === 'ridge' || m.type === 'verge'
+    );
+    
+    const segments: {from: THREE.Vector3, to: THREE.Vector3}[] = [];
+    
+    // Extrahiere Segmente aus Messungen
+    edgeMeasurements.forEach(measurement => {
+      if (measurement.points && measurement.points.length >= 2) {
+        // Erstelle ein Segment zwischen den ersten beiden Punkten
+        segments.push({
+          from: measurement.points[0],
+          to: measurement.points[1]
+        });
+      }
+    });
+    
+    return segments;
+  }, [measurements]);
+
   // Toggle visibility of a measurement on screen
   const handleToggleMeasurementVisibility = useCallback((id: string) => {
     toggleMeasurementVisibility(id);
@@ -106,6 +129,9 @@ export const useVisibilityManager = (
     let pvModuleCount = 0;
     let pvModulesVisible = 0;
     
+    // Extrahiere Dachkantensegmente für die Ausrichtung von PV-Modulen
+    const roofEdgeSegments = extractRoofEdgeSegments();
+    
     // Update mesh visibilities for PV areas and other measurements
     measurementsRef.current.children.forEach(mesh => {
       if (!mesh.userData || !mesh.userData.measurementId) return;
@@ -135,12 +161,13 @@ export const useVisibilityManager = (
               visible: mesh.visible,
               opacity: material.opacity,
               color: material.color.getHexString(),
-              position: mesh.position.y
+              position: mesh.position.y,
+              hasRoofEdgeData: roofEdgeSegments.length > 0
             });
           }
         }
         
-        // Special handling for PV module grid elements
+        // Special handling for PV module grid elements, now with roof edge alignment
         if (mesh.userData.isPVModule || mesh.userData.isModuleLabel) {
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
@@ -159,7 +186,8 @@ export const useVisibilityManager = (
               visible: mesh.visible,
               opacity: mesh.material.opacity,
               color: mesh.material.color.getHexString(),
-              position: mesh.position.y
+              position: mesh.position.y,
+              hasRoofEdgeData: roofEdgeSegments.length > 0
             });
           }
         }
@@ -167,7 +195,7 @@ export const useVisibilityManager = (
     });
     
     console.log(`PV Module visibility summary from useVisibilityManager: ${pvModulesVisible}/${pvModuleCount} modules visible`);
-  }, [measurements, measurementsRef]);
+  }, [measurements, measurementsRef, extractRoofEdgeSegments]);
 
   // Get all measurement groups for temporary hiding during screenshots
   const getMeasurementGroups = useCallback(() => {
@@ -180,6 +208,7 @@ export const useVisibilityManager = (
     updateAllLabelsVisibility,
     updateMeasurementMarkers,
     updateLabelVisibility,
-    getMeasurementGroups
+    getMeasurementGroups,
+    extractRoofEdgeSegments // Neue Funktion exportieren
   };
 };

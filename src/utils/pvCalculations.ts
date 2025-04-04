@@ -270,6 +270,37 @@ const calculateDistance3D = (p1: Point, p2: Point): number => {
 };
 
 /**
+ * Berechne den Richtungsvektor zwischen zwei Punkten in der XZ-Ebene
+ * @param p1 - Startpunkt
+ * @param p2 - Endpunkt
+ * @returns Normalisierter Richtungsvektor {x, z}
+ */
+const calculateDirectionVector = (p1: Point, p2: Point): {x: number, z: number} => {
+  const dx = p2.x - p1.x;
+  const dz = p2.z - p1.z;
+  
+  // Länge des Vektors berechnen
+  const length = Math.sqrt(dx * dx + dz * dz);
+  
+  // Normalisieren (Einheitsvektor)
+  if (length === 0) return {x: 1, z: 0}; // Standardrichtung, falls Punkte identisch
+  
+  return {
+    x: dx / length,
+    z: dz / length
+  };
+};
+
+/**
+ * Berechne den Winkel (in Radiant) zwischen dem Richtungsvektor und der X-Achse
+ * @param direction - Richtungsvektor {x, z}
+ * @returns Winkel in Radiant
+ */
+const calculateAngle = (direction: {x: number, z: number}): number => {
+  return Math.atan2(direction.z, direction.x);
+};
+
+/**
  * Find parallel line segments in a quadrilateral
  * @param points - Array of 4 points defining the quadrilateral 
  * @returns An object with pairs of parallel sides
@@ -591,23 +622,25 @@ export const calculatePVModulePlacement = (
 };
 
 /**
- * Generate the grid points for PV module placement
+ * Generate the grid points for PV module placement aligned with roof edges
  * 
  * @param pvInfo - PV module information
  * @param baseY - The Y-coordinate (height) to place the modules at
+ * @param roofEdgeSegments - Optional array of roof edge segments to align with
  * @returns Array of module corner points and grid lines
  */
-export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
+export const generatePVModuleGrid = (
+  pvInfo: PVModuleInfo, 
+  baseY: number,
+  roofEdgeSegments?: {from: Point, to: Point}[]
+): {
   modulePoints: Point[][],  // Array of 4 points for each module
   gridLines: {from: Point, to: Point}[]  // Lines for the grid
 } => {
   const modulePoints: Point[][] = [];
   const gridLines: {from: Point, to: Point}[] = [];
   
-  // Determine module dimensions based on CORRECTED orientation definitions:
-  // Landscape (Querformat): Module's LONGER side (height) is aligned with the roof's LENGTH (ridge/eave)
-  // Portrait (Hochformat): Module's LONGER side (height) is aligned with the roof's HEIGHT (verge/Ortgang)
-  
+  // Determine module dimensions based on orientation
   const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   
@@ -615,7 +648,41 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
-  console.log("PV Module Grid Generation:", {
+  // Standard orthogonal vectors (default alignment with coordinate system)
+  let directionX = { x: 1, z: 0 };
+  let directionZ = { x: 0, z: 1 };
+  let alignmentAngle = 0;
+  
+  // Versuche, eine Trauflinie (eave) zu finden, um die Module daran auszurichten
+  if (roofEdgeSegments && roofEdgeSegments.length > 0) {
+    // Suche nach einer geeigneten Kante (bevorzugt Traufe/eave)
+    const eaveSegment = roofEdgeSegments.find(segment => 
+      segment.from && segment.to && 
+      (Math.abs(segment.from.y - segment.to.y) < 0.2) // Traufe ist in etwa horizontal
+    );
+    
+    if (eaveSegment) {
+      console.log("Trauflinie für Ausrichtung gefunden:", eaveSegment);
+      
+      // Berechne Richtungsvektor entlang der Traufe
+      directionX = calculateDirectionVector(eaveSegment.from, eaveSegment.to);
+      
+      // Berechne orthogonalen Vektor (90° gedreht) für die zweite Richtung
+      directionZ = { x: -directionX.z, z: directionX.x };
+      
+      // Berechne Winkel zur X-Achse für Debug-Zwecke
+      alignmentAngle = calculateAngle(directionX) * (180 / Math.PI);
+      
+      console.log("Module werden ausgerichtet mit Winkel:", alignmentAngle, "Grad");
+      console.log("Richtungsvektoren:", { x: directionX, z: directionZ });
+    } else {
+      console.log("Keine geeignete Trauflinie gefunden, verwende Standard-Ausrichtung");
+    }
+  } else {
+    console.log("Keine Dachkanten-Segmente verfügbar, verwende Standard-Ausrichtung");
+  }
+  
+  console.log("PV Module Grid Generation mit Dachausrichtung:", {
     moduleWidth,
     moduleHeight,
     startX,
@@ -623,31 +690,51 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
     rows: pvInfo.rows,
     columns: pvInfo.columns,
     orientation: pvInfo.orientation,
-    baseY
+    baseY,
+    alignmentAngle
   });
   
   // Generate module placement grid
   for (let row = 0; row < pvInfo.rows!; row++) {
     for (let col = 0; col < pvInfo.columns!; col++) {
-      // Calculate position of this module
-      const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
-      const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
+      // Berechne die Basisposition dieses Moduls im Standard-Koordinatensystem
+      const xOffset = col * (moduleWidth + pvInfo.moduleSpacing!);
+      const zOffset = row * (moduleHeight + pvInfo.moduleSpacing!);
+      
+      // Transformiere die Position gemäß der Dachausrichtung
+      const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
+      const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
       // IMPORTANT: Increase Y offset significantly to make modules more visible
-      const yOffset = 0.3; // 30cm above the roof surface for visibility - increased from 0.2
+      const yOffset = 0.3; // 30cm above the roof surface for visibility
       
-      // Create 4 corner points for this module - ensure proper winding order for face normals
+      // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
       const moduleCorners: Point[] = [
-        { x, y: baseY + yOffset, z },  // Top-left
-        { x: x + moduleWidth, y: baseY + yOffset, z },  // Top-right
-        { x: x + moduleWidth, y: baseY + yOffset, z: z + moduleHeight },  // Bottom-right
-        { x, y: baseY + yOffset, z: z + moduleHeight }  // Bottom-left
+        { // Ecke 0 (linke obere Ecke)
+          x,
+          y: baseY + yOffset,
+          z
+        },
+        { // Ecke 1 (rechte obere Ecke) - entlang der Traufe
+          x: x + moduleWidth * directionX.x,
+          y: baseY + yOffset,
+          z: z + moduleWidth * directionX.z
+        },
+        { // Ecke 2 (rechte untere Ecke) - diagonal
+          x: x + moduleWidth * directionX.x + moduleHeight * directionZ.x,
+          y: baseY + yOffset,
+          z: z + moduleWidth * directionX.z + moduleHeight * directionZ.z
+        },
+        { // Ecke 3 (linke untere Ecke) - orthogonal zur Traufe
+          x: x + moduleHeight * directionZ.x,
+          y: baseY + yOffset,
+          z: z + moduleHeight * directionZ.z
+        }
       ];
       
       modulePoints.push(moduleCorners);
       
       // Add grid lines for outline visualization of each module
-      // This creates outline borders that will make the modules more visible
       for (let i = 0; i < 4; i++) {
         const from = moduleCorners[i];
         const to = moduleCorners[(i + 1) % 4];
@@ -657,7 +744,7 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
   }
   
   // Add detailed debug logging to track module generation
-  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.3}m`);
+  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.3}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
   if (modulePoints.length > 0) {
     console.log("First module corners:", modulePoints[0]);
   }
