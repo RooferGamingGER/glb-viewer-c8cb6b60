@@ -122,13 +122,16 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     return total;
   }, 0);
   
-  // Calculate total power output
+  // Calculate total power output with proper formatting
   const totalPowerOutput = measurements.reduce((total, m) => {
     if ((m.type === 'solar' || m.type === 'pvmodule') && m.pvModuleInfo?.pvMaterials?.totalPower) {
       return total + m.pvModuleInfo.pvMaterials.totalPower;
     }
     return total;
   }, 0);
+  
+  // Format power output to 2 decimal places for display
+  const formattedPowerOutput = totalPowerOutput.toFixed(2);
   
   // Show PV information if we have PV modules
   const hasPVModules = pvModuleCount > 0;
@@ -155,7 +158,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
             {hasPVModules && (
               <span className="block mt-1 text-green-600 font-medium">
-                {pvModuleCount} PV-Module mit insgesamt {totalPowerOutput.toFixed(2)} kWp Leistung werden visualisiert.
+                {pvModuleCount} PV-Module mit insgesamt {formattedPowerOutput} kWp Leistung werden visualisiert.
               </span>
             )}
           </DialogDescription>

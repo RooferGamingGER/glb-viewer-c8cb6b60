@@ -28,11 +28,14 @@ export const usePVModuleVisualization = (
     }, 0);
   }, [pvMeasurements]);
   
-  // Get total power in kWp
+  // Get total power in kWp with proper formatting
   const getTotalPowerOutput = useCallback(() => {
-    return pvMeasurements.reduce((total, m) => {
+    const totalPower = pvMeasurements.reduce((total, m) => {
       return total + (m.pvModuleInfo?.pvMaterials?.totalPower || 0);
     }, 0);
+    
+    // Return with 2 decimal places
+    return Number(totalPower.toFixed(2));
   }, [pvMeasurements]);
   
   // Get module information for a specific measurement
@@ -41,7 +44,7 @@ export const usePVModuleVisualization = (
     return measurement?.pvModuleInfo || null;
   }, [measurements]);
   
-  // Generate module summary text
+  // Generate module summary text with proper kWp formatting
   const getPVModuleSummary = useCallback(() => {
     const moduleCount = getTotalModuleCount();
     const powerOutput = getTotalPowerOutput();
@@ -56,6 +59,16 @@ export const usePVModuleVisualization = (
     return measurement.pvModuleInfo?.moduleVisuals || DEFAULT_MODULE_VISUALS;
   }, []);
   
+  // Check if all PV modules have generated positions
+  const allModulesHavePositions = useCallback(() => {
+    return pvMeasurements.every(m => 
+      m.pvModuleInfo?.modulePositions && 
+      m.pvModuleInfo.modulePositions.length > 0 &&
+      m.pvModuleInfo.moduleCorners &&
+      m.pvModuleInfo.moduleCorners.length > 0
+    );
+  }, [pvMeasurements]);
+  
   return {
     pvMeasurements,
     hasPVModules: pvMeasurements.length > 0,
@@ -63,6 +76,7 @@ export const usePVModuleVisualization = (
     totalPowerOutput: getTotalPowerOutput(),
     getModuleInfoForMeasurement,
     getPVModuleSummary,
-    getModuleVisuals
+    getModuleVisuals,
+    allModulesHavePositions
   };
 };
