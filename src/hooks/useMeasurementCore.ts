@@ -797,9 +797,8 @@ export const useMeasurementCore = () => {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
-        'solar': 3,
+        'solar': 4,
         'pvmodule': 4,
-        'pvplanning': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,
@@ -811,7 +810,8 @@ export const useMeasurementCore = () => {
         'length': 2,
         'height': 2,
         'area': 3,
-        'none': 0
+        'none': 0,
+        'pvplanning': 4
       };
       
       if (points.length >= (requiredPoints[activeMode] || 0)) {
@@ -987,5 +987,31 @@ export const useMeasurementCore = () => {
     createPVModuleMeasurement,
     createPVPlanningMeasurement,
     handleCalculatePV
+  };
+};
+
+export const shouldUseAreaMeasurement = (mode: MeasurementMode): boolean => {
+  return ['area', 'solar', 'chimney', 'skylight', 'pvplanning'].includes(mode);
+};
+
+export const initializeRequiredPoints = (): Record<MeasurementMode, number> => {
+  return {
+    length: 2,
+    height: 2,
+    area: 3,
+    none: 0,
+    chimney: 4,
+    skylight: 4,
+    solar: 4,
+    vent: 1,
+    hook: 1,
+    other: 1,
+    ridge: 2,
+    eave: 2,
+    verge: 2,
+    valley: 2,
+    hip: 2,
+    pvmodule: 4,
+    pvplanning: 4
   };
 };

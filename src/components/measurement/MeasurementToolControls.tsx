@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Ruler, Square, ArrowUpDown, Home, Sun, AirVent, Hook, CircleDot } from "lucide-react";
+import { Ruler, Square, ArrowUpDown, Home, Sun, AirVent, CircleDot, Anchor } from "lucide-react";
 import { MeasurementMode } from '@/types/measurements';
 import SolarPlanningButton from './SolarPlanningButton';
 
@@ -9,12 +9,20 @@ interface MeasurementToolControlsProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
   showSolarPlanningButton?: boolean;
+  editMeasurementId?: string | null;
+  measurements?: any[];
+  showTable?: boolean;
+  setShowTable?: (show: boolean) => void;
 }
 
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   activeMode,
   toggleMeasurementTool,
-  showSolarPlanningButton = true
+  showSolarPlanningButton = true,
+  editMeasurementId,
+  measurements,
+  showTable,
+  setShowTable
 }) => {
   return (
     <div className="flex flex-col space-y-2">
@@ -137,7 +145,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           variant="outline"
           data-state={activeMode === 'hook' ? 'on' : 'off'}
         >
-          <Hook className="h-4 w-4 mr-1" />
+          <Anchor className="h-4 w-4 mr-1" />
           <span className="text-xs">Haken</span>
         </ToggleGroupItem>
         
