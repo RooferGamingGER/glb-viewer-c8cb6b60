@@ -122,7 +122,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     measurements,
     currentPoints,
     activeMode,
-    interactionHandlers,
+    {
+      addPoint,
+      startPointEdit,
+      updateMeasurementPoint: (point: Point) => {
+        // Adapt single point parameter to the expected id, index, point signature
+        if (editMeasurementId !== null && editingPointIndex !== null) {
+          updateMeasurementPoint(editMeasurementId, editingPointIndex, point);
+        }
+      }
+    },
     editMeasurementId,
     editingPointIndex
   );
@@ -362,6 +371,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
     updateAllLabelsVisibility(!allLabelsVisible);
+    return true; // Return true to satisfy the boolean return type
   };
 
   // Break up the component into logical sections

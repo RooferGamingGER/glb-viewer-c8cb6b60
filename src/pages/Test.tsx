@@ -30,6 +30,26 @@ const Test = () => {
     setMenuOpen(false);
   }, [isPortrait]);
 
+  // Update the PVModuleInfo to include all required properties
+  const testModule: PVModuleInfo = {
+    moduleCount: 28,
+    moduleWidth: 1.041,
+    moduleHeight: 1.767,
+    orientation: 'landscape',
+    coveragePercent: 85,
+    pvModuleSpec: {
+      name: "Test Module 400W",
+      power: 400,
+      width: 1.041, 
+      height: 1.767,
+      efficiency: 22.1
+    },
+    // Add the required properties
+    modulesX: 7,
+    modulesY: 4,
+    spacing: 0.05
+  };
+
   // Function to add a test PV measurement
   const addTestPVMeasurement = () => {
     if (pvMeasurementAdded) {
@@ -65,20 +85,7 @@ const Test = () => {
       label: "Test PV Module",
       visible: true,
       labelVisible: true,
-      pvModuleInfo: {
-        moduleCount: 4,
-        moduleWidth: 1.0,
-        moduleHeight: 0.5,
-        orientation: "landscape",
-        coveragePercent: 100,
-        pvModuleSpec: {
-          name: "Standard Solar Module",
-          power: 380,
-          width: 1.0,
-          height: 0.5,
-          efficiency: 20
-        }
-      }
+      pvModuleInfo: testModule
     };
 
     // Update the measurements with the new test PV measurement

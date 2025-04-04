@@ -409,7 +409,7 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
         const totalCount = items.reduce((sum, item) => sum + (item.count || 1), 0);
         
         // Create a more space-efficient consolidated measurement
-        consolidatedPenetrations.push({
+        const newMeasurement = {
           ...template,
           id: template.id, // Keep ID of the first item
           count: totalCount,
@@ -418,7 +418,16 @@ export const consolidatePenetrations = (measurements: Measurement[]): Measuremen
           notes: items.length > 1 
             ? `${totalCount}× ${getMeasurementTypeDisplayName(type)}${template.subType ? ` (${template.subType})` : ''}`
             : template.notes
-        });
+        };
+        
+        // Fix the issue with the notes field being potentially a string or array
+        if (newMeasurement.notes) {
+          // Ensure notes is always an array
+          const notesArray = Array.isArray(newMeasurement.notes) ? newMeasurement.notes : [newMeasurement.notes];
+          newMeasurement.notes = notesArray;
+        }
+        
+        consolidatedPenetrations.push(newMeasurement);
       }
     });
   });
