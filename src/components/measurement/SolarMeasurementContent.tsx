@@ -14,7 +14,6 @@ import {
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 import PVMaterialsList from './PVMaterialsList';
-import PVModuleList from './PVModuleList';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,16 +21,12 @@ import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
-  updateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  selectedModuleIndex?: number | null;
-  onSelectModule?: (moduleIndex: number | null) => void;
+  updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
-  updateMeasurement,
-  selectedModuleIndex = null,
-  onSelectModule = () => {}
+  updateMeasurement 
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const { calculatePVMaterialsForMeasurement, calculatingMaterials } = useMeasurements();
@@ -277,17 +272,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           onCalculateMaterials={handleCalculateMaterials}
         />
       </div>
-      
-      {measurement.pvModuleInfo.points && (
-        <div className="px-2 mb-2">
-          <PVModuleList
-            measurement={measurement}
-            updateMeasurement={updateMeasurement}
-            onSelectModule={onSelectModule}
-            selectedModuleIndex={selectedModuleIndex}
-          />
-        </div>
-      )}
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-2">
         <TabsList className="grid w-full grid-cols-3">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -50,8 +51,6 @@ interface MeasurementToolControlsProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
-  selectedModuleIndex?: number | null;
-  onSelectModule?: (moduleIndex: number | null) => void;
 }
 
 /**
@@ -76,9 +75,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   onEditSegment,
   movingPointInfo,
   handleMoveMeasurementUp,
-  handleMoveMeasurementDown,
-  selectedModuleIndex,
-  onSelectModule
+  handleMoveMeasurementDown
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
@@ -132,6 +129,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         
         <ScrollArea className="flex-1 pr-2">
           <TabsContent value="tools" className="space-y-4 mt-0 h-full">
+            {/* Punktfang toggle moved to the top */}
             <div>
               <Toggle
                 pressed={snapEnabled}
@@ -347,8 +345,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   handleMoveMeasurementUp={handleMoveMeasurementUp}
                   handleMoveMeasurementDown={handleMoveMeasurementDown}
                   activeCategory={activeCategory}
-                  selectedModuleIndex={selectedModuleIndex}
-                  onSelectModule={onSelectModule}
                 />
               )}
             </div>

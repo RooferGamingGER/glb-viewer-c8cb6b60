@@ -31,7 +31,6 @@ export const useMeasurementState = (
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [moduleVisualsDetailLevel, setModuleVisualsDetailLevel] = useState<'simple' | 'detailed'>('detailed');
-  const [selectedModuleIndex, setSelectedModuleIndex] = useState<number | null>(null);
 
   // Handler for toggling segment visibility
   const toggleSegments = useCallback((id: string) => {
@@ -46,14 +45,6 @@ export const useMeasurementState = (
     setModuleVisualsDetailLevel(prev => prev === 'simple' ? 'detailed' : 'simple');
     toast.info(`PV-Modul Darstellung: ${moduleVisualsDetailLevel === 'simple' ? 'Detailliert' : 'Einfach'}`);
   }, [moduleVisualsDetailLevel]);
-
-  // Handler for selecting a module
-  const handleSelectModule = useCallback((moduleIndex: number | null) => {
-    setSelectedModuleIndex(moduleIndex);
-    if (moduleIndex !== null) {
-      toast.info(`PV-Modul ${moduleIndex + 1} ausgewählt`);
-    }
-  }, []);
 
   // Handler for clearing all measurements with confirmation
   const handleClearMeasurements = useCallback(() => {
@@ -191,8 +182,6 @@ export const useMeasurementState = (
     setEditingSegmentId,
     moduleVisualsDetailLevel,
     toggleModuleVisualsDetailLevel,
-    selectedModuleIndex,
-    handleSelectModule,
     toggleSegments,
     handleClearMeasurements,
     handleFinalizeMeasurement,

@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Measurement } from '@/types/measurements';
+import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
-import { getMeasurementTypeDisplayName } from '@/utils/exportUtils';
+import { Separator } from '@/components/ui/separator';
 
 interface MeasurementListProps {
   measurements: Measurement[];
@@ -20,8 +20,6 @@ interface MeasurementListProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   activeCategory?: string;
-  selectedModuleIndex?: number | null;
-  onSelectModule?: (moduleIndex: number | null) => void;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -39,49 +37,54 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   movingPointInfo,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  activeCategory,
-  selectedModuleIndex = null,
-  onSelectModule = () => {}
+  activeCategory
 }) => {
-  const getCategoryLabel = (category: string): string => {
-    switch (category) {
-      case 'dach':
-        return 'Dachmessungen';
-      case 'solar':
-        return 'Solarmessungen';
-      case 'dachelemente':
-        return 'Dachelemente';
-      case 'einbauten':
-        return 'Einbauten';
-      default:
-        return 'Messungen';
-    }
-  };
-
-  const filteredMeasurements = React.useMemo(() => {
-    if (!activeCategory) {
-      return measurements;
-    }
-
-    switch (activeCategory) {
-      case 'dach':
-        return measurements.filter(m => ['length', 'height', 'area'].includes(m.type));
-      case 'solar':
-        return measurements.filter(m => ['solar'].includes(m.type));
-      case 'dachelemente':
-        return measurements.filter(m => ['skylight', 'chimney'].includes(m.type));
-      case 'einbauten':
-        return measurements.filter(m => ['vent', 'hook', 'other'].includes(m.type));
-      default:
-        return measurements;
-    }
-  }, [measurements, activeCategory]);
-
-  return (
-    <>
-      {filteredMeasurements.length > 0 ? (
-        <div className="space-y-2">
-          {filteredMeasurements.map((measurement, index) => (
+  if (!measurements || measurements.length === 0 && !editMeasurementId) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        Keine Messungen vorhanden.
+      </div>
+    );
+  }
+  
+  // Group measurements by category
+  // 1. Dach (standard measurements: length, height, area)
+  const dachMeasurements = measurements.filter(m => 
+    ['length', 'height', 'area'].includes(m.type)
+  );
+  
+  // 2. Solar (solar planning measurements)
+  const solarMeasurements = measurements.filter(m => 
+    ['solar'].includes(m.type)
+  );
+  
+  // 3. Dachelemente (skylight, chimney)
+  const dachelementeMeasurements = measurements.filter(m => 
+    ['skylight', 'chimney'].includes(m.type)
+  );
+  
+  // 4. Einbauten (vent, hook, other)
+  const einbautenMeasurements = measurements.filter(m => 
+    ['vent', 'hook', 'other'].includes(m.type)
+  );
+  
+  // 5. Any other measurements not categorized
+  const otherMeasurements = measurements.filter(m => 
+    !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
+  );
+  
+  const renderMeasurementGroup = (title: string, items: Measurement[], showEmpty: boolean = false) => {
+    if (items.length === 0 && !showEmpty) return null;
+    
+    return (
+      <div className="mb-4">
+        <h3 className="text-sm font-medium mb-2 flex justify-between">
+          <span>{title}</span>
+          <span className="text-muted-foreground">({items.length})</span>
+        </h3>
+        
+        {items.length > 0 ? (
+          items.map((measurement) => (
             <MeasurementItem
               key={measurement.id}
               measurement={measurement}
@@ -92,27 +95,93 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
               handleDeletePoint={handleDeletePoint}
               updateMeasurement={updateMeasurement}
               editMeasurementId={editMeasurementId}
-              segmentOpen={segmentsOpen[measurement.id] || false}
+              segmentsOpen={segmentsOpen[measurement.id] || false}
               toggleSegments={toggleSegments}
               onEditSegment={onEditSegment}
               movingPointInfo={movingPointInfo}
-              isFirst={index === 0}
-              isLast={index === filteredMeasurements.length - 1}
               handleMoveUp={handleMoveMeasurementUp}
               handleMoveDown={handleMoveMeasurementDown}
-              selectedModuleIndex={selectedModuleIndex}
-              onSelectModule={onSelectModule}
             />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center text-sm text-muted-foreground py-6">
-          {activeCategory
-            ? `Keine ${getCategoryLabel(activeCategory)} gefunden`
-            : 'Keine Messungen vorhanden'}
-        </div>
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground py-2 text-center">
+            Keine {title} vorhanden
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Filter measurements based on activeCategory if provided
+  if (activeCategory) {
+    switch (activeCategory) {
+      case 'dach':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Dach", dachMeasurements, true)}
+          </div>
+        );
+      case 'solar':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Solar", solarMeasurements, true)}
+          </div>
+        );
+      case 'dachelemente':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
+          </div>
+        );
+      case 'einbauten':
+        return (
+          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+            {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
+          </div>
+        );
+      default:
+        break;
+    }
+  }
+  
+  // Default rendering with all categories
+  return (
+    <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+      {/* Dach - Standard measurements */}
+      {renderMeasurementGroup("Dach", dachMeasurements, true)}
+      
+      {/* Separator if needed */}
+      {dachMeasurements.length > 0 && (solarMeasurements.length > 0 || dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
+        <Separator className="my-3" />
       )}
-    </>
+      
+      {/* Solar - Solar planning */}
+      {renderMeasurementGroup("Solar", solarMeasurements)}
+      
+      {/* Separator if needed */}
+      {solarMeasurements.length > 0 && (dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
+        <Separator className="my-3" />
+      )}
+      
+      {/* Dachelemente - Roof elements */}
+      {renderMeasurementGroup("Dachelemente", dachelementeMeasurements)}
+      
+      {/* Separator if needed */}
+      {dachelementeMeasurements.length > 0 && einbautenMeasurements.length > 0 && (
+        <Separator className="my-3" />
+      )}
+      
+      {/* Einbauten - Installations */}
+      {renderMeasurementGroup("Einbauten", einbautenMeasurements)}
+      
+      {/* Other measurements not categorized (if any) */}
+      {otherMeasurements.length > 0 && (
+        <>
+          <Separator className="my-3" />
+          {renderMeasurementGroup("Sonstige", otherMeasurements)}
+        </>
+      )}
+    </div>
   );
 };
 
