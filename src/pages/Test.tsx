@@ -12,6 +12,7 @@ import { Measurement } from '@/types/measurements';
 import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { toast } from '@/components/ui/use-toast';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
+import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 
 const Test = () => {
   const navigate = useNavigate();
@@ -119,6 +120,9 @@ const Test = () => {
             </main>
           </SidebarProvider>
         </div>
+
+        {/* Tutorial Overlay */}
+        <TutorialOverlay />
       </div>
     </PointSnappingProvider>
   );
