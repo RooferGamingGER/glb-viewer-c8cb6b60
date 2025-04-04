@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -155,7 +154,10 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   const interactionHandlers = {
     addPoint,
     startPointEdit,
-    updateMeasurementPoint
+    updateMeasurementPoint: (id: string, index: number, point: Point) => {
+      // This is a wrapper to match the required signature
+      updateMeasurementPoint(point);
+    }
   };
 
   // Measurement interaction state
@@ -421,6 +423,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   // Handle label visibility toggling with direct visual update
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
+    return true; // Return boolean to fix type error
   };
 
   // Component rendering
