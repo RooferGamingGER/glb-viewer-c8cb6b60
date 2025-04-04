@@ -20,6 +20,10 @@ interface MeasurementListProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   activeCategory?: string;
+  selectedModuleIndex: number | null;
+  selectedMeasurementId: string | null;
+  handleSelectModule: (measurementId: string, moduleIndex: number) => void;
+  handleDeleteModule: () => void;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -37,7 +41,11 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   movingPointInfo,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  activeCategory
+  activeCategory,
+  selectedModuleIndex,
+  selectedMeasurementId,
+  handleSelectModule,
+  handleDeleteModule
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) {
     return (
@@ -84,7 +92,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
         </h3>
         
         {items.length > 0 ? (
-          items.map((measurement) => (
+          items.map((measurement, index) => (
             <MeasurementItem
               key={measurement.id}
               measurement={measurement}
@@ -99,8 +107,14 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
               toggleSegments={toggleSegments}
               onEditSegment={onEditSegment}
               movingPointInfo={movingPointInfo}
+              isFirst={index === 0}
+              isLast={index === items.length - 1}
               handleMoveUp={handleMoveMeasurementUp}
               handleMoveDown={handleMoveMeasurementDown}
+              selectedModuleIndex={selectedModuleIndex}
+              selectedMeasurementId={selectedMeasurementId}
+              handleSelectModule={handleSelectModule}
+              handleDeleteModule={handleDeleteModule}
             />
           ))
         ) : (

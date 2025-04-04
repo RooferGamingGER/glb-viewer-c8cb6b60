@@ -18,15 +18,20 @@ interface MeasurementItemProps {
   handleStartPointEdit: (id: string) => void;
   editMeasurementId: string | null;
   handleCancelEditing: () => void;
-  isFirst: boolean;
-  isLast: boolean;
-  handleMoveMeasurementUp: (id: string) => void;
-  handleMoveMeasurementDown: (id: string) => void;
+  isFirst?: boolean;
+  isLast?: boolean;
+  handleMoveUp?: (id: string) => void;
+  handleMoveDown?: (id: string) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   selectedModuleIndex: number | null;
   selectedMeasurementId: string | null;
   handleSelectModule: (measurementId: string, moduleIndex: number) => void;
   handleDeleteModule: () => void;
+  segmentsOpen?: boolean;
+  toggleSegments?: (id: string) => void;
+  onEditSegment?: (id: string | null) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -37,21 +42,21 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   handleStartPointEdit,
   editMeasurementId,
   handleCancelEditing,
-  isFirst,
-  isLast,
-  handleMoveMeasurementUp,
-  handleMoveMeasurementDown,
+  isFirst = false,
+  isLast = false,
+  handleMoveUp,
+  handleMoveDown,
   updateMeasurement,
   selectedModuleIndex,
   selectedMeasurementId,
   handleSelectModule,
-  handleDeleteModule
+  handleDeleteModule,
+  segmentsOpen,
+  toggleSegments,
+  onEditSegment,
+  handleDeletePoint,
+  movingPointInfo
 }) => {
-  const [movingPointInfo, setMovingPointInfo] = useState<{
-    measurementId: string;
-    pointIndex: number;
-  } | null>(null);
-  
   const isEditing = editMeasurementId === measurement.id;
   const isSolar = measurement.type === 'solar';
   
@@ -92,24 +97,24 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               )}
             </Button>
             
-            {!isFirst && (
+            {!isFirst && handleMoveUp && (
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="h-7 w-7" 
-                onClick={() => handleMoveMeasurementUp(measurement.id)}
+                onClick={() => handleMoveUp(measurement.id)}
                 title="Nach oben verschieben"
               >
                 <ArrowUp className="h-3.5 w-3.5" />
               </Button>
             )}
             
-            {!isLast && (
+            {!isLast && handleMoveDown && (
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="h-7 w-7" 
-                onClick={() => handleMoveMeasurementDown(measurement.id)}
+                onClick={() => handleMoveDown(measurement.id)}
                 title="Nach unten verschieben"
               >
                 <ArrowDown className="h-3.5 w-3.5" />
@@ -178,14 +183,13 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             />
           )}
           
-          <PointEditList 
-            measurement={measurement}
-            handleDeletePoint={(measurementId, pointIndex) => {
-              handleDeleteMeasurement(measurementId, pointIndex);
-              setMovingPointInfo(null);
-            }}
-            movingPointInfo={movingPointInfo}
-          />
+          {handleDeletePoint && (
+            <PointEditList 
+              measurement={measurement}
+              handleDeletePoint={handleDeletePoint}
+              movingPointInfo={movingPointInfo}
+            />
+          )}
         </div>
       </CardContent>
     </Card>

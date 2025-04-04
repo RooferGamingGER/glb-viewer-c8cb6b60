@@ -3,7 +3,7 @@ import React from 'react';
 import { Measurement } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CircleMinus, CircleX } from 'lucide-react';
+import { CircleX } from 'lucide-react';
 
 interface PVModuleListProps {
   measurement: Measurement;
