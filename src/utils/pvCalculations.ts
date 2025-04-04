@@ -1,4 +1,3 @@
-
 import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
 import * as THREE from 'three';
@@ -645,184 +644,185 @@ export const generatePVModuleGrid = (
   // Determine module dimensions based on orientation
   const moduleWidth = pvInfo.orientation === 'landscape' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const moduleHeight = pvInfo.orientation === 'landscape' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
+
+  // Extrahiere die vier Eckpunkte der Dachfläche
+  let cornerPoints: Point[] = [];
+  let roofPlanePoints: THREE.Vector3[] = [];
+  
+  if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
+    cornerPoints = [
+      roofEdgeSegments[0].from,
+      roofEdgeSegments[1].from,
+      roofEdgeSegments[2].from,
+      roofEdgeSegments[3].from
+    ];
+    
+    // Konvertiere Punkte zu THREE.Vector3 für spätere Berechnungen
+    roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    
+    console.log("Dacheckpunkte extrahiert:", cornerPoints);
+  } else {
+    console.log("Nicht genügend Punkte für Dachflächenberechnung");
+    // Fallback: Verwende die pvInfo Begrenzungen um ein Default-Rechteck zu erstellen
+    cornerPoints = [
+      { x: pvInfo.minX || 0, y: baseY, z: pvInfo.minZ || 0 },
+      { x: pvInfo.maxX || 1, y: baseY, z: pvInfo.minZ || 0 },
+      { x: pvInfo.maxX || 1, y: baseY, z: pvInfo.maxZ || 1 },
+      { x: pvInfo.minX || 0, y: baseY, z: pvInfo.maxZ || 1 }
+    ];
+    roofPlanePoints = cornerPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  }
+
+  // Berechne die Ebene aus den ersten drei Punkten
+  if (roofPlanePoints.length >= 3) {
+    const plane = new THREE.Plane();
+    plane.setFromCoplanarPoints(
+      roofPlanePoints[0],
+      roofPlanePoints[1],
+      roofPlanePoints[2]
+    );
+    
+    // Normalenvektor der Dachfläche
+    const normalVector = plane.normal.clone();
+    
+    // Stellen Sie sicher, dass der Normalenvektor nach oben zeigt (positive Y-Komponente)
+    if (normalVector.y < 0) {
+      normalVector.negate();
+    }
+    
+    console.log("Normalenvektor der Dachfläche:", normalVector);
+
+    // Berechne die Vektoren für die Ausrichtung des Gitters
+    // Vector von P1 zu P2 (erste Richtung)
+    const v1 = new THREE.Vector3()
+      .subVectors(roofPlanePoints[1], roofPlanePoints[0])
+      .normalize();
+    
+    // Vector von P1 zu P4 (zweite Richtung)
+    const v2 = new THREE.Vector3()
+      .subVectors(roofPlanePoints[3], roofPlanePoints[0])
+      .normalize();
+    
+    // Stelle sicher, dass die Vektoren orthogonal zum Normalenvektor sind
+    // (d.h. sie liegen in der Dachebene)
+    const v1Projected = new THREE.Vector3().copy(v1)
+      .sub(normalVector.clone().multiplyScalar(v1.dot(normalVector)))
+      .normalize();
+    
+    const v2Projected = new THREE.Vector3().copy(v2)
+      .sub(normalVector.clone().multiplyScalar(v2.dot(normalVector)))
+      .normalize();
+
+    // Ausrichtungswinkel für Protokollierung
+    const alignmentAngle = Math.atan2(v1Projected.z, v1Projected.x) * (180 / Math.PI);
+    
+    console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
+      v1: v1Projected,
+      v2: v2Projected,
+      alignmentAngle,
+      normalVector
+    });
+
+    // Get the starting position (erster Punkt der Dachfläche)
+    const startPoint = roofPlanePoints[0].clone();
+    
+    // Füge einen kleinen Versatz für den Abstand zum Rand hinzu
+    const edgeOffset = pvInfo.edgeDistance || 0.1; // 10cm Standard-Randabstand
+    startPoint.add(v1Projected.clone().multiplyScalar(edgeOffset))
+              .add(v2Projected.clone().multiplyScalar(edgeOffset));
+    
+    console.log("Startpunkt für Module:", startPoint);
+
+    // Generiere das Modul-Platzierungsgitter
+    for (let row = 0; row < pvInfo.rows!; row++) {
+      for (let col = 0; col < pvInfo.columns!; col++) {
+        // Berechne den Offset basierend auf Spalte und Zeile
+        const xOffset = col * (moduleWidth + (pvInfo.moduleSpacing || 0));
+        const zOffset = row * (moduleHeight + (pvInfo.moduleSpacing || 0));
+        
+        // Berechne den Basisvektor für dieses Modul
+        const moduleBasePoint = new THREE.Vector3().copy(startPoint)
+          .add(v1Projected.clone().multiplyScalar(xOffset))
+          .add(v2Projected.clone().multiplyScalar(zOffset));
+
+        // Berechne die vier Eckpunkte des Moduls
+        const p1 = moduleBasePoint.clone();
+        const p2 = moduleBasePoint.clone().add(v1Projected.clone().multiplyScalar(moduleWidth));
+        const p3 = moduleBasePoint.clone()
+          .add(v1Projected.clone().multiplyScalar(moduleWidth))
+          .add(v2Projected.clone().multiplyScalar(moduleHeight));
+        const p4 = moduleBasePoint.clone().add(v2Projected.clone().multiplyScalar(moduleHeight));
+        
+        const moduleCorners: Point[] = [
+          { x: p1.x, y: p1.y, z: p1.z },
+          { x: p2.x, y: p2.y, z: p2.z },
+          { x: p3.x, y: p3.y, z: p3.z },
+          { x: p4.x, y: p4.y, z: p4.z }
+        ];
+        
+        modulePoints.push(moduleCorners);
+        
+        // Füge Gitterlinien für die Umrissvisualisierung jedes Moduls hinzu
+        gridLines.push({ from: moduleCorners[0], to: moduleCorners[1] });
+        gridLines.push({ from: moduleCorners[1], to: moduleCorners[2] });
+        gridLines.push({ from: moduleCorners[2], to: moduleCorners[3] });
+        gridLines.push({ from: moduleCorners[3], to: moduleCorners[0] });
+      }
+    }
+    
+    // Debugging-Information
+    console.log(`${modulePoints.length} PV-Module erzeugt mit Ausrichtung ${alignmentAngle.toFixed(2)}°`);
+    if (modulePoints.length > 0) {
+      console.log("Erste Modulecken:", modulePoints[0]);
+    }
+    
+    return { modulePoints, gridLines };
+  }
+  
+  // Fallback bei Problemen mit der Ebenenberechnung: Verwende eine vereinfachte 2D-Platzierung
+  console.warn("Fallback zur vereinfachten 2D-Platzierung");
   
   // Get the starting position (add edge distance to min coordinates)
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
-  // Extrahiere die vier Eckpunkte der Dachfläche
-  let cornerPoints: Point[] = [];
+  // Standard-Richtungsvektoren (ohne Ausrichtung)
+  const directionX = { x: 1, z: 0 };
+  const directionZ = { x: 0, z: 1 };
   
-  if (roofEdgeSegments && roofEdgeSegments.length >= 4) {
-    cornerPoints = [
-      roofEdgeSegments[0].from,
-      roofEdgeSegments[1].from, 
-      roofEdgeSegments[2].from,
-      roofEdgeSegments[3].from
-    ];
-    
-    // Berechne die durchschnittliche Y-Koordinate als neue Basis-Höhe
-    const avgY = cornerPoints.reduce((sum, point) => sum + point.y, 0) / cornerPoints.length;
-    
-    // Überschreibe den übergebenen baseY-Wert mit dem berechneten Durchschnitt
-    // und füge nur einen kleinen Offset hinzu (5mm statt 5cm)
-    baseY = avgY + 0.005;
-    
-    console.log("Neue Basis-Höhe berechnet aus Punkten:", baseY);
-  } else {
-    console.log("Nicht genügend Punkte für Dachflächenberechnung");
-  }
-  
-  // Richtungsvektoren für die Gitterausrichtung
-  let directionX = { x: 1, z: 0 };  // Standardrichtung entlang der X-Achse
-  let directionZ = { x: 0, z: 1 };  // Standardrichtung entlang der Z-Achse
-  let normalVector = { x: 0, y: 1, z: 0 }; // Standardnormalenvektor (nach oben)
-  let alignmentAngle = 0;
-  
-  // Wenn wir mindestens 4 Punkte haben, verwenden wir sie zur Definition der Gitterorientierung
-  if (cornerPoints.length === 4) {
-    // Berechne Vektoren für zwei angrenzende Seiten
-    // Vektor von P1 zu P2
-    const v1 = {
-      x: cornerPoints[1].x - cornerPoints[0].x,
-      y: cornerPoints[1].y - cornerPoints[0].y,
-      z: cornerPoints[1].z - cornerPoints[0].z
-    };
-    
-    // Vektor von P1 zu P4
-    const v2 = {
-      x: cornerPoints[3].x - cornerPoints[0].x,
-      y: cornerPoints[3].y - cornerPoints[0].y,
-      z: cornerPoints[3].z - cornerPoints[0].z
-    };
-    
-    // Berechne Normalenvektor durch Kreuzprodukt von v1 und v2
-    normalVector = {
-      x: v1.y * v2.z - v1.z * v2.y,
-      y: v1.z * v2.x - v1.x * v2.z,
-      z: v1.x * v2.y - v1.y * v2.x
-    };
-    
-    // Normalisiere den Normalenvektor
-    const normalLength = Math.sqrt(
-      normalVector.x * normalVector.x + 
-      normalVector.y * normalVector.y + 
-      normalVector.z * normalVector.z
-    );
-    
-    if (normalLength > 0) {
-      normalVector.x /= normalLength;
-      normalVector.y /= normalLength;
-      normalVector.z /= normalLength;
-      
-      // Stellen Sie sicher, dass der Normalenvektor nach oben zeigt
-      if (normalVector.y < 0) {
-        normalVector.x *= -1;
-        normalVector.y *= -1;
-        normalVector.z *= -1;
-      }
-      
-      console.log("Normalenvektor der Dachfläche:", normalVector);
-    }
-    
-    // Berechne die Längen der Vektoren
-    const v1Length = Math.sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z);
-    const v2Length = Math.sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z);
-    
-    if (v1Length > 0.1 && v2Length > 0.1) {
-      // Projiziere die Vektoren auf die XZ-Ebene für die Gitterausrichtung
-      directionX = {
-        x: v1.x / v1Length,
-        z: v1.z / v1Length
-      };
-      
-      directionZ = {
-        x: v2.x / v2Length,
-        z: v2.z / v2Length
-      };
-      
-      // Berechne Ausrichtungswinkel für Protokollierung
-      alignmentAngle = Math.atan2(directionX.z, directionX.x) * (180 / Math.PI);
-      
-      console.log("Modul-Gitter ausgerichtet an Flächenpunkten:", {
-        directionX,
-        directionZ,
-        alignmentAngle,
-        normalVector
-      });
-    } else {
-      console.log("Punkte zu nah beieinander, verwende Standardausrichtung");
-    }
-  } else {
-    console.log("Nicht genügend Punkte verfügbar, verwende Standardausrichtung");
-  }
-  
-  console.log("PV-Modul-Gitter-Generierung mit Dachausrichtung:", {
-    moduleWidth,
-    moduleHeight,
-    startX,
-    startZ,
-    rows: pvInfo.rows,
-    columns: pvInfo.columns,
-    orientation: pvInfo.orientation,
-    baseY,
-    alignmentAngle
-  });
-  
-  // Generiere das Modul-Platzierungsgitter
+  // Generiere das Modul-Platzierungsgitter mit Standard-Ausrichtung
   for (let row = 0; row < pvInfo.rows!; row++) {
     for (let col = 0; col < pvInfo.columns!; col++) {
-      // Berechne die Basisposition dieses Moduls im Standardkoordinatensystem
+      // Berechne die Basisposition dieses Moduls
       const xOffset = col * (moduleWidth + pvInfo.moduleSpacing!);
       const zOffset = row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Transformiere die Position gemäß der Dachausrichtung
       const x = startX + xOffset * directionX.x + zOffset * directionZ.x;
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
-      // Sehr geringer Höhenversatz für bessere Sichtbarkeit
-      const yOffset = 0.005; // 5mm über der Dachoberfläche
+      // Verwende die Y-Koordinate aus den Dachpunkten, wenn vorhanden
+      const y = cornerPoints.length > 0 
+        ? cornerPoints.reduce((sum, p) => sum + p.y, 0) / cornerPoints.length
+        : baseY;
       
-      // Berechne die vier Eckpunkte des Moduls mit korrekter Ausrichtung
-      // und folge dabei der Dachneigung durch Anwendung des Normalenvektors
+      // Berechne die vier Eckpunkte des Moduls mit Standard-Ausrichtung
       const moduleCorners: Point[] = [
-        { // Ecke 0 (oben links)
-          x,
-          y: baseY,
-          z
-        },
-        { // Ecke 1 (oben rechts) - entlang der ersten Richtung
-          x: x + moduleWidth * directionX.x,
-          y: baseY,
-          z: z + moduleWidth * directionX.z
-        },
-        { // Ecke 2 (unten rechts) - diagonal
-          x: x + moduleWidth * directionX.x + moduleHeight * directionZ.x,
-          y: baseY,
-          z: z + moduleWidth * directionX.z + moduleHeight * directionZ.z
-        },
-        { // Ecke 3 (unten links) - entlang der zweiten Richtung
-          x: x + moduleHeight * directionZ.x,
-          y: baseY,
-          z: z + moduleHeight * directionZ.z
-        }
+        { x, y, z },
+        { x: x + moduleWidth, y, z },
+        { x: x + moduleWidth, y, z: z + moduleHeight },
+        { x, y, z: z + moduleHeight }
       ];
       
       modulePoints.push(moduleCorners);
       
-      // Füge Gitterlinien für die Umrissvisualisierung jedes Moduls hinzu
+      // Füge Gitterlinien hinzu
       for (let i = 0; i < 4; i++) {
-        const from = moduleCorners[i];
-        const to = moduleCorners[(i + 1) % 4];
-        gridLines.push({ from, to });
+        gridLines.push({
+          from: moduleCorners[i],
+          to: moduleCorners[(i + 1) % 4]
+        });
       }
     }
-  }
-  
-  // Füge detaillierte Debug-Protokollierung hinzu
-  console.log(`${modulePoints.length} PV-Module erzeugt mit Höhe ${baseY}m und Ausrichtung ${alignmentAngle.toFixed(2)}°`);
-  if (modulePoints.length > 0) {
-    console.log("Erste Modulecken:", modulePoints[0]);
   }
   
   return { modulePoints, gridLines };
