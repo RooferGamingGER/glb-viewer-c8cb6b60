@@ -1,5 +1,6 @@
 import { Point, PVModuleInfo, PVModuleSpec, Measurement, PVMaterials, PVMountingSystem, PVElectricalSystem } from '@/types/measurements';
 import { calculatePolygonArea, calculateQuadrilateralDimensions, generateSegments } from './measurementCalculations';
+import * as THREE from 'three';
 
 // Default PV module dimensions in meters
 export const DEFAULT_MODULE_WIDTH = 1.041;
@@ -660,7 +661,11 @@ export const generatePVModuleGrid = (
     let maxLength = 0;
     
     roofEdgeSegments.forEach(segment => {
-      const length = new THREE.Vector3().subVectors(segment.to, segment.from).length();
+      // Create THREE.Vector3 objects to calculate length
+      const from = new THREE.Vector3(segment.from.x, segment.from.y, segment.from.z);
+      const to = new THREE.Vector3(segment.to.x, segment.to.y, segment.to.z);
+      const length = new THREE.Vector3().subVectors(to, from).length();
+      
       if (length > maxLength) {
         maxLength = length;
         longestSegment = segment;
