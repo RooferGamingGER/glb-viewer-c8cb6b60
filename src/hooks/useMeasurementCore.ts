@@ -793,12 +793,13 @@ export const useMeasurementCore = () => {
       createPVPlanningMeasurement(points);
       return undefined; // We return undefined here as createPVPlanningMeasurement handles the measurement creation
     }
-    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
+    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'pvplanning', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
         'solar': 3,
         'pvmodule': 4,
+        'pvplanning': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,

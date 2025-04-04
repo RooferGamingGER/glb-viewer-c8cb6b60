@@ -68,8 +68,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
               handleDeleteMeasurement={handleDeleteMeasurement}
               updateMeasurement={updateMeasurement}
               editMeasurementId={editMeasurementId}
-              isOpen={segmentsOpen[measurement.id] || false}
-              toggleOpen={() => toggleSegments(measurement.id)}
+              isSegmentOpen={segmentsOpen[measurement.id] || false}
+              toggleSegments={() => toggleSegments(measurement.id)}
               onEditSegment={onEditSegment}
               handleMoveUp={handleMoveMeasurementUp}
               handleMoveDown={handleMoveMeasurementDown}
