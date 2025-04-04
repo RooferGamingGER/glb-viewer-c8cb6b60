@@ -1666,26 +1666,4 @@ function renderPVModuleGrid(
     
     measurementsRef.add(lineObj);
   });
-  
-  // Add power and module count label
-  const points3D = pointsToVector3Array(measurement.points);
-  const centroid = calculateCentroid(points3D);
-  
-  // Create text for power label - removed orientation text
-  const powerOutput = ((measurement.pvModuleInfo.moduleCount * (measurement.pvModuleInfo.pvModuleSpec?.power || 380)) / 1000).toFixed(2);
-  
-  // Simplified label - removed the orientation text
-  const powerLabel = `${measurement.pvModuleInfo.moduleCount} PV-Module\n${powerOutput} kWp`;
-  
-  // Position label above the area
-  centroid.y += LABEL_Y_OFFSET + 0.15;
-  
-  // Fixed: Convert color number to string using CSS hex format
-  const pvLabel = createMeasurementLabel(powerLabel, centroid, true, '#' + PV_MODULE_COLORS.MODULE.toString(16).padStart(6, '0'));
-  pvLabel.userData = {
-    measurementId: measurement.id,
-    isPVLabel: true
-  };
-  
-  labelsRef.add(pvLabel);
 }
