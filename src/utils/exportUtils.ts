@@ -12,7 +12,6 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'chimney': 'Kamin',
     'skylight': 'Dachfenster',
     'solar': 'Solaranlage',
-    'pvmodule': 'PV-Modul',
     'vent': 'Lüfter',
     'hook': 'Dachhaken',
     'other': 'Sonstige Einbauten',
@@ -250,7 +249,7 @@ export const getRoofElementsSummary = (measurements: Measurement[]): {
   
   // Calculate total solar area
   const solarArea = measurements
-    .filter(m => m.type === 'solar' || m.type === 'pvmodule')
+    .filter(m => m.type === 'solar')
     .reduce((sum, m) => sum + m.value, 0);
   
   // Calculate total PV modules
@@ -310,7 +309,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   }
   
   // Format for solar measurements
-  if (measurement.type === 'solar' || measurement.type === 'pvmodule') {
+  if (measurement.type === 'solar') {
     return `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
   }
   
@@ -318,10 +317,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   if (measurement.type === 'area' && measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
     const areaText = `${measurement.value.toFixed(2)} ${measurement.unit || 'm²'}`;
     const pvInfo = measurement.pvModuleInfo;
-    const modulePower = pvInfo.pvModuleSpec?.power || 390; // Default to 390W if not specified
-    const totalPowerKW = (modulePower * pvInfo.moduleCount) / 1000;
-    
-    return `${areaText} (${pvInfo.moduleCount} PV-Module, ${totalPowerKW.toFixed(1)} kWp)`;
+    return `${areaText} (${pvInfo.moduleCount} PV-Module, ${calculatePVPower(pvInfo.moduleCount).toFixed(1)} kWp)`;
   }
   
   // Standard formatting for other measurement types
@@ -350,25 +346,19 @@ export const sortMeasurementsForExport = (measurements: Measurement[]): Measurem
     'skylight': 4,
     'chimney': 5,
     'solar': 6,
-    'pvmodule': 7,
     // Installations
-    'vent': 8,
-    'hook': 9,
-    'other': 10
+    'vent': 7,
+    'hook': 8,
+    'other': 9
   };
   
   // Create a copy of the measurements array and sort it
   return [...measurements].sort((a, b) => {
-    // Special case: Areas with PV modules should be grouped with solar measurements
-    const aOrder = a.pvModuleInfo?.moduleCount && a.pvModuleInfo.moduleCount > 0 && a.type === 'area' 
-      ? typeOrder['pvmodule'] // Use PV module order for areas with PV modules
-      : typeOrder[a.type] || 999;
-      
-    const bOrder = b.pvModuleInfo?.moduleCount && b.pvModuleInfo.moduleCount > 0 && b.type === 'area'
-      ? typeOrder['pvmodule']
-      : typeOrder[b.type] || 999;
+    // Get the order values for each measurement type
+    const orderA = typeOrder[a.type] || 999; // Use a high number for unknown types
+    const orderB = typeOrder[b.type] || 999;
     
-    return aOrder - bOrder;
+    return orderA - orderB;
   });
 };
 
@@ -562,47 +552,4 @@ export const countTotalSegments = (measurements: Measurement[]): number => {
       return true;
     }).length;
   }, 0);
-};
-
-/**
- * Get module specifications as a formatted string
- */
-export const getModuleSpecString = (pvInfo: PVModuleInfo | undefined): string => {
-  if (!pvInfo || !pvInfo.pvModuleSpec) {
-    return "Standardmodule (390Wp)";
-  }
-  
-  const spec = pvInfo.pvModuleSpec;
-  return `${spec.name || "PV-Modul"} (${spec.power}Wp, ${spec.width.toFixed(2)}×${spec.height.toFixed(2)}m)`;
-};
-
-/**
- * Get detailed PV module information for a measurement
- */
-export const getPVModuleDetails = (measurement: Measurement): {
-  moduleCount: number;
-  moduleSpec: string;
-  totalPower: number;
-  orientation: string;
-  coveragePercent: number;
-  rows?: number;
-  columns?: number;
-} | null => {
-  if (!measurement.pvModuleInfo || !measurement.pvModuleInfo.moduleCount || measurement.pvModuleInfo.moduleCount <= 0) {
-    return null;
-  }
-  
-  const pvInfo = measurement.pvModuleInfo;
-  const modulePower = pvInfo.pvModuleSpec?.power || 390; // Default 390Wp if not specified
-  const totalPower = (modulePower * pvInfo.moduleCount) / 1000; // in kWp
-  
-  return {
-    moduleCount: pvInfo.moduleCount,
-    moduleSpec: getModuleSpecString(pvInfo),
-    totalPower,
-    orientation: pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat',
-    coveragePercent: pvInfo.coveragePercent || 0,
-    rows: pvInfo.rows,
-    columns: pvInfo.columns
-  };
 };
