@@ -153,15 +153,22 @@ export const useMeasurementInteraction = (
           module.visible = measurement.visible !== false;
           console.log(`Setting PV module ${module.name || 'unnamed'} visibility to ${module.visible}`);
           
-          // Increase opacity for better visibility
+          // Enhance visibility with increased material opacity
           if (module instanceof THREE.Mesh && module.material instanceof THREE.MeshBasicMaterial) {
-            module.material.opacity = 0.9; // Increased from 0.7 for better visibility
+            module.material.opacity = 0.95; // Increased from 0.9 for better visibility
             module.material.color.set(0x0EA5E9); // Bright blue color
             module.material.transparent = true;
             module.material.side = THREE.DoubleSide; // Show both sides
             module.material.needsUpdate = true;
             
-            console.log("Updated PV module material properties for better visibility");
+            // Raise position slightly to avoid z-fighting
+            module.position.y += 0.01;
+            
+            console.log("Updated PV module material properties for better visibility:", {
+              opacity: module.material.opacity,
+              color: module.material.color.getHexString(),
+              position: module.position
+            });
           }
         }
       });

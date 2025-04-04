@@ -114,7 +114,9 @@ export const useMeasurementVisibility = (
           if (material) {
             // Set to a bright blue with increased opacity for better visibility
             material.color.set(0x0EA5E9); // using bright blue color
-            material.opacity = 0.8;  // increasing opacity from 0.4 to 0.8 for better visibility
+            material.opacity = 0.95;  // increasing opacity from 0.8 to 0.95 for better visibility
+            material.transparent = true;
+            material.side = THREE.DoubleSide;
             material.needsUpdate = true;
             
             // Log material properties for debugging
@@ -122,17 +124,25 @@ export const useMeasurementVisibility = (
               color: material.color.getHexString(),
               opacity: material.opacity,
               transparent: material.transparent,
-              side: material.side
+              side: material.side === THREE.DoubleSide ? "DoubleSide" : "SingleSide"
             });
           }
+          
+          // Raise position slightly to avoid z-fighting
+          mesh.position.y += 0.01;
           
           // Also update any children (individual PV modules)
           mesh.children.forEach(child => {
             child.visible = measurement.visible !== false;
             if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
-              child.material.opacity = 0.9;
+              child.material.opacity = 0.95;
               child.material.color.set(0x1E88E5); // Slightly different blue
+              child.material.transparent = true;
+              child.material.side = THREE.DoubleSide;
               child.material.needsUpdate = true;
+              
+              // Raise position slightly to avoid z-fighting
+              child.position.y += 0.01;
             }
           });
         }
@@ -144,15 +154,22 @@ export const useMeasurementVisibility = (
           
           mesh.visible = measurement.visible !== false;
           if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshBasicMaterial) {
-            mesh.material.opacity = 0.9;
+            mesh.material.opacity = 0.95;
             mesh.material.color.set(0x1E88E5); // Slightly different blue
+            mesh.material.transparent = true;
+            mesh.material.side = THREE.DoubleSide;
             mesh.material.needsUpdate = true;
+            
+            // Raise position slightly to avoid z-fighting
+            mesh.position.y += 0.01;
             
             // Log material properties for debugging
             console.log(`Standalone PV Module visibility:`, mesh.visible, "Material:", {
               color: mesh.material.color.getHexString(),
               opacity: mesh.material.opacity,
-              transparent: mesh.material.transparent
+              transparent: mesh.material.transparent,
+              side: mesh.material.side === THREE.DoubleSide ? "DoubleSide" : "SingleSide",
+              position: mesh.position
             });
           }
         }
