@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
@@ -245,8 +246,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
         calculatePVPower(
           measurement.pvModuleInfo.moduleCount, 
           measurement.pvModuleInfo.pvModuleSpec?.power || 425
-        ),
-        measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
+        )
       );
   
   return (

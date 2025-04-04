@@ -132,7 +132,7 @@ export const calculateModuleLayout = (
 
 /**
  * Calculates the placement of PV modules on a roof surface
- * @param points - Array of points defining the roof surface
+ * @param points - Array of points defining the roof surface or roof shape
  * @param moduleWidth - Width of a single module (m)
  * @param moduleHeight - Height of a single module (m)
  * @param edgeDistance - Distance from edge of roof (m)
@@ -236,10 +236,10 @@ export const calculateRoofOrientation = (measurement: any): string => {
 /**
  * Calculates annual yield considering roof orientation
  * @param powerKWp - System power in kWp
- * @param orientation - Module orientation ('portrait' or 'landscape')
+ * @param orientation - Module orientation ('portrait' or 'landscape') or the PVModuleInfo object
  * @returns Annual energy yield in kWh
  */
-export const calculateAnnualYieldWithOrientation = (powerKWp: number, orientation: string): number => {
+export const calculateAnnualYieldWithOrientation = (powerKWp: number, orientation: string | any): number => {
   // Different yield factors based on orientation
   const yieldFactors: Record<string, number> = {
     'hochformat': 950,
@@ -248,18 +248,31 @@ export const calculateAnnualYieldWithOrientation = (powerKWp: number, orientatio
     'landscape': 920
   };
   
-  const yieldFactor = yieldFactors[orientation.toLowerCase()] || 950;
-  return calculateAnnualYield(powerKWp, yieldFactor);
+  // If orientation is an object (PVModuleInfo), use its yieldfactor if available
+  if (typeof orientation === 'object' && orientation !== null) {
+    if (orientation.yieldFactor) {
+      return powerKWp * orientation.yieldFactor;
+    } else {
+      // Default to orientation value
+      const orientationString = orientation.orientation || 'portrait';
+      const yieldFactor = yieldFactors[orientationString.toLowerCase()] || 950;
+      return powerKWp * yieldFactor;
+    }
+  } else {
+    // Handle the case where orientation is a string
+    const yieldFactor = yieldFactors[orientation.toLowerCase()] || 950;
+    return powerKWp * yieldFactor;
+  }
 };
 
 /**
  * Updates PV module information with orientation data
  * @param pvModuleInfo - PV module information
- * @param orientation - Roof orientation
+ * @param points - Array of points or measurement orientation data
  * @returns Updated PV module information
  */
-export const updatePVModuleInfoWithOrientation = (pvModuleInfo: any, orientation: string): any => {
-  // Placeholder implementation
+export const updatePVModuleInfoWithOrientation = (pvModuleInfo: any, points: any): any => {
+  // Placeholder implementation that now accepts points array
   return pvModuleInfo;
 };
 
