@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Measurement } from '@/types/measurements'; 
+import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Magnet } from 'lucide-react';
 import ExportPdfButton from './ExportPdfButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import * as THREE from 'three';
@@ -20,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/use-toast";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
@@ -72,7 +72,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
   const { toast } = useToast();
   
   // Use our centralized point snapping hook
-  const { snapEnabled } = usePointSnapping();
+  const { snapEnabled, setSnapEnabled } = usePointSnapping();
   
   useEffect(() => {
     if (!activeMode || activeMode === 'none') return;
@@ -92,11 +92,37 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
     localStorage.setItem('lastActiveMode', activeMode);
   }, [activeMode]);
   
+  const handleToggleSnap = () => {
+    const newValue = !snapEnabled;
+    setSnapEnabled(newValue);
+    toast({
+      title: newValue ? "Punktfang aktiviert" : "Punktfang deaktiviert",
+      description: newValue 
+        ? "Punkte rasten automatisch ein wenn sie sich in der Nähe vorhandener Punkte befinden" 
+        : "Punkte werden exakt an der geklickten Position platziert",
+      variant: newValue ? "default" : "destructive",
+      duration: 3000
+    });
+  };
+  
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <h2 className="text-md font-semibold">Messungen</h2>
         <div className="flex space-x-1">
+          <Toggle
+            pressed={snapEnabled}
+            onPressedChange={handleToggleSnap}
+            size="sm"
+            variant={snapEnabled ? "default" : "outline"}
+            aria-label="Punktfang ein/aus"
+            title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+            className={`h-7 text-xs ${snapEnabled ? 'bg-green-500 text-white hover:bg-green-600' : ''}`}
+          >
+            <Magnet className={`h-3.5 w-3.5 mr-1 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+            Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+          </Toggle>
+          
           {measurements.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -158,7 +184,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
           {measurements.length > 0 && (
             <div className="mt-4 space-y-2 px-2">
               <GenerateRoofPlanButton measurements={measurements} />
-              <ExportPdfButton measurements={measurements} measurementGroups={measurementGroups} />
+              <ExportPdfButton measurements={measurements} />
             </div>
           )}
         </ScrollArea>
