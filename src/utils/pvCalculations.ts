@@ -633,8 +633,8 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
       const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
       const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Increase Y offset to make modules more visible - this is KEY for visibility
-      const yOffset = 0.05; // 5cm above the roof surface for visibility
+      // IMPORTANT: Increase Y offset significantly to make modules more visible
+      const yOffset = 0.2; // 20cm above the roof surface for visibility - increased from 0.05
       
       // Create 4 corner points for this module - ensure proper winding order for face normals
       const moduleCorners: Point[] = [
@@ -656,9 +656,12 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
     }
   }
   
-  // Skip boundary and available area visualization to focus on modules only
+  // Add detailed debug logging to track module generation
+  console.log(`Generated ${modulePoints.length} PV modules with yOffset=${0.2}m`);
+  if (modulePoints.length > 0) {
+    console.log("First module corners:", modulePoints[0]);
+  }
   
-  console.log(`Generated ${modulePoints.length} PV modules`);
   return { modulePoints, gridLines };
 };
 

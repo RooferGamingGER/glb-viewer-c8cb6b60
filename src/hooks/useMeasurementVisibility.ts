@@ -91,6 +91,12 @@ export const useMeasurementVisibility = (
     
     const { measurementsRef } = threeObjects;
 
+    // Debug message to track PV modules
+    console.log("Updating measurement markers visibility. Total objects:", measurementsRef.current.children.length);
+    
+    let pvModuleCount = 0;
+    let pvModulesVisible = 0;
+    
     // Update mesh visibilities for PV areas and other measurements
     measurementsRef.current.children.forEach(mesh => {
       if (!mesh.userData || !mesh.userData.measurementId) return;
@@ -101,12 +107,23 @@ export const useMeasurementVisibility = (
         
         // Special handling for PV modules and solar areas
         if ((measurement.type === 'pvmodule' || measurement.type === 'solar') && mesh instanceof THREE.Mesh) {
+          pvModuleCount++;
+          if (mesh.visible) pvModulesVisible++;
+          
           const material = mesh.material as THREE.MeshBasicMaterial;
           if (material) {
             // Set to a bright blue with increased opacity for better visibility
             material.color.set(0x0EA5E9); // using bright blue color
-            material.opacity = 0.7;  // increasing opacity for better visibility
+            material.opacity = 0.8;  // increasing opacity from 0.4 to 0.8 for better visibility
             material.needsUpdate = true;
+            
+            // Log material properties for debugging
+            console.log(`PV Module ${mesh.name || "unnamed"} visibility:`, mesh.visible, "Material:", {
+              color: material.color.getHexString(),
+              opacity: material.opacity,
+              transparent: material.transparent,
+              side: material.side
+            });
           }
           
           // Also update any children (individual PV modules)
@@ -114,6 +131,7 @@ export const useMeasurementVisibility = (
             child.visible = measurement.visible !== false;
             if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
               child.material.opacity = 0.9;
+              child.material.color.set(0x1E88E5); // Slightly different blue
               child.material.needsUpdate = true;
             }
           });
@@ -121,14 +139,28 @@ export const useMeasurementVisibility = (
         
         // Handle standalone PV modules (not part of an area)
         if (mesh.userData.isPVModule) {
+          pvModuleCount++;
+          if (mesh.visible) pvModulesVisible++;
+          
           mesh.visible = measurement.visible !== false;
           if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshBasicMaterial) {
             mesh.material.opacity = 0.9;
+            mesh.material.color.set(0x1E88E5); // Slightly different blue
             mesh.material.needsUpdate = true;
+            
+            // Log material properties for debugging
+            console.log(`Standalone PV Module visibility:`, mesh.visible, "Material:", {
+              color: mesh.material.color.getHexString(),
+              opacity: mesh.material.opacity,
+              transparent: mesh.material.transparent
+            });
           }
         }
       }
     });
+    
+    console.log(`PV Module visibility summary: ${pvModulesVisible}/${pvModuleCount} modules visible`);
+    
   }, [measurements, threeObjects]);
 
   // Get all measurement groups for temporary hiding during screenshots
