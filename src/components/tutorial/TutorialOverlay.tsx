@@ -220,7 +220,6 @@ const TutorialOverlay: React.FC = () => {
             <li>Nutzen Sie den Punkt-Snapping Mechanismus für höchste Genauigkeit</li>
             <li>Geben Sie Ihren Messungen aussagekräftige Namen</li>
             <li>Gruppieren Sie zusammengehörige Messungen für bessere Übersicht</li>
-            <li>Speichern Sie regelmäßig Ihren Fortschritt</li>
           </ul>
           <p>
             Mit etwas Übung werden Sie in kürzester Zeit präzise Dachaufmaße erstellen können.
