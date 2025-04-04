@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
@@ -15,28 +14,19 @@ import {
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 import PVMaterialsList from './PVMaterialsList';
-import PVModuleList from './PVModuleList';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { Zap, ListTodo, PackageIcon, Loader2, Compass, Grid3X3 } from 'lucide-react';
+import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
   updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
-  selectedModuleIndex: number | null;
-  selectedMeasurementId: string | null;
-  handleSelectModule: (measurementId: string, moduleIndex: number) => void;
-  handleDeleteModule: () => void;
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
-  updateMeasurement,
-  selectedModuleIndex,
-  selectedMeasurementId,
-  handleSelectModule,
-  handleDeleteModule
+  updateMeasurement 
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const { calculatePVMaterialsForMeasurement, calculatingMaterials } = useMeasurements();
@@ -284,7 +274,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-2">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">
             <Zap className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Übersicht</span>
@@ -292,13 +282,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           <TabsTrigger value="details">
             <ListTodo className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="modules">
-            <Grid3X3 className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Module</span>
-            {selectedModuleIndex !== null && selectedMeasurementId === measurement.id && (
-              <span className="ml-1 w-2 h-2 bg-orange-500 rounded-full"></span>
-            )}
           </TabsTrigger>
           <TabsTrigger value="materials">
             <PackageIcon className="h-3.5 w-3.5 mr-1" />
@@ -429,20 +412,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 {measurement.pvModuleInfo.yieldFactor || 950} kWh/kWp
               </div>
             </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="modules" className="pt-2">
-          <PVModuleList 
-            measurement={measurement}
-            selectedModuleIndex={selectedModuleIndex}
-            handleSelectModule={handleSelectModule}
-            handleDeleteModule={handleDeleteModule}
-          />
-          
-          <div className="mt-2 pt-2 border-t text-xs text-center text-muted-foreground">
-            Klicken Sie auf ein Modul in der 3D-Ansicht, um es auszuwählen. <br/>
-            Klicken Sie dann auf "Modul löschen", um es zu entfernen.
           </div>
         </TabsContent>
         

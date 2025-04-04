@@ -31,8 +31,6 @@ export const useMeasurementState = (
   const [segmentsOpen, setSegmentsOpen] = useState<Record<string, boolean>>({});
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [moduleVisualsDetailLevel, setModuleVisualsDetailLevel] = useState<'simple' | 'detailed'>('detailed');
-  const [selectedModuleIndex, setSelectedModuleIndex] = useState<number | null>(null);
-  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
 
   // Handler for toggling segment visibility
   const toggleSegments = useCallback((id: string) => {
@@ -47,76 +45,6 @@ export const useMeasurementState = (
     setModuleVisualsDetailLevel(prev => prev === 'simple' ? 'detailed' : 'simple');
     toast.info(`PV-Modul Darstellung: ${moduleVisualsDetailLevel === 'simple' ? 'Detailliert' : 'Einfach'}`);
   }, [moduleVisualsDetailLevel]);
-
-  // Handler for selecting a PV module
-  const handleSelectModule = useCallback((measurementId: string, moduleIndex: number) => {
-    if (selectedMeasurementId === measurementId && selectedModuleIndex === moduleIndex) {
-      // Deselect if clicking on the same module
-      setSelectedModuleIndex(null);
-      setSelectedMeasurementId(null);
-      toast.info('Modul-Auswahl aufgehoben');
-    } else {
-      // Select the new module
-      setSelectedModuleIndex(moduleIndex);
-      setSelectedMeasurementId(measurementId);
-      
-      const measurement = measurements.find(m => m.id === measurementId);
-      if (measurement?.pvModuleInfo) {
-        toast.info(`Modul ${moduleIndex + 1} ausgewählt`);
-      }
-    }
-  }, [selectedModuleIndex, selectedMeasurementId, measurements]);
-
-  // Handler for deleting a selected PV module
-  const handleDeleteModule = useCallback(() => {
-    if (!selectedMeasurementId || selectedModuleIndex === null) {
-      toast.error('Kein Modul zum Löschen ausgewählt');
-      return;
-    }
-
-    const measurement = measurements.find(m => m.id === selectedMeasurementId);
-    if (!measurement || !measurement.pvModuleInfo) {
-      toast.error('Modul konnte nicht gefunden werden');
-      return;
-    }
-
-    // Get current module positions
-    const modulePositions = measurement.pvModuleInfo.modulePositions || [];
-    if (!modulePositions.length || selectedModuleIndex >= modulePositions.length) {
-      toast.error('Ungültiger Modulindex');
-      return;
-    }
-
-    // Remove the module from positions
-    const updatedModulePositions = modulePositions.filter((_, index) => index !== selectedModuleIndex);
-    
-    // Remove the module corners if they exist
-    const moduleCorners = measurement.pvModuleInfo.moduleCorners || [];
-    const updatedModuleCorners = moduleCorners.filter((_, index) => index !== selectedModuleIndex);
-
-    // Update the module count and other related values
-    const updatedPvModuleInfo = {
-      ...measurement.pvModuleInfo,
-      modulePositions: updatedModulePositions,
-      moduleCorners: updatedModuleCorners,
-      moduleCount: updatedModulePositions.length,
-      // Recalculate coverage percentage based on new module count
-      coveragePercent: updatedModulePositions.length > 0 
-        ? (updatedModulePositions.length * measurement.pvModuleInfo.moduleWidth * measurement.pvModuleInfo.moduleHeight) / 
-          (measurement.pvModuleInfo.actualArea || 1) * 100 
-        : 0
-    };
-
-    // Update the measurement
-    handlers.updateMeasurement(selectedMeasurementId, {
-      pvModuleInfo: updatedPvModuleInfo
-    });
-
-    // Reset selection
-    setSelectedModuleIndex(null);
-    setSelectedMeasurementId(null);
-    toast.success(`Modul erfolgreich entfernt. Neue Anzahl: ${updatedModulePositions.length}`);
-  }, [selectedMeasurementId, selectedModuleIndex, measurements, handlers]);
 
   // Handler for clearing all measurements with confirmation
   const handleClearMeasurements = useCallback(() => {
@@ -264,13 +192,6 @@ export const useMeasurementState = (
     handleDeletePoint,
     handleMoveMeasurementUp,
     handleMoveMeasurementDown,
-    handleUpdateModuleVisuals,
-    // New module selection and deletion handlers
-    selectedModuleIndex,
-    selectedMeasurementId,
-    handleSelectModule,
-    handleDeleteModule,
-    setSelectedModuleIndex,
-    setSelectedMeasurementId
+    handleUpdateModuleVisuals
   };
 };
