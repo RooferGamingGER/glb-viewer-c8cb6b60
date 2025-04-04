@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '@/components/ModelViewer';
@@ -41,8 +42,8 @@ const Test = () => {
       return;
     }
 
-    // Check if we can update measurements
-    if (!measurementContext.updateMeasurement) {
+    // Check if we can access measurements
+    if (!measurementContext || !measurementContext.measurements) {
       toast({
         title: "Fehler",
         description: "MeasurementContext ist nicht verfügbar.",
@@ -81,44 +82,75 @@ const Test = () => {
       }
     };
 
-    // We need to use a different approach since addMeasurement isn't available
-    // Create a measurements array with our new measurement
-    const newMeasurements = [...measurementContext.measurements, testPVMeasurement];
-    
-    // Use the setUpdateVisualState function to update the measurements
-    if (measurementContext.setUpdateVisualState) {
-      // Pass the update function to the context
-      measurementContext.setUpdateVisualState((updatedMeasurements, labelVisibility) => {
-        // Log to debug
-        console.log("Updating visual state with test PV module", testPVMeasurement);
-        return;
+    // Add the measurement using addMeasurement if available
+    if (measurementContext.addMeasurement) {
+      console.log("Adding test PV module using addMeasurement");
+      measurementContext.addMeasurement(testPVMeasurement);
+      setPvMeasurementAdded(true);
+      
+      toast({
+        title: "Test PV Module hinzugefügt",
+        description: "Ein Test-PV-Modul wurde zum Modell hinzugefügt. Prüfen Sie den Reiter 'Messungen' für Details.",
+        variant: "default",
       });
+      return;
     }
     
-    // If the context has measurements and our measurement isn't already in it
-    if (measurementContext.measurements && 
-        !measurementContext.measurements.some(m => m.id === testPVMeasurement.id)) {
+    // If addMeasurement is not available, try the alternate approach
+    if (measurementContext.setUpdateVisualState) {
+      console.log("Adding test PV module using setUpdateVisualState");
       
-      // Apply the new measurement to each existing one to trigger refresh
-      measurementContext.measurements.forEach(m => {
-        if (measurementContext.updateMeasurement) {
-          measurementContext.updateMeasurement(m.id, m);
-        }
+      // Create a new measurements array with our test measurement
+      const newMeasurements = [...measurementContext.measurements, testPVMeasurement];
+      
+      // Update the measurements array
+      if (measurementContext.updateMeasurements) {
+        measurementContext.updateMeasurements(newMeasurements);
+      }
+      
+      // Trigger visual update
+      measurementContext.setUpdateVisualState((prevMeasurements, labelVisibility) => {
+        console.log("Visual state update triggered with PV module");
       });
+      
+      setPvMeasurementAdded(true);
+      
+      toast({
+        title: "Test PV Module hinzugefügt",
+        description: "Ein Test-PV-Modul wurde zum Modell hinzugefügt. Prüfen Sie den Reiter 'Messungen' für Details.",
+        variant: "default",
+      });
+      return;
+    }
+    
+    // If none of the above methods work, try directly modifying the measurements array
+    if (Array.isArray(measurementContext.measurements)) {
+      console.log("Adding test PV module by directly modifying measurements array");
       
       // Try to use any available method to add the measurement
       if (typeof measurementContext.measurements.push === 'function') {
-        console.log("Using direct push to add measurement");
         measurementContext.measurements.push(testPVMeasurement);
+        setPvMeasurementAdded(true);
+        
+        // Force refresh if possible
+        if (measurementContext.forceRefresh) {
+          measurementContext.forceRefresh();
+        }
+        
+        toast({
+          title: "Test PV Module hinzugefügt (direkte Methode)",
+          description: "Ein Test-PV-Modul wurde zum Modell hinzugefügt. Die Anzeige wird möglicherweise erst nach einer Aktualisierung sichtbar.",
+          variant: "default",
+        });
+        return;
       }
     }
     
-    setPvMeasurementAdded(true);
-    
+    // If we got here, we couldn't add the measurement
     toast({
-      title: "Test PV Module hinzugefügt",
-      description: "Ein Test-PV-Modul wurde zum Modell hinzugefügt. Prüfen Sie den Reiter 'Messungen' für Details.",
-      variant: "default",
+      title: "Fehler beim Hinzufügen",
+      description: "Das PV-Modul konnte nicht hinzugefügt werden. Keine geeignete Methode gefunden.",
+      variant: "destructive",
     });
   };
 

@@ -623,7 +623,7 @@ export function renderMeasurements(
         labelsRef.add(label);
       }
     } 
-    else if (measurement.type === 'area' || measurement.type === 'solar') {
+    else if (measurement.type === 'area') {
       // Always recreate segment labels if the measurement is being edited
       const shouldRecreateSegmentLabels = isMeasurementBeingEdited ||
         existingSegmentLabels.length !== (measurement.segments?.length || 0) ||
@@ -640,6 +640,87 @@ export function renderMeasurements(
         isMeasurementBeingEdited,
         shouldRecreateSegmentLabels
       );
+      
+      if (!isMeasurementBeingEdited && existingLabels.length > 0) {
+        const points3D = pointsToVector3Array(measurement.points);
+        
+        // Calculate centroid for label placement
+        const centroid = calculateCentroid(points3D);
+        
+        // Create label text (without inclination for area measurements)
+        const labelText = formatMeasurementLabel(measurement.value, measurement.type);
+        
+        // Update the existing label
+        const label = existingLabels[0] as THREE.Sprite;
+        updateTextSprite(label, labelText);
+        
+        // Update position
+        label.position.copy(centroid);
+      }
+      
+      if (!shouldRecreateSegmentLabels && existingSegmentLabels.length > 0 && measurement.segments) {
+        // Get all points as THREE.Vector3
+        const points3D = pointsToVector3Array(measurement.points);
+        
+        // For each segment, find its label and update it
+        for (const segment of measurement.segments) {
+          const segmentLabel = existingSegmentLabels.find(
+            label => label.userData.segmentId === segment.id
+          ) as THREE.Sprite | undefined;
+          
+          if (segmentLabel && segment) {
+            // Find the segment's points
+            const startPointIndex = segmentLabel.userData.startPointIndex || 0;
+            const endPointIndex = segmentLabel.userData.endPointIndex || 0;
+            
+            // Make sure the indices are valid
+            if (startPointIndex < points3D.length && endPointIndex < points3D.length) {
+              const p1 = points3D[startPointIndex];
+              const p2 = points3D[endPointIndex];
+              
+              // Update label position
+              const midpoint = calculateMidpoint(p1, p2);
+              
+              // Offset midpoint slightly to avoid overlap with lines
+              midpoint.y += 0.05;
+              
+              // Entferne Neigungs-Info aus dem Segment-Label für Flächenmessungen
+              const segmentLabelText = segment.label || "";
+              
+              // Update the label text and position
+              updateTextSprite(segmentLabel, segmentLabelText);
+              segmentLabel.position.copy(midpoint);
+            }
+          }
+        }
+      }
+    }
+    else if (measurement.type === 'solar') {
+      // Always recreate segment labels if the measurement is being edited
+      const shouldRecreateSegmentLabels = isMeasurementBeingEdited ||
+        existingSegmentLabels.length !== (measurement.segments?.length || 0) ||
+        // Also recreate if the segment IDs don't match up with existing labels
+        (measurement.segments && measurement.segments.some(segment => 
+          !existingSegmentLabels.some(label => label.userData.segmentId === segment.id)
+        ));
+      
+      // First render the base solar area similar to a regular area
+      renderAreaMeasurement(
+        measurement, 
+        measurementsRef, 
+        labelsRef, 
+        segmentLabelsRef, 
+        isMeasurementBeingEdited,
+        shouldRecreateSegmentLabels
+      );
+      
+      // Then render the PV module grid if PV module information is available
+      if (measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
+        console.log(`Rendering PV module grid for measurement ${measurement.id} with ${measurement.pvModuleInfo.moduleCount} modules`);
+        renderPVModuleGrid(measurement, measurementsRef, labelsRef);
+      } else {
+        console.log(`No PV module info available for solar measurement ${measurement.id}`);
+      }
       
       if (!isMeasurementBeingEdited && existingLabels.length > 0) {
         const points3D = pointsToVector3Array(measurement.points);

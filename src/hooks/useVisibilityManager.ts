@@ -129,7 +129,7 @@ export const useVisibilityManager = (
             material.needsUpdate = true;
             
             // Raise slightly to avoid z-fighting - increase offset
-            mesh.position.y += 0.05;
+            mesh.position.y += 0.1; // Increased from 0.05 to 0.1 for better visibility
             
             console.log(`Updated PV Module ${mesh.name || "unnamed"} in useVisibilityManager:`, {
               visible: mesh.visible,
@@ -140,8 +140,8 @@ export const useVisibilityManager = (
           }
         }
         
-        // Special handling for standalone PV modules
-        if (mesh.userData.isPVModule) {
+        // Special handling for PV module grid elements
+        if (mesh.userData.isPVModule || mesh.userData.isModuleLabel) {
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
           
@@ -153,9 +153,9 @@ export const useVisibilityManager = (
             mesh.material.needsUpdate = true;
             
             // Raise slightly to avoid z-fighting - increase offset
-            mesh.position.y += 0.05;
+            mesh.position.y += 0.1; // Increased from 0.05 to 0.1 for better visibility
             
-            console.log(`Standalone PV Module updated in useVisibilityManager:`, {
+            console.log(`PV Module grid element updated in useVisibilityManager:`, {
               visible: mesh.visible,
               opacity: mesh.material.opacity,
               color: mesh.material.color.getHexString(),
