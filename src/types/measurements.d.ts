@@ -1,5 +1,3 @@
-
-
 export interface Point {
   x: number;
   y: number;
@@ -8,12 +6,27 @@ export interface Point {
 
 export interface Segment {
   id: string;
-  points: Point[];
+  points: [Point, Point];
   length: number;
   inclination?: number;
   label?: string;
-  color?: string;
-  labelPosition?: 'start' | 'middle' | 'end';
+  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
+  shared?: boolean;
+  sharedWithSegmentId?: string;
+  isOriginal?: boolean;
+}
+
+export interface Measurement {
+  id: string;
+  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar';
+  name?: string;
+  points: Point[];
+  segments?: Segment[];
+  value?: number;
+  label?: string;
+  visible?: boolean;
+  labelVisible?: boolean;
+  powerOutput?: number;
 }
 
 export interface PVModuleSpec {
@@ -25,22 +38,22 @@ export interface PVModuleSpec {
 }
 
 export interface PVMountingSystem {
-  railLength: number;      // Total length of mounting rails in meters
-  roofHookCount: number;   // Number of roof hooks needed
-  middleClampCount: number; // Number of middle clamps
-  endClampCount: number;   // Number of end clamps
-  railConnectorCount: number; // Number of connectors between rails
+  railLength: number;
+  roofHookCount: number;
+  middleClampCount: number;
+  endClampCount: number;
+  railConnectorCount: number;
 }
 
 export interface PVElectricalSystem {
-  stringCableLength: number;  // Length of DC string cable in meters
-  mainCableLength: number;    // Length of main DC cable in meters
-  acCableLength: number;      // Length of AC cable in meters
-  connectorPairCount: number; // Number of MC4 connector pairs
-  inverterCount: number;      // Number of inverters needed
-  inverterPower: number;      // Total inverter power capacity in kW
-  stringCount: number;        // Number of strings
-  modulesPerString: number;   // Number of modules per string
+  stringCableLength: number;
+  mainCableLength: number;
+  acCableLength: number;
+  connectorPairCount: number;
+  inverterCount: number;
+  inverterPower: number;
+  stringCount: number;
+  modulesPerString: number;
 }
 
 export interface PVMaterials {
@@ -65,8 +78,8 @@ export interface PVModuleInfo {
   columns?: number;
   rows?: number;
   boundingWidth?: number;
-  boundingHeight?: number;
   boundingLength?: number;
+  boundingHeight?: number;
   availableWidth?: number;
   availableLength?: number;
   startX?: number;
@@ -83,37 +96,8 @@ export interface PVModuleInfo {
   edgeInfoMessage?: string;
   pvModuleSpec?: PVModuleSpec;
   pvMaterials?: PVMaterials;
-  roofAzimuth?: number;
-  roofDirection?: string;
-  roofInclination?: number;
-  yieldFactor?: number;
-  // New positioning properties
-  moduleHeightOffset?: number; // Height offset from roof surface
-  moduleRotation?: number;     // Rotation in degrees
-  modulePositionX?: number;    // X-axis position offset
-  modulePositionZ?: number;    // Z-axis position offset
+  roofAzimuth?: number;       // Azimuth angle in degrees (0=North, 90=East, 180=South, 270=West)
+  roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
+  roofInclination?: number;   // Roof inclination in degrees
+  yieldFactor?: number;       // Yield factor in kWh/kWp per year
 }
-
-export interface Measurement {
-  id: string;
-  type: string;
-  label: string;
-  points: Point[];
-  value: number;
-  unit: string;
-  segments?: Segment[];
-  isVisible: boolean;
-  labelVisible: boolean;
-  color: string;
-  isClosed?: boolean;
-  area?: number;
-  height?: number;
-  length?: number;
-  width?: number;
-  category?: string;
-  description?: string;
-  orderIndex?: number;
-  powerOutput?: number;
-  pvModuleInfo?: PVModuleInfo;
-}
-

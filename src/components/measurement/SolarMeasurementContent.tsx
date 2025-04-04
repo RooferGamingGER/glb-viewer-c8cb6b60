@@ -15,10 +15,9 @@ import {
 import PVModuleSelect from './PVModuleSelect';
 import PVMaterialsList from './PVMaterialsList';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { Zap, ListTodo, PackageIcon, Loader2, Compass, Settings } from 'lucide-react';
+import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
-import PVModulePositioningControls from '../pvplanning/PVModulePositioningControls';
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
@@ -50,8 +49,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           measurement.points
         );
         
-        updatedPVInfo.moduleHeightOffset = 0.05;
-        
         updateMeasurement(measurement.id, {
           pvModuleInfo: updatedPVInfo
         });
@@ -70,18 +67,12 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
         `${measurement.pvModuleInfo.pvModuleSpec.name} (${measurement.pvModuleInfo.pvModuleSpec.power}W)` : 'None',
       orientation: measurement.pvModuleInfo?.roofDirection || 'Unknown',
       inclination: measurement.pvModuleInfo?.roofInclination || 'Unknown',
-      heightOffset: measurement.pvModuleInfo?.moduleHeightOffset || 'Default',
-      rotation: measurement.pvModuleInfo?.moduleRotation || 'Default',
-      position: measurement.pvModuleInfo?.modulePositionX !== undefined ? 
-        `X:${measurement.pvModuleInfo.modulePositionX}, Z:${measurement.pvModuleInfo.modulePositionZ}` : 'Default'
     });
   }, [measurement]);
   
   useEffect(() => {
     if (measurement.type === 'solar' && !measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
       const pvModuleInfo = calculatePVModulePlacement(measurement.points);
-      pvModuleInfo.moduleHeightOffset = 0.05;
-      
       if (pvModuleInfo.moduleCount > 0) {
         updateMeasurement(measurement.id, { pvModuleInfo });
         toast.success(`PV-Module automatisch berechnet: ${pvModuleInfo.moduleCount} Module`);
@@ -97,21 +88,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     const updatedPVInfo = {
       ...measurement.pvModuleInfo,
       pvModuleSpec: moduleSpec
-    };
-    
-    updateMeasurement(measurement.id, {
-      pvModuleInfo: updatedPVInfo
-    });
-  };
-  
-  const handlePositioningUpdate = (updates: Partial<any>) => {
-    if (!measurement.pvModuleInfo) return;
-    
-    console.log("Positioning updated:", updates);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      ...updates
     };
     
     updateMeasurement(measurement.id, {
@@ -246,7 +222,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           className="w-full"
           onClick={() => {
             const pvModuleInfo = calculatePVModulePlacement(measurement.points);
-            pvModuleInfo.moduleHeightOffset = 0.05;
             updateMeasurement(measurement.id, { pvModuleInfo });
             toast.success(`PV-Module berechnet: ${pvModuleInfo.moduleCount} Module`);
           }}
@@ -299,7 +274,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-2">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">
             <Zap className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Übersicht</span>
@@ -307,10 +282,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           <TabsTrigger value="details">
             <ListTodo className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="positioning">
-            <Settings className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Position</span>
           </TabsTrigger>
           <TabsTrigger value="materials">
             <PackageIcon className="h-3.5 w-3.5 mr-1" />
@@ -442,13 +413,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               </div>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="positioning" className="pt-2">
-          <PVModulePositioningControls
-            pvModuleInfo={measurement.pvModuleInfo}
-            onUpdate={handlePositioningUpdate}
-          />
         </TabsContent>
         
         <TabsContent value="materials" className="pt-2">
