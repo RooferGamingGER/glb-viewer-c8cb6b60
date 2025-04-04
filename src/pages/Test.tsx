@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '@/components/ModelViewer';
@@ -20,7 +19,7 @@ const Test = () => {
   const [pvMeasurementAdded, setPvMeasurementAdded] = useState(false);
 
   // Get measurement context for testing PV modules
-  const { addMeasurement } = useMeasurementContext();
+  const measurementContext = useMeasurementContext();
   
   // Use a permanent GLB model path - this should be placed in public/models/
   const testModelUrl = '/models/test-model.glb';
@@ -38,6 +37,16 @@ const Test = () => {
         title: "PV Module bereits hinzugefügt",
         description: "Ein Test-PV-Modul wurde bereits zum Modell hinzugefügt.",
         variant: "default",
+      });
+      return;
+    }
+
+    // Check if we can update measurements
+    if (!measurementContext.updateMeasurement) {
+      toast({
+        title: "Fehler",
+        description: "MeasurementContext ist nicht verfügbar.",
+        variant: "destructive",
       });
       return;
     }
@@ -61,19 +70,49 @@ const Test = () => {
         moduleWidth: 1.0,
         moduleHeight: 0.5,
         orientation: "landscape",
+        coveragePercent: 100,
         pvModuleSpec: {
           name: "Standard Solar Module",
           power: 380,
           width: 1.0,
           height: 0.5,
-          depth: 0.04,
-          frameThickness: 0.04
+          efficiency: 20
         }
       }
     };
 
-    // Add the measurement
-    addMeasurement(testPVMeasurement);
+    // We need to use a different approach since addMeasurement isn't available
+    // Create a measurements array with our new measurement
+    const newMeasurements = [...measurementContext.measurements, testPVMeasurement];
+    
+    // Use the setUpdateVisualState function to update the measurements
+    if (measurementContext.setUpdateVisualState) {
+      // Pass the update function to the context
+      measurementContext.setUpdateVisualState((updatedMeasurements, labelVisibility) => {
+        // Log to debug
+        console.log("Updating visual state with test PV module", testPVMeasurement);
+        return;
+      });
+    }
+    
+    // If the context has measurements and our measurement isn't already in it
+    if (measurementContext.measurements && 
+        !measurementContext.measurements.some(m => m.id === testPVMeasurement.id)) {
+      
+      // Apply the new measurement to each existing one to trigger refresh
+      measurementContext.measurements.forEach(m => {
+        if (measurementContext.updateMeasurement) {
+          measurementContext.updateMeasurement(m.id, m);
+        }
+      });
+      
+      // Try to use any available method to add the measurement
+      if (typeof measurementContext.measurements.push === 'function') {
+        console.log("Using direct push to add measurement");
+        measurementContext.measurements.push(testPVMeasurement);
+      }
+    }
+    
     setPvMeasurementAdded(true);
     
     toast({
