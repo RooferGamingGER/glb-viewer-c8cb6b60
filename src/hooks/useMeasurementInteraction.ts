@@ -120,8 +120,41 @@ export const useMeasurementInteraction = (
       clearAddPointIndicators();
       clearSnapIndicator();
       setMovingPointInfo(null);
+      
+      // Ensure all PV module visualizations are cleared when disabling the tool
+      if (refs.measurementsRef.current) {
+        refs.measurementsRef.current.children.forEach(child => {
+          if (child.userData && child.userData.isPVModule) {
+            refs.measurementsRef.current?.remove(child);
+          }
+        });
+      }
     }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
+  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo, refs]);
+
+  // Special handling for PV module visibility
+  useEffect(() => {
+    if (enabled && refs.measurementsRef.current) {
+      // Ensure PV modules are visible when the measurement tool is enabled
+      const pvModules = refs.measurementsRef.current.children.filter(
+        child => child.userData && (child.userData.isPVModule || child.userData.measurementType === 'pvmodule')
+      );
+      
+      pvModules.forEach(module => {
+        // Find the corresponding measurement to check its visibility
+        const measurement = measurements.find(m => m.id === module.userData.measurementId);
+        if (measurement) {
+          module.visible = measurement.visible !== false;
+          
+          // Increase opacity for better visibility
+          if (module instanceof THREE.Mesh && module.material instanceof THREE.MeshBasicMaterial) {
+            module.material.opacity = 0.7;
+            module.material.needsUpdate = true;
+          }
+        }
+      });
+    }
+  }, [enabled, measurements, refs.measurementsRef]);
 
   return {
     movingPointInfo,

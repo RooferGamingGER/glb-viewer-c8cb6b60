@@ -615,6 +615,17 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
   const startX = pvInfo.startX || (pvInfo.minX + pvInfo.edgeDistance!);
   const startZ = pvInfo.startZ || (pvInfo.minZ + pvInfo.edgeDistance!);
   
+  console.log("PV Module Grid Generation:", {
+    moduleWidth,
+    moduleHeight,
+    startX,
+    startZ,
+    rows: pvInfo.rows,
+    columns: pvInfo.columns,
+    orientation: pvInfo.orientation,
+    baseY
+  });
+  
   // Generate module placement grid
   for (let row = 0; row < pvInfo.rows!; row++) {
     for (let col = 0; col < pvInfo.columns!; col++) {
@@ -622,17 +633,21 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
       const x = startX + col * (moduleWidth + pvInfo.moduleSpacing!);
       const z = startZ + row * (moduleHeight + pvInfo.moduleSpacing!);
       
-      // Create 4 corner points for this module
+      // Increase Y offset to make modules more visible - this is KEY for visibility
+      const yOffset = 0.05; // 5cm above the roof surface for visibility
+      
+      // Create 4 corner points for this module - ensure proper winding order for face normals
       const moduleCorners: Point[] = [
-        { x, y: baseY + 0.02, z },  // Top-left
-        { x: x + moduleWidth, y: baseY + 0.02, z },  // Top-right
-        { x: x + moduleWidth, y: baseY + 0.02, z: z + moduleHeight },  // Bottom-right
-        { x, y: baseY + 0.02, z: z + moduleHeight }  // Bottom-left
+        { x, y: baseY + yOffset, z },  // Top-left
+        { x: x + moduleWidth, y: baseY + yOffset, z },  // Top-right
+        { x: x + moduleWidth, y: baseY + yOffset, z: z + moduleHeight },  // Bottom-right
+        { x, y: baseY + yOffset, z: z + moduleHeight }  // Bottom-left
       ];
       
       modulePoints.push(moduleCorners);
       
-      // Add grid lines for this module
+      // Add grid lines for outline visualization of each module
+      // This creates outline borders that will make the modules more visible
       for (let i = 0; i < 4; i++) {
         const from = moduleCorners[i];
         const to = moduleCorners[(i + 1) % 4];
@@ -641,33 +656,9 @@ export const generatePVModuleGrid = (pvInfo: PVModuleInfo, baseY: number): {
     }
   }
   
-  // Add boundary lines showing the edge distance
-  const boundaryPoints = [
-    { x: pvInfo.minX, y: baseY + 0.01, z: pvInfo.minZ },
-    { x: pvInfo.maxX, y: baseY + 0.01, z: pvInfo.minZ },
-    { x: pvInfo.maxX, y: baseY + 0.01, z: pvInfo.maxZ },
-    { x: pvInfo.minX, y: baseY + 0.01, z: pvInfo.maxZ }
-  ];
+  // Skip boundary and available area visualization to focus on modules only
   
-  // Add available area boundary lines inside edge distance
-  const availableAreaPoints = [
-    { x: startX, y: baseY + 0.01, z: startZ },
-    { x: startX + pvInfo.availableWidth, y: baseY + 0.01, z: startZ },
-    { x: startX + pvInfo.availableWidth, y: baseY + 0.01, z: startZ + pvInfo.availableLength },
-    { x: startX, y: baseY + 0.01, z: startZ + pvInfo.availableLength }
-  ];
-  
-  // Add boundary lines
-  for (let i = 0; i < 4; i++) {
-    const from = boundaryPoints[i];
-    const to = boundaryPoints[(i + 1) % 4];
-    gridLines.push({ from, to });
-    
-    const availFrom = availableAreaPoints[i];
-    const availTo = availableAreaPoints[(i + 1) % 4];
-    gridLines.push({ from: availFrom, to: availTo });
-  }
-  
+  console.log(`Generated ${modulePoints.length} PV modules`);
   return { modulePoints, gridLines };
 };
 
