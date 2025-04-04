@@ -11,16 +11,12 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Measurement } from '@/types/measurements';
 import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { toast } from '@/components/ui/use-toast';
-import SolarPlanningButton from '@/components/measurement/SolarPlanningButton';
 
 const Test = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isPortrait } = useScreenOrientation();
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  // Use measurement context for PV planning functionality
-  const { activeMode, toggleMeasurementTool } = useMeasurementContext();
   
   // Use a permanent GLB model path - this should be placed in public/models/
   const testModelUrl = '/models/test-model.glb';
@@ -64,16 +60,6 @@ const Test = () => {
         </div>
         
         <div className="flex gap-2">
-          {/* Add Solar Planning Button */}
-          {!isMobile && (
-            <div className="mr-2">
-              <SolarPlanningButton 
-                activeMode={activeMode} 
-                toggleMeasurementTool={toggleMeasurementTool}
-              />
-            </div>
-          )}
-          
           <Button
             variant="default"
             size="sm"

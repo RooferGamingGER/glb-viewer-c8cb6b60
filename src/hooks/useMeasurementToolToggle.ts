@@ -41,7 +41,7 @@ export const useMeasurementToolToggle = (
 
   // Check if the active mode is an area-type mode
   const isAreaMode = useCallback(() => {
-    return ['area', 'solar', 'skylight', 'chimney', 'pvmodule', 'pvplanning'].includes(activeMode);
+    return ['area', 'solar', 'skylight', 'chimney', 'pvmodule'].includes(activeMode);
   }, [activeMode]);
 
   // Check if the active mode is a point-type mode
