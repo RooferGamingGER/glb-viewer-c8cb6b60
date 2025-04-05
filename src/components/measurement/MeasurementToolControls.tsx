@@ -208,7 +208,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = memo(({
                       className={cn(
                         activeMode === 'pvplanning' ? 'bg-primary text-primary-foreground' : ''
                       )}
-                      onClick={() => toggleMeasurementTool('pvplanning')}
+                      onClick={() => toggleMeasurementTool('pvplanning' as MeasurementMode)}
                       disabled={isInEditMode}
                     >
                       <Grid3X3 className="h-4 w-4 mr-1" /> PV-Module

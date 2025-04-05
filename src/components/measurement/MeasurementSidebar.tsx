@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Measurement } from '@/types/measurements'; 
+import { Measurement, MeasurementMode } from '@/types/measurements'; 
 import {
   Sidebar,
   SidebarContent,
@@ -42,7 +42,7 @@ interface MeasurementSidebarProps {
   handleClearMeasurements?: () => void;
   toggleAllLabelsVisibility?: () => void;
   allLabelsVisible?: boolean;
-  activeMode?: string;
+  activeMode?: MeasurementMode;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
 }
@@ -75,8 +75,10 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
 
   // Filter measurements based on search term
   const filteredMeasurements = measurements.filter(measurement => 
-    measurement.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    measurement.type.toLowerCase().includes(searchTerm.toLowerCase())
+    (measurement.name ? measurement.name.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+    measurement.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    measurement.label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    measurement.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Group measurements by type
@@ -164,7 +166,7 @@ const MeasurementSidebar: React.FC<MeasurementSidebarProps> = ({
                                   <path d="m14 10 2 2-2 2" />
                                 </svg>
                               )}
-                              <span>{measurement.name || `Messung ${measurement.id.slice(0, 5)}`}</span>
+                              <span>{measurement.name || measurement.label || `Messung ${measurement.id.slice(0, 5)}`}</span>
                             </div>
 
                             <div className="flex items-center space-x-1">
