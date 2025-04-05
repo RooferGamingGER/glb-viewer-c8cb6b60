@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Ruler, 
@@ -40,7 +41,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   measurements
 }) => {
   // Use the centralized point snapping context
-  const { snapEnabled, setSnapEnabled } = usePointSnapping();
+  const { snapEnabled, toggleSnapEnabled } = usePointSnapping();
   
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
@@ -62,11 +63,10 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   };
   
   const handleToggleSnap = () => {
-    const newValue = !snapEnabled;
-    setSnapEnabled(newValue);
-    toast.info(newValue 
-      ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
-      : "Punktfang deaktiviert: Punkte werden exakt platziert"
+    toggleSnapEnabled();
+    toast.info(snapEnabled 
+      ? "Punktfang deaktiviert: Punkte werden exakt platziert" 
+      : "Punktfang aktiviert: Punkte rasten automatisch ein"
     );
   };
   

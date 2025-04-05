@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -76,7 +75,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   handleMoveMeasurementUp,
   handleMoveMeasurementDown
 }) => {
-  const { snapEnabled, setSnapEnabled } = usePointSnapping();
+  const { snapEnabled, toggleSnapEnabled } = usePointSnapping();
   const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
   
   // Refs for scroll sections
@@ -92,11 +91,10 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const einbautenCount = measurements.filter(m => ['vent', 'hook', 'other'].includes(m.type)).length;
   
   const handleToggleSnap = () => {
-    const newValue = !snapEnabled;
-    setSnapEnabled(newValue);
-    toast.info(newValue 
-      ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
-      : "Punktfang deaktiviert: Punkte werden exakt platziert"
+    toggleSnapEnabled();
+    toast.info(snapEnabled 
+      ? "Punktfang deaktiviert: Punkte werden exakt platziert" 
+      : "Punktfang aktiviert: Punkte rasten automatisch ein"
     );
   };
 

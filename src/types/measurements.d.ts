@@ -100,12 +100,12 @@ export interface PVModuleInfo {
   edgeInfoMessage?: string;
   pvModuleSpec?: PVModuleSpec;
   pvMaterials?: PVMaterials;
-  roofAzimuth?: number;       // Azimuth angle in degrees (0=North, 90=East, 180=South, 270=West)
-  roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
-  roofInclination?: number;   // Roof inclination in degrees
-  yieldFactor?: number;       // Yield factor in kWh/kWp per year
-  points?: Point[];           // Store the original points used for the solar area calculation
-  rotation?: number;          // Rotation angle in degrees
+  roofAzimuth?: number;
+  roofDirection?: string;
+  roofInclination?: number;
+  yieldFactor?: number;
+  points?: Point[];
+  rotation?: number;
 }
 
 export type MeasurementMode = 

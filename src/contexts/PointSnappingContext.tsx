@@ -5,6 +5,7 @@ import { Point } from '@/types/measurements';
 
 interface PointSnappingContextType {
   snapEnabled: boolean;
+  setSnapEnabled: (enabled: boolean) => void;
   toggleSnapEnabled: () => void;
   isSnapping: boolean;
   snapTarget: Point | null;
@@ -15,6 +16,7 @@ interface PointSnappingContextType {
 
 const defaultContext: PointSnappingContextType = {
   snapEnabled: true,
+  setSnapEnabled: () => {},
   toggleSnapEnabled: () => {},
   isSnapping: false,
   snapTarget: null,
@@ -77,6 +79,7 @@ export const PointSnappingProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const value = {
     snapEnabled,
+    setSnapEnabled,
     toggleSnapEnabled,
     isSnapping,
     snapTarget,
