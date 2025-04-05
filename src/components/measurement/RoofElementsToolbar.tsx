@@ -90,7 +90,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
-                  <SidebarMenuItem>
+                  <SidebarMenuItem className="col-span-2">
                     <SidebarMenuButton
                       isActive={activeMode === 'solar'}
                       onClick={() => selectTool('solar')}
@@ -118,7 +118,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
               </div>
               
               <SidebarMenu>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-3 gap-1">
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       isActive={activeMode === 'vent'}
@@ -139,7 +139,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                       disabled={!!editMeasurementId}
                     >
                       <Anchor className="h-4 w-4" />
-                      <span className="text-xs">Dachhaken</span>
+                      <span className="text-xs">Haken</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
@@ -156,10 +156,6 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                   </SidebarMenuItem>
                 </div>
               </SidebarMenu>
-              
-              <div className="text-xs text-muted-foreground mt-3">
-                <strong>Tipp:</strong> Verwenden Sie die Markierungswerkzeuge, um alle Durchdringungen einfach zu markieren und zu zählen.
-              </div>
             </SidebarGroupContent>
           </AccordionContent>
         </AccordionItem>

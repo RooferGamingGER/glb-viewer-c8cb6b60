@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Ruler, 
@@ -80,38 +81,40 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
           <AccordionContent>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'length'}
-                    onClick={() => selectTool('length')}
-                    tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
-                  >
-                    <Ruler />
-                    <span>Länge</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'height'}
-                    onClick={() => selectTool('height')}
-                    tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
-                  >
-                    <ArrowUpDown />
-                    <span>Höhe</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'area'}
-                    onClick={() => selectTool('area')}
-                    tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
-                  >
-                    <Square />
-                    <span>Fläche</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <div className="grid grid-cols-3 gap-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'length'}
+                      onClick={() => selectTool('length')}
+                      tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
+                    >
+                      <Ruler />
+                      <span className="text-xs">Länge</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'height'}
+                      onClick={() => selectTool('height')}
+                      tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
+                    >
+                      <ArrowUpDown />
+                      <span className="text-xs">Höhe</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'area'}
+                      onClick={() => selectTool('area')}
+                      tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                    >
+                      <Square />
+                      <span className="text-xs">Fläche</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </div>
               </SidebarMenu>
               
               <div className="flex flex-col gap-2 mt-4">

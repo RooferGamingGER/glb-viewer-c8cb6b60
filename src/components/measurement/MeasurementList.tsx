@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface MeasurementListProps {
   measurements: Measurement[];
@@ -77,8 +77,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
     if (items.length === 0 && !showEmpty) return null;
     
     return (
-      <div className="mb-4">
-        <h3 className="text-sm font-medium mb-2 flex justify-between">
+      <div className="mb-3">
+        <h3 className="text-sm font-medium mb-1 flex justify-between">
           <span>{title}</span>
           <span className="text-muted-foreground">({items.length})</span>
         </h3>
@@ -104,7 +104,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
             />
           ))
         ) : (
-          <div className="text-sm text-muted-foreground py-2 text-center">
+          <div className="text-sm text-muted-foreground py-1 text-center">
             Keine {title} vorhanden
           </div>
         )}
@@ -147,33 +147,39 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   // Default rendering with all categories
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-      {/* Dach - Standard measurements */}
-      {renderMeasurementGroup("Dach", dachMeasurements, true)}
-      
-      {/* Separator if needed */}
-      {dachMeasurements.length > 0 && (solarMeasurements.length > 0 || dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
-        <Separator className="my-3" />
-      )}
-      
-      {/* Solar - Solar planning */}
-      {renderMeasurementGroup("Solar", solarMeasurements)}
-      
-      {/* Separator if needed */}
-      {solarMeasurements.length > 0 && (dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
-        <Separator className="my-3" />
-      )}
-      
-      {/* Dachelemente - Roof elements */}
-      {renderMeasurementGroup("Dachelemente", dachelementeMeasurements)}
-      
-      {/* Separator if needed */}
-      {dachelementeMeasurements.length > 0 && einbautenMeasurements.length > 0 && (
-        <Separator className="my-3" />
-      )}
-      
-      {/* Einbauten - Installations */}
-      {renderMeasurementGroup("Einbauten", einbautenMeasurements)}
-      
+      <Tabs defaultValue="dach" className="w-full">
+        <TabsList className="w-full grid grid-cols-4 h-8 mb-2">
+          <TabsTrigger value="dach" className="text-xs py-1 px-0">
+            Dach ({dachMeasurements.length})
+          </TabsTrigger>
+          <TabsTrigger value="solar" className="text-xs py-1 px-0">
+            Solar ({solarMeasurements.length})
+          </TabsTrigger>
+          <TabsTrigger value="dachelemente" className="text-xs py-1 px-0">
+            Elemente ({dachelementeMeasurements.length})
+          </TabsTrigger>
+          <TabsTrigger value="einbauten" className="text-xs py-1 px-0">
+            Einbau ({einbautenMeasurements.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dach" className="m-0">
+          {renderMeasurementGroup("Dach", dachMeasurements, true)}
+        </TabsContent>
+        
+        <TabsContent value="solar" className="m-0">
+          {renderMeasurementGroup("Solar", solarMeasurements, true)}
+        </TabsContent>
+        
+        <TabsContent value="dachelemente" className="m-0">
+          {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
+        </TabsContent>
+        
+        <TabsContent value="einbauten" className="m-0">
+          {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
+        </TabsContent>
+      </Tabs>
+
       {/* Other measurements not categorized (if any) */}
       {otherMeasurements.length > 0 && (
         <>
