@@ -77,7 +77,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   
   return (
     <SidebarGroup className="mt-0">
-      <Accordion type="multiple" collapsible defaultValue={["measurement-tools"]}>
+      <Accordion type="multiple" defaultValue={["measurement-tools"]}>
         <AccordionItem value="measurement-tools" className="border-0">
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Messwerkzeuge</SidebarGroupLabel>
