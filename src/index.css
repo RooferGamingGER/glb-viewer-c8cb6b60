@@ -1,62 +1,350 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import './styles/glassmorphism.css';
-
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 222.2 84% 4.9%;
+
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 252 59% 48%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --radius: 0.75rem;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+    
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 222.2 84% 4.9%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-background: var(--background);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-transition: 0.3s ease-in-out;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 252 59% 48%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    
+    --sidebar: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 212.7 26.8% 83.9%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-background: var(--background);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-transition: 0.3s ease-in-out;
+  }
+
+  @media (max-width: 768px) {
+    button, 
+    [role="button"],
+    a,
+    input,
+    select,
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+@layer components {
+  .glass-panel {
+    @apply bg-background/70 backdrop-blur-sm border border-border/40 rounded-lg shadow-sm transition-all;
   }
-  body {
-    @apply bg-background text-foreground;
+  
+  .glass-button {
+    @apply bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90;
   }
+  
+  .touch-friendly-control {
+    @apply p-3 min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  .mobile-ui-element {
+    @apply transition-all duration-200 active:scale-95;
+  }
+  
+  .responsive-container {
+    @apply w-full px-2 md:px-4 lg:px-6 max-w-7xl mx-auto;
+  }
+  
+  .sidebar-enter {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  
+  .sidebar-enter-active {
+    transform: translateX(0);
+    opacity: 1;
+    transition: transform var(--sidebar-transition), opacity var(--sidebar-transition);
+  }
+  
+  .sidebar-exit {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  
+  .sidebar-exit-active {
+    transform: translateX(100%);
+    opacity: 0;
+    transition: transform var(--sidebar-transition), opacity var(--sidebar-transition);
+  }
+  
+  .file-drop-area {
+    @apply transition-all duration-300;
+  }
+  
+  .file-drop-area:hover {
+    @apply border-primary/50 bg-background/90 shadow-md;
+  }
+  
+  .drag-active {
+    @apply border-primary bg-primary/5 scale-[1.01] shadow-md;
+  }
+  
+  .measurement-sidebar {
+    @apply h-full flex flex-col;
+    min-height: 0;
+  }
+  
+  .measurement-content {
+    @apply flex-1 min-h-0 overflow-hidden;
+  }
+  
+  .measurement-notification {
+    @apply border-t border-border/30 overflow-visible;
+    max-height: 60vh;
+  }
+  
+  .instruction-text {
+    @apply whitespace-normal break-words overflow-visible;
+    word-break: break-word;
+  }
+  
+  .instruction-icon {
+    @apply flex-shrink-0 mt-0.5;
+  }
+  
+  .pdf-export-label {
+    font-weight: bold !important;
+    font-size: 14pt !important;
+    text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white;
+    color: black !important;
+  }
+  
+  .roof-plan-container {
+    page-break-before: always;
+    page-break-after: always;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .roof-plan-title {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+  
+  .roof-plan-image {
+    flex: 1;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    min-height: 0;
+    max-height: 100%;
+  }
+  
+  .export-measurement-text {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    background-color: rgba(255, 255, 255, 0.7) !important;
+    padding: 2px 4px !important;
+    border-radius: 2px !important;
+  }
+  
+  .pdf-section {
+    page-break-inside: avoid;
+  }
+  
+  .pdf-page-break {
+    page-break-before: always;
+  }
+  
+  .pdf-no-break {
+    page-break-inside: avoid;
+  }
+  
+  .pdf-table {
+    page-break-inside: avoid;
+  }
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.button-hover {
+  @apply transition-all duration-300;
+}
+
+.button-hover:hover:not(:disabled) {
+  @apply shadow-md transform -translate-y-0.5;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+@media (max-width: 768px) {
+  .glass-panel {
+    @apply backdrop-blur-xs;
+  }
+  
+  .modal-content {
+    @apply p-3 max-w-[90vw] max-h-[80vh];
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1400px;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 1024px) {
+  .touch-friendly-control {
+    @apply p-4 min-h-[50px] min-w-[50px];
+  }
+  
+  .tablet-sidebar {
+    @apply w-80;
+  }
+  
+  .tablet-button {
+    @apply px-4 py-3 text-base;
+  }
+}
+
+.touch-friendly {
+  @apply touch-action-manipulation;
+}
+
+.touch-friendly button,
+.touch-friendly [role="button"],
+.touch-friendly a.clickable {
+  @apply p-3 min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+
+.touch-friendly input,
+.touch-friendly select,
+.touch-friendly textarea {
+  @apply min-h-[44px];
+}
+
+.touch-action-manipulation {
+  touch-action: manipulation;
 }

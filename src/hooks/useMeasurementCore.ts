@@ -740,7 +740,6 @@ export const useMeasurementCore = () => {
         'skylight': 4,
         'solar': 4,
         'pvmodule': 4,
-        'pvplanning': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,
@@ -752,8 +751,7 @@ export const useMeasurementCore = () => {
         'length': 2,
         'height': 2,
         'area': 3,
-        'none': 0,
-        'line': 2
+        'none': 0
       };
       
       if (points.length >= (requiredPoints[activeMode] || 0)) {

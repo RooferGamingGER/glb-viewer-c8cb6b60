@@ -25,7 +25,6 @@ import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
-import EnhancedMeasurementSidebar from './measurement/EnhancedMeasurementSidebar';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -370,40 +369,38 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full flex flex-col">
         <div 
-          className={`absolute top-0 right-0 border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          className={`absolute top-0 right-0 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
           style={{ 
             width: '20rem', 
             maxHeight: 'calc(100vh - 2.75rem)', // Ensure it doesn't overlap with footer
             bottom: '2.75rem' // Add space above footer
           }}
         >
-          {/* Enhanced Measurement Sidebar */}
-          <EnhancedMeasurementSidebar 
-            activeMode={activeMode}
-            toggleMeasurementTool={toggleMeasurementTool}
-            editMeasurementId={editMeasurementId}
-            measurements={measurements}
-            showTable={showTable}
-            toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-            toggleLabelVisibility={handleToggleLabelVisibility}
-            handleStartPointEdit={handleStartPointEdit}
-            handleDeleteMeasurement={handleDeleteMeasurement}
-            handleDeletePoint={handleDeletePoint}
-            updateMeasurement={updateMeasurement}
-            segmentsOpen={segmentsOpen}
-            toggleSegments={toggleSegments}
-            onEditSegment={setEditingSegmentId}
-            movingPointInfo={movingPointInfo}
-            handleMoveMeasurementUp={handleMoveMeasurementUp}
-            handleMoveMeasurementDown={handleMoveMeasurementDown}
-            handleClearMeasurements={handleClearMeasurements}
-            toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
-            allLabelsVisible={allLabelsVisible}
-          />
+          {/* Fixed Header - Tools Section */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <MeasurementToolControls 
+              activeMode={activeMode}
+              toggleMeasurementTool={toggleMeasurementTool}
+              editMeasurementId={editMeasurementId}
+              measurements={measurements}
+              showTable={showTable}
+              setShowTable={setShowTable}
+              toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+              toggleLabelVisibility={handleToggleLabelVisibility}
+              handleStartPointEdit={handleStartPointEdit}
+              handleDeleteMeasurement={handleDeleteMeasurement}
+              handleDeletePoint={handleDeletePoint}
+              updateMeasurement={updateMeasurement}
+              segmentsOpen={segmentsOpen}
+              toggleSegments={toggleSegments}
+              onEditSegment={setEditingSegmentId}
+              movingPointInfo={movingPointInfo}
+              handleMoveMeasurementUp={handleMoveMeasurementUp}
+              handleMoveMeasurementDown={handleMoveMeasurementDown}
+            />
             
-          {/* Only render MeasurementControls for standard measurements */}
-          {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
-            <div className="glass-panel p-3">
+            {/* Only render MeasurementControls for standard measurements */}
+            {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
               <MeasurementControls
                 activeMode={activeMode}
                 currentPoints={currentPoints}
@@ -411,12 +408,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 handleUndoLastPoint={handleUndoLastPoint}
                 clearCurrentPoints={clearCurrentPoints}
               />
-            </div>
-          )}
-          
-          {/* Only render RoofElementControls for roof elements */}
-          {isRoofElementMode && (
-            <div className="glass-panel p-3">
+            )}
+            
+            {/* Only render RoofElementControls for roof elements */}
+            {isRoofElementMode && (
               <RoofElementControls
                 activeMode={activeMode}
                 currentPoints={currentPoints}
@@ -424,23 +419,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 handleUndoLastPoint={handleUndoLastPoint}
                 clearCurrentPoints={clearCurrentPoints}
               />
-            </div>
-          )}
-          
-          {(editMeasurementId || editingSegmentId || movingPointInfo) && (
-            <div className="glass-panel p-3">
-              <EditingAlert 
-                editMeasurementId={editMeasurementId}
-                editingSegmentId={editingSegmentId}
-                movingPointInfo={movingPointInfo}
-                handleCancelEditing={handleCancelEditingWithCleanup}
-                editingAreaMeasurement={editMeasurementId ? 
-                  measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
-                  measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
-                  : false}
-              />
-            </div>
-          )}
+            )}
+            
+            {(editMeasurementId || editingSegmentId || movingPointInfo) && (
+              <div className="p-3 pb-0">
+                <EditingAlert 
+                  editMeasurementId={editMeasurementId}
+                  editingSegmentId={editingSegmentId}
+                  movingPointInfo={movingPointInfo}
+                  handleCancelEditing={handleCancelEditingWithCleanup}
+                  editingAreaMeasurement={editMeasurementId ? 
+                    measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
+                    measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
+                    : false}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
