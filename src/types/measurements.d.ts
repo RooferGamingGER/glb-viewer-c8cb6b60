@@ -19,7 +19,7 @@ export interface Segment {
 
 export interface Measurement {
   id: string;
-  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar';
+  type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar' | 'pvplanning';
   name?: string;
   points: Point[];
   segments?: Segment[];
@@ -28,6 +28,7 @@ export interface Measurement {
   visible?: boolean;
   labelVisible?: boolean;
   powerOutput?: number;
+  pvPositions?: Point[];
 }
 
 export interface PVModuleSpec {
@@ -72,6 +73,8 @@ export interface PVModuleInfo {
   moduleWidth: number;
   moduleHeight: number;
   moduleCount: number;
+  width: number;
+  height: number;
   edgeDistance?: number;
   moduleSpacing?: number;
   coveragePercent: number;
@@ -102,6 +105,7 @@ export interface PVModuleInfo {
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
+  rotation?: number;          // Rotation angle in degrees
 }
 
 export type MeasurementMode = 

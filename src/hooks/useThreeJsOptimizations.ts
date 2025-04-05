@@ -59,7 +59,7 @@ export const useThreeJsOptimizations = (
     
     // Filter only visible PV-related measurements
     const pvMeasurements = measurements.filter(m => 
-      (m.type === 'pvmodule' || m.type === 'pvplanning' || m.type === 'solar') && 
+      (m.type === 'pvmodule' || m.type === 'solar' || m.type === 'pvplanning') && 
       m.visible !== false
     );
     

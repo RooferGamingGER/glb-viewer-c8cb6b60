@@ -49,7 +49,7 @@ export const useInstancedMeshRenderer = (
     // Clear existing PV module instances
     // This is a simple approach - a more optimized one would update existing instances
     measurements.forEach(m => {
-      if (m.type === 'pvmodule' || m.type === 'pvplanning' || m.type === 'solar') {
+      if (m.type === 'pvmodule' || m.type === 'solar' || m.type === 'pvplanning') {
         const frameId = `pvModuleFrame_${m.id}`;
         const panelId = `pvModulePanel_${m.id}`;
         
@@ -60,7 +60,7 @@ export const useInstancedMeshRenderer = (
     
     // Create new instances for each PV measurement
     measurements.forEach(m => {
-      if ((m.type === 'pvmodule' || m.type === 'pvplanning' || m.type === 'solar') && m.pvModuleInfo) {
+      if ((m.type === 'pvmodule' || m.type === 'solar' || m.type === 'pvplanning') && m.pvModuleInfo) {
         // This would be where module positions are calculated
         // For simplicity, we'll just use measurement points directly
         const positions = m.pvPositions || m.points;

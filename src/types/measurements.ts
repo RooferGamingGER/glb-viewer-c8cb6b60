@@ -13,6 +13,7 @@ export type MeasurementMode =
   | 'hook'      // Dachhaken
   | 'other'     // Sonstige Einbauten
   | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
+  | 'pvplanning' // PV-Planung
   | 'ridge'     // First
   | 'eave'      // Traufe
   | 'verge'     // Ortgang

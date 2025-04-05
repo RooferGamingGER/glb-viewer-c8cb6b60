@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, PVModuleInfo } from '@/types/measurements';
 
@@ -149,9 +148,9 @@ export class InstancedMeshRenderer {
     parentMeasurementId: string
   ) {
     // Create module geometries
-    const frameGeometry = new THREE.PlaneGeometry(moduleInfo.width, moduleInfo.height);
-    const innerWidth = moduleInfo.width - 0.04; // 2cm border on each side
-    const innerHeight = moduleInfo.height - 0.04;
+    const frameGeometry = new THREE.PlaneGeometry(moduleInfo.width || moduleInfo.moduleWidth, moduleInfo.height || moduleInfo.moduleHeight);
+    const innerWidth = (moduleInfo.width || moduleInfo.moduleWidth) - 0.04; // 2cm border on each side
+    const innerHeight = (moduleInfo.height || moduleInfo.moduleHeight) - 0.04;
     const panelGeometry = new THREE.PlaneGeometry(innerWidth, innerHeight);
     
     // Create module materials
