@@ -47,8 +47,7 @@ export const useTouchMeasurementInteraction = (
       
       // Start long press timer
       const timer = window.setTimeout(() => {
-        // Execute long press action (e.g., show context menu)
-        console.log('Long press detected');
+        // Execute long press action
       }, LONG_PRESS_DURATION);
       
       setLongPressTimer(timer);
@@ -110,8 +109,6 @@ export const useTouchMeasurementInteraction = (
       if (!canvasElement || !scene || !camera) return;
       
       // Logic for point placement would go here
-      // For now, we'll just log that a tap was detected
-      console.log('Tap detected for measurement point placement');
     }
     
     // Reset touch state
