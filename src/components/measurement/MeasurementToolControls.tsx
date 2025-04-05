@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -5,7 +6,7 @@ import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { Trash2, Eye, EyeOff } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import {
   AlertDialog,
@@ -88,6 +89,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     setActiveTab("measurements");
   };
   
+  // Style for table mode to prevent sidebar overflow
+  const tableContainerStyle = showTable ? { maxWidth: '100%', overflowX: 'auto' } : {};
+  
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-3 flex flex-col h-full">
@@ -130,22 +134,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            
-            {toggleAllLabelsVisibility && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={toggleAllLabelsVisibility}
-                title={allLabelsVisible ? "Alle Labels ausblenden" : "Alle Labels einblenden"}
-                className="h-7"
-              >
-                {allLabelsVisible ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            )}
           </div>
         </div>
         
@@ -168,6 +156,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               measurements={measurements}
               handleClearMeasurements={handleClearMeasurements}
               onCategoryClick={handleCategoryClick}
+              toggleAllLabelsVisibility={toggleAllLabelsVisibility}
+              allLabelsVisible={allLabelsVisible}
             />
             
             <RoofElementsToolbar 
@@ -209,33 +199,35 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </div>
             </div>
             
-            {showTable ? (
-              <MeasurementTable 
-                measurements={measurements}
-                toggleMeasurementVisibility={toggleMeasurementVisibility}
-                handleDeleteMeasurement={handleDeleteMeasurement}
-              />
-            ) : (
-              <div className="flex-1">
-                <MeasurementList 
+            <div style={tableContainerStyle}>
+              {showTable ? (
+                <MeasurementTable 
                   measurements={measurements}
                   toggleMeasurementVisibility={toggleMeasurementVisibility}
-                  toggleLabelVisibility={toggleLabelVisibility}
-                  handleStartPointEdit={handleStartPointEdit}
                   handleDeleteMeasurement={handleDeleteMeasurement}
-                  handleDeletePoint={handleDeletePoint}
-                  updateMeasurement={updateMeasurement}
-                  editMeasurementId={editMeasurementId}
-                  segmentsOpen={segmentsOpen}
-                  toggleSegments={toggleSegments}
-                  onEditSegment={onEditSegment}
-                  movingPointInfo={movingPointInfo}
-                  handleMoveMeasurementUp={handleMoveMeasurementUp}
-                  handleMoveMeasurementDown={handleMoveMeasurementDown}
-                  activeCategory={activeCategory || undefined}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="flex-1">
+                  <MeasurementList 
+                    measurements={measurements}
+                    toggleMeasurementVisibility={toggleMeasurementVisibility}
+                    toggleLabelVisibility={toggleLabelVisibility}
+                    handleStartPointEdit={handleStartPointEdit}
+                    handleDeleteMeasurement={handleDeleteMeasurement}
+                    handleDeletePoint={handleDeletePoint}
+                    updateMeasurement={updateMeasurement}
+                    editMeasurementId={editMeasurementId}
+                    segmentsOpen={segmentsOpen}
+                    toggleSegments={toggleSegments}
+                    onEditSegment={onEditSegment}
+                    movingPointInfo={movingPointInfo}
+                    handleMoveMeasurementUp={handleMoveMeasurementUp}
+                    handleMoveMeasurementDown={handleMoveMeasurementDown}
+                    activeCategory={activeCategory || undefined}
+                  />
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

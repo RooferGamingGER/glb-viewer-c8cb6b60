@@ -5,7 +5,10 @@ import {
   ArrowUpDown, 
   Square, 
   Trash2,
-  Magnet
+  Magnet,
+  FileCsv,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { 
@@ -19,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import ExportPdfButton from './ExportPdfButton';
+import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import { Toggle } from "@/components/ui/toggle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
@@ -32,6 +36,8 @@ interface MeasurementToolbarProps {
   measurements?: any[];
   editMeasurementId?: string | null;
   onCategoryClick?: (category: MeasurementMode) => void;
+  toggleAllLabelsVisibility?: () => void;
+  allLabelsVisible?: boolean;
 }
 
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
@@ -42,7 +48,9 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   handleClearMeasurements,
   measurements,
   editMeasurementId,
-  onCategoryClick
+  onCategoryClick,
+  toggleAllLabelsVisibility,
+  allLabelsVisible
 }) => {
   // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
@@ -75,6 +83,41 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
     );
   };
   
+  // Function to export measurements as CSV
+  const exportMeasurementsAsCSV = () => {
+    if (!measurements || measurements.length === 0) {
+      toast.error('Keine Messungen für den Export vorhanden');
+      return;
+    }
+    
+    // CSV headers
+    let csvContent = 'ID,Typ,Wert,Punkte\n';
+    
+    // Add each measurement
+    measurements.forEach(m => {
+      const type = m.type;
+      const value = m.value || 0;
+      const pointsStr = m.points ? m.points.map((p: any) => 
+        `(${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)})`
+      ).join(' ') : '';
+      
+      csvContent += `${m.id},"${type}",${value.toFixed(2)},"${pointsStr}"\n`;
+    });
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.href = url;
+    link.setAttribute('download', `Messungen_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('CSV-Datei wurde heruntergeladen');
+  };
+  
   return (
     <SidebarGroup className="mt-0">
       <Accordion type="multiple" defaultValue={["measurement-tools"]}>
@@ -87,6 +130,20 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               <div className="text-xs text-muted-foreground mb-2">
                 Wählen Sie ein Werkzeug zur Messung.
               </div>
+              
+              {/* Point Snapping Toggle - Moved to top as requested */}
+              <Toggle
+                pressed={snapEnabled}
+                onPressedChange={handleToggleSnap}
+                size="sm"
+                variant={snapEnabled ? "customActive" : "outline"}
+                aria-label="Punktfang ein/aus"
+                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+                className={`w-full justify-start mb-4 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+              >
+                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+              </Toggle>
               
               <SidebarMenu>
                 <div className="flex flex-col gap-1">
@@ -132,22 +189,51 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               </SidebarMenu>
               
               <div className="flex flex-col gap-2 mt-4">
-                <Toggle
-                  pressed={snapEnabled}
-                  onPressedChange={handleToggleSnap}
-                  size="sm"
-                  variant={snapEnabled ? "customActive" : "outline"}
-                  aria-label="Punktfang ein/aus"
-                  title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-                  className={`w-full justify-start ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
-                >
-                  <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-                  Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-                </Toggle>
+                {/* Toggle all labels visibility button */}
+                {toggleAllLabelsVisibility && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={toggleAllLabelsVisibility}
+                    title={allLabelsVisible ? "Alle Beschriftungen ausblenden" : "Alle Beschriftungen einblenden"}
+                    className="w-full justify-start"
+                  >
+                    {allLabelsVisible ? (
+                      <>
+                        <EyeOff className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="text-sm">Beschriftungen ausblenden</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="text-sm">Beschriftungen einblenden</span>
+                      </>
+                    )}
+                  </Button>
+                )}
                 
-                {/* Correctly pass measurements to ExportPdfButton */}
+                {/* Roof plan generation button */}
+                {measurements && measurements.length > 0 && (
+                  <GenerateRoofPlanButton measurements={measurements} />
+                )}
+                
+                {/* CSV Export button */}
+                {measurements && measurements.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={exportMeasurementsAsCSV}
+                  >
+                    <FileCsv className="h-4 w-4 mr-2" />
+                    CSV Export
+                  </Button>
+                )}
+                
+                {/* PDF Export button */}
                 {measurements && <ExportPdfButton measurements={measurements} />}
                 
+                {/* Delete all measurements button */}
                 {handleClearMeasurements && measurements && measurements.length > 0 && (
                   <Button 
                     variant="outline" 
