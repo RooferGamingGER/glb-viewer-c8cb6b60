@@ -29,7 +29,8 @@ export interface Measurement {
   labelVisible?: boolean;
   powerOutput?: number;
   editMode?: boolean;
-  pvPositions?: Point[];
+  pvPositions?: Point[];  // Added missing property for PV positions
+  pvModuleInfo?: PVModuleInfo;
 }
 
 export interface PVModuleSpec {
@@ -99,17 +100,17 @@ export interface PVModuleInfo {
   edgeInfoMessage?: string;
   pvModuleSpec?: PVModuleSpec;
   pvMaterials?: PVMaterials;
-  roofAzimuth?: number;       // Azimuth angle in degrees (0=North, 90=East, 180=South, 270=West)
-  roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
-  roofInclination?: number;   // Roof inclination in degrees
-  yieldFactor?: number;       // Yield factor in kWh/kWp per year
-  points?: Point[];           // Store the original points used for the solar area calculation
-  moduleVisuals?: any;        // Visual properties for module rendering
-  modulePositions?: Point[];  // Positions for each module
-  moduleCorners?: Point[][];  // Corner points for each module
-  width?: number;             // Width of module (for compatibility)
-  height?: number;            // Height of module (for compatibility)
-  rotation?: number;          // Module rotation angle relative to roof
+  roofAzimuth?: number;
+  roofDirection?: string;
+  roofInclination?: number;
+  yieldFactor?: number;
+  points?: Point[];
+  moduleVisuals?: any;
+  modulePositions?: Point[];
+  moduleCorners?: Point[][];
+  width?: number;     // Added missing property for width
+  height?: number;    // Added missing property for height
+  rotation?: number;  // Added missing property for rotation angle
 }
 
 export type MeasurementMode = 
@@ -122,7 +123,7 @@ export type MeasurementMode =
   | 'skylight' 
   | 'chimney' 
   | 'pvmodule' 
-  | 'pvplanning' 
+  | 'pvplanning'  // Added missing measurement mode 'pvplanning'
   | 'vent' 
   | 'hook' 
   | 'other';

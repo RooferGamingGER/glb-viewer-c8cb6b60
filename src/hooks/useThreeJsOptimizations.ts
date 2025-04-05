@@ -81,7 +81,8 @@ export const useThreeJsOptimizations = (
     targetRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
     // Enable physical lights for better performance
-    targetRenderer.useLegacyLights = false;
+    // Note: useLegacyLights is deprecated in newer Three.js versions
+    // Using more contemporary settings instead
     
     // Disable shadow auto-update (we'll handle it manually)
     targetRenderer.shadowMap.autoUpdate = false;

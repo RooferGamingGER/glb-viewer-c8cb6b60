@@ -71,8 +71,9 @@ export const useInstancedMeshRenderer = (
     }
 
     const moduleCount = positions.length;
-    const moduleWidth = moduleInfo.width || moduleInfo.moduleWidth;
-    const moduleHeight = moduleInfo.height || moduleInfo.moduleHeight;
+    // Use moduleWidth/moduleHeight as primary source, width/height as fallback
+    const moduleWidth = moduleInfo.moduleWidth || moduleInfo.width;
+    const moduleHeight = moduleInfo.moduleHeight || moduleInfo.height;
 
     if (!moduleWidth || !moduleHeight) {
       console.warn(`Invalid module dimensions for measurement ${measurement.id}`);

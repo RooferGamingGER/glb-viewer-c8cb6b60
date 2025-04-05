@@ -150,8 +150,8 @@ export const generatePVModulePositions = (
   }
 
   // Extract module dimensions from either direct properties or from moduleWidth/Height
-  const moduleWidth = moduleInfo.width !== undefined ? moduleInfo.width : moduleInfo.moduleWidth;
-  const moduleHeight = moduleInfo.height !== undefined ? moduleInfo.height : moduleInfo.moduleHeight;
+  const moduleWidth = moduleInfo.moduleWidth !== undefined ? moduleInfo.moduleWidth : moduleInfo.width;
+  const moduleHeight = moduleInfo.moduleHeight !== undefined ? moduleInfo.moduleHeight : moduleInfo.height;
 
   if (!moduleWidth || !moduleHeight) {
     console.error('Invalid module dimensions for positioning');
