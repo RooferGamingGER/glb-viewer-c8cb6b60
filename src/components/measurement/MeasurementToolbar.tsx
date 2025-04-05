@@ -7,8 +7,6 @@ import {
   Trash2,
   Magnet,
   FileText,
-  Eye,
-  EyeOff
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { 
@@ -188,37 +186,17 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 </div>
               </SidebarMenu>
               
-              <div className="flex flex-col gap-2 mt-4">
-                {/* Toggle all labels visibility button */}
-                {toggleAllLabelsVisibility && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={toggleAllLabelsVisibility}
-                    title={allLabelsVisible ? "Alle Beschriftungen ausblenden" : "Alle Beschriftungen einblenden"}
-                    className="w-full justify-start"
-                  >
-                    {allLabelsVisible ? (
-                      <>
-                        <EyeOff className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span className="text-sm">Beschriftungen ausblenden</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span className="text-sm">Beschriftungen einblenden</span>
-                      </>
-                    )}
-                  </Button>
-                )}
-                
-                {/* Roof plan generation button */}
-                {measurements && measurements.length > 0 && (
+              {/* Export functions moved up and reorganized */}
+              {measurements && measurements.length > 0 && (
+                <div className="flex flex-col gap-2 mt-4 border-t pt-3">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    Exportoptionen:
+                  </div>
+                  
+                  {/* Roof plan generation button */}
                   <GenerateRoofPlanButton measurements={measurements} />
-                )}
-                
-                {/* CSV Export button - changed icon from FileCsv to FileText */}
-                {measurements && measurements.length > 0 && (
+                  
+                  {/* CSV Export button */}
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -228,25 +206,25 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                     <FileText className="h-4 w-4 mr-2" />
                     CSV Export
                   </Button>
-                )}
-                
-                {/* PDF Export button */}
-                {measurements && <ExportPdfButton measurements={measurements} />}
-                
-                {/* Delete all measurements button */}
-                {handleClearMeasurements && measurements && measurements.length > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={handleClearMeasurements}
-                    title="Alle Messungen löschen"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Alle löschen
-                  </Button>
-                )}
-              </div>
+                  
+                  {/* PDF Export button */}
+                  <ExportPdfButton measurements={measurements} />
+                  
+                  {/* Delete all measurements button at the bottom */}
+                  {handleClearMeasurements && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-2"
+                      onClick={handleClearMeasurements}
+                      title="Alle Messungen löschen"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Alle löschen
+                    </Button>
+                  )}
+                </div>
+              )}
             </SidebarGroupContent>
           </AccordionContent>
         </AccordionItem>

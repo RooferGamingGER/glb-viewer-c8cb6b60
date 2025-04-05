@@ -6,17 +6,8 @@ import {
   Undo2, 
   X,
   Info,
-  Sun,
-  PanelLeft,
-  Zap
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface RoofElementControlsProps {
   activeMode: MeasurementMode;
