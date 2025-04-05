@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -79,13 +78,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
   
-  // Refs for scroll sections
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   const measurementsRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   
-  // Count measurements by category
   const dachCount = measurements.filter(m => ['length', 'height', 'area'].includes(m.type)).length;
   const solarCount = measurements.filter(m => ['solar'].includes(m.type)).length;
   const dachelementeCount = measurements.filter(m => ['skylight', 'chimney'].includes(m.type)).length;
@@ -109,7 +106,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current && scrollAreaRef.current) {
-      // Scroll to the section with an offset for the navigation buttons
       const offset = 10;
       scrollAreaRef.current.scrollTo({
         top: ref.current.offsetTop - offset,
@@ -125,7 +121,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
 
   return (
     <div className="p-3 flex flex-col h-full overflow-hidden">
-      {/* Navigation buttons at the top */}
       <div className="flex gap-2 mb-4 flex-shrink-0">
         <Button 
           variant="outline" 
@@ -158,14 +153,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </Button>
       </div>
       
-      {/* Scrollable content with all sections */}
       <ScrollArea className="pr-2 flex-1" scrollRef={scrollAreaRef}>
-        <div className="space-y-6"> {/* Reduced spacing between sections */}
-          {/* TOOLS SECTION */}
+        <div className="space-y-6">
           <div ref={toolsRef}>
             <div className="text-lg font-semibold pb-2 border-b mb-3">Werkzeuge</div>
             
-            {/* Punktfang toggle */}
             <div className="mb-3">
               <Toggle
                 pressed={snapEnabled}
@@ -181,7 +173,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </Toggle>
             </div>
             
-            {/* Messwerkzeuge - Grid Layout */}
             <div className="space-y-3">
               <div>
                 <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
@@ -241,7 +232,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               
               <Separator className="my-2" />
               
-              {/* Dachelemente - Grid Layout */}
               <div>
                 <div className="text-sm font-medium mb-2">Dachelemente</div>
                 <div className="grid grid-cols-2 gap-2">
@@ -271,7 +261,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               
               <Separator className="my-2" />
               
-              {/* Einbauten - Grid Layout */}
               <div>
                 <div className="text-sm font-medium mb-2">Einbauten</div>
                 <div className="grid grid-cols-3 gap-2">
@@ -312,7 +301,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </div>
           
-          {/* MEASUREMENTS SECTION - Now with more vertical space */}
           <div ref={measurementsRef}>
             <div className="text-lg font-semibold pb-2 border-b mb-3">Messungen</div>
             
@@ -368,7 +356,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </Button>
             </div>
             
-            <div className="max-h-96 overflow-y-auto"> {/* Increased height for measurements */}
+            <div className="max-h-[calc(60vh-200px)] overflow-y-auto">
               {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
                handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
                 <MeasurementList 
@@ -392,13 +380,12 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </div>
           
-          {/* EXPORT SECTION - Compressed to give more space to measurements */}
           <div ref={exportRef}>
             <div className="text-lg font-semibold pb-2 border-b mb-3">Export</div>
             
             {measurements.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
-                <GenerateRoofPlanButton measurements={measurements} className="col-span-2" />
+                <GenerateRoofPlanButton measurements={measurements} />
                 
                 <ExportPdfButton measurements={measurements} />
                 
