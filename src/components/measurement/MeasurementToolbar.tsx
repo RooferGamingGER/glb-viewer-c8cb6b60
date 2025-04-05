@@ -77,22 +77,28 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   
   return (
     <SidebarGroup className="mt-0">
-      <Accordion type="single" collapsible defaultValue="measurement-tools">
+      <Accordion type="multiple" collapsible defaultValue={["measurement-tools"]}>
         <AccordionItem value="measurement-tools" className="border-0">
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Messwerkzeuge</SidebarGroupLabel>
           </AccordionTrigger>
           <AccordionContent>
             <SidebarGroupContent>
+              <div className="text-xs text-muted-foreground mb-2">
+                Wählen Sie ein Werkzeug zur Messung.
+              </div>
+              
               <SidebarMenu>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="flex flex-col gap-1">
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       isActive={activeMode === 'length'}
                       onClick={() => selectTool('length')}
                       tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
                     >
-                      <Ruler />
+                      <Ruler className="h-4 w-4" />
                       <span className="text-xs">Länge</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -102,8 +108,10 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                       isActive={activeMode === 'height'}
                       onClick={() => selectTool('height')}
                       tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
                     >
-                      <ArrowUpDown />
+                      <ArrowUpDown className="h-4 w-4" />
                       <span className="text-xs">Höhe</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -113,8 +121,10 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                       isActive={activeMode === 'area'}
                       onClick={() => selectTool('area')}
                       tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
                     >
-                      <Square />
+                      <Square className="h-4 w-4" />
                       <span className="text-xs">Fläche</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -126,7 +136,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                   pressed={snapEnabled}
                   onPressedChange={handleToggleSnap}
                   size="sm"
-                  variant={snapEnabled ? "default" : "outline"}
+                  variant={snapEnabled ? "customActive" : "outline"}
                   aria-label="Punktfang ein/aus"
                   title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
                   className={`w-full justify-start ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
