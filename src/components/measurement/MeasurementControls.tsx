@@ -41,7 +41,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   // Standard measurement controls for length, height, area
   return (
     <div className="p-3">
-      <div className={`p-2 border border-primary/30 rounded-md bg-primary/5 ${isMobile ? 'mb-4' : ''}`}>
+      <div className={`p-2 border border-primary/30 rounded-md bg-primary/5 ${isMobile ? 'mb-2' : 'mb-4'}`}>
         <div className="text-sm font-medium mb-2">
           {activeMode === 'length' && "Längenmessung aktiv"}
           {activeMode === 'height' && "Höhenmessung aktiv"}
@@ -56,7 +56,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
             <>
               <Button
                 variant="default" 
-                size={isMobile ? "default" : "sm"}
+                size={isMobile ? "sm" : "sm"} // Changed size to sm for mobile to save space
                 className={isMobile ? "w-full" : "flex-1"}
                 onClick={handleFinalizeMeasurement}
                 disabled={
@@ -71,7 +71,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
               
               <Button
                 variant="outline" 
-                size={isMobile ? "default" : "sm"}
+                size={isMobile ? "sm" : "sm"}
                 className={isMobile ? "w-full" : "flex-1"}
                 onClick={handleUndoLastPoint}
                 disabled={currentPoints.length === 0}
@@ -85,7 +85,7 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
           
           <Button
             variant="outline" 
-            size={isMobile ? "default" : "sm"}
+            size={isMobile ? "sm" : "sm"}
             className={isMobile ? "w-full" : activeMode === 'area' ? "w-9" : "flex-1"}
             onClick={clearCurrentPoints}
             title="Abbrechen"

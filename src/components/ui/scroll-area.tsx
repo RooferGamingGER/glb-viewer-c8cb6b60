@@ -14,7 +14,7 @@ const ScrollArea = React.forwardRef<
     ref={ref}
     className={cn(
       "relative overflow-hidden", 
-      autoMaxHeight && "max-h-fit", 
+      autoMaxHeight && "max-h-[calc(100%-2rem)]", // Changed from max-h-fit to use a percentage 
       className
     )}
     {...props}
