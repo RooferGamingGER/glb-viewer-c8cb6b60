@@ -7,6 +7,8 @@ import {
   Trash2,
   Magnet,
   FileText,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { 
@@ -129,6 +131,37 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 Wählen Sie ein Werkzeug zur Messung.
               </div>
               
+              {/* Control buttons at the top - Added Eye/EyeOff toggle button */}
+              {measurements && measurements.length > 0 && toggleAllLabelsVisibility && (
+                <div className="flex items-center justify-between mb-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleAllLabelsVisibility}
+                    title={allLabelsVisible ? "Beschriftungen ausblenden" : "Beschriftungen einblenden"}
+                    className="h-8 w-8"
+                  >
+                    {allLabelsVisible ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                  
+                  {handleClearMeasurements && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleClearMeasurements}
+                      title="Alle Messungen löschen"
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              
               {/* Point Snapping Toggle - Moved to top as requested */}
               <Toggle
                 pressed={snapEnabled}
@@ -209,20 +242,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                   
                   {/* PDF Export button */}
                   <ExportPdfButton measurements={measurements} />
-                  
-                  {/* Delete all measurements button at the bottom */}
-                  {handleClearMeasurements && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-2"
-                      onClick={handleClearMeasurements}
-                      title="Alle Messungen löschen"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Alle löschen
-                    </Button>
-                  )}
                 </div>
               )}
             </SidebarGroupContent>
