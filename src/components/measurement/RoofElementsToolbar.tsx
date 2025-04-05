@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Cylinder, 
@@ -23,7 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 interface RoofElementsToolbarProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
-  editMeasurementId: string | null;
+  editMeasurementId?: string | null;
 }
 
 const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({

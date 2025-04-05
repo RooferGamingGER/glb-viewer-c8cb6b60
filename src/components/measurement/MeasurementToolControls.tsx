@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -162,7 +161,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           <TabsContent value="tools" className="flex-1 m-0 space-y-3">
             <MeasurementToolbar 
               activeMode={activeMode} 
-              toggleMeasurementTool={toggleMeasurementTool || ((mode: MeasurementMode) => {
+              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
                 console.log('Toggle measurement tool', mode);
                 // Default implementation if not provided
               })}
@@ -173,10 +172,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             
             <RoofElementsToolbar 
               activeMode={activeMode}
-              toggleMeasurementTool={toggleMeasurementTool || ((mode: MeasurementMode) => {
+              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
                 console.log('Toggle measurement tool', mode);
                 // Default implementation if not provided
               })}
+              editMeasurementId={editMeasurementId}
             />
           </TabsContent>
           
