@@ -160,13 +160,13 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       
       {/* Scrollable content with all sections */}
       <ScrollArea className="pr-2 flex-1" scrollRef={scrollAreaRef}>
-        <div className="space-y-8"> {/* Increased spacing between sections */}
+        <div className="space-y-6"> {/* Reduced spacing between sections */}
           {/* TOOLS SECTION */}
           <div ref={toolsRef}>
-            <div className="text-lg font-semibold pb-2 border-b mb-4">Werkzeuge</div>
+            <div className="text-lg font-semibold pb-2 border-b mb-3">Werkzeuge</div>
             
             {/* Punktfang toggle */}
-            <div className="mb-4">
+            <div className="mb-3">
               <Toggle
                 pressed={snapEnabled}
                 onPressedChange={handleToggleSnap}
@@ -181,11 +181,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </Toggle>
             </div>
             
-            {/* Messwerkzeuge */}
-            <div className="space-y-4">
+            {/* Messwerkzeuge - Grid Layout */}
+            <div className="space-y-3">
               <div>
                 <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
                   <Button
                     variant={activeMode === 'length' ? "default" : "outline"} 
                     size="sm"
@@ -194,7 +194,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     disabled={!!editMeasurementId}
                     title="Längenmessung"
                   >
-                    <Ruler className="h-4 w-4 mr-2" />
+                    <Ruler className="h-4 w-4 mr-1" />
                     Länge
                   </Button>
                   
@@ -206,7 +206,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     disabled={!!editMeasurementId}
                     title="Höhenmessung"
                   >
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
+                    <ArrowUpDown className="h-4 w-4 mr-1" />
                     Höhe
                   </Button>
                   
@@ -218,7 +218,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     disabled={!!editMeasurementId}
                     title="Flächenmessung"
                   >
-                    <Square className="h-4 w-4 mr-2" />
+                    <Square className="h-4 w-4 mr-1" />
                     Fläche
                   </Button>
                 </div>
@@ -226,26 +226,25 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               
               <div>
                 <div className="text-sm font-medium mb-2">Solarplanung</div>
-                <div className="space-y-2">
-                  <Button
-                    variant={activeMode === 'solar' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('solar')}
-                    disabled={!!editMeasurementId}
-                    title="Solarplanung"
-                  >
-                    <Sun className="h-4 w-4 mr-2" />
-                    Solarplanung
-                  </Button>
-                </div>
+                <Button
+                  variant={activeMode === 'solar' ? "default" : "outline"} 
+                  size="sm"
+                  className="w-full flex justify-start"
+                  onClick={() => toggleMeasurementTool('solar')}
+                  disabled={!!editMeasurementId}
+                  title="Solarplanung"
+                >
+                  <Sun className="h-4 w-4 mr-2" />
+                  Solarplanung
+                </Button>
               </div>
               
-              <Separator />
+              <Separator className="my-2" />
               
+              {/* Dachelemente - Grid Layout */}
               <div>
                 <div className="text-sm font-medium mb-2">Dachelemente</div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant={activeMode === 'skylight' ? "default" : "outline"} 
                     size="sm"
@@ -253,7 +252,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     onClick={() => toggleMeasurementTool('skylight')}
                     disabled={!!editMeasurementId}
                   >
-                    <SplitSquareVertical className="h-4 w-4 mr-2" />
+                    <SplitSquareVertical className="h-4 w-4 mr-1" />
                     Dachfenster
                   </Button>
                   
@@ -264,59 +263,60 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     onClick={() => toggleMeasurementTool('chimney')}
                     disabled={!!editMeasurementId}
                   >
-                    <Cylinder className="h-4 w-4 mr-2" />
+                    <Cylinder className="h-4 w-4 mr-1" />
                     Kamin
                   </Button>
                 </div>
               </div>
               
-              <Separator />
+              <Separator className="my-2" />
               
+              {/* Einbauten - Grid Layout */}
               <div>
                 <div className="text-sm font-medium mb-2">Einbauten</div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
                   <Button
                     variant={activeMode === 'vent' ? "default" : "outline"} 
                     size="sm"
-                    className="w-full flex justify-start"
+                    className="w-full flex justify-start text-xs"
                     onClick={() => toggleMeasurementTool('vent')}
                     disabled={!!editMeasurementId}
                   >
-                    <Wind className="h-4 w-4 mr-2" />
+                    <Wind className="h-4 w-4 mr-1" />
                     Lüfter
                   </Button>
                   
                   <Button
                     variant={activeMode === 'hook' ? "default" : "outline"} 
                     size="sm"
-                    className="w-full flex justify-start"
+                    className="w-full flex justify-start text-xs"
                     onClick={() => toggleMeasurementTool('hook')}
                     disabled={!!editMeasurementId}
                   >
-                    <Anchor className="h-4 w-4 mr-2" />
+                    <Anchor className="h-4 w-4 mr-1" />
                     Haken
                   </Button>
                   
                   <Button
                     variant={activeMode === 'other' ? "default" : "outline"} 
                     size="sm"
-                    className="w-full flex justify-start"
+                    className="w-full flex justify-start text-xs"
                     onClick={() => toggleMeasurementTool('other')}
                     disabled={!!editMeasurementId}
                   >
-                    <Droplet className="h-4 w-4 mr-2" />
-                    Sonstiges
+                    <Droplet className="h-4 w-4 mr-1" />
+                    Sonst.
                   </Button>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* MEASUREMENTS SECTION */}
+          {/* MEASUREMENTS SECTION - Now with more vertical space */}
           <div ref={measurementsRef}>
-            <div className="text-lg font-semibold pb-2 border-b mb-4">Messungen</div>
+            <div className="text-lg font-semibold pb-2 border-b mb-3">Messungen</div>
             
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <Button
                 variant={activeCategory === 'dach' ? "default" : "outline"} 
                 size="sm"
@@ -344,7 +344,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 onClick={() => handleCategoryChange('dachelemente')}
               >
                 <SplitSquareVertical className="h-4 w-4 mr-2" />
-                Dachelemente ({dachelementeCount})
+                Element ({dachelementeCount})
               </Button>
               
               <Button
@@ -354,7 +354,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 onClick={() => handleCategoryChange('einbauten')}
               >
                 <Anchor className="h-4 w-4 mr-2" />
-                Einbauten ({einbautenCount})
+                Einbau ({einbautenCount})
               </Button>
               
               <Button
@@ -368,7 +368,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </Button>
             </div>
             
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto"> {/* Increased height for measurements */}
               {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
                handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
                 <MeasurementList 
@@ -392,13 +392,13 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
           </div>
           
-          {/* EXPORT SECTION */}
+          {/* EXPORT SECTION - Compressed to give more space to measurements */}
           <div ref={exportRef}>
-            <div className="text-lg font-semibold pb-2 border-b mb-4">Export</div>
+            <div className="text-lg font-semibold pb-2 border-b mb-3">Export</div>
             
             {measurements.length > 0 ? (
-              <div className="space-y-2">
-                <GenerateRoofPlanButton measurements={measurements} />
+              <div className="grid grid-cols-2 gap-2">
+                <GenerateRoofPlanButton measurements={measurements} className="col-span-2" />
                 
                 <ExportPdfButton measurements={measurements} />
                 
@@ -409,11 +409,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   onClick={handleDownload}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Als CSV exportieren
+                  CSV Export
                 </Button>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground italic text-center py-4">
+              <div className="text-sm text-muted-foreground italic text-center py-3">
                 Keine Messungen vorhanden
               </div>
             )}
