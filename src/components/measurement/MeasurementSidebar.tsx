@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';

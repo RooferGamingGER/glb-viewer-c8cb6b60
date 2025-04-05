@@ -3,7 +3,6 @@ import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MeasurementListProps {
   measurements: Measurement[];
@@ -24,7 +23,6 @@ interface MeasurementListProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   activeCategory?: string;
-  maxHeight?: string;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -42,8 +40,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   movingPointInfo,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  activeCategory,
-  maxHeight = "calc(80vh - 250px)"
+  activeCategory
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) {
     return <div className="text-center text-muted-foreground py-8">
@@ -100,17 +97,17 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   // Filter measurements based on activeCategory if provided
   if (activeCategory) {
     return (
-      <ScrollArea className={`flex-1 flex flex-col min-h-0 w-full px-2 pr-1`} style={{ maxHeight }}>
+      <div className="flex-1 flex flex-col w-full px-2 pr-1">
         <div className="pr-2">
           {renderCategoryContent(activeCategory)}
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
   // Default rendering with all categories in tabs
   return (
-    <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+    <div className="flex-1 flex flex-col w-full px-2">
       <Tabs defaultValue="dach" className="w-full">
         <TabsList className="w-full grid grid-cols-4 h-8 mb-2 sticky top-0 z-20">
           <TabsTrigger value="dach" className="text-xs py-1 px-0">
@@ -127,33 +124,31 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <ScrollArea className="pr-1" style={{ maxHeight }}>
-          <div className="pr-2">
-            <TabsContent value="dach" className="m-0">
-              {renderMeasurementGroup("Dach", dachMeasurements, true)}
-            </TabsContent>
-            
-            <TabsContent value="solar" className="m-0">
-              {renderMeasurementGroup("Solar", solarMeasurements, true)}
-            </TabsContent>
-            
-            <TabsContent value="dachelemente" className="m-0">
-              {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
-            </TabsContent>
-            
-            <TabsContent value="einbauten" className="m-0">
-              {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
-            </TabsContent>
+        <div className="pr-2">
+          <TabsContent value="dach" className="m-0">
+            {renderMeasurementGroup("Dach", dachMeasurements, true)}
+          </TabsContent>
+          
+          <TabsContent value="solar" className="m-0">
+            {renderMeasurementGroup("Solar", solarMeasurements, true)}
+          </TabsContent>
+          
+          <TabsContent value="dachelemente" className="m-0">
+            {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
+          </TabsContent>
+          
+          <TabsContent value="einbauten" className="m-0">
+            {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
+          </TabsContent>
 
-            {/* Other measurements not categorized (if any) */}
-            {otherMeasurements.length > 0 && (
-              <>
-                <Separator className="my-3" />
-                {renderMeasurementGroup("Sonstige", otherMeasurements)}
-              </>
-            )}
-          </div>
-        </ScrollArea>
+          {/* Other measurements not categorized (if any) */}
+          {otherMeasurements.length > 0 && (
+            <>
+              <Separator className="my-3" />
+              {renderMeasurementGroup("Sonstige", otherMeasurements)}
+            </>
+          )}
+        </div>
       </Tabs>
     </div>
   );
