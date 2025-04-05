@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
@@ -70,8 +70,8 @@ export const useMeasurementInteraction = (
   const { clearGroup } = useThreeJs();
 
   // Create and manage preview visualization group
-  const previewGroupRef = React.useRef<THREE.Group | null>(null);
-  const addPointIndicatorsRef = React.useRef<THREE.Group | null>(null);
+  const previewGroupRef = useRef<THREE.Group | null>(null);
+  const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
 
   // Set up preview groups in scene
   useEffect(() => {
