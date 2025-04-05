@@ -6,17 +6,8 @@ import {
   Undo2, 
   X,
   Info,
-  Sun,
-  PanelLeft,
-  Zap
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface RoofElementControlsProps {
   activeMode: MeasurementMode;
@@ -94,7 +85,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
         } else if (currentPoints.length < 4) {
           return `Markieren Sie die weiteren Ecken der Solarfläche. Noch ${remainingPoints} Punkt(e) benötigt.`;
         } else if (currentPoints.length === 4) {
-          return "Solarfläche vollständig definiert. Schließen Sie die Messung ab.";
+          return "Solarfläche vollständig definiert. Schließen Sie die Messung ab. PV-Module werden automatisch berechnet.";
         } else {
           return "Exakt 4 Punkte für die Solarfläche werden benötigt.";
         }
@@ -126,7 +117,7 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
     switch(mode) {
       case 'chimney': return "Kaminausschnitt";
       case 'skylight': return "Dachfenster";
-      case 'solar': return "Solaranlage";
+      case 'solar': return "Geplante Solarfläche";
       case 'pvmodule': return "PV-Modul Fläche";
       case 'vent': return "Lüfter";
       case 'hook': return "Dachhaken";
@@ -138,9 +129,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   // Flag um festzustellen, ob wir in einem Penetrationsmodus sind
   const isPenetrationMode = ['vent', 'hook', 'other'].includes(activeMode);
   
-  // Flag to check if we're in solar planning mode with 4 points (ready to calculate)
-  const isSolarReadyToCalculate = activeMode === 'solar' && currentPoints.length === 4;
-
   return (
     <div className="p-3">
       <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
@@ -186,20 +174,6 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
             <X className="h-3 w-3" />
           </Button>
         </div>
-        
-        {/* Add PV Module calculation button specifically for solar planning with 4 points */}
-        {isSolarReadyToCalculate && (
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full mt-1 bg-green-600 hover:bg-green-700"
-            onClick={handleFinalizeMeasurement}
-            title="PV-Module berechnen"
-          >
-            <Zap className="h-3 w-3 mr-1" />
-            PV-Module berechnen
-          </Button>
-        )}
         
         {/* Improved text container with better text wrapping and overflow handling */}
         <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">

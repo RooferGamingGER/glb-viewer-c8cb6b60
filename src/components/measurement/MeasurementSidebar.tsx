@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Measurement } from '@/hooks/useMeasurements'; 
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
+import CollapsibleSection from '@/components/ui/collapsible-section';
 
 interface MeasurementSidebarProps {
   measurements: Measurement[];

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
@@ -7,6 +7,7 @@ import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
 import { useMeasurementEvents } from './useMeasurementEvents';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { useThreeJs } from '@/contexts/ThreeJsContext';
 
 /**
  * Main hook for measurement interactions - combines all other specialized hooks
@@ -35,6 +36,17 @@ export const useMeasurementInteraction = (
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
+  // Erweiterte State-Verwaltung (konsolidiert von useMeasurementInteractionManager)
+  const [movingPointInfo, setMovingPointInfo] = useState<{
+    measurementId: string;
+    pointIndex: number;
+    originalPoint: Point;
+  } | null>(null);
+
+  const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
+  const [touchStartTime, setTouchStartTime] = useState<number>(0);
+  const [lastTouchPosition, setLastTouchPosition] = useState<{x: number, y: number} | null>(null);
+
   // Register scene with the point snapping context
   const { 
     clearSnapIndicator, 
@@ -54,25 +66,58 @@ export const useMeasurementInteraction = (
     };
   }, [scene, enabled, registerScene]);
 
+  // Get direct access to ThreeJs context
+  const { clearGroup } = useThreeJs();
+
+  // Create and manage preview visualization group
+  const previewGroupRef = useRef<THREE.Group | null>(null);
+  const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
+
+  // Set up preview groups in scene
+  useEffect(() => {
+    if (!scene || !enabled) return;
+    
+    // Create preview group if it doesn't exist
+    if (!previewGroupRef.current) {
+      previewGroupRef.current = new THREE.Group();
+      previewGroupRef.current.name = "previewGroup";
+      scene.add(previewGroupRef.current);
+    }
+    
+    // Create add point indicators group if it doesn't exist
+    if (!addPointIndicatorsRef.current) {
+      addPointIndicatorsRef.current = new THREE.Group();
+      addPointIndicatorsRef.current.name = "addPointIndicators";
+      scene.add(addPointIndicatorsRef.current);
+    }
+    
+    return () => {
+      // Clean up preview group when unmounting
+      if (previewGroupRef.current) {
+        scene.remove(previewGroupRef.current);
+        previewGroupRef.current = null;
+      }
+      
+      // Clean up add point indicators
+      if (addPointIndicatorsRef.current) {
+        scene.remove(addPointIndicatorsRef.current);
+        addPointIndicatorsRef.current = null;
+      }
+    };
+  }, [scene, enabled]);
+
   // Hook for preview visualization
   const {
-    previewPoint,
-    setPreviewPoint,
-    clearPreviewGroup,
     updatePreviewVisualization
   } = useMeasurementPreview(scene);
 
   // Hook for plus symbols for adding points
   const {
-    addPointIndicatorsRef,
-    clearAddPointIndicators,
     updateAddPointIndicators
   } = useAddPointIndicators(scene);
 
   // Hook for point movement
   const {
-    movingPointInfo,
-    setMovingPointInfo,
     startPointMovement,
     finishPointMovement,
     updateMovingPoint
@@ -113,6 +158,42 @@ export const useMeasurementInteraction = (
     }
   );
 
+  // Clear preview group
+  const clearPreviewGroup = useCallback(() => {
+    if (previewGroupRef.current) {
+      clearGroup(previewGroupRef.current);
+    }
+  }, [clearGroup]);
+
+  // Clear add point indicators
+  const clearAddPointIndicators = useCallback(() => {
+    if (addPointIndicatorsRef.current) {
+      clearGroup(addPointIndicatorsRef.current);
+    }
+  }, [clearGroup]);
+  
+  // Handle touch interactions with debouncing for better touch experience
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      setTouchStartTime(Date.now());
+      setLastTouchPosition({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      });
+    }
+  }, []);
+  
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    const touchDuration = Date.now() - touchStartTime;
+    
+    // Short tap detection (less than 250ms) with minimal movement
+    if (touchDuration < 250 && lastTouchPosition) {
+      // Process as a tap/click
+    }
+    
+    setLastTouchPosition(null);
+  }, [touchStartTime, lastTouchPosition]);
+
   // Clean up when enabled status changes
   useEffect(() => {
     if (!enabled) {
@@ -123,10 +204,8 @@ export const useMeasurementInteraction = (
       
       // Ensure all PV module visualizations are cleared when disabling the tool
       if (refs.measurementsRef.current) {
-        console.log("Cleaning up PV module visualizations on disable");
         refs.measurementsRef.current.children.forEach(child => {
           if (child.userData && child.userData.isPVModule) {
-            console.log("Removing PV module visualization:", child.name || "unnamed");
             refs.measurementsRef.current?.remove(child);
           }
         });
@@ -138,20 +217,16 @@ export const useMeasurementInteraction = (
   useEffect(() => {
     if (enabled && refs.measurementsRef.current) {
       // Ensure PV modules are visible when the measurement tool is enabled
-      console.log("Updating PV module visibility when tool is enabled");
       
       const pvModules = refs.measurementsRef.current.children.filter(
         child => child.userData && (child.userData.isPVModule || child.userData.measurementType === 'pvmodule')
       );
-      
-      console.log(`Found ${pvModules.length} PV module visualizations to update`);
       
       pvModules.forEach(module => {
         // Find the corresponding measurement to check its visibility
         const measurement = measurements.find(m => m.id === module.userData.measurementId);
         if (measurement) {
           module.visible = measurement.visible !== false;
-          console.log(`Setting PV module ${module.name || 'unnamed'} visibility to ${module.visible}`);
           
           // Enhance visibility with increased material opacity
           if (module instanceof THREE.Mesh && module.material instanceof THREE.MeshBasicMaterial) {
@@ -163,12 +238,6 @@ export const useMeasurementInteraction = (
             
             // Raise position slightly to avoid z-fighting
             module.position.y += 0.01;
-            
-            console.log("Updated PV module material properties for better visibility:", {
-              opacity: module.material.opacity,
-              color: module.material.color.getHexString(),
-              position: module.position
-            });
           }
         }
       });
@@ -179,10 +248,20 @@ export const useMeasurementInteraction = (
     movingPointInfo,
     setMovingPointInfo,
     previewPoint,
+    setPreviewPoint,
     clearPreviewGroup,
     clearAddPointIndicators,
+    addPointIndicatorsRef,
+    startPointMovement,
+    updateMovingPoint,
+    finishPointMovement,
     isSnapping,
     snapTarget,
-    snapEnabled
+    snapEnabled,
+    // Touch handlers
+    handleTouchStart,
+    handleTouchEnd,
+    touchStartTime,
+    lastTouchPosition
   };
 };

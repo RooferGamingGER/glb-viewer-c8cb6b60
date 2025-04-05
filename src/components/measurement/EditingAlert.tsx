@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Move, MousePointer, PlusCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,7 +12,7 @@ interface EditingAlertProps {
   editingAreaMeasurement?: boolean;
 }
 
-const EditingAlert: React.FC<EditingAlertProps> = ({
+const EditingAlert: React.FC<EditingAlertProps> = memo(({
   editMeasurementId,
   editingSegmentId,
   movingPointInfo,
@@ -64,6 +64,8 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
       </AlertDescription>
     </Alert>
   );
-};
+});
+
+EditingAlert.displayName = 'EditingAlert';
 
 export default EditingAlert;

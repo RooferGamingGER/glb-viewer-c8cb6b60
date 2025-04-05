@@ -1,426 +1,310 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { 
-  Ruler, 
-  ArrowUpDown, 
-  Square, 
-  Download,
-  Sun,
-  SplitSquareVertical,
-  Cylinder,
-  Wind,
-  Anchor,
-  Droplet,
-  Magnet,
-  Wrench,
-  LineChart,
-  FileDown,
-  Home,
-  LayoutGrid
-} from 'lucide-react';
-import { MeasurementMode } from '@/types/measurements';
-import ExportPdfButton from './ExportPdfButton';
-import { exportMeasurementsToCSV } from '@/utils/exportUtils';
-import { Separator } from "@/components/ui/separator";
-import GenerateRoofPlanButton from './GenerateRoofPlanButton';
-import { Toggle } from "@/components/ui/toggle";
-import { usePointSnapping } from '@/contexts/PointSnappingContext';
-import { toast } from 'sonner';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useState, useRef } from 'react';
+import { Measurement } from '@/hooks/useMeasurements';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import MeasurementList from './MeasurementList';
+import MeasurementTable from './MeasurementTable';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from '@/components/ui/button';
+import { FileText, Trash2 } from 'lucide-react';
+import { MeasurementMode } from '@/types/measurements';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
+import CollapsibleSection from '@/components/ui/collapsible-section';
+import MeasurementToolbar from './MeasurementToolbar';
+import RoofElementsToolbar from './RoofElementsToolbar';
+import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import ExportPdfButton from './ExportPdfButton';
 
 interface MeasurementToolControlsProps {
-  activeMode: MeasurementMode;
-  toggleMeasurementTool: (mode: MeasurementMode) => void;
+  measurements: Measurement[];
+  toggleMeasurementVisibility: (id: string) => void;
+  toggleLabelVisibility: (id: string) => void;
+  handleStartPointEdit: (id: string) => void;
+  handleDeleteMeasurement: (id: string) => void;
+  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
+  updateMeasurement: (id: string, data: Partial<Measurement>) => void;
   editMeasurementId: string | null;
-  measurements: any[];
+  segmentsOpen: Record<string, boolean>;
+  toggleSegments: (id: string) => void;
+  onEditSegment: (id: string | null) => void;
+  activeMode: MeasurementMode;
+  toggleMeasurementTool?: (mode: MeasurementMode) => void;
+  movingPointInfo?: {
+    measurementId: string;
+    pointIndex: number;
+  } | null;
+  handleClearMeasurements: () => void;
+  toggleAllMeasurementsVisibility?: () => void;
+  toggleAllLabelsVisibility?: () => void;
+  allMeasurementsVisible?: boolean;
+  allLabelsVisible?: boolean;
   showTable: boolean;
   setShowTable: (show: boolean) => void;
-  onCategoryChange?: (category: string) => void;
-  toggleMeasurementVisibility?: (id: string) => void;
-  toggleLabelVisibility?: (id: string) => void;
-  handleStartPointEdit?: (id: string) => void;
-  handleDeleteMeasurement?: (id: string) => void;
-  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
-  updateMeasurement?: (id: string, data: Partial<any>) => void;
-  segmentsOpen?: Record<string, boolean>;
-  toggleSegments?: (id: string) => void;
-  onEditSegment?: (id: string | null) => void;
-  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
 }
 
-/**
- * Controls for measurement tools selection
- */
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
-  activeMode,
-  toggleMeasurementTool,
-  editMeasurementId,
   measurements,
-  showTable,
-  setShowTable,
-  onCategoryChange,
   toggleMeasurementVisibility,
   toggleLabelVisibility,
   handleStartPointEdit,
   handleDeleteMeasurement,
   handleDeletePoint,
   updateMeasurement,
+  editMeasurementId,
   segmentsOpen,
   toggleSegments,
   onEditSegment,
+  activeMode,
+  toggleMeasurementTool,
   movingPointInfo,
+  handleClearMeasurements,
+  toggleAllMeasurementsVisibility,
+  toggleAllLabelsVisibility,
+  allMeasurementsVisible,
+  allLabelsVisible,
+  showTable,
+  setShowTable,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown
 }) => {
-  const { snapEnabled, setSnapEnabled } = usePointSnapping();
-  const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("measurements");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   
-  // Refs for scroll sections
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const toolsRef = useRef<HTMLDivElement>(null);
-  const measurementsRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
-  
-  // Count measurements by category
-  const dachCount = measurements.filter(m => ['length', 'height', 'area'].includes(m.type)).length;
-  const solarCount = measurements.filter(m => ['solar'].includes(m.type)).length;
-  const dachelementeCount = measurements.filter(m => ['skylight', 'chimney'].includes(m.type)).length;
-  const einbautenCount = measurements.filter(m => ['vent', 'hook', 'other'].includes(m.type)).length;
-  
-  const handleToggleSnap = () => {
-    const newValue = !snapEnabled;
-    setSnapEnabled(newValue);
-    toast.info(newValue 
-      ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
-      : "Punktfang deaktiviert: Punkte werden exakt platziert"
-    );
-  };
-
-  const handleCategoryChange = (category: string | undefined) => {
-    setActiveCategory(category === activeCategory ? undefined : category);
-    if (onCategoryChange) {
-      onCategoryChange(category === activeCategory ? '' : category);
-    }
+  const handleCategoryClick = (category: MeasurementMode) => {
+    setActiveCategory(category);
+    setActiveTab("measurements");
   };
   
-  const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
-    if (ref.current && scrollAreaRef.current) {
-      // Scroll to the section with an offset for the navigation buttons
-      const offset = 10;
-      scrollAreaRef.current.scrollTo({
-        top: ref.current.offsetTop - offset,
-        behavior: 'smooth'
+  // Function to export measurements as CSV
+  const exportMeasurementsAsCSV = () => {
+    if (!measurements || measurements.length === 0) {
+      toast({
+        title: "Fehler",
+        description: "Keine Messungen für den Export vorhanden",
+        variant: "destructive"
       });
+      return;
     }
+    
+    // CSV headers
+    let csvContent = 'ID,Typ,Wert,Punkte\n';
+    
+    // Add each measurement
+    measurements.forEach(m => {
+      const type = m.type;
+      const value = m.value || 0;
+      const pointsStr = m.points ? m.points.map((p: any) => 
+        `(${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)})`
+      ).join(' ') : '';
+      
+      csvContent += `${m.id},"${type}",${value.toFixed(2)},"${pointsStr}"\n`;
+    });
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.href = url;
+    link.setAttribute('download', `Messungen_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "CSV-Export erfolgreich",
+      description: "Die CSV-Datei wurde heruntergeladen"
+    });
   };
   
-  const handleDownload = () => {
-    if (measurements.length === 0) return;
-    exportMeasurementsToCSV(measurements);
-  };
-
+  // Style for table mode to prevent sidebar overflow - fixing the TypeScript error
+  const tableContainerStyle = showTable ? { 
+    maxWidth: '100%', 
+    overflowX: 'auto' as const  // Using 'as const' to specify the correct type
+  } : {};
+  
   return (
-    <div className="p-3 flex flex-col h-full overflow-hidden">
-      {/* Navigation buttons at the top */}
-      <div className="flex gap-2 mb-4 flex-shrink-0">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex-1 flex items-center justify-center"
-          onClick={() => scrollTo(toolsRef)}
-        >
-          <Wrench className="h-4 w-4 mr-2" />
-          Werkzeuge
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex-1 flex items-center justify-center"
-          onClick={() => scrollTo(measurementsRef)}
-        >
-          <LineChart className="h-4 w-4 mr-2" />
-          Messungen
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex-1 flex items-center justify-center"
-          onClick={() => scrollTo(exportRef)}
-        >
-          <FileDown className="h-4 w-4 mr-2" />
-          Export
-        </Button>
-      </div>
-      
-      {/* Scrollable content with all sections */}
-      <ScrollArea className="pr-2 flex-1" scrollRef={scrollAreaRef}>
-        <div className="space-y-8"> {/* Increased spacing between sections */}
-          {/* TOOLS SECTION */}
-          <div ref={toolsRef}>
-            <div className="text-lg font-semibold pb-2 border-b mb-4">Werkzeuge</div>
-            
-            {/* Punktfang toggle */}
-            <div className="mb-4">
-              <Toggle
-                pressed={snapEnabled}
-                onPressedChange={handleToggleSnap}
-                size="sm"
-                variant={snapEnabled ? "customActive" : "outline"}
-                aria-label="Punktfang ein/aus"
-                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-                className="w-full justify-start"
-              >
-                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-              </Toggle>
-            </div>
-            
-            {/* Messwerkzeuge */}
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm font-medium mb-2">Messwerkzeuge</div>
-                <div className="space-y-2">
-                  <Button
-                    variant={activeMode === 'length' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('length')}
-                    disabled={!!editMeasurementId}
-                    title="Längenmessung"
-                  >
-                    <Ruler className="h-4 w-4 mr-2" />
-                    Länge
-                  </Button>
-                  
-                  <Button
-                    variant={activeMode === 'height' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('height')}
-                    disabled={!!editMeasurementId}
-                    title="Höhenmessung"
-                  >
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
-                    Höhe
-                  </Button>
-                  
-                  <Button
-                    variant={activeMode === 'area' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('area')}
-                    disabled={!!editMeasurementId}
-                    title="Flächenmessung"
-                  >
-                    <Square className="h-4 w-4 mr-2" />
-                    Fläche
-                  </Button>
-                </div>
-              </div>
-              
-              <div>
-                <div className="text-sm font-medium mb-2">Solarplanung</div>
-                <div className="space-y-2">
-                  <Button
-                    variant={activeMode === 'solar' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('solar')}
-                    disabled={!!editMeasurementId}
-                    title="Solarplanung"
-                  >
-                    <Sun className="h-4 w-4 mr-2" />
-                    Solarplanung
-                  </Button>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <div className="text-sm font-medium mb-2">Dachelemente</div>
-                <div className="space-y-2">
-                  <Button
-                    variant={activeMode === 'skylight' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('skylight')}
-                    disabled={!!editMeasurementId}
-                  >
-                    <SplitSquareVertical className="h-4 w-4 mr-2" />
-                    Dachfenster
-                  </Button>
-                  
-                  <Button
-                    variant={activeMode === 'chimney' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('chimney')}
-                    disabled={!!editMeasurementId}
-                  >
-                    <Cylinder className="h-4 w-4 mr-2" />
-                    Kamin
-                  </Button>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <div className="text-sm font-medium mb-2">Einbauten</div>
-                <div className="space-y-2">
-                  <Button
-                    variant={activeMode === 'vent' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('vent')}
-                    disabled={!!editMeasurementId}
-                  >
-                    <Wind className="h-4 w-4 mr-2" />
-                    Lüfter
-                  </Button>
-                  
-                  <Button
-                    variant={activeMode === 'hook' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('hook')}
-                    disabled={!!editMeasurementId}
-                  >
-                    <Anchor className="h-4 w-4 mr-2" />
-                    Haken
-                  </Button>
-                  
-                  <Button
-                    variant={activeMode === 'other' ? "default" : "outline"} 
-                    size="sm"
-                    className="w-full flex justify-start"
-                    onClick={() => toggleMeasurementTool('other')}
-                    disabled={!!editMeasurementId}
-                  >
-                    <Droplet className="h-4 w-4 mr-2" />
-                    Sonstiges
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+    <ScrollArea className="flex-1 h-full">
+      <div className="p-3 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-medium">Messwerkzeuge</h3>
           
-          {/* MEASUREMENTS SECTION */}
-          <div ref={measurementsRef}>
-            <div className="text-lg font-semibold pb-2 border-b mb-4">Messungen</div>
-            
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <Button
-                variant={activeCategory === 'dach' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => handleCategoryChange('dach')}
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Dach ({dachCount})
-              </Button>
-              
-              <Button
-                variant={activeCategory === 'solar' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => handleCategoryChange('solar')}
-              >
-                <Sun className="h-4 w-4 mr-2" />
-                Solar ({solarCount})
-              </Button>
-              
-              <Button
-                variant={activeCategory === 'dachelemente' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => handleCategoryChange('dachelemente')}
-              >
-                <SplitSquareVertical className="h-4 w-4 mr-2" />
-                Dachelemente ({dachelementeCount})
-              </Button>
-              
-              <Button
-                variant={activeCategory === 'einbauten' ? "default" : "outline"} 
-                size="sm"
-                className="w-full flex justify-start"
-                onClick={() => handleCategoryChange('einbauten')}
-              >
-                <Anchor className="h-4 w-4 mr-2" />
-                Einbauten ({einbautenCount})
-              </Button>
-              
-              <Button
-                variant={activeCategory === undefined ? "default" : "outline"} 
-                size="sm"
-                className="w-full col-span-2 flex justify-center"
-                onClick={() => handleCategoryChange(undefined)}
-              >
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Alle anzeigen
-              </Button>
-            </div>
-            
-            <div className="max-h-80 overflow-y-auto">
-              {toggleMeasurementVisibility && toggleLabelVisibility && handleStartPointEdit && 
-               handleDeleteMeasurement && updateMeasurement && segmentsOpen && toggleSegments && onEditSegment && (
-                <MeasurementList 
-                  measurements={measurements}
-                  toggleMeasurementVisibility={toggleMeasurementVisibility}
-                  toggleLabelVisibility={toggleLabelVisibility}
-                  handleStartPointEdit={handleStartPointEdit}
-                  handleDeleteMeasurement={handleDeleteMeasurement}
-                  handleDeletePoint={handleDeletePoint}
-                  updateMeasurement={updateMeasurement}
-                  editMeasurementId={editMeasurementId}
-                  segmentsOpen={segmentsOpen}
-                  toggleSegments={toggleSegments}
-                  onEditSegment={onEditSegment}
-                  movingPointInfo={movingPointInfo}
-                  handleMoveMeasurementUp={handleMoveMeasurementUp}
-                  handleMoveMeasurementDown={handleMoveMeasurementDown}
-                  activeCategory={activeCategory}
-                />
-              )}
-            </div>
-          </div>
-          
-          {/* EXPORT SECTION */}
-          <div ref={exportRef}>
-            <div className="text-lg font-semibold pb-2 border-b mb-4">Export</div>
-            
-            {measurements.length > 0 ? (
-              <div className="space-y-2">
-                <GenerateRoofPlanButton measurements={measurements} />
-                
-                <ExportPdfButton measurements={measurements} />
-                
-                <Button
+          <div className="flex gap-1">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
                   variant="outline" 
                   size="sm"
-                  className="w-full flex justify-start"
-                  onClick={handleDownload}
+                  disabled={measurements.length === 0 || !!editMeasurementId}
+                  title="Alle Messungen löschen"
+                  className="h-7"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Als CSV exportieren
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground italic text-center py-4">
-                Keine Messungen vorhanden
-              </div>
-            )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Möchten Sie wirklich alle Messungen löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => {
+                      handleClearMeasurements();
+                      toast({
+                        title: "Messungen gelöscht",
+                        description: "Alle Messungen wurden erfolgreich gelöscht."
+                      });
+                    }}
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
-      </ScrollArea>
-    </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <TabsList className="w-full grid grid-cols-2 h-8 mb-3">
+            <TabsTrigger value="tools">Werkzeuge</TabsTrigger>
+            <TabsTrigger value="measurements">
+              Messungen 
+              {measurements.length > 0 && <span className="ml-1 text-muted-foreground text-xs">({measurements.length})</span>}
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="tools" className="flex-1 m-0 space-y-3">
+            <MeasurementToolbar 
+              activeMode={activeMode} 
+              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
+                console.log('Toggle measurement tool', mode);
+                // Default implementation if not provided
+              })}
+              measurements={measurements}
+              handleClearMeasurements={handleClearMeasurements}
+              onCategoryClick={handleCategoryClick}
+              toggleAllLabelsVisibility={toggleAllLabelsVisibility}
+              allLabelsVisible={allLabelsVisible}
+            />
+            
+            <RoofElementsToolbar 
+              activeMode={activeMode}
+              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
+                console.log('Toggle measurement tool', mode);
+                // Default implementation if not provided
+              })}
+              editMeasurementId={editMeasurementId}
+            />
+          </TabsContent>
+          
+          <TabsContent value="measurements" className="flex-1 m-0">
+            <div className="flex mb-3 items-center justify-between">
+              <div className="text-sm font-medium">
+                {activeCategory ? (
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-sm -ml-3" 
+                    onClick={() => setActiveCategory(null)}
+                  >
+                    ← Zurück zu allen Messungen
+                  </Button>
+                ) : (
+                  "Alle Messungen"
+                )}
+              </div>
+              
+              <div className="flex gap-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowTable(!showTable)}
+                  title={showTable ? "Als Liste anzeigen" : "Als Tabelle anzeigen"}
+                  className="h-7"
+                >
+                  {showTable ? "Liste" : "Tabelle"}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Export options - Moved from MeasurementToolbar to here */}
+            {measurements && measurements.length > 0 && (
+              <div className="flex flex-col gap-2 mb-4 border-b pb-3">
+                <div className="text-xs text-muted-foreground mb-1">
+                  Exportoptionen:
+                </div>
+                
+                {/* Roof plan generation button */}
+                <GenerateRoofPlanButton measurements={measurements} />
+                
+                {/* CSV Export button */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={exportMeasurementsAsCSV}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  CSV Export
+                </Button>
+                
+                {/* PDF Export button */}
+                <ExportPdfButton measurements={measurements} />
+              </div>
+            )}
+            
+            <div style={tableContainerStyle}>
+              {showTable ? (
+                <MeasurementTable 
+                  measurements={measurements}
+                  toggleMeasurementVisibility={toggleMeasurementVisibility}
+                  handleDeleteMeasurement={handleDeleteMeasurement}
+                />
+              ) : (
+                <div className="flex-1">
+                  <MeasurementList 
+                    measurements={measurements}
+                    toggleMeasurementVisibility={toggleMeasurementVisibility}
+                    toggleLabelVisibility={toggleLabelVisibility}
+                    handleStartPointEdit={handleStartPointEdit}
+                    handleDeleteMeasurement={handleDeleteMeasurement}
+                    handleDeletePoint={handleDeletePoint}
+                    updateMeasurement={updateMeasurement}
+                    editMeasurementId={editMeasurementId}
+                    segmentsOpen={segmentsOpen}
+                    toggleSegments={toggleSegments}
+                    onEditSegment={onEditSegment}
+                    movingPointInfo={movingPointInfo}
+                    handleMoveMeasurementUp={handleMoveMeasurementUp}
+                    handleMoveMeasurementDown={handleMoveMeasurementDown}
+                    activeCategory={activeCategory || undefined}
+                  />
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </ScrollArea>
   );
 };
 
