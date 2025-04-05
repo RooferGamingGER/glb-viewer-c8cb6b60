@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -103,3 +102,18 @@ export interface PVModuleInfo {
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
 }
+
+export type MeasurementMode = 
+  | 'line' 
+  | 'area' 
+  | 'length' 
+  | 'height' 
+  | 'solar' 
+  | 'skylight' 
+  | 'chimney' 
+  | 'pvmodule' 
+  | 'pvplanning' 
+  | 'vent' 
+  | 'hook' 
+  | 'other'
+  | 'none';
