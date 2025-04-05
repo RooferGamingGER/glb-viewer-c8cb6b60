@@ -1,5 +1,5 @@
 
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { CircleMinus } from 'lucide-react';
 import { Point, Measurement } from '@/types/measurements';
@@ -10,6 +10,10 @@ interface PointEditListProps {
   movingPointInfo: { measurementId: string; pointIndex: number } | null;
 }
 
+/**
+ * Component for editing points of a measurement
+ * Enhanced with memoization and performance optimizations
+ */
 const PointEditList: React.FC<PointEditListProps> = memo(({
   measurement,
   handleDeletePoint,
@@ -23,6 +27,19 @@ const PointEditList: React.FC<PointEditListProps> = memo(({
   // We need at least 3 points for a valid polygon
   const minRequiredPoints = 3;
   const canDeletePoints = measurement.points.length > minRequiredPoints;
+  
+  // Memoized delete handler to avoid recreating functions on each render
+  const onDeletePoint = useCallback((pointIndex: number) => {
+    handleDeletePoint(measurement.id, pointIndex);
+  }, [measurement.id, handleDeletePoint]);
+
+  // Check if this point is currently being moved
+  const isPointMoving = useCallback((pointIndex: number) => {
+    return (
+      movingPointInfo?.measurementId === measurement.id && 
+      movingPointInfo?.pointIndex === pointIndex
+    );
+  }, [movingPointInfo, measurement.id]);
 
   return (
     <div className="mt-2 border border-border/50 rounded-md p-2 bg-secondary/10">
@@ -36,8 +53,7 @@ const PointEditList: React.FC<PointEditListProps> = memo(({
           <div 
             key={index}
             className={`flex items-center justify-between p-1 rounded-md ${
-              movingPointInfo?.measurementId === measurement.id && 
-              movingPointInfo?.pointIndex === index 
+              isPointMoving(index)
                 ? 'bg-primary/20 border border-primary/50' 
                 : 'border border-border/50'
             }`}
@@ -47,7 +63,7 @@ const PointEditList: React.FC<PointEditListProps> = memo(({
               variant="ghost"
               size="icon"
               className="h-6 w-6"
-              onClick={() => handleDeletePoint(measurement.id, index)}
+              onClick={() => onDeletePoint(index)}
               title={`Punkt ${index + 1} löschen`}
               disabled={!canDeletePoints}
             >

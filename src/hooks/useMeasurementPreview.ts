@@ -1,12 +1,11 @@
 
 import { useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { Point } from '@/hooks/useMeasurements';
+import { Point } from '@/types/measurements';
 import { createPointPool } from '@/utils/threeObjectPool';
 
 /**
- * Hook zur Verwaltung der Vorschau beim Verschieben von Messpunkten
- * mit verbesserter Performance durch Objektpooling
+ * Hook for managing measurement preview with improved performance through object pooling
  */
 export const useMeasurementPreview = (scene: THREE.Scene | null) => {
   const previewRef = useRef<THREE.Group | null>(null);

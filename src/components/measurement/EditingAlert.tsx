@@ -1,5 +1,5 @@
 
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Move, MousePointer, PlusCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,6 +12,10 @@ interface EditingAlertProps {
   editingAreaMeasurement?: boolean;
 }
 
+/**
+ * Alert component shown when in editing mode
+ * Enhanced with memoization and performance optimizations
+ */
 const EditingAlert: React.FC<EditingAlertProps> = memo(({
   editMeasurementId,
   editingSegmentId,
@@ -21,6 +25,11 @@ const EditingAlert: React.FC<EditingAlertProps> = memo(({
 }) => {
   if (!editMeasurementId && !editingSegmentId && !movingPointInfo) return null;
   
+  // Memoized cancel handler to avoid recreating function on each render
+  const onCancelEditing = useCallback(() => {
+    handleCancelEditing();
+  }, [handleCancelEditing]);
+
   return (
     <Alert variant="default" className="mb-3 border-primary overflow-visible">
       <AlertCircle className="h-4 w-4" />
@@ -57,7 +66,7 @@ const EditingAlert: React.FC<EditingAlertProps> = memo(({
           variant="outline" 
           size="sm" 
           className="w-full mt-2"
-          onClick={handleCancelEditing}
+          onClick={onCancelEditing}
         >
           Bearbeitung beenden
         </Button>
