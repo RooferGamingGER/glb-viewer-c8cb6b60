@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { CircleMinus } from 'lucide-react';
 import { Point, Measurement } from '@/types/measurements';
@@ -9,7 +10,7 @@ interface PointEditListProps {
   movingPointInfo: { measurementId: string; pointIndex: number } | null;
 }
 
-const PointEditList: React.FC<PointEditListProps> = ({
+const PointEditList: React.FC<PointEditListProps> = memo(({
   measurement,
   handleDeletePoint,
   movingPointInfo
@@ -57,6 +58,8 @@ const PointEditList: React.FC<PointEditListProps> = ({
       </div>
     </div>
   );
-};
+});
+
+PointEditList.displayName = 'PointEditList';
 
 export default PointEditList;

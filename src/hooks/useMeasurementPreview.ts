@@ -1,16 +1,23 @@
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/hooks/useMeasurements';
+import { createPointPool } from '@/utils/threeObjectPool';
 
 /**
  * Hook zur Verwaltung der Vorschau beim Verschieben von Messpunkten
+ * mit verbesserter Performance durch Objektpooling
  */
 export const useMeasurementPreview = (scene: THREE.Scene | null) => {
-  const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   const previewRef = useRef<THREE.Group | null>(null);
   
-  // Initialize preview group
+  // Create a dedicated object pool for preview points
+  const previewPointPool = useRef<ReturnType<typeof createPointPool> | null>(null);
+  
+  // Active preview objects reference
+  const activePreviewObjects = useRef<THREE.Object3D[]>([]);
+  
+  // Initialize preview group and object pool
   useEffect(() => {
     if (!scene) return;
     
@@ -20,51 +27,46 @@ export const useMeasurementPreview = (scene: THREE.Scene | null) => {
       scene.add(previewRef.current);
     }
     
+    if (!previewPointPool.current) {
+      previewPointPool.current = createPointPool(0xff00ff, 0.06);
+    }
+    
     return () => {
       if (previewRef.current && scene) {
         clearPreviewGroup();
         scene.remove(previewRef.current);
         previewRef.current = null;
       }
+      
+      // Dispose object pool
+      if (previewPointPool.current) {
+        previewPointPool.current.clear(true);
+        previewPointPool.current = null;
+      }
     };
   }, [scene]);
 
   // Function to clear the preview group
   const clearPreviewGroup = useCallback(() => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || !previewPointPool.current) return;
     
-    while (previewRef.current.children.length > 0) {
-      const child = previewRef.current.children[0];
-      
-      // Dispose of geometries and materials
-      if ('geometry' in child) {
-        const meshChild = child as THREE.Mesh;
-        if (meshChild.geometry) {
-          meshChild.geometry.dispose();
-        }
-      }
-      
-      if ('material' in child) {
-        const meshChild = child as THREE.Mesh;
-        if (meshChild.material) {
-          if (Array.isArray(meshChild.material)) {
-            meshChild.material.forEach(mat => mat.dispose());
-          } else {
-            meshChild.material.dispose();
-          }
-        }
-      }
-      
-      previewRef.current.remove(child);
-    }
+    // Return all active objects to pool
+    activePreviewObjects.current.forEach(obj => {
+      previewRef.current?.remove(obj);
+      previewPointPool.current?.release(obj as any);
+    });
+    
+    // Clear active objects array
+    activePreviewObjects.current = [];
   }, []);
 
   // Update preview point visualization
   const updatePreviewVisualization = useCallback((
-    movingPointInfo: { measurementId: string; pointIndex: number } | null,
-    measurements: any[]
+    movingPointInfo: { measurementId: string; pointIndex: number; originalPoint?: Point } | null,
+    measurements: any[],
+    previewPoint?: Point | null
   ) => {
-    if (!previewRef.current || !previewPoint || !movingPointInfo) {
+    if (!previewRef.current || !previewPointPool.current || !movingPointInfo || !previewPoint) {
       clearPreviewGroup();
       return;
     }
@@ -73,45 +75,40 @@ export const useMeasurementPreview = (scene: THREE.Scene | null) => {
     clearPreviewGroup();
     
     // Create preview sphere
-    const sphereGeometry = new THREE.SphereGeometry(0.06, 16, 16);
-    const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xff00ff,
-      opacity: 0.7,
-      transparent: true
-    });
-    
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    const sphere = previewPointPool.current.get();
     sphere.position.set(previewPoint.x, previewPoint.y, previewPoint.z);
     previewRef.current.add(sphere);
+    activePreviewObjects.current.push(sphere);
     
-    // Add directional line from original point to preview
+    // Add directional line from original point to preview if we have the original point
     const measurement = measurements.find(m => m.id === movingPointInfo.measurementId);
-    if (measurement) {
-      const originalPoint = measurement.points[movingPointInfo.pointIndex];
+    const originalPoint = movingPointInfo.originalPoint || 
+                         (measurement && measurement.points[movingPointInfo.pointIndex]);
+    
+    if (originalPoint && measurement) {
+      // Create a line
+      const material = new THREE.LineBasicMaterial({ 
+        color: 0xff00ff,
+        opacity: 0.7,
+        transparent: true
+      });
       
-      const linePoints = [
+      const points = [
         new THREE.Vector3(originalPoint.x, originalPoint.y, originalPoint.z),
         new THREE.Vector3(previewPoint.x, previewPoint.y, previewPoint.z)
       ];
       
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
-      const lineMaterial = new THREE.LineDashedMaterial({ 
-        color: 0xff00ff,
-        dashSize: 0.1,
-        gapSize: 0.05,
-      });
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, material);
       
-      const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.computeLineDistances();
       previewRef.current.add(line);
+      activePreviewObjects.current.push(line);
     }
-  }, [previewPoint, clearPreviewGroup]);
+  }, [clearPreviewGroup]);
 
   return {
-    previewPoint,
-    setPreviewPoint,
-    previewRef,
+    updatePreviewVisualization,
     clearPreviewGroup,
-    updatePreviewVisualization
+    previewRef
   };
 };

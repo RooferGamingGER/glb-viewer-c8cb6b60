@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Ruler, Maximize2, Square, SunDim, Grid3X3, 
@@ -27,11 +27,11 @@ interface MeasurementToolsProps {
   className?: string;
 }
 
-const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({ 
+const MeasurementTools = memo(({ 
   open = false, 
   onClose,
   className 
-}) => {
+}: MeasurementToolsProps) => {
   const [activeMeasurement, setActiveMeasurement] = useState<string | null>(null);
   const [measurementMode, setMeasurementMode] = useState<MeasurementMode>("none");
   const [isAddingNewMeasurement, setIsAddingNewMeasurement] = useState(false);
@@ -125,12 +125,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({
     }
   };
 
-  const handleModeSelect = (mode: MeasurementMode) => {
+  const handleModeSelect = useCallback((mode: MeasurementMode) => {
     setMeasurementMode(mode);
     setIsAddingNewMeasurement(true);
-  };
+  }, []);
 
-  const handleAddMeasurement = () => {
+  const handleAddMeasurement = useCallback(() => {
     if (!isAddingNewMeasurement) return;
 
     const newMeasurement = {
@@ -153,33 +153,47 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({
     
     measurementInteraction.addMeasurement(newMeasurement);
     setIsAddingNewMeasurement(false);
-  };
+  }, [
+    isAddingNewMeasurement, 
+    measurementMode, 
+    currentPoints, 
+    measurementInteraction, 
+    pvModuleWidth, 
+    pvModuleHeight, 
+    pvModuleTilt, 
+    pvModuleAzimuth, 
+    pvModuleInverterPower, 
+    pvModulePowerOptimizer, 
+    pvModuleBatteryCapacity, 
+    pvModuleFeedInTariff, 
+    pvModuleElectricityPrice
+  ]);
 
-  const handleCancelMeasurement = () => {
+  const handleCancelMeasurement = useCallback(() => {
     setIsAddingNewMeasurement(false);
     measurementInteraction.clearPreviewGroup();
     measurementInteraction.clearAddPointIndicators();
     measurementInteraction.setMovingPointInfo(null);
-  };
+  }, [measurementInteraction]);
 
-  const handleEdit = (id: string) => {
+  const handleEdit = useCallback((id: string) => {
     setIsEditing(true);
     setEditMeasurementId(id);
-  };
+  }, []);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
     setEditMeasurementId(null);
     setEditingPointIndex(null);
-  };
+  }, []);
 
-  const handleUpdateMeasurement = (id: string, data: Partial<any>) => {
+  const handleUpdateMeasurement = useCallback((id: string, data: Partial<any>) => {
     measurementInteraction.updateMeasurement(id, data);
-  };
+  }, [measurementInteraction]);
 
-  const handlePVModuleModeToggle = () => {
+  const handlePVModuleModeToggle = useCallback(() => {
     setIsPVModuleMode(!isPVModuleMode);
-  };
+  }, [isPVModuleMode]);
 
   return (
     <div className={cn("measurement-tools-container", className)}>
