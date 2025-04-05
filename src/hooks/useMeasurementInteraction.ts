@@ -1,7 +1,6 @@
-
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { Point } from '@/types/measurements';
+import { Point, MeasurementMode } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
@@ -27,7 +26,7 @@ export const useMeasurementInteraction = (
   },
   measurements: any[],
   currentPoints: Point[],
-  activeMode: string,
+  activeMode: MeasurementMode,
   handlers: {
     addPoint: (point: Point) => void,
     startPointEdit: (id: string, index: number) => void,
