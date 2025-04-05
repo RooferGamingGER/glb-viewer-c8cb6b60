@@ -17,49 +17,49 @@ const EditingAlert: React.FC<EditingAlertProps> = memo(({
   editingSegmentId,
   movingPointInfo,
   handleCancelEditing,
-  editingAreaMeasurement = false
+  editingAreaMeasurement
 }) => {
-  if (!editMeasurementId && !editingSegmentId && !movingPointInfo) return null;
-  
+  // Determine which type of editing is happening
+  const isEditingPoint = editMeasurementId !== null;
+  const isMovingPoint = movingPointInfo !== null;
+  const isEditingSegment = editingSegmentId !== null;
+
+  // Choose the appropriate icon based on the editing mode
+  let Icon = AlertCircle;
+  if (isMovingPoint) Icon = Move;
+  else if (isEditingPoint) Icon = PlusCircle;
+  else if (isEditingSegment) Icon = MousePointer;
+
+  // Set the appropriate alert message
+  let alertTitle = "Bearbeitungsmodus";
+  let alertDescription = "Sie befinden sich im Bearbeitungsmodus.";
+
+  if (isMovingPoint) {
+    alertTitle = "Punkt verschieben";
+    alertDescription = "Klicken Sie auf eine Position, um den Punkt zu verschieben.";
+  } else if (isEditingPoint && editingAreaMeasurement) {
+    alertTitle = "Punkte bearbeiten";
+    alertDescription = "Klicken Sie auf weitere Punkte, um sie hinzuzufügen oder klicken Sie auf bestehende Punkte, um sie zu löschen.";
+  } else if (isEditingPoint) {
+    alertTitle = "Punkte bearbeiten";
+    alertDescription = "Bearbeiten Sie die Punkte der ausgewählten Messung.";
+  } else if (isEditingSegment) {
+    alertTitle = "Segment bearbeiten";
+    alertDescription = "Bearbeiten Sie die Eigenschaften des ausgewählten Segments.";
+  }
+
   return (
-    <Alert variant="default" className="mb-3 border-primary overflow-visible">
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle className="text-primary font-medium">Bearbeitungsmodus</AlertTitle>
-      <AlertDescription className="space-y-2 overflow-visible">
-        {editMeasurementId && !movingPointInfo && (
-          <div className="flex flex-col gap-1 overflow-visible">
-            <div className="flex items-start gap-1 overflow-visible">
-              <MousePointer className="h-3 w-3 mt-0.5 flex-shrink-0" />
-              <span className="whitespace-normal break-words">Klicken Sie auf einen Punkt (gelb markiert), um ihn zu verschieben.</span>
-            </div>
-            
-            {editingAreaMeasurement && (
-              <div className="flex items-start gap-1 overflow-visible">
-                <PlusCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                <span className="whitespace-normal break-words">Klicken Sie auf ein "+" Symbol, um einen neuen Punkt hinzuzufügen.</span>
-              </div>
-            )}
-          </div>
-        )}
-        {editingSegmentId && (
-          <div className="flex items-start gap-1 overflow-visible">
-            <MousePointer className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span className="whitespace-normal break-words">Klicken Sie auf eine Position, um das Segment zu verschieben.</span>
-          </div>
-        )}
-        {movingPointInfo && (
-          <div className="flex items-start gap-1 font-medium text-primary overflow-visible">
-            <Move className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span className="whitespace-normal break-words">Punkt wird verschoben. Klicken Sie, um die neue Position zu bestätigen.</span>
-          </div>
-        )}
+    <Alert variant="destructive" className="mb-3">
+      <Icon className="h-4 w-4" />
+      <AlertTitle>{alertTitle}</AlertTitle>
+      <AlertDescription className="flex flex-col gap-2">
+        <p>{alertDescription}</p>
         <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full mt-2"
+          variant="destructive" 
+          size="sm"
           onClick={handleCancelEditing}
         >
-          Bearbeitung beenden
+          Bearbeitung abbrechen
         </Button>
       </AlertDescription>
     </Alert>
