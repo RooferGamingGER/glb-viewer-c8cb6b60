@@ -7,6 +7,7 @@ import MeasurementTable from './MeasurementTable';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Trash2, Eye, EyeOff } from 'lucide-react';
+import { MeasurementMode } from '@/types/measurements';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,8 @@ interface MeasurementToolControlsProps {
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
   onEditSegment: (id: string | null) => void;
-  activeMode: string;
+  activeMode: MeasurementMode;
+  toggleMeasurementTool?: (mode: MeasurementMode) => void;
   movingPointInfo?: {
     measurementId: string;
     pointIndex: number;
@@ -65,6 +67,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   toggleSegments,
   onEditSegment,
   activeMode,
+  toggleMeasurementTool,
   movingPointInfo,
   handleClearMeasurements,
   toggleAllMeasurementsVisibility,
@@ -81,7 +84,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  const handleCategoryClick = (category: string) => {
+  const handleCategoryClick = (category: MeasurementMode) => {
     setActiveCategory(category);
     setActiveTab("measurements");
   };
@@ -159,18 +162,20 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           <TabsContent value="tools" className="flex-1 m-0 space-y-3">
             <MeasurementToolbar 
               activeMode={activeMode} 
-              toggleMeasurementTool={function (mode: any): void {
-                // This is just a stub implementation as the real function would be passed from the parent
-              } } 
+              toggleMeasurementTool={toggleMeasurementTool || ((mode: MeasurementMode) => {
+                console.log('Toggle measurement tool', mode);
+                // Default implementation if not provided
+              })}
               editMeasurementId={editMeasurementId}
               onCategoryClick={handleCategoryClick}
             />
             
             <RoofElementsToolbar 
               activeMode={activeMode}
-              toggleMeasurementTool={function (mode: any): void {
-                // This is just a stub implementation as the real function would be passed from the parent
-              } }
+              toggleMeasurementTool={toggleMeasurementTool || ((mode: MeasurementMode) => {
+                console.log('Toggle measurement tool', mode);
+                // Default implementation if not provided
+              })}
               editMeasurementId={editMeasurementId}
             />
           </TabsContent>
