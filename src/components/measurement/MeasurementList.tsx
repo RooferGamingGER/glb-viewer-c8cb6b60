@@ -1,186 +1,162 @@
 
-import React from 'react';
-import { Measurement } from '@/hooks/useMeasurements';
-import MeasurementItem from './MeasurementItem';
-import { Separator } from '@/components/ui/separator';
+import React, { useState } from 'react';
+import { Measurement } from '@/types/measurements';
+import MeasurementCard from './MeasurementCard';
+import { Button } from "@/components/ui/button";
+import { Trash2, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MeasurementListProps {
   measurements: Measurement[];
-  toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility: (id: string) => void;
-  handleStartPointEdit: (id: string) => void;
-  handleDeleteMeasurement: (id: string) => void;
-  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
+  toggleMeasurementVisibility: (id: string, data: Partial<Measurement>) => void;
+  toggleEditMode: (id: string) => void;
+  deleteMeasurement: (id: string) => void;
+  deletePoint: (measurementId: string, pointIndex: number) => void;
   updateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  editMeasurementId: string | null;
-  segmentsOpen: Record<string, boolean>;
-  toggleSegments: (id: string) => void;
-  onEditSegment: (id: string | null) => void;
-  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
-  handleMoveMeasurementUp?: (id: string) => void;
-  handleMoveMeasurementDown?: (id: string) => void;
-  activeCategory?: string;
+  handleStartPointEdit: (id: string) => void;
+  moveMeasurementUp?: (id: string) => void;
+  moveMeasurementDown?: (id: string) => void;
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
   measurements,
   toggleMeasurementVisibility,
-  toggleLabelVisibility,
-  handleStartPointEdit,
-  handleDeleteMeasurement,
-  handleDeletePoint,
+  toggleEditMode,
+  deleteMeasurement,
+  deletePoint,
   updateMeasurement,
-  editMeasurementId,
-  segmentsOpen,
-  toggleSegments,
-  onEditSegment,
-  movingPointInfo,
-  handleMoveMeasurementUp,
-  handleMoveMeasurementDown,
-  activeCategory
+  handleStartPointEdit,
+  moveMeasurementUp,
+  moveMeasurementDown
 }) => {
-  if (!measurements || measurements.length === 0 && !editMeasurementId) {
-    return (
-      <div className="text-center py-6 text-muted-foreground">
-        Keine Messungen vorhanden.
-      </div>
-    );
-  }
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   
-  // Group measurements by category
-  // 1. Dach (standard measurements: length, height, area)
-  const dachMeasurements = measurements.filter(m => 
-    ['length', 'height', 'area'].includes(m.type)
-  );
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
   
-  // 2. Solar (solar planning measurements)
-  const solarMeasurements = measurements.filter(m => 
-    ['solar'].includes(m.type)
-  );
+  const handleDelete = (id: string) => {
+    setConfirmDelete(id);
+  };
   
-  // 3. Dachelemente (skylight, chimney)
-  const dachelementeMeasurements = measurements.filter(m => 
-    ['skylight', 'chimney'].includes(m.type)
-  );
+  const confirmDeleteMeasurement = () => {
+    if (confirmDelete) {
+      deleteMeasurement(confirmDelete);
+      toast.success('Messung gelöscht');
+      setConfirmDelete(null);
+    }
+  };
   
-  // 4. Einbauten (vent, hook, other)
-  const einbautenMeasurements = measurements.filter(m => 
-    ['vent', 'hook', 'other'].includes(m.type)
-  );
+  const handleVisibilityChange = (id: string, visible: boolean) => {
+    toggleMeasurementVisibility(id, { visible });
+  };
   
-  // 5. Any other measurements not categorized
-  const otherMeasurements = measurements.filter(m => 
-    !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
-  );
+  const handleLabelVisibilityChange = (id: string, labelVisible: boolean) => {
+    toggleMeasurementVisibility(id, { labelVisible });
+  };
   
-  const renderMeasurementGroup = (title: string, items: Measurement[], showEmpty: boolean = false) => {
-    if (items.length === 0 && !showEmpty) return null;
-    
-    return (
-      <div className="mb-4">
-        <h3 className="text-sm font-medium mb-2 flex justify-between">
-          <span>{title}</span>
-          <span className="text-muted-foreground">({items.length})</span>
-        </h3>
-        
-        {items.length > 0 ? (
-          items.map((measurement) => (
-            <MeasurementItem
-              key={measurement.id}
-              measurement={measurement}
-              toggleMeasurementVisibility={toggleMeasurementVisibility}
-              toggleLabelVisibility={toggleLabelVisibility}
-              handleStartPointEdit={handleStartPointEdit}
-              handleDeleteMeasurement={handleDeleteMeasurement}
-              handleDeletePoint={handleDeletePoint}
-              updateMeasurement={updateMeasurement}
-              editMeasurementId={editMeasurementId}
-              segmentsOpen={segmentsOpen[measurement.id] || false}
-              toggleSegments={toggleSegments}
-              onEditSegment={onEditSegment}
-              movingPointInfo={movingPointInfo}
-              handleMoveUp={handleMoveMeasurementUp}
-              handleMoveDown={handleMoveMeasurementDown}
-            />
-          ))
-        ) : (
-          <div className="text-sm text-muted-foreground py-2 text-center">
-            Keine {title} vorhanden
-          </div>
-        )}
-      </div>
-    );
+  const handleEditModeToggle = (id: string) => {
+    toggleEditMode(id);
+  };
+  
+  const handlePointEdit = (id: string) => {
+    handleStartPointEdit(id);
+  };
+  
+  const handleDeletePoint = (measurementId: string, pointIndex: number) => {
+    deletePoint(measurementId, pointIndex);
   };
 
-  // Filter measurements based on activeCategory if provided
-  if (activeCategory) {
-    switch (activeCategory) {
-      case 'dach':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Dach", dachMeasurements, true)}
-          </div>
-        );
-      case 'solar':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Solar", solarMeasurements, true)}
-          </div>
-        );
-      case 'dachelemente':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
-          </div>
-        );
-      case 'einbauten':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
-          </div>
-        );
-      default:
-        break;
-    }
-  }
-  
-  // Default rendering with all categories
   return (
-    <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-      {/* Dach - Standard measurements */}
-      {renderMeasurementGroup("Dach", dachMeasurements, true)}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Messungen ({measurements.length})</h3>
+        
+        {measurements.length > 0 && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 text-destructive hover:text-destructive"
+            onClick={() => setConfirmDelete('all')}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Alle löschen
+          </Button>
+        )}
+      </div>
       
-      {/* Separator if needed */}
-      {dachMeasurements.length > 0 && (solarMeasurements.length > 0 || dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
-        <Separator className="my-3" />
-      )}
+      <ScrollArea className="h-auto max-h-[calc(100vh-15rem)]">
+        <div className="space-y-3">
+          {measurements.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Keine Messungen vorhanden
+            </div>
+          ) : (
+            measurements.map((measurement) => (
+              <MeasurementCard
+                key={measurement.id}
+                measurement={measurement}
+                expanded={expandedIds.has(measurement.id)}
+                onToggleExpanded={() => toggleExpanded(measurement.id)}
+                onVisibilityChange={(visible) => handleVisibilityChange(measurement.id, visible)}
+                onLabelVisibilityChange={(visible) => handleLabelVisibilityChange(measurement.id, visible)}
+                onEdit={() => handleEditModeToggle(measurement.id)}
+                onDelete={() => handleDelete(measurement.id)}
+                onPointEdit={() => handlePointEdit(measurement.id)}
+                onDeletePoint={(pointIndex) => handleDeletePoint(measurement.id, pointIndex)}
+                onMoveUp={moveMeasurementUp ? () => moveMeasurementUp(measurement.id) : undefined}
+                onMoveDown={moveMeasurementDown ? () => moveMeasurementDown(measurement.id) : undefined}
+                onUpdateData={(data) => updateMeasurement(measurement.id, data)}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
       
-      {/* Solar - Solar planning */}
-      {renderMeasurementGroup("Solar", solarMeasurements)}
-      
-      {/* Separator if needed */}
-      {solarMeasurements.length > 0 && (dachelementeMeasurements.length > 0 || einbautenMeasurements.length > 0) && (
-        <Separator className="my-3" />
-      )}
-      
-      {/* Dachelemente - Roof elements */}
-      {renderMeasurementGroup("Dachelemente", dachelementeMeasurements)}
-      
-      {/* Separator if needed */}
-      {dachelementeMeasurements.length > 0 && einbautenMeasurements.length > 0 && (
-        <Separator className="my-3" />
-      )}
-      
-      {/* Einbauten - Installations */}
-      {renderMeasurementGroup("Einbauten", einbautenMeasurements)}
-      
-      {/* Other measurements not categorized (if any) */}
-      {otherMeasurements.length > 0 && (
-        <>
-          <Separator className="my-3" />
-          {renderMeasurementGroup("Sonstige", otherMeasurements)}
-        </>
-      )}
+      <AlertDialog open={confirmDelete !== null} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-destructive mr-2" />
+              {confirmDelete === 'all' ? 'Alle Messungen löschen?' : 'Messung löschen?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDelete === 'all'
+                ? 'Möchten Sie wirklich alle Messungen löschen? Diese Aktion kann nicht rückgängig gemacht werden.'
+                : 'Möchten Sie diese Messung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteMeasurement}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

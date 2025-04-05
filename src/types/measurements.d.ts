@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -105,16 +104,20 @@ export interface PVModuleInfo {
 }
 
 export type MeasurementMode = 
-  | 'none'
-  | 'line' 
-  | 'area' 
   | 'length' 
   | 'height' 
-  | 'solar' 
-  | 'skylight' 
-  | 'chimney' 
-  | 'pvmodule' 
-  | 'pvplanning' 
-  | 'vent' 
-  | 'hook' 
-  | 'other';
+  | 'area' 
+  | 'none' 
+  | 'chimney'   // Kamin
+  | 'skylight'  // Dachfenster
+  | 'solar'     // Solaranlage
+  | 'vent'      // Lüfter (nur Markierung)
+  | 'hook'      // Dachhaken
+  | 'other'     // Sonstige Einbauten
+  | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
+  | 'pvplanning' // PV-Modul Planungsmodus
+  | 'ridge'     // First
+  | 'eave'      // Traufe
+  | 'verge'     // Ortgang
+  | 'valley'    // Kehle
+  | 'hip';      // Grat

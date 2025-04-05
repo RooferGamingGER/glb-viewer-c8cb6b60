@@ -1,450 +1,156 @@
 
 import React, { useState } from 'react';
-import { Measurement } from '@/types/measurements';
+import { Button } from '@/components/ui/button';
+import { X, Info, Settings } from 'lucide-react';
 import MeasurementList from './MeasurementList';
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Trash2, Eye, EyeOff } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import MeasurementToolControls from './MeasurementToolControls';
+import MeasurementInfo from './MeasurementInfo';
+import { Measurement, MeasurementMode } from '@/types/measurements';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sidebar, SidebarTrigger, SidebarContent, SidebarHeader } from '@/components/ui/sidebar';
 
 interface EnhancedMeasurementSidebarProps {
   measurements: Measurement[];
-  toggleMeasurementVisibility: (id: string) => void;
-  toggleLabelVisibility: (id: string) => void;
+  activeMode: MeasurementMode;
+  hasCurrentPoints: boolean;
+  toggleMeasurementTool: (mode: MeasurementMode) => void;
+  isModeActive: (mode: MeasurementMode) => boolean;
+  isLineMode: () => boolean;
+  isAreaMode: () => boolean;
+  isPointMode: () => boolean;
+  toggleMeasurementVisibility: (id: string, data: Partial<Measurement>) => void;
+  toggleEditMode: (id: string) => void;
+  deleteMeasurement: (id: string) => void;
+  deletePoint: (measurementId: string, pointIndex: number) => void;
+  updateMeasurement: (id: string, data: Partial<Measurement>) => void; // Add this prop
   handleStartPointEdit: (id: string) => void;
-  handleDeleteMeasurement: (id: string) => void;
-  handleDeletePoint?: (measurementId: string, pointIndex: number) => void;
-  updateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  editMeasurementId: string | null;
-  segmentsOpen: Record<string, boolean>;
-  toggleSegments: (id: string) => void;
-  onEditSegment: (id: string | null) => void;
-  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
-  showTable: boolean;
-  handleClearMeasurements: () => void;
-  toggleAllLabelsVisibility: () => void;
-  allLabelsVisible?: boolean;
-  activeMode?: string;
-  handleMoveMeasurementUp?: (id: string) => void;
-  handleMoveMeasurementDown?: (id: string) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  className?: string;
+  finalizeMeasurement: () => void;
+  undoLastPoint: () => void;
+  clearCurrentPoints: () => void;
+  clearMeasurements: () => void;
+  cancelEditing: () => void;
+  toggleRuler: (enabled: boolean) => void;
+  rulerEnabled: boolean;
+  displayName?: string;
+  open?: boolean;
+  onClose?: () => void;
 }
 
-function EnhancedMeasurementSidebar({
+const EnhancedMeasurementSidebar: React.FC<EnhancedMeasurementSidebarProps> = ({
   measurements,
-  toggleMeasurementVisibility,
-  toggleLabelVisibility,
-  handleStartPointEdit,
-  handleDeleteMeasurement,
-  handleDeletePoint,
-  updateMeasurement,
-  editMeasurementId,
-  segmentsOpen,
-  toggleSegments,
-  onEditSegment,
-  movingPointInfo,
-  showTable,
-  handleClearMeasurements,
-  toggleAllLabelsVisibility,
-  allLabelsVisible = true,
   activeMode,
-  handleMoveMeasurementUp,
-  handleMoveMeasurementDown,
-  isOpen,
-  setIsOpen,
-  className,
-}: EnhancedMeasurementSidebarProps) {
-  const isMobile = useIsMobile();
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<'length' | 'area' | 'other'>('length');
-
-  // Filter measurements by type
-  const lengthMeasurements = measurements.filter(m => ['length', 'height'].includes(m.type));
-  const areaMeasurements = measurements.filter(m => ['area', 'solar', 'skylight', 'chimney', 'pvmodule'].includes(m.type));
-  const otherMeasurements = measurements.filter(m => !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'pvmodule'].includes(m.type));
-
-  // Get counts for tab indicators
-  const lengthCount = lengthMeasurements.length;
-  const areaCount = areaMeasurements.length;
-  const otherCount = otherMeasurements.length;
-
-  // For mobile, use a full-screen sheet
-  if (isMobile) {
-    return (
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="w-full sm:w-[400px] p-0 overflow-hidden">
-          <SheetHeader className="p-4 pb-2 border-b">
-            <SheetTitle className="text-lg font-semibold flex items-center justify-between">
-              <span>Messungen</span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {measurements.length} {measurements.length === 1 ? 'Messung' : 'Messungen'}
-              </span>
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="p-4">
-            <Tabs 
-              defaultValue="length" 
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as 'length' | 'area' | 'other')}
-              className="w-full"
-            >
-              <TabsList className="grid grid-cols-3">
-                <TabsTrigger value="length" className="relative">
-                  Längen
-                  {lengthCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {lengthCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="area" className="relative">
-                  Flächen
-                  {areaCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {areaCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="other" className="relative">
-                  Sonstiges
-                  {otherCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {otherCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              <ScrollArea className="h-[calc(100vh-180px)] mt-2">
-                <TabsContent value="length">
-                  {lengthMeasurements.length > 0 ? (
-                    <MeasurementList
-                      measurements={lengthMeasurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Keine Längenmessungen vorhanden</p>
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="area">
-                  {areaMeasurements.length > 0 ? (
-                    <MeasurementList
-                      measurements={areaMeasurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Keine Flächenmessungen vorhanden</p>
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="other">
-                  {otherMeasurements.length > 0 ? (
-                    <MeasurementList
-                      measurements={otherMeasurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Keine sonstigen Messungen vorhanden</p>
-                    </div>
-                  )}
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-          </div>
-
-          <div className="fixed bottom-0 left-0 w-full p-4 bg-background border-t flex justify-between items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleAllLabelsVisibility}
-              title={allLabelsVisible ? 'Alle Beschriftungen ausblenden' : 'Alle Beschriftungen einblenden'}
-            >
-              {allLabelsVisible ? (
-                <>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  <span>Beschriftungen ausblenden</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  <span>Beschriftungen einblenden</span>
-                </>
-              )}
-            </Button>
-
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  <span>Alle löschen</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Alle Messungen löschen</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleClearMeasurements}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
-  // For desktop, use a collapsible sidebar
+  hasCurrentPoints,
+  toggleMeasurementTool,
+  isModeActive,
+  isLineMode,
+  isAreaMode,
+  isPointMode,
+  toggleMeasurementVisibility,
+  toggleEditMode,
+  deleteMeasurement,
+  deletePoint,
+  updateMeasurement,
+  handleStartPointEdit,
+  finalizeMeasurement,
+  undoLastPoint,
+  clearCurrentPoints,
+  clearMeasurements,
+  cancelEditing,
+  toggleRuler,
+  rulerEnabled,
+  displayName,
+  open = true,
+  onClose
+}) => {
+  const [activeTab, setActiveTab] = useState<string>('tools');
+  const [showInfo, setShowInfo] = useState<boolean>(false);
+  
   return (
-    <div className={cn(
-      "fixed left-0 top-0 z-40 h-screen transition-transform duration-300",
-      isOpen ? "translate-x-0" : "-translate-x-[350px]",
-      className
-    )}>
-      <div className="flex h-full">
-        <div className="w-[350px] bg-background border-r border-border flex flex-col">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Messungen</h2>
-            <span className="text-sm text-muted-foreground">
-              {measurements.length} {measurements.length === 1 ? 'Messung' : 'Messungen'}
-            </span>
-          </div>
-
-          <div className="p-4">
-            <Tabs 
-              defaultValue="length" 
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as 'length' | 'area' | 'other')}
-              className="w-full"
-            >
-              <TabsList className="grid grid-cols-3">
-                <TabsTrigger value="length" className="relative">
-                  Längen
-                  {lengthCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {lengthCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="area" className="relative">
-                  Flächen
-                  {areaCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {areaCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="other" className="relative">
-                  Sonstiges
-                  {otherCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                      {otherCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              <ScrollArea className="h-[calc(100vh-180px)] mt-2">
-                <TabsContent value="length">
-                  {lengthMeasurements.length > 0 ? (
-                    <MeasurementList
-                      measurements={lengthMeasurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Keine Längenmessungen vorhanden</p>
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="area">
-                  {areaMeasurements.length > 0 ? (
-                    <MeasurementList
-                      measurements={areaMeasurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Keine Flächenmessungen vorhanden</p>
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="other">
-                  {otherMeasurements.length > 0 ? (
-                    <MeasurementList
-                      measurements={otherMeasurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Keine sonstigen Messungen vorhanden</p>
-                    </div>
-                  )}
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-          </div>
-
-          <div className="mt-auto p-4 border-t flex justify-between items-center">
+    <Sidebar defaultOpen={open} open={open} side="left" className="glass-panel z-10 w-[350px] border-r">
+      <SidebarHeader className="px-4 py-4 border-b">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">
+            {displayName ? `${displayName}` : 'Messwerkzeuge'}
+          </h2>
+          
+          <div className="flex items-center gap-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleAllLabelsVisibility}
-              title={allLabelsVisible ? 'Alle Beschriftungen ausblenden' : 'Alle Beschriftungen einblenden'}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowInfo(!showInfo)}
             >
-              {allLabelsVisible ? (
-                <>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  <span>Beschriftungen ausblenden</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  <span>Beschriftungen einblenden</span>
-                </>
-              )}
+              <Info className="h-4 w-4" />
             </Button>
-
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  <span>Alle löschen</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Alle Messungen löschen</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleClearMeasurements}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onClose}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
-
-        <button
-          className="h-12 w-8 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center rounded-r-md mt-16"
-          onClick={() => setIsOpen(!isOpen)}
-          title={isOpen ? 'Seitenleiste schließen' : 'Seitenleiste öffnen'}
-        >
-          {isOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-        </button>
-      </div>
-    </div>
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="px-4 pt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="tools">Werkzeuge</TabsTrigger>
+              <TabsTrigger value="measurements">Messungen</TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <ScrollArea className="h-[calc(100vh-10rem)] pb-12">
+            <TabsContent value="tools" className="m-0 p-4">
+              <MeasurementToolControls
+                activeMode={activeMode}
+                hasCurrentPoints={hasCurrentPoints}
+                toggleMeasurementTool={toggleMeasurementTool}
+                isModeActive={isModeActive}
+                clearCurrentPoints={clearCurrentPoints}
+                finalizeMeasurement={finalizeMeasurement}
+                undoLastPoint={undoLastPoint}
+              />
+            </TabsContent>
+            
+            <TabsContent value="measurements" className="m-0 p-4">
+              <MeasurementList
+                measurements={measurements}
+                toggleMeasurementVisibility={toggleMeasurementVisibility}
+                toggleEditMode={toggleEditMode}
+                deleteMeasurement={deleteMeasurement}
+                deletePoint={deletePoint}
+                updateMeasurement={updateMeasurement}
+                handleStartPointEdit={handleStartPointEdit}
+              />
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+        
+        {showInfo && (
+          <div className="absolute inset-0 bg-background/95 z-10 p-4 overflow-auto">
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowInfo(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <MeasurementInfo />
+          </div>
+        )}
+      </SidebarContent>
+    </Sidebar>
   );
-}
+};
 
 export default EnhancedMeasurementSidebar;
