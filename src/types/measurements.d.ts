@@ -1,6 +1,4 @@
 
-
-
 export interface Point {
   x: number;
   y: number;
@@ -24,14 +22,12 @@ export interface Measurement {
   type: 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar';
   name?: string;
   points: Point[];
-  pvPositions?: Point[]; // Add this property
   segments?: Segment[];
   value?: number;
   label?: string;
   visible?: boolean;
   labelVisible?: boolean;
   powerOutput?: number;
-  editMode?: boolean; // Add this property
 }
 
 export interface PVModuleSpec {
@@ -106,9 +102,6 @@ export interface PVModuleInfo {
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
-  width?: number;             // Add this property for PV module width
-  height?: number;            // Add this property for PV module height
-  rotation?: number;          // Add this property for PV module rotation
 }
 
 export type MeasurementMode = 
@@ -125,4 +118,3 @@ export type MeasurementMode =
   | 'vent' 
   | 'hook' 
   | 'other';
-

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementMode = 
@@ -12,7 +13,6 @@ export type MeasurementMode =
   | 'hook'      // Dachhaken
   | 'other'     // Sonstige Einbauten
   | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
-  | 'pvplanning' // PV planning
   | 'ridge'     // First
   | 'eave'      // Traufe
   | 'verge'     // Ortgang
@@ -93,9 +93,6 @@ export interface PVModuleInfo {
     cellColor?: number;       // Cell color (hex)
     busbarCount?: number;     // Number of busbars per cell
   };
-  width?: number;             // Width property for PV modules
-  height?: number;            // Height property for PV modules
-  rotation?: number;          // Rotation property for PV modules
 }
 
 export interface PVModuleSpec {
@@ -141,7 +138,6 @@ export interface Measurement {
   type: MeasurementMode;
   points: Point[];
   value: number;
-  name?: string;             // Add name field to Measurement interface
   label?: string;
   visible?: boolean;
   labelVisible?: boolean;
@@ -175,7 +171,7 @@ export interface Measurement {
   customScreenshots?: string[];  // Array of base64 data URLs for custom screenshots
   
   pvModuleInfo?: PVModuleInfo; // Information about PV module placement
+
   pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
   powerOutput?: number;   // Power output in watts for this module
-  pvPositions?: Point[];  // Add pvPositions field
 }
