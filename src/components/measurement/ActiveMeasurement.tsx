@@ -89,7 +89,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
           <div className="mt-3">
             <p className="text-xs text-muted-foreground mb-1">Messpunkte:</p>
             <ScrollArea 
-              className={isMobile ? "max-h-24" : "max-h-32"} 
+              className="max-h-40" 
               autoMaxHeight
             >
               <div className="space-y-1 pl-2 pr-1">
