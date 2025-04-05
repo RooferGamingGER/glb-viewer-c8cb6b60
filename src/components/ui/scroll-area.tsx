@@ -8,8 +8,9 @@ const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
     autoMaxHeight?: boolean;
+    scrollRef?: React.RefObject<HTMLDivElement>;
   }
->(({ className, children, autoMaxHeight, ...props }, ref) => (
+>(({ className, children, autoMaxHeight, scrollRef, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
     className={cn(
@@ -19,7 +20,10 @@ const ScrollArea = React.forwardRef<
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    <ScrollAreaPrimitive.Viewport 
+      className="h-full w-full rounded-[inherit]"
+      ref={scrollRef}
+    >
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />
