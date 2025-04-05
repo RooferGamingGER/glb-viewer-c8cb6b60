@@ -740,6 +740,7 @@ export const useMeasurementCore = () => {
         'skylight': 4,
         'solar': 4,
         'pvmodule': 4,
+        'pvplanning': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,

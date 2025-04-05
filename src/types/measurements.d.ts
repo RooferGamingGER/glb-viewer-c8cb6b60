@@ -102,6 +102,9 @@ export interface PVModuleInfo {
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
+  width?: number;
+  height?: number;
+  rotation?: number;
 }
 
 export type MeasurementMode = 
@@ -117,4 +120,9 @@ export type MeasurementMode =
   | 'pvplanning' 
   | 'vent' 
   | 'hook' 
-  | 'other';
+  | 'other'
+  | 'ridge'
+  | 'eave'
+  | 'verge'
+  | 'valley'
+  | 'hip';
