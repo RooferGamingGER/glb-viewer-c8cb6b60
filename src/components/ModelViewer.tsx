@@ -1,491 +1,238 @@
 
-import React, { useEffect, useState, useRef } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import React, { useRef, useState, useEffect, Suspense } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-import { Button } from "@/components/ui/button";
-import { ThreeJsProvider } from '@/contexts/ThreeJsContext';
+import * as THREE from 'three';
+import { Loader2 } from 'lucide-react';
+import MeasurementTools from '@/components/MeasurementTools';
+import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
-import LoadingIndicator from './LoadingIndicator';
-import EnhancedMeasurementSidebar from './measurement/EnhancedMeasurementSidebar';
-import { useMeasurementInteraction } from '@/hooks/useMeasurementInteraction';
-import { useMeasurementCore } from '@/hooks/useMeasurementCore';
-import { useMeasurementEditing } from '@/hooks/useMeasurementEditing';
-import { useMeasurementDrawing } from '@/hooks/useMeasurementDrawing';
-import { useMeasurementToolToggle } from '@/hooks/useMeasurementToolToggle';
-import { useSidebarState } from '@/hooks/useSidebarState';
-import TabletOptimizedControls from './viewer/TabletOptimizedControls';
-import { useScreenOrientation } from '@/hooks/useScreenOrientation';
-import PVModuleManager from './pv/PVModuleManager'; // Import the PV Module Manager
 
-// Extend ThreeContext with necessary fields
-export interface ThreeContext {
-  scene: THREE.Scene | null;
-  camera: THREE.PerspectiveCamera | null;
-  renderer: THREE.WebGLRenderer | null;
-  orbitControls: OrbitControls | null;
-}
-
-export interface ModelViewerProps {
+type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
+};
+
+function Loader3D() {
+  const { progress } = useProgress();
+  return <Html center>
+      <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
+        <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
+        <div className="text-sm font-medium">{progress.toFixed(0)}% geladen</div>
+      </div>
+    </Html>;
 }
 
-const ModelViewer: React.FC<ModelViewerProps> = ({ fileUrl, fileName }) => {
-  const [loading, setLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  
-  // Measurement visualization refs
-  const pointsRef = useRef<THREE.Group>(new THREE.Group());
-  const linesRef = useRef<THREE.Group>(new THREE.Group());
-  const measurementsRef = useRef<THREE.Group>(new THREE.Group());
-  const editPointsRef = useRef<THREE.Group>(new THREE.Group());
-  const labelsRef = useRef<THREE.Group>(new THREE.Group());
-  const segmentLabelsRef = useRef<THREE.Group>(new THREE.Group());
-  
-  // Sidebar state
-  const { open, setOpen } = useSidebarState(true);
-  
-  // Measurement core hook provides foundational state and functions
-  const measurementCore = useMeasurementCore();
-  
-  // Destructure items from measurementCore
-  const { 
-    measurements, 
-    setMeasurements,
-    activeMode,
-    setActiveMode,
-    currentPoints,
-    editMeasurementId,
-    setEditMeasurementId,
-    editingPointIndex,
-    setEditingPointIndex,
-    addPoint,
-    clearCurrentPoints,
-    finalizeMeasurement,
-    updateMeasurementPoint,
-    undoLastPoint,
-    clearMeasurements 
-  } = measurementCore;
-  
-  // Measurement editing hook provides editing functionality
-  const measurementEditing = useMeasurementEditing(
-    measurements, 
-    setMeasurements, 
-    editMeasurementId, 
-    setEditMeasurementId,
-    setEditingPointIndex
-  );
-  
-  // Create a Three.js context value to pass to children
-  const threeContextValue: ThreeContext = {
-    scene: sceneRef.current,
-    camera: cameraRef.current,
-    renderer: rendererRef.current,
-    orbitControls: controlsRef.current
-  };
-  
-  // Initialize scene
+function Model({
+  url
+}: {
+  url: string;
+  onClick?: (event: THREE.Intersection) => void;
+}) {
+  const { scene } = useGLTF(url);
+  const modelRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
+  const isMobile = useIsMobile();
+
+  const modelScene = React.useMemo(() => scene.clone(), [scene]);
+
   useEffect(() => {
-    if (!canvasRef.current) return;
-    
-    // Create scene
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf0f0f0);
-    sceneRef.current = scene;
-    
-    // Create camera
-    const camera = new THREE.PerspectiveCamera(
-      60, 
-      window.innerWidth / window.innerHeight, 
-      0.1, 
-      1000
-    );
-    camera.position.set(5, 5, 5);
-    cameraRef.current = camera;
-    
-    // Create renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      antialias: true,
-      logarithmicDepthBuffer: true,
-      preserveDrawingBuffer: true // Needed for screenshots
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    rendererRef.current = renderer;
-    
-    // Create controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
-    controlsRef.current = controls;
-    
-    // Add measurement groups to scene
-    pointsRef.current.name = 'points';
-    linesRef.current.name = 'lines';
-    measurementsRef.current.name = 'measurements';
-    editPointsRef.current.name = 'editPoints';
-    labelsRef.current.name = 'labels';
-    segmentLabelsRef.current.name = 'segmentLabels';
-    
-    scene.add(pointsRef.current);
-    scene.add(linesRef.current);
-    scene.add(measurementsRef.current);
-    scene.add(editPointsRef.current);
-    scene.add(labelsRef.current);
-    scene.add(segmentLabelsRef.current);
-    
-    // Add lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 10, 0);
-    directionalLight.castShadow = true;
-    scene.add(directionalLight);
-    
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight2.position.set(0, -5, 5);
-    scene.add(directionalLight2);
-    
-    // Load 3D model
-    loadModel();
-    
-    // Handle window resize
-    const handleResize = () => {
-      if (camera && renderer) {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+    if (modelRef.current) {
+      modelRef.current.position.set(0, 0, 0);
+      modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
+      const box = new THREE.Box3().setFromObject(modelRef.current);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const fov = camera.fov * (Math.PI / 180);
+        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
+        cameraZ = Math.max(cameraZ, 1.0);
+        const mobileFactor = isMobile ? 1.2 : 1.0;
+        camera.position.set(center.x, center.y + cameraZ * 0.15 * mobileFactor, center.z + cameraZ * mobileFactor);
+        camera.lookAt(center);
+      } else {
+        const distance = maxDim * (isMobile ? 1.2 : 1.0);
+        camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
+        camera.lookAt(center);
       }
-    };
+      modelRef.current.position.x = -center.x;
+      modelRef.current.position.y = -center.y;
+      modelRef.current.position.z = -center.z;
+      toast.success('Modell erfolgreich geladen');
+    }
+  }, [modelScene, camera, isMobile]);
+
+  return <group ref={modelRef}>
+      <primitive object={modelScene} />
+    </group>;
+}
+
+export interface ThreeContextProps {
+  scene: THREE.Scene | null;
+  camera: THREE.Camera | null;
+  renderer: THREE.WebGLRenderer | null;
+  canvas: HTMLCanvasElement | null;
+}
+
+export const ThreeContext = React.createContext<ThreeContextProps>({
+  scene: null,
+  camera: null,
+  renderer: null,
+  canvas: null
+});
+
+function SceneSetup({
+  onSceneReady
+}: {
+  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
+}) {
+  const { scene, camera, gl, get } = useThree();
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    canvasRef.current = gl.domElement;
     
-    window.addEventListener('resize', handleResize);
-    
-    // Animation loop
-    const animate = () => {
-      animationFrameRef.current = requestAnimationFrame(animate);
+    if (scene && camera && gl && canvasRef.current) {
+      scene.traverse(obj => {
+        if (obj instanceof THREE.Group) {
+          if (obj.name === '') {
+            obj.name = "unnamed_group";
+          }
+        }
+      });
       
-      if (controlsRef.current) {
-        controlsRef.current.update();
-      }
-      
-      if (rendererRef.current && cameraRef.current && sceneRef.current) {
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
-      }
-    };
-    
-    animate();
-    
+      onSceneReady(scene, camera, gl, canvasRef.current);
+    }
+  }, [scene, camera, gl, onSceneReady]);
+
+  return null;
+}
+
+const ModelCanvas = ({
+  fileUrl,
+  onSceneReady,
+  canvasRef
+}: {
+  fileUrl: string;
+  onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+}) => {
+  const isMobile = useIsMobile();
+  
+  return <Canvas shadows style={{
+    background: '#222222',
+    position: 'absolute', 
+    top: 0, 
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+    touchAction: 'none'
+  }} className="w-full h-full" ref={canvasRef}>
+      <SceneSetup onSceneReady={onSceneReady} />
+      <Suspense fallback={<Loader3D />}>
+        <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
+        
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+        <directionalLight position={[-10, -10, -5]} intensity={0.8} />
+        
+        <Environment preset="city" />
+        
+        <Model url={fileUrl} />
+        
+        <OrbitControls 
+          makeDefault 
+          enableDamping 
+          dampingFactor={0.1} 
+          rotateSpeed={isMobile ? 0.7 : 1} 
+          zoomSpeed={isMobile ? 0.7 : 1} 
+          panSpeed={isMobile ? 0.7 : 1} 
+          minDistance={0.5} 
+          maxDistance={100}
+          enableZoom={true}
+          enablePan={true}
+          screenSpacePanning={true}
+          touches={{
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+          }}
+        />
+      </Suspense>
+    </Canvas>;
+};
+
+const ModelViewer: React.FC<ModelViewerProps> = ({
+  fileUrl,
+  fileName
+}) => {
+  const [threeContext, setThreeContext] = useState<ThreeContextProps>({
+    scene: null,
+    camera: null,
+    renderer: null,
+    canvas: null
+  });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isMobile = useIsMobile();
+  
+  const [measurementsEnabled] = useState(true);
+  const [measurementToolsEverEnabled] = useState(true);
+  
+  const { measurements } = useMeasurements();
+
+  useEffect(() => {
     return () => {
-      // Clean up
-      window.removeEventListener('resize', handleResize);
-      
-      if (animationFrameRef.current !== null) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (fileUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(fileUrl);
       }
-      
-      if (rendererRef.current) {
-        rendererRef.current.dispose();
-      }
-      
-      if (controlsRef.current) {
-        controlsRef.current.dispose();
-      }
-      
-      // Revoke the blob URL to prevent memory leaks
-      URL.revokeObjectURL(fileUrl);
     };
   }, [fileUrl]);
-  
-  // Load 3D model
-  const loadModel = () => {
-    if (!sceneRef.current || !cameraRef.current) return;
-    
-    // Create and configure the GLTF loader
-    const gltfLoader = new GLTFLoader();
-    
-    // Set up Draco decoder for compressed models
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('/draco/');
-    gltfLoader.setDRACOLoader(dracoLoader);
-    
-    // Load the model from the provided URL
-    gltfLoader.load(
-      fileUrl,
-      (gltf) => {
-        if (!sceneRef.current) return;
-        
-        const model = gltf.scene;
-        
-        // Center the model
-        const box = new THREE.Box3().setFromObject(model);
-        const center = box.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        
-        // Add to scene
-        sceneRef.current.add(model);
-        
-        // Adjust camera to fit model
-        fitCameraToObject(cameraRef.current, model, 1.2);
-        
-        console.log('Model loaded successfully');
-        setLoading(false);
-      },
-      (progress) => {
-        const percent = (progress.loaded / progress.total) * 100;
-        setLoadingProgress(percent);
-      },
-      (error) => {
-        console.error('Error loading model:', error);
-        setError('Fehler beim Laden des 3D-Modells.');
-        setLoading(false);
-        toast.error('Fehler beim Laden des 3D-Modells.', {
-          description: 'Bitte versuchen Sie es mit einer anderen Datei oder melden Sie den Fehler.',
-          action: {
-            label: "OK",
-            onClick: () => {}
-          }
-        });
-      }
-    );
-  };
-  
-  // Fit camera to object
-  const fitCameraToObject = (camera: THREE.PerspectiveCamera, object: THREE.Object3D, offset: number) => {
-    const box = new THREE.Box3().setFromObject(object);
-    
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    
-    const maxSize = Math.max(size.x, size.y, size.z);
-    const fitHeightDistance = maxSize / (2 * Math.tan(Math.PI * camera.fov / 360));
-    const fitWidthDistance = fitHeightDistance / camera.aspect;
-    const distance = offset * Math.max(fitHeightDistance, fitWidthDistance);
-    
-    // Set camera position at a suitable distance from the object
-    camera.position.copy(center);
-    camera.position.z += distance;
-    camera.lookAt(center);
-    
-    // Update controls
-    if (controlsRef.current) {
-      controlsRef.current.target.copy(center);
-      controlsRef.current.update();
-    }
-  };
-  
-  // Measurement tool toggle hook integrates with the core
-  const { 
-    enabled, 
-    toggleMeasurementTool,
-    isModeActive,
-    isLineMode,
-    isAreaMode,
-    isPointMode,
-    toggleRuler,
-    rulerEnabled 
-  } = useMeasurementToolToggle({
-    activeMode,
-    setActiveMode,
-    currentPoints
-  });
-  
-  // Measurement drawing hook for visualization
-  const { drawMeasurements } = useMeasurementDrawing(
-    sceneRef.current,
-    cameraRef.current,
-    pointsRef.current,
-    linesRef.current,
-    measurementsRef.current,
-    editPointsRef.current,
-    labelsRef.current,
-    segmentLabelsRef.current,
-    measurements,
-    currentPoints,
-    true, // allMeasurementsVisible
-    true, // allLabelsVisible
-    editMeasurementId,
-    editingPointIndex
-  );
-  
-  // Update measurements display when they change
-  useEffect(() => {
-    drawMeasurements();
-  }, [drawMeasurements, measurements, currentPoints, editMeasurementId, editingPointIndex]);
-  
-  // Measurement interaction hook handles user interactions
-  const measurementInteraction = useMeasurementInteraction(
-    enabled,
-    sceneRef.current,
-    cameraRef.current,
-    open,
-    {
-      pointsRef,
-      linesRef,
-      measurementsRef,
-      editPointsRef,
-      labelsRef,
-      segmentLabelsRef
-    },
-    measurements,
-    currentPoints,
-    activeMode,
-    {
-      addPoint,
-      startPointEdit: measurementEditing.startPointEdit,
-      updateMeasurementPoint
-    },
-    editMeasurementId,
-    editingPointIndex
-  );
-  
-  // Fit object to view
-  const fitToView = () => {
-    if (!sceneRef.current || !cameraRef.current) return;
-    
-    // Find all visible objects in the scene excluding measurement helpers
-    const objects: THREE.Object3D[] = [];
-    sceneRef.current.traverse((object) => {
-      // Skip measurement visualization objects
-      if (
-        object === pointsRef.current ||
-        object === linesRef.current ||
-        object === measurementsRef.current ||
-        object === editPointsRef.current ||
-        object === labelsRef.current ||
-        object === segmentLabelsRef.current ||
-        (object.userData && (
-          object.userData.isMeasurementPoint ||
-          object.userData.isMeasurementLine ||
-          object.userData.isEditPoint ||
-          object.userData.isAreaPoint ||
-          object.userData.isAreaLine
-        ))
-      ) {
-        return;
-      }
-      
-      // Only include visible objects with geometry
-      if (object.visible && (object instanceof THREE.Mesh)) {
-        objects.push(object);
-      }
-    });
-    
-    // If no objects found, return
-    if (objects.length === 0) return;
-    
-    // Create a bounding box encompassing all objects
-    const boundingBox = new THREE.Box3();
-    objects.forEach((obj) => {
-      boundingBox.expandByObject(obj);
-    });
-    
-    const center = boundingBox.getCenter(new THREE.Vector3());
-    const size = boundingBox.getSize(new THREE.Vector3());
-    
-    // Calculate the distance to fit the object in view
-    const maxSize = Math.max(size.x, size.y, size.z);
-    const fitHeightDistance = maxSize / (2 * Math.tan(Math.PI * cameraRef.current.fov / 360));
-    const fitWidthDistance = fitHeightDistance / cameraRef.current.aspect;
-    const distance = 1.2 * Math.max(fitHeightDistance, fitWidthDistance);
-    
-    // Set camera position
-    cameraRef.current.position.copy(center);
-    cameraRef.current.position.z += distance;
-    cameraRef.current.lookAt(center);
-    
-    // Update controls target
-    if (controlsRef.current) {
-      controlsRef.current.target.copy(center);
-      controlsRef.current.update();
+
+  const handleSceneReady = (
+    newScene: THREE.Scene, 
+    newCamera: THREE.Camera, 
+    newRenderer: THREE.WebGLRenderer, 
+    canvas: HTMLCanvasElement
+  ) => {
+    if (newRenderer) {
+      // Reduzierte Pixel-Ratio für geringere RAM-Nutzung
+      newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     }
     
-    toast.success('Ansicht angepasst');
+    setThreeContext({
+      scene: newScene,
+      camera: newCamera,
+      renderer: newRenderer,
+      canvas: canvas
+    });
   };
 
-  // Screen orientation for responsive adjustments
-  const { isLandscape } = useScreenOrientation();
-  
-  // Function to toggle info panel/sidebar
-  const toggleInfo = () => {
-    setOpen(!open);
-  };
-  
   return (
-    <ThreeJsProvider>
-      <PointSnappingProvider>
-        <div className="model-viewer h-full w-full relative">
-          {/* Main canvas for Three.js renderer */}
-          <canvas 
-            ref={canvasRef} 
-            className="w-full h-full block"
-          />
-          
-          {loading && <LoadingIndicator progress={loadingProgress} />}
-          
-          {/* Tablet-optimized controls */}
-          <TabletOptimizedControls
-            onToggleSidebar={() => setOpen(!open)}
-            onToggleInfo={toggleInfo}
-            onFitToView={fitToView}
-            sidebarVisible={open}
-          />
-          
-          {/* Sidebar with measurement controls and list */}
-          {isLandscape && (
-            <EnhancedMeasurementSidebar
-              measurements={measurements}
-              activeMode={activeMode}
-              hasCurrentPoints={currentPoints.length > 0}
-              toggleMeasurementTool={toggleMeasurementTool}
-              isModeActive={isModeActive}
-              isLineMode={isLineMode}
-              isAreaMode={isAreaMode}
-              isPointMode={isPointMode}
-              toggleMeasurementVisibility={measurementEditing.updateMeasurement}
-              toggleEditMode={measurementEditing.toggleEditMode}
-              deleteMeasurement={measurementEditing.deleteMeasurement}
-              deletePoint={measurementEditing.deletePoint}
-              updateMeasurement={measurementEditing.updateMeasurement}
-              handleStartPointEdit={measurementEditing.startPointEdit}
-              finalizeMeasurement={finalizeMeasurement}
-              undoLastPoint={undoLastPoint}
-              clearCurrentPoints={clearCurrentPoints}
-              clearMeasurements={clearMeasurements}
-              cancelEditing={measurementEditing.cancelEditing}
-              toggleRuler={toggleRuler}
-              rulerEnabled={rulerEnabled}
-              displayName={fileName}
-              open={open}
-              onClose={() => setOpen(false)}
+    <PointSnappingProvider>
+      <ThreeContext.Provider value={threeContext}>
+        <div className="relative w-full h-full overflow-hidden">
+          <div className="absolute inset-0">
+            <ModelCanvas 
+              fileUrl={fileUrl} 
+              onSceneReady={handleSceneReady} 
+              canvasRef={canvasRef} 
             />
-          )}
+          </div>
           
-          {/* PV Module Manager */}
-          {sceneRef.current && cameraRef.current && (
-            <PVModuleManager 
-              scene={sceneRef.current}
-              camera={cameraRef.current}
-              measurements={measurements}
-              updateMeasurement={measurementEditing.updateMeasurement}
+          {threeContext.scene && threeContext.camera && (
+            <MeasurementTools 
+              enabled={measurementsEnabled} 
+              scene={threeContext.scene} 
+              camera={threeContext.camera} 
+              autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
             />
           )}
         </div>
-      </PointSnappingProvider>
-    </ThreeJsProvider>
+      </ThreeContext.Provider>
+    </PointSnappingProvider>
   );
 };
 

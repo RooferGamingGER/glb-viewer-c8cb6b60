@@ -556,78 +556,7 @@ export const useMeasurementCore = () => {
         toast.warning(`Mehr als 4 Punkte platziert. Nur die ersten 4 wurden verwendet.`);
       }
     }
-    
-    if (currentMode === 'pvplanning' && updatedPoints.length === 4) {
-      createPVPlanningMeasurement(updatedPoints);
-      toast.success(`PV-Planung abgeschlossen - Messwerkzeug deaktiviert`);
-    } else if (currentMode === 'pvplanning' && updatedPoints.length > 0 && updatedPoints.length < 4) {
-      toast.info(`Punkt ${updatedPoints.length} von 4 für PV-Planungsfläche platziert`);
-    }
-  }, [
-    activeMode, 
-    editMeasurementId, 
-    editingPointIndex, 
-    createLengthMeasurement, 
-    createHeightMeasurement, 
-    createRoofElementMeasurement, 
-    createPVModuleMeasurement, 
-    updateMeasurementPoint, 
-    setEditingPointIndex
-  ]);
-
-  const createPVPlanningMeasurement = useCallback((points: Point[]) => {
-    if (points.length !== 4) {
-      if (points.length < 4) {
-        toast.error("Für PV-Planung werden genau 4 Punkte benötigt.");
-        return;
-      } else {
-        points = points.slice(0, 4);
-        toast.warning("Nur die ersten 4 Punkte werden für die PV-Planung verwendet.");
-      }
-    }
-    
-    const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
-    
-    const polygonArea = calculateArea(points);
-    const moduleInfo = calculatePVModulePlacement(
-      points,
-      undefined,
-      undefined,
-      DEFAULT_EDGE_DISTANCE,
-      DEFAULT_MODULE_SPACING,
-      undefined,
-      roofEdgeInfo
-    );
-    const moduleSpec = PV_MODULE_TEMPLATES[0];
-    
-    const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
-    const label = `PV-Planung: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`;
-    
-    setMeasurements(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        type: 'pvplanning',
-        points: [...points],
-        value: polygonArea,
-        label,
-        visible: true,
-        labelVisible: allLabelsVisible,
-        unit: 'kWp',
-        description: 'Interaktive PV-Planung',
-        pvModuleInfo: moduleInfo,
-        pvModuleSpec: moduleSpec,
-        powerOutput: moduleInfo.moduleCount * moduleSpec.power
-      }
-    ]);
-    
-    setCurrentPoints([]);
-    currentPointsRef.current = [];
-    
-    setActiveMode('none');
-    
-    toast.success(`PV-Planungsfläche erstellt: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`);
-  }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
+  }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, updateMeasurementPoint, setEditingPointIndex]);
 
   const finalizeMeasurement = useCallback((): Measurement | undefined => {
     const points = [...currentPointsRef.current];
@@ -805,56 +734,12 @@ export const useMeasurementCore = () => {
       currentPointsRef.current = [];
       setActiveMode('none');
     }
-    else if (activeMode === 'pvplanning' && points.length >= 4) {
-      const validation = validatePolygon(points);
-      if (!validation.valid) {
-        toast.error(validation.message || 'Ungültiges Polygon');
-        return undefined;
-      }
-      
-      const polygonArea = calculateArea(points);
-      const moduleInfo = calculatePVModulePlacement(
-        points,
-        undefined,
-        undefined,
-        DEFAULT_EDGE_DISTANCE,
-        DEFAULT_MODULE_SPACING,
-        undefined,
-        extractRoofEdgeMeasurements(measurements)
-      );
-      const moduleSpec = PV_MODULE_TEMPLATES[0];
-      
-      const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
-      
-      measurement = {
-        id: nanoid(),
-        type: 'pvplanning',
-        points: [...points.slice(0, 4)],
-        value: polygonArea,
-        label: `PV-Planung: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`,
-        visible: true,
-        labelVisible: allLabelsVisible,
-        unit: 'kWp',
-        description: 'Interaktive PV-Planung',
-        pvModuleInfo: moduleInfo,
-        pvModuleSpec: moduleSpec,
-        powerOutput: moduleInfo.moduleCount * moduleSpec.power
-      };
-      
-      setMeasurements(prev => [...prev, measurement as Measurement]);
-      setCurrentPoints([]);
-      currentPointsRef.current = [];
-      setActiveMode('none');
-      
-      toast.success(`PV-Planungsfläche erstellt: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`);
-    }
-    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'pvplanning', 'none'].includes(activeMode)) {
+    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
         'solar': 4,
         'pvmodule': 4,
-        'pvplanning': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,
@@ -1041,7 +926,6 @@ export const useMeasurementCore = () => {
     createHeightMeasurement,
     createRoofElementMeasurement,
     createPVModuleMeasurement,
-    createPVPlanningMeasurement,
     handleCalculatePV
   };
 };
