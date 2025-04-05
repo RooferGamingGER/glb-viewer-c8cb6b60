@@ -3,6 +3,8 @@ import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 interface MeasurementListProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
@@ -22,7 +24,9 @@ interface MeasurementListProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   activeCategory?: string;
+  maxHeight?: string;
 }
+
 const MeasurementList: React.FC<MeasurementListProps> = ({
   measurements,
   toggleMeasurementVisibility,
@@ -38,10 +42,11 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   movingPointInfo,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  activeCategory
+  activeCategory,
+  maxHeight = "calc(80vh - 250px)"
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) {
-    return <div className="text-center text-muted-foreground py-[145px]">
+    return <div className="text-center text-muted-foreground py-8">
         Keine Messungen vorhanden.
       </div>;
   }
@@ -61,10 +66,11 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
 
   // 5. Any other measurements not categorized
   const otherMeasurements = measurements.filter(m => !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type));
+  
   const renderMeasurementGroup = (title: string, items: Measurement[], showEmpty: boolean = false) => {
     if (items.length === 0 && !showEmpty) return null;
     return <div className="mb-3">
-        <h3 className="text-sm font-medium mb-1 flex justify-between">
+        <h3 className="text-sm font-medium mb-1 flex justify-between sticky top-0 bg-background z-10 py-1">
           <span>{title}</span>
           <span className="text-muted-foreground">({items.length})</span>
         </h3>
@@ -75,34 +81,38 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
       </div>;
   };
 
+  // Render content based on activeCategory
+  const renderCategoryContent = (category: string) => {
+    switch (category) {
+      case 'dach':
+        return renderMeasurementGroup("Dach", dachMeasurements, true);
+      case 'solar':
+        return renderMeasurementGroup("Solar", solarMeasurements, true);
+      case 'dachelemente':
+        return renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true);
+      case 'einbauten':
+        return renderMeasurementGroup("Einbauten", einbautenMeasurements, true);
+      default:
+        return null;
+    }
+  };
+
   // Filter measurements based on activeCategory if provided
   if (activeCategory) {
-    switch (activeCategory) {
-      case 'dach':
-        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Dach", dachMeasurements, true)}
-          </div>;
-      case 'solar':
-        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Solar", solarMeasurements, true)}
-          </div>;
-      case 'dachelemente':
-        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
-          </div>;
-      case 'einbauten':
-        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
-            {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
-          </div>;
-      default:
-        break;
-    }
+    return (
+      <ScrollArea className={`flex-1 flex flex-col min-h-0 w-full px-2 pr-1`} style={{ maxHeight }}>
+        <div className="pr-2">
+          {renderCategoryContent(activeCategory)}
+        </div>
+      </ScrollArea>
+    );
   }
 
-  // Default rendering with all categories
-  return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+  // Default rendering with all categories in tabs
+  return (
+    <div className="flex-1 flex flex-col min-h-0 w-full px-2">
       <Tabs defaultValue="dach" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-8 mb-2">
+        <TabsList className="w-full grid grid-cols-4 h-8 mb-2 sticky top-0 z-20">
           <TabsTrigger value="dach" className="text-xs py-1 px-0">
             Dach ({dachMeasurements.length})
           </TabsTrigger>
@@ -117,28 +127,36 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dach" className="m-0">
-          {renderMeasurementGroup("Dach", dachMeasurements, true)}
-        </TabsContent>
-        
-        <TabsContent value="solar" className="m-0">
-          {renderMeasurementGroup("Solar", solarMeasurements, true)}
-        </TabsContent>
-        
-        <TabsContent value="dachelemente" className="m-0">
-          {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
-        </TabsContent>
-        
-        <TabsContent value="einbauten" className="m-0">
-          {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
-        </TabsContent>
-      </Tabs>
+        <ScrollArea className="pr-1" style={{ maxHeight }}>
+          <div className="pr-2">
+            <TabsContent value="dach" className="m-0">
+              {renderMeasurementGroup("Dach", dachMeasurements, true)}
+            </TabsContent>
+            
+            <TabsContent value="solar" className="m-0">
+              {renderMeasurementGroup("Solar", solarMeasurements, true)}
+            </TabsContent>
+            
+            <TabsContent value="dachelemente" className="m-0">
+              {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
+            </TabsContent>
+            
+            <TabsContent value="einbauten" className="m-0">
+              {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
+            </TabsContent>
 
-      {/* Other measurements not categorized (if any) */}
-      {otherMeasurements.length > 0 && <>
-          <Separator className="my-3" />
-          {renderMeasurementGroup("Sonstige", otherMeasurements)}
-        </>}
-    </div>;
+            {/* Other measurements not categorized (if any) */}
+            {otherMeasurements.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                {renderMeasurementGroup("Sonstige", otherMeasurements)}
+              </>
+            )}
+          </div>
+        </ScrollArea>
+      </Tabs>
+    </div>
+  );
 };
+
 export default MeasurementList;
