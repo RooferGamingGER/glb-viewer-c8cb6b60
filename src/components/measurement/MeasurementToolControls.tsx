@@ -166,7 +166,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 console.log('Toggle measurement tool', mode);
                 // Default implementation if not provided
               })}
-              editMeasurementId={editMeasurementId}
+              measurements={measurements}
+              handleClearMeasurements={handleClearMeasurements}
               onCategoryClick={handleCategoryClick}
             />
             
@@ -176,7 +177,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 console.log('Toggle measurement tool', mode);
                 // Default implementation if not provided
               })}
-              editMeasurementId={editMeasurementId}
             />
           </TabsContent>
           

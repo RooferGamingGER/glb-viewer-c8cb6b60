@@ -7,7 +7,7 @@ import {
   Trash2,
   Magnet
 } from 'lucide-react';
-import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
+import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -26,10 +26,12 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
-  visible: boolean;
-  setVisible: (visible: boolean) => void;
-  handleClearMeasurements: () => void;
-  measurements: Measurement[];
+  visible?: boolean;
+  setVisible?: (visible: boolean) => void;
+  handleClearMeasurements?: () => void;
+  measurements?: any[];
+  editMeasurementId?: string | null;
+  onCategoryClick?: (category: MeasurementMode) => void;
 }
 
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
@@ -38,7 +40,9 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   visible,
   setVisible,
   handleClearMeasurements,
-  measurements
+  measurements,
+  editMeasurementId,
+  onCategoryClick
 }) => {
   // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
@@ -132,9 +136,9 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 </Toggle>
                 
                 {/* Correctly pass measurements to ExportPdfButton */}
-                <ExportPdfButton measurements={measurements} />
+                {measurements && <ExportPdfButton measurements={measurements} />}
                 
-                {measurements.length > 0 && (
+                {handleClearMeasurements && measurements && measurements.length > 0 && (
                   <Button 
                     variant="outline" 
                     size="sm" 
