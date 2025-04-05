@@ -6,7 +6,7 @@ import {
   Square, 
   Trash2,
   Magnet,
-  FileCsv,
+  FileText,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -217,7 +217,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                   <GenerateRoofPlanButton measurements={measurements} />
                 )}
                 
-                {/* CSV Export button */}
+                {/* CSV Export button - changed icon from FileCsv to FileText */}
                 {measurements && measurements.length > 0 && (
                   <Button 
                     variant="outline" 
@@ -225,7 +225,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                     className="w-full"
                     onClick={exportMeasurementsAsCSV}
                   >
-                    <FileCsv className="h-4 w-4 mr-2" />
+                    <FileText className="h-4 w-4 mr-2" />
                     CSV Export
                   </Button>
                 )}

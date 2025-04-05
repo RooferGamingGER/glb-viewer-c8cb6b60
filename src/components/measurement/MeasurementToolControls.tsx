@@ -89,8 +89,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     setActiveTab("measurements");
   };
   
-  // Style for table mode to prevent sidebar overflow
-  const tableContainerStyle = showTable ? { maxWidth: '100%', overflowX: 'auto' } : {};
+  // Style for table mode to prevent sidebar overflow - fixing the TypeScript error
+  const tableContainerStyle = showTable ? { 
+    maxWidth: '100%', 
+    overflowX: 'auto' as const  // Using 'as const' to specify the correct type
+  } : {};
   
   return (
     <ScrollArea className="flex-1 h-full">
