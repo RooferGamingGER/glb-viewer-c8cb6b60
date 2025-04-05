@@ -1,3 +1,4 @@
+
 export interface Point {
   x: number;
   y: number;
@@ -104,6 +105,7 @@ export interface PVModuleInfo {
 }
 
 export type MeasurementMode = 
+  | 'none'
   | 'line' 
   | 'area' 
   | 'length' 
@@ -115,5 +117,4 @@ export type MeasurementMode =
   | 'pvplanning' 
   | 'vent' 
   | 'hook' 
-  | 'other'
-  | 'none';
+  | 'other';

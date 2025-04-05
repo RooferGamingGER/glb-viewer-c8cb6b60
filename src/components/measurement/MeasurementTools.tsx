@@ -258,7 +258,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({
 
         <div className="measurement-modes">
           <ToggleGroup type="single" value={measurementMode}>
-            <ToggleGroupItem value="line" onClick={() => handleModeSelect("line")}>
+            <ToggleGroupItem value="length" onClick={() => handleModeSelect("length")}>
               Linie
             </ToggleGroupItem>
             
