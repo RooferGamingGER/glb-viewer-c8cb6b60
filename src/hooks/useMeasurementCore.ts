@@ -752,7 +752,8 @@ export const useMeasurementCore = () => {
         'length': 2,
         'height': 2,
         'area': 3,
-        'none': 0
+        'none': 0,
+        'line': 2
       };
       
       if (points.length >= (requiredPoints[activeMode] || 0)) {

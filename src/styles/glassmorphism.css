@@ -1,0 +1,96 @@
+
+/* Glassmorphism Effects */
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.glass-icon-button {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.glass-icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.glass-icon-button.active {
+  background-color: rgba(139, 92, 246, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+}
+
+/* Visual hierarchy improvements */
+.category-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.category-group {
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.compact-list {
+  padding: 0.5rem;
+}
+
+.compact-list-item {
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  margin-bottom: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.compact-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Action button accents */
+.accent-action {
+  background-color: rgba(139, 92, 246, 0.3);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  color: white;
+}
+
+.accent-action:hover {
+  background-color: rgba(139, 92, 246, 0.4);
+}
+
+.accent-warning {
+  background-color: rgba(249, 115, 22, 0.3);
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  color: white;
+}
+
+.accent-warning:hover {
+  background-color: rgba(249, 115, 22, 0.4);
+}

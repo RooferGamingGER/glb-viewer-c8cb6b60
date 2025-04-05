@@ -1,8 +1,7 @@
 
-import React, { memo } from 'react';
-import { Button } from "@/components/ui/button";
-import { AlertCircle, Move, MousePointer, PlusCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import React from 'react';
+import { AlertCircle, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface EditingAlertProps {
   editMeasurementId: string | null;
@@ -12,60 +11,45 @@ interface EditingAlertProps {
   editingAreaMeasurement?: boolean;
 }
 
-const EditingAlert: React.FC<EditingAlertProps> = memo(({
+const EditingAlert: React.FC<EditingAlertProps> = ({
   editMeasurementId,
   editingSegmentId,
   movingPointInfo,
   handleCancelEditing,
   editingAreaMeasurement = false
 }) => {
-  if (!editMeasurementId && !editingSegmentId && !movingPointInfo) return null;
+  let message = '';
+  
+  if (editMeasurementId) {
+    if (editingAreaMeasurement) {
+      message = 'Fläche wird bearbeitet. Klicken Sie zum Hinzufügen weiterer Punkte oder zum Bearbeiten vorhandener Punkte.';
+    } else {
+      message = 'Messung wird bearbeitet. Klicken Sie auf die Punkte, um sie zu bearbeiten.';
+    }
+  } else if (editingSegmentId) {
+    message = 'Segment wird bearbeitet. Klicken Sie auf "Fertig", wenn Sie fertig sind.';
+  } else if (movingPointInfo) {
+    message = `Punkt ${movingPointInfo.pointIndex + 1} wird verschoben. Klicken Sie auf die neue Position.`;
+  }
+  
+  if (!message) return null;
   
   return (
-    <Alert variant="default" className="mb-3 border-primary overflow-visible">
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle className="text-primary font-medium">Bearbeitungsmodus</AlertTitle>
-      <AlertDescription className="space-y-2 overflow-visible">
-        {editMeasurementId && !movingPointInfo && (
-          <div className="flex flex-col gap-1 overflow-visible">
-            <div className="flex items-start gap-1 overflow-visible">
-              <MousePointer className="h-3 w-3 mt-0.5 flex-shrink-0" />
-              <span className="whitespace-normal break-words">Klicken Sie auf einen Punkt (gelb markiert), um ihn zu verschieben.</span>
-            </div>
-            
-            {editingAreaMeasurement && (
-              <div className="flex items-start gap-1 overflow-visible">
-                <PlusCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                <span className="whitespace-normal break-words">Klicken Sie auf ein "+" Symbol, um einen neuen Punkt hinzuzufügen.</span>
-              </div>
-            )}
-          </div>
-        )}
-        {editingSegmentId && (
-          <div className="flex items-start gap-1 overflow-visible">
-            <MousePointer className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span className="whitespace-normal break-words">Klicken Sie auf eine Position, um das Segment zu verschieben.</span>
-          </div>
-        )}
-        {movingPointInfo && (
-          <div className="flex items-start gap-1 font-medium text-primary overflow-visible">
-            <Move className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span className="whitespace-normal break-words">Punkt wird verschoben. Klicken Sie, um die neue Position zu bestätigen.</span>
-          </div>
-        )}
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full mt-2"
-          onClick={handleCancelEditing}
-        >
-          Bearbeitung beenden
-        </Button>
-      </AlertDescription>
-    </Alert>
+    <div className="glass-card flex flex-col gap-2 p-3 border-l-4 border-l-amber-500">
+      <div className="flex items-start gap-2">
+        <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={18} />
+        <span className="text-sm">{message}</span>
+      </div>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleCancelEditing}
+        className="accent-action self-end"
+      >
+        <X size={16} className="mr-1" /> Abbrechen
+      </Button>
+    </div>
   );
-});
-
-EditingAlert.displayName = 'EditingAlert';
+};
 
 export default EditingAlert;

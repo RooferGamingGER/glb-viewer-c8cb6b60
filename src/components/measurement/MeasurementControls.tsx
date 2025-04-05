@@ -1,108 +1,87 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { 
-  Check, 
-  Undo2, 
-  X 
-} from 'lucide-react';
-import { MeasurementMode, Point } from '@/types/measurements';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Point } from '@/types/measurements';
+import { Button } from '@/components/ui/button';
+import { Check, Undo, X } from 'lucide-react';
 
 interface MeasurementControlsProps {
-  activeMode: MeasurementMode;
+  activeMode: string;
   currentPoints: Point[];
   handleFinalizeMeasurement: () => void;
   handleUndoLastPoint: () => void;
   clearCurrentPoints: () => void;
 }
 
-/**
- * Controls for active measurements
- */
-const MeasurementControls: React.FC<MeasurementControlsProps> = ({
-  activeMode,
-  currentPoints,
-  handleFinalizeMeasurement,
+const MeasurementControls: React.FC<MeasurementControlsProps> = ({ 
+  activeMode, 
+  currentPoints, 
+  handleFinalizeMeasurement, 
   handleUndoLastPoint,
-  clearCurrentPoints
+  clearCurrentPoints 
 }) => {
-  const isMobile = useIsMobile();
+  const getControlDescription = () => {
+    switch (activeMode) {
+      case 'length':
+        return 'Klicken Sie auf zwei Punkte, um eine Länge zu messen.';
+      case 'height':
+        return 'Klicken Sie auf zwei Punkte, um eine Höhe zu messen.';
+      case 'area':
+        return 'Klicken Sie auf mindestens drei Punkte, um eine Fläche zu messen.';
+      default:
+        return 'Wählen Sie ein Messwerkzeug aus.';
+    }
+  };
   
-  // Exit early if no measurement tool is active
-  if (activeMode === 'none') return null;
+  const pointsNeeded = activeMode === 'area' ? 3 : 2;
+  const hasEnoughPoints = currentPoints.length >= pointsNeeded;
   
-  // For roof elements and penetrations, don't render anything here
-  // This prevents duplicate UI for roof elements like 'solar'
-  if (!['length', 'height', 'area'].includes(activeMode)) {
-    return null;
-  }
-  
-  // Standard measurement controls for length, height, area
   return (
-    <div className="p-3">
-      <div className={`p-2 border border-primary/30 rounded-md bg-primary/5 ${isMobile ? 'mb-2' : 'mb-4'}`}>
-        <div className="text-sm font-medium mb-2">
-          {activeMode === 'length' && "Längenmessung aktiv"}
-          {activeMode === 'height' && "Höhenmessung aktiv"}
-          {activeMode === 'area' && "Flächenmessung aktiv"}
-          <span className="text-xs text-muted-foreground ml-2">
-            ({currentPoints.length} Punkte)
+    <div className="flex flex-col gap-3">
+      <div className="glass-card p-3">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-sm font-medium">
+            {activeMode === 'length' ? 'Längenmessung' : 
+             activeMode === 'height' ? 'Höhenmessung' : 
+             activeMode === 'area' ? 'Flächenmessung' : 'Messung'}
+          </h3>
+          <span className="text-xs bg-white/10 px-2 py-1 rounded-full">
+            {currentPoints.length} / {pointsNeeded}+ Punkte
           </span>
         </div>
+        <p className="text-xs opacity-80 mb-3">{getControlDescription()}</p>
         
-        <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'space-x-1'} mb-1`}>
-          {(activeMode === 'area' || activeMode === 'length' || activeMode === 'height') && (
+        <div className="flex gap-2 justify-end">
+          {currentPoints.length > 0 && (
             <>
               <Button
-                variant="default" 
-                size={isMobile ? "sm" : "sm"} // Changed size to sm for mobile to save space
-                className={isMobile ? "w-full" : "flex-1"}
-                onClick={handleFinalizeMeasurement}
-                disabled={
-                  (activeMode === 'area' && currentPoints.length < 3) ||
-                  ((activeMode === 'length' || activeMode === 'height') && currentPoints.length < 2)
-                }
-                title="Messung abschließen"
-              >
-                <Check className="h-3 w-3 mr-1" />
-                Abschließen
-              </Button>
-              
-              <Button
-                variant="outline" 
-                size={isMobile ? "sm" : "sm"}
-                className={isMobile ? "w-full" : "flex-1"}
+                variant="outline"
+                size="sm"
                 onClick={handleUndoLastPoint}
-                disabled={currentPoints.length === 0}
-                title="Letzten Punkt rückgängig machen"
+                className="text-xs"
               >
-                <Undo2 className="h-3 w-3 mr-1" />
-                Rückgängig
+                <Undo size={14} className="mr-1" /> Zurück
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearCurrentPoints}
+                className="text-xs"
+              >
+                <X size={14} className="mr-1" /> Abbrechen
               </Button>
             </>
           )}
-          
-          <Button
-            variant="outline" 
-            size={isMobile ? "sm" : "sm"}
-            className={isMobile ? "w-full" : activeMode === 'area' ? "w-9" : "flex-1"}
-            onClick={clearCurrentPoints}
-            title="Abbrechen"
-          >
-            <X className="h-3 w-3" />
-            {(activeMode !== 'area' || isMobile) && <span className="ml-1">Abbrechen</span>}
-          </Button>
+          {hasEnoughPoints && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFinalizeMeasurement}
+              className="accent-action text-xs"
+            >
+              <Check size={14} className="mr-1" /> Fertigstellen
+            </Button>
+          )}
         </div>
-        
-        {activeMode === 'area' && (
-          <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">
-            <span className="whitespace-normal break-words">
-              Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
-              Mindestens 3 Punkte werden benötigt.
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
