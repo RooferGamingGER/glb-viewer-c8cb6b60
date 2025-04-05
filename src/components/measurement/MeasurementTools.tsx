@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -8,6 +7,7 @@ import { ThreeJsProvider, useThreeJs } from '@/contexts/ThreeJsContext';
 import { useVisibilityManager } from '@/hooks/useVisibilityManager';
 import { useMeasurementInteractionManager } from '@/hooks/useMeasurementInteractionManager';
 import { useMeasurementState } from '@/hooks/useMeasurementState';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Import visualization utilities
 import { 
@@ -60,6 +60,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   camera,
   autoOpenSidebar = false
 }) => {
+  const isMobile = useIsMobile();
   // Get measurement state and actions from context
   const { 
     measurements,
@@ -433,14 +434,14 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
-          className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''} ${isMobile ? 'w-full' : 'w-80'}`}
         >
           {/* Main structure with proper scrolling and fixed notification area */}
           <div className="flex flex-col h-full">
             {/* Top scrollable area for tools */}
-            <div className="flex-1 min-h-0">
-              <ScrollArea className="h-full">
-                <div className="p-3">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <ScrollArea className="h-full flex-grow overflow-y-auto">
+                <div className="p-3 flex flex-col">
                   <MeasurementToolControls 
                     activeMode={activeMode}
                     toggleMeasurementTool={toggleMeasurementTool}
@@ -468,7 +469,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
             {/* Bottom notification area with independent scrolling when needed */}
             {showNotifications && (
               <div className="border-t border-border/30 overflow-visible">
-                <ScrollArea className="max-h-[240px]">
+                <ScrollArea className="max-h-[240px]" autoMaxHeight>
                   {/* Standard measurement controls */}
                   {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
                     <MeasurementControls

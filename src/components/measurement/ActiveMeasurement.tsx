@@ -6,12 +6,13 @@ import {
   ArrowLeft,
   X
 } from 'lucide-react';
-import { Point, MeasurementMode } from '@/hooks/useMeasurements';
+import { Point, MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ActiveMeasurementProps {
   activeMode: MeasurementMode;
@@ -84,15 +85,17 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         {currentPoints.length > 0 && (
           <div className="mt-3">
             <p className="text-xs text-muted-foreground mb-1">Messpunkte:</p>
-            <div className="space-y-1 max-h-32 overflow-y-auto pl-2 pr-1">
-              {currentPoints.map((point, idx) => (
-                <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
-                  <span>
-                    Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
-                  </span>
-                </div>
-              ))}
-            </div>
+            <ScrollArea className="max-h-32" autoMaxHeight>
+              <div className="space-y-1 pl-2 pr-1">
+                {currentPoints.map((point, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
+                    <span>
+                      Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         )}
       </SidebarGroupContent>
