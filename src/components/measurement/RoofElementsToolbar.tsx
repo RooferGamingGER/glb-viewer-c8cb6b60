@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Cylinder, 
@@ -40,7 +41,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
       const toolMessages: Record<string, string> = {
         'chimney': 'Kamin-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
-        'solar': 'Solarflächen-Messung ausgewählt - Definieren Sie die Fläche',
+        'solar': 'Geplante Solarfläche ausgewählt - Definieren Sie die Fläche mit 4 Punkten, PV-Module werden automatisch berechnet',
         'vent': 'Lüfter-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'hook': 'Dachhaken-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'other': 'Sonstige Einbauten-Markierung ausgewählt - Platzieren Sie einen Punkt'

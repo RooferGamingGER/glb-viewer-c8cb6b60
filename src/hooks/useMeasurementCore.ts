@@ -404,15 +404,44 @@ export const useMeasurementCore = () => {
           const solarArea = calculateArea(points);
           const segments = generateSegments(points);
           
+          // Calculate PV module information automatically for solar areas
+          const roofEdgeInfo = extractRoofEdgeMeasurements(measurements);
+          const moduleInfo = calculatePVModulePlacement(
+            points,
+            undefined,
+            undefined,
+            DEFAULT_EDGE_DISTANCE,
+            DEFAULT_MODULE_SPACING,
+            undefined,
+            roofEdgeInfo
+          );
+          const moduleSpec = PV_MODULE_TEMPLATES[0];
+          
+          const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
+          
           measurementData = {
             value: solarArea,
-            label: formatMeasurement(solarArea, 'area'),
+            label: `${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp)`,
             segments,
             dimensions: {
               area: solarArea
             },
-            labelVisible: allLabelsVisible
+            labelVisible: allLabelsVisible,
+            pvModuleInfo: moduleInfo,
+            pvModuleSpec: moduleSpec,
+            powerOutput: moduleInfo.moduleCount * moduleSpec.power
           };
+          
+          // Show success message for the automatic PV calculation
+          toast.success(`PV-Modulfläche automatisch berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
+          
+          if (roofEdgeInfo.hasAllEdges) {
+            if (roofEdgeInfo.isValid === false && roofEdgeInfo.validationMessage) {
+              toast.warning(`Hinweis zu Dachkanten: ${roofEdgeInfo.validationMessage}`);
+            } else {
+              toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+            }
+          }
         } else {
           toast.error("Für Solarplanung werden genau 4 Punkte benötigt.");
           return;
@@ -472,7 +501,7 @@ export const useMeasurementCore = () => {
         points: [...points],
         visible: true,
         labelVisible: allLabelsVisible,
-        unit: type === 'solar' ? 'm²' : 
+        unit: type === 'solar' ? 'kWp' : 
               type === 'pvmodule' ? 'kWp' :
               type === 'vent' || type === 'hook' || type === 'other' ? 'Stk' : 'm',
         ...measurementData
@@ -487,7 +516,7 @@ export const useMeasurementCore = () => {
     } else {
       setActiveMode('none');
     }
-  }, [allLabelsVisible]);
+  }, [allLabelsVisible, measurements]);
 
   const addPoint = useCallback((point: Point) => {
     if (editMeasurementId && editingPointIndex !== null) {
