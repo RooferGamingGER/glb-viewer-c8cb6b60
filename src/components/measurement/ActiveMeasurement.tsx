@@ -13,6 +13,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ActiveMeasurementProps {
   activeMode: MeasurementMode;
@@ -29,6 +30,8 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
+  const isMobile = useIsMobile();
+  
   // Don't render anything if no measurement tool is active or if there are no points
   if (activeMode === 'none') return null;
   
@@ -85,7 +88,10 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         {currentPoints.length > 0 && (
           <div className="mt-3">
             <p className="text-xs text-muted-foreground mb-1">Messpunkte:</p>
-            <ScrollArea className="max-h-32" autoMaxHeight>
+            <ScrollArea 
+              className={isMobile ? "max-h-24" : "max-h-32"} 
+              autoMaxHeight
+            >
               <div className="space-y-1 pl-2 pr-1">
                 {currentPoints.map((point, idx) => (
                   <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
