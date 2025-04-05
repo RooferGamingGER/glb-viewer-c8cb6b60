@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
