@@ -6,7 +6,6 @@ import {
   Square, 
   Trash2,
   Magnet,
-  FileText,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -21,8 +20,6 @@ import {
 } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
-import ExportPdfButton from './ExportPdfButton';
-import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import { Toggle } from "@/components/ui/toggle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
@@ -81,41 +78,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
       ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
       : "Punktfang deaktiviert: Punkte werden exakt platziert"
     );
-  };
-  
-  // Function to export measurements as CSV
-  const exportMeasurementsAsCSV = () => {
-    if (!measurements || measurements.length === 0) {
-      toast.error('Keine Messungen für den Export vorhanden');
-      return;
-    }
-    
-    // CSV headers
-    let csvContent = 'ID,Typ,Wert,Punkte\n';
-    
-    // Add each measurement
-    measurements.forEach(m => {
-      const type = m.type;
-      const value = m.value || 0;
-      const pointsStr = m.points ? m.points.map((p: any) => 
-        `(${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)})`
-      ).join(' ') : '';
-      
-      csvContent += `${m.id},"${type}",${value.toFixed(2)},"${pointsStr}"\n`;
-    });
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.href = url;
-    link.setAttribute('download', `Messungen_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success('CSV-Datei wurde heruntergeladen');
   };
   
   return (
@@ -218,32 +180,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                   </SidebarMenuItem>
                 </div>
               </SidebarMenu>
-              
-              {/* Export functions moved up and reorganized */}
-              {measurements && measurements.length > 0 && (
-                <div className="flex flex-col gap-2 mt-4 border-t pt-3">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Exportoptionen:
-                  </div>
-                  
-                  {/* Roof plan generation button */}
-                  <GenerateRoofPlanButton measurements={measurements} />
-                  
-                  {/* CSV Export button */}
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={exportMeasurementsAsCSV}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    CSV Export
-                  </Button>
-                  
-                  {/* PDF Export button */}
-                  <ExportPdfButton measurements={measurements} />
-                </div>
-              )}
             </SidebarGroupContent>
           </AccordionContent>
         </AccordionItem>
