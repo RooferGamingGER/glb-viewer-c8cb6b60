@@ -33,7 +33,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({
   className 
 }) => {
   const [activeMeasurement, setActiveMeasurement] = useState<string | null>(null);
-  const [measurementMode, setMeasurementMode] = useState<MeasurementMode>("line");
+  const [measurementMode, setMeasurementMode] = useState<MeasurementMode>("none");
   const [isAddingNewMeasurement, setIsAddingNewMeasurement] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editMeasurementId, setEditMeasurementId] = useState<string | null>(null);
@@ -54,13 +54,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({
   const [currentPoints, setCurrentPoints] = useState<any[]>([]);
 
   // Get access to the ThreeJs context
-  const { scene, camera, clearGroup } = useThreeJs();
+  const threeJsContext = useThreeJs();
   
   // Create our own simple implementation of useMeasurementToolToggle since the original expects parameters
   const { toggleMeasurementTool, isModeActive, isAreaMode, isPointMode, isLineMode } = {
     toggleMeasurementTool: (mode: MeasurementMode) => {
       console.log('Toggle measurement tool', mode);
-      // Implement toggleMeasurementTool logic here
+      setMeasurementMode(mode);
     },
     isModeActive: (mode: MeasurementMode) => measurementMode === mode,
     isAreaMode: () => ['area', 'solar', 'skylight', 'chimney', 'pvmodule', 'pvplanning'].includes(measurementMode),

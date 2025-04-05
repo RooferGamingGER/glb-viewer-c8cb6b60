@@ -4,6 +4,8 @@ import * as THREE from 'three';
 
 // Define context type
 type ThreeJsContextType = {
+  scene: THREE.Scene | null;
+  camera: THREE.Camera | null;
   pointsRef: React.RefObject<THREE.Group>;
   linesRef: React.RefObject<THREE.Group>;
   measurementsRef: React.RefObject<THREE.Group>;
@@ -19,6 +21,8 @@ type ThreeJsContextType = {
 
 // Create context with default values
 const ThreeJsContext = createContext<ThreeJsContextType>({
+  scene: null,
+  camera: null,
   pointsRef: { current: null },
   linesRef: { current: null },
   measurementsRef: { current: null },
@@ -36,6 +40,7 @@ const ThreeJsContext = createContext<ThreeJsContextType>({
 interface ThreeJsProviderProps {
   children: React.ReactNode;
   scene: THREE.Scene | null;
+  camera?: THREE.Camera | null;
   enabled: boolean;
 }
 
@@ -43,6 +48,7 @@ interface ThreeJsProviderProps {
 export const ThreeJsProvider: React.FC<ThreeJsProviderProps> = ({ 
   children, 
   scene,
+  camera = null,
   enabled
 }) => {
   // Create refs for all groups
@@ -180,6 +186,8 @@ export const ThreeJsProvider: React.FC<ThreeJsProviderProps> = ({
 
   // Provide context values
   const contextValue = {
+    scene,
+    camera,
     pointsRef,
     linesRef,
     measurementsRef,
