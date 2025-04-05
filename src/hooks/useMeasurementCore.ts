@@ -734,13 +734,12 @@ export const useMeasurementCore = () => {
       currentPointsRef.current = [];
       setActiveMode('none');
     }
-    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none', 'pvplanning'].includes(activeMode)) {
+    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
         'solar': 4,
         'pvmodule': 4,
-        'pvplanning': 4,
         'vent': 1,
         'hook': 1,
         'other': 1,

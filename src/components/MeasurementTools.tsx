@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -11,7 +11,6 @@ import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
-import { useThreeJsOptimizations } from '@/hooks/useThreeJsOptimizations';
 
 // Import visualization utilities
 import { 
@@ -44,7 +43,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const { registerScene } = usePointSnapping();
   
   // Register scene when component mounts
-  useEffect(() => {
+  React.useEffect(() => {
     if (scene && enabled) {
       registerScene(scene);
     }
@@ -93,9 +92,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     labelsRef,
     segmentLabelsRef
   } = useThreeObjects(scene, enabled);
-
-  // Apply Three.js performance optimizations
-  useThreeJsOptimizations(scene, camera, enabled, measurements);
 
   // Handlers for measurement interaction
   const interactionHandlers = {
@@ -196,12 +192,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   // Update visibility when allLabelsVisible changes
-  useEffect(() => {
+  React.useEffect(() => {
     updateAllLabelsVisibility(allLabelsVisible);
   }, [allLabelsVisible, updateAllLabelsVisibility]);
 
   // Handle label visibility based on edit mode
-  useEffect(() => {
+  React.useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
     
     // Determine if we're in any edit mode
@@ -248,7 +244,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
 
   // Clean up labels when editing starts and re-render when editing is complete
-  useEffect(() => {
+  React.useEffect(() => {
     if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
       // When editing is complete, re-render all measurements to ensure labels are updated
       renderMeasurements(
@@ -262,7 +258,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
 
   // Re-render measurements when they change
-  useEffect(() => {
+  React.useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
       labelsRef.current, 
@@ -273,7 +269,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [measurements]);
 
   // Re-render current points when they change
-  useEffect(() => {
+  React.useEffect(() => {
     renderCurrentPoints(
       pointsRef.current, 
       linesRef.current, 
@@ -284,7 +280,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [currentPoints, activeMode]);
 
   // Re-render edit points when edit state changes
-  useEffect(() => {
+  React.useEffect(() => {
     renderEditPoints(
       editPointsRef.current, 
       measurements, 
@@ -295,7 +291,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [measurements, editMeasurementId, editingPointIndex]);
 
   // Clean up when enabled state changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (!enabled) {
       clearAllVisuals(
         pointsRef.current,

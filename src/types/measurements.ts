@@ -13,7 +13,6 @@ export type MeasurementMode =
   | 'hook'      // Dachhaken
   | 'other'     // Sonstige Einbauten
   | 'pvmodule'  // PV-Modul (individuelles Zeichnen)
-  | 'pvplanning' // PV-Planung
   | 'ridge'     // First
   | 'eave'      // Traufe
   | 'verge'     // Ortgang
@@ -84,9 +83,6 @@ export interface PVModuleInfo {
   points?: Point[];           // Store the original points used for the solar area calculation
   modulePositions?: Point[];  // Array of position points for each module (center points)
   moduleCorners?: Point[][];  // Array of corner points for each module (4 corners per module)
-  width?: number;             // Added: Width in meters (might be the same as moduleWidth)
-  height?: number;            // Added: Height in meters (might be the same as moduleHeight)
-  rotation?: number;          // Added: Rotation angle in degrees
   moduleVisuals?: {           // Visual properties for module rendering
     frameBorder?: number;     // Frame border width in meters
     frameColor?: number;      // Frame color (hex)
@@ -175,7 +171,7 @@ export interface Measurement {
   customScreenshots?: string[];  // Array of base64 data URLs for custom screenshots
   
   pvModuleInfo?: PVModuleInfo; // Information about PV module placement
+
   pvModuleSpec?: PVModuleSpec; // Specification of the PV module used
   powerOutput?: number;   // Power output in watts for this module
-  pvPositions?: Point[];   // Added: Positions for PV modules
 }

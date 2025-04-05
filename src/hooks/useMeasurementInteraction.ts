@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
-import { Point, MeasurementMode } from '@/types/measurements';
+import { Point } from '@/types/measurements';
 import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
@@ -26,7 +27,7 @@ export const useMeasurementInteraction = (
   },
   measurements: any[],
   currentPoints: Point[],
-  activeMode: MeasurementMode,
+  activeMode: string,
   handlers: {
     addPoint: (point: Point) => void,
     startPointEdit: (id: string, index: number) => void,
@@ -211,7 +212,7 @@ export const useMeasurementInteraction = (
       }
     }
   }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo, refs]);
-  
+
   // Special handling for PV module visibility
   useEffect(() => {
     if (enabled && refs.measurementsRef.current) {
