@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -124,108 +125,107 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = memo(({
   };
 
   return (
-    
-      
-        
+    <div className={cn("measurement-tools-container", className)}>
+      <div className="tools-header">
+        <div className="header-title">
           Messwerkzeuge
+        </div>
         
-        
+        <div className="tools-actions">
+          <div className="measurement-buttons">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      toggle(true);
+                      toggleRuler(false);
+                    }}
+                    disabled={enabled}
+                  >
+                    <Ruler className="h-4 w-4 mr-2" />
+                    Messen
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Messwerkzeuge aktivieren
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      toggle(false);
+                      toggleRuler(true);
+                    }}
+                    disabled={isRulerEnabled}
+                  >
+                    <Maximize2 className="h-4 w-4 mr-2" />
+                    Ausmessen
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Flächen ausmessen
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           
-            
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        toggle(true);
-                        toggleRuler(false);
-                      }}
-                      disabled={enabled}
-                    >
-                      <Ruler className="h-4 w-4 mr-2" />
-                      Messen
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Messwerkzeuge aktivieren
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            
-            
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        toggle(false);
-                        toggleRuler(true);
-                      }}
-                      disabled={isRulerEnabled}
-                    >
-                      <Maximize2 className="h-4 w-4 mr-2" />
-                      Ausmessen
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Flächen ausmessen
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            
-          
-          
-            
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost"
-                      onClick={clearAll}
-                      disabled={measurements.length === 0}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Alles löschen
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Alle Messungen löschen
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            
-          
-        
+          <div className="clear-actions">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost"
+                    onClick={clearAll}
+                    disabled={measurements.length === 0}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Alles löschen
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Alle Messungen löschen
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
 
-        
-          
-            
+        <div className="measurement-modes">
+          <ToggleGroup type="single" value={measurementMode}>
+            <ToggleGroupItem value="line">
               Linie
+            </ToggleGroupItem>
             
-            
+            <ToggleGroupItem value="area">
               Fläche
-            
-          
-        
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
 
-        
-          
+        <div className="measurement-actions">
+          <Button onClick={handleAddMeasurement}>
             Messung hinzufügen
+          </Button>
           
-          
+          <Button onClick={handleCancelMeasurement} variant="outline">
             Messung abbrechen
-          
-        
+          </Button>
+        </div>
 
-        
-          
+        <div className="settings-actions">
+          <Button onClick={() => setShowSettings(!showSettings)} variant="outline">
             Einstellungen
-          
-        
-      
-    
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 });
 
