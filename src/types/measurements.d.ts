@@ -28,6 +28,8 @@ export interface Measurement {
   visible?: boolean;
   labelVisible?: boolean;
   powerOutput?: number;
+  editMode?: boolean;
+  pvPositions?: Point[];
 }
 
 export interface PVModuleSpec {
@@ -102,6 +104,12 @@ export interface PVModuleInfo {
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
   points?: Point[];           // Store the original points used for the solar area calculation
+  moduleVisuals?: any;        // Visual properties for module rendering
+  modulePositions?: Point[];  // Positions for each module
+  moduleCorners?: Point[][];  // Corner points for each module
+  width?: number;             // Width of module (for compatibility)
+  height?: number;            // Height of module (for compatibility)
+  rotation?: number;          // Module rotation angle relative to roof
 }
 
 export type MeasurementMode = 

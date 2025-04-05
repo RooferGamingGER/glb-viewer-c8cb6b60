@@ -9,6 +9,8 @@ import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
+import { useThreeJsOptimizations } from '@/hooks/useThreeJsOptimizations';
+import ThreeJsOptimizer from '@/components/measurement/ThreeJsOptimizer';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -92,7 +94,13 @@ function SceneSetup({
   const { scene, camera, gl, get } = useThree();
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
+  // Initialize optimizations
+  const { applyOptimizations, updateFrustumCulling } = useThreeJsOptimizations(scene, camera, gl, true);
+  
   useEffect(() => {
+    // Apply initial optimizations
+    applyOptimizations();
+    
     canvasRef.current = gl.domElement;
     
     if (scene && camera && gl && canvasRef.current) {
@@ -106,7 +114,12 @@ function SceneSetup({
       
       onSceneReady(scene, camera, gl, canvasRef.current);
     }
-  }, [scene, camera, gl, onSceneReady]);
+  }, [scene, camera, gl, onSceneReady, applyOptimizations]);
+  
+  // Apply frustum culling on each frame
+  useFrame(() => {
+    updateFrustumCulling();
+  });
 
   return null;
 }
@@ -122,16 +135,29 @@ const ModelCanvas = ({
 }) => {
   const isMobile = useIsMobile();
   
-  return <Canvas shadows style={{
-    background: '#222222',
-    position: 'absolute', 
-    top: 0, 
-    left: 0,
-    width: '100%',
-    height: '100%',
-    zIndex: 1,
-    touchAction: 'none'
-  }} className="w-full h-full" ref={canvasRef}>
+  return <Canvas 
+    shadows 
+    dpr={Math.min(2, window.devicePixelRatio)} // Limit pixel ratio for better performance
+    gl={{
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance",
+      logarithmicDepthBuffer: true,
+      precision: "highp"
+    }}
+    style={{
+      background: '#222222',
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      width: '100%',
+      height: '100%',
+      zIndex: 1,
+      touchAction: 'none'
+    }} 
+    className="w-full h-full" 
+    ref={canvasRef}
+  >
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
@@ -161,6 +187,9 @@ const ModelCanvas = ({
             TWO: THREE.TOUCH.DOLLY_PAN
           }}
         />
+        
+        {/* Add Three.js optimizer component */}
+        <ThreeJsOptimizer enabled={true} />
       </Suspense>
     </Canvas>;
 };
@@ -198,8 +227,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     canvas: HTMLCanvasElement
   ) => {
     if (newRenderer) {
-      // Reduzierte Pixel-Ratio für geringere RAM-Nutzung
+      // Optimized pixel ratio for better performance
       newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+      
+      // Set to linear color space for better performance
+      newRenderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+      
+      // Optimize shadow settings
+      newRenderer.shadowMap.enabled = true;
+      newRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      newRenderer.shadowMap.autoUpdate = false; // Manual updates only
+      newRenderer.shadowMap.needsUpdate = true;
     }
     
     setThreeContext({
