@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Cylinder, 
@@ -6,9 +5,7 @@ import {
   Sun, 
   Wind,
   Anchor,
-  X,
-  Zap,
-  Home
+  X
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { 
@@ -43,7 +40,7 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
       const toolMessages: Record<string, string> = {
         'chimney': 'Kamin-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
         'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
-        'solar': 'Solaranlagen-Messung ausgewählt - Definieren Sie die Fläche',
+        'solar': 'Solarflächen-Messung ausgewählt - Definieren Sie die Fläche',
         'vent': 'Lüfter-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'hook': 'Dachhaken-Markierung ausgewählt - Platzieren Sie einen Punkt',
         'other': 'Sonstige Einbauten-Markierung ausgewählt - Platzieren Sie einen Punkt'
@@ -73,25 +70,12 @@ const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
                     <SidebarMenuButton
                       isActive={activeMode === 'solar'}
                       onClick={() => selectTool('solar')}
-                      tooltip="Solaranlage messen"
+                      tooltip="Solarfläche messen"
                       disabled={!!editMeasurementId}
                       className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
                     >
                       <Sun className="h-4 w-4" />
-                      <span className="text-xs">Solaranlage</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'pvmodule'}
-                      onClick={() => selectTool('pvmodule')}
-                      tooltip="PV-Module platzieren"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <Zap className="h-4 w-4" />
-                      <span className="text-xs">PV-Module</span>
+                      <span className="text-xs">Geplante Solarfläche</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </div>
