@@ -3,7 +3,6 @@ import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-
 interface MeasurementListProps {
   measurements: Measurement[];
   toggleMeasurementVisibility: (id: string) => void;
@@ -16,12 +15,14 @@ interface MeasurementListProps {
   segmentsOpen: Record<string, boolean>;
   toggleSegments: (id: string) => void;
   onEditSegment: (id: string | null) => void;
-  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
+  movingPointInfo?: {
+    measurementId: string;
+    pointIndex: number;
+  } | null;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   activeCategory?: string;
 }
-
 const MeasurementList: React.FC<MeasurementListProps> = ({
   measurements,
   toggleMeasurementVisibility,
@@ -40,113 +41,66 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   activeCategory
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) {
-    return (
-      <div className="text-center py-6 text-muted-foreground">
+    return <div className="text-center text-muted-foreground py-[145px]">
         Keine Messungen vorhanden.
-      </div>
-    );
+      </div>;
   }
-  
+
   // Group measurements by category
   // 1. Dach (standard measurements: length, height, area)
-  const dachMeasurements = measurements.filter(m => 
-    ['length', 'height', 'area'].includes(m.type)
-  );
-  
+  const dachMeasurements = measurements.filter(m => ['length', 'height', 'area'].includes(m.type));
+
   // 2. Solar (solar planning measurements)
-  const solarMeasurements = measurements.filter(m => 
-    ['solar'].includes(m.type)
-  );
-  
+  const solarMeasurements = measurements.filter(m => ['solar'].includes(m.type));
+
   // 3. Dachelemente (skylight, chimney)
-  const dachelementeMeasurements = measurements.filter(m => 
-    ['skylight', 'chimney'].includes(m.type)
-  );
-  
+  const dachelementeMeasurements = measurements.filter(m => ['skylight', 'chimney'].includes(m.type));
+
   // 4. Einbauten (vent, hook, other)
-  const einbautenMeasurements = measurements.filter(m => 
-    ['vent', 'hook', 'other'].includes(m.type)
-  );
-  
+  const einbautenMeasurements = measurements.filter(m => ['vent', 'hook', 'other'].includes(m.type));
+
   // 5. Any other measurements not categorized
-  const otherMeasurements = measurements.filter(m => 
-    !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
-  );
-  
+  const otherMeasurements = measurements.filter(m => !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type));
   const renderMeasurementGroup = (title: string, items: Measurement[], showEmpty: boolean = false) => {
     if (items.length === 0 && !showEmpty) return null;
-    
-    return (
-      <div className="mb-3">
+    return <div className="mb-3">
         <h3 className="text-sm font-medium mb-1 flex justify-between">
           <span>{title}</span>
           <span className="text-muted-foreground">({items.length})</span>
         </h3>
         
-        {items.length > 0 ? (
-          items.map((measurement) => (
-            <MeasurementItem
-              key={measurement.id}
-              measurement={measurement}
-              toggleMeasurementVisibility={toggleMeasurementVisibility}
-              toggleLabelVisibility={toggleLabelVisibility}
-              handleStartPointEdit={handleStartPointEdit}
-              handleDeleteMeasurement={handleDeleteMeasurement}
-              handleDeletePoint={handleDeletePoint}
-              updateMeasurement={updateMeasurement}
-              editMeasurementId={editMeasurementId}
-              segmentsOpen={segmentsOpen[measurement.id] || false}
-              toggleSegments={toggleSegments}
-              onEditSegment={onEditSegment}
-              movingPointInfo={movingPointInfo}
-              handleMoveUp={handleMoveMeasurementUp}
-              handleMoveDown={handleMoveMeasurementDown}
-            />
-          ))
-        ) : (
-          <div className="text-sm text-muted-foreground py-1 text-center">
+        {items.length > 0 ? items.map(measurement => <MeasurementItem key={measurement.id} measurement={measurement} toggleMeasurementVisibility={toggleMeasurementVisibility} toggleLabelVisibility={toggleLabelVisibility} handleStartPointEdit={handleStartPointEdit} handleDeleteMeasurement={handleDeleteMeasurement} handleDeletePoint={handleDeletePoint} updateMeasurement={updateMeasurement} editMeasurementId={editMeasurementId} segmentsOpen={segmentsOpen[measurement.id] || false} toggleSegments={toggleSegments} onEditSegment={onEditSegment} movingPointInfo={movingPointInfo} handleMoveUp={handleMoveMeasurementUp} handleMoveDown={handleMoveMeasurementDown} />) : <div className="text-sm text-muted-foreground py-1 text-center">
             Keine {title} vorhanden
-          </div>
-        )}
-      </div>
-    );
+          </div>}
+      </div>;
   };
 
   // Filter measurements based on activeCategory if provided
   if (activeCategory) {
     switch (activeCategory) {
       case 'dach':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
             {renderMeasurementGroup("Dach", dachMeasurements, true)}
-          </div>
-        );
+          </div>;
       case 'solar':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
             {renderMeasurementGroup("Solar", solarMeasurements, true)}
-          </div>
-        );
+          </div>;
       case 'dachelemente':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
             {renderMeasurementGroup("Dachelemente", dachelementeMeasurements, true)}
-          </div>
-        );
+          </div>;
       case 'einbauten':
-        return (
-          <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+        return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
             {renderMeasurementGroup("Einbauten", einbautenMeasurements, true)}
-          </div>
-        );
+          </div>;
       default:
         break;
     }
   }
-  
+
   // Default rendering with all categories
-  return (
-    <div className="flex-1 flex flex-col min-h-0 w-full px-2">
+  return <div className="flex-1 flex flex-col min-h-0 w-full px-2">
       <Tabs defaultValue="dach" className="w-full">
         <TabsList className="w-full grid grid-cols-4 h-8 mb-2">
           <TabsTrigger value="dach" className="text-xs py-1 px-0">
@@ -181,14 +135,10 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
       </Tabs>
 
       {/* Other measurements not categorized (if any) */}
-      {otherMeasurements.length > 0 && (
-        <>
+      {otherMeasurements.length > 0 && <>
           <Separator className="my-3" />
           {renderMeasurementGroup("Sonstige", otherMeasurements)}
-        </>
-      )}
-    </div>
-  );
+        </>}
+    </div>;
 };
-
 export default MeasurementList;
