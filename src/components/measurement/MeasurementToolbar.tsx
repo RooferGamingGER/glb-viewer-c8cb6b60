@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Ruler, 
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
-import ExportPdfButton from './ExportPdfButton';
 import { Toggle } from "@/components/ui/toggle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
@@ -25,19 +25,21 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
-  visible: boolean;
-  setVisible: (visible: boolean) => void;
   handleClearMeasurements: () => void;
   measurements: Measurement[];
+  onCategoryClick?: (category: MeasurementMode) => void;
+  toggleAllLabelsVisibility?: () => void;
+  allLabelsVisible?: boolean;
 }
 
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   activeMode,
   toggleMeasurementTool,
-  visible,
-  setVisible,
   handleClearMeasurements,
-  measurements
+  measurements,
+  onCategoryClick,
+  toggleAllLabelsVisibility,
+  allLabelsVisible
 }) => {
   // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
@@ -69,9 +71,26 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
       : "Punktfang deaktiviert: Punkte werden exakt platziert"
     );
   };
-  
+
+  // Punktfang toggle moved outside of the accordion
   return (
     <SidebarGroup className="mt-0">
+      {/* Punktfang toggle moved above measurement tools */}
+      <div className="mb-3">
+        <Toggle
+          pressed={snapEnabled}
+          onPressedChange={handleToggleSnap}
+          size="sm"
+          variant={snapEnabled ? "default" : "outline"}
+          aria-label="Punktfang ein/aus"
+          title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+          className={`w-full justify-start ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+        >
+          <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+          Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+        </Toggle>
+      </div>
+      
       <Accordion type="single" collapsible defaultValue="measurement-tools">
         <AccordionItem value="measurement-tools" className="border-0">
           <AccordionTrigger className="py-2 px-1">
@@ -115,22 +134,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               </SidebarMenu>
               
               <div className="flex flex-col gap-2 mt-4">
-                <Toggle
-                  pressed={snapEnabled}
-                  onPressedChange={handleToggleSnap}
-                  size="sm"
-                  variant={snapEnabled ? "default" : "outline"}
-                  aria-label="Punktfang ein/aus"
-                  title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-                  className={`w-full justify-start ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
-                >
-                  <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-                  Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-                </Toggle>
-                
-                {/* Correctly pass measurements to ExportPdfButton */}
-                <ExportPdfButton measurements={measurements} />
-                
                 {measurements.length > 0 && (
                   <Button 
                     variant="outline" 
