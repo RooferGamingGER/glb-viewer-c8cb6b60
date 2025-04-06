@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { AlertCircle, Move, MousePointer, PlusCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { X, MoveHorizontal, Edit } from 'lucide-react';
 
-interface EditingAlertProps {
-  editMeasurementId: string | null;
-  editingSegmentId: string | null;
-  movingPointInfo: { measurementId: string; pointIndex: number } | null;
+export interface EditingAlertProps {
+  editMeasurementId?: string | null;
+  editingSegmentId?: string | null;
+  movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleCancelEditing: () => void;
   editingAreaMeasurement?: boolean;
 }
@@ -17,49 +17,43 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   editingSegmentId,
   movingPointInfo,
   handleCancelEditing,
-  editingAreaMeasurement = false
+  editingAreaMeasurement
 }) => {
-  if (!editMeasurementId && !editingSegmentId && !movingPointInfo) return null;
+  // Determine what type of editing is happening
+  const isMovingPoint = movingPointInfo !== null && movingPointInfo !== undefined;
+  const isEditingMeasurement = editMeasurementId !== null && editMeasurementId !== undefined;
+  const isEditingSegment = editingSegmentId !== null && editingSegmentId !== undefined;
   
+  let title = 'Messung wird bearbeitet';
+  let description = 'Sie bearbeiten gerade eine Messung. Klicken Sie auf Abbrechen, um den Bearbeitungsmodus zu verlassen.';
+  let icon = <Edit className="h-4 w-4" />;
+  
+  if (isMovingPoint) {
+    title = 'Punkt wird verschoben';
+    description = `Sie verschieben Punkt ${movingPointInfo?.pointIndex + 1}. Klicken Sie an eine neue Position oder auf Abbrechen.`;
+    icon = <MoveHorizontal className="h-4 w-4" />;
+  } else if (isEditingSegment) {
+    title = 'Segment wird bearbeitet';
+    description = 'Sie bearbeiten ein Segment einer Messung. Klicken Sie auf Abbrechen, um den Bearbeitungsmodus zu verlassen.';
+  } else if (isEditingMeasurement && editingAreaMeasurement) {
+    title = 'Fläche wird bearbeitet';
+    description = 'Sie bearbeiten eine Flächenmessung. Klicken Sie auf Abbrechen, um den Bearbeitungsmodus zu verlassen.';
+  }
+
   return (
-    <Alert variant="default" className="mb-3 border-primary overflow-visible">
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle className="text-primary font-medium">Bearbeitungsmodus</AlertTitle>
-      <AlertDescription className="space-y-2 overflow-visible">
-        {editMeasurementId && !movingPointInfo && (
-          <div className="flex flex-col gap-1 overflow-visible">
-            <div className="flex items-start gap-1 overflow-visible">
-              <MousePointer className="h-3 w-3 mt-0.5 flex-shrink-0" />
-              <span className="whitespace-normal break-words">Klicken Sie auf einen Punkt (gelb markiert), um ihn zu verschieben.</span>
-            </div>
-            
-            {editingAreaMeasurement && (
-              <div className="flex items-start gap-1 overflow-visible">
-                <PlusCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                <span className="whitespace-normal break-words">Klicken Sie auf ein "+" Symbol, um einen neuen Punkt hinzuzufügen.</span>
-              </div>
-            )}
-          </div>
-        )}
-        {editingSegmentId && (
-          <div className="flex items-start gap-1 overflow-visible">
-            <MousePointer className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span className="whitespace-normal break-words">Klicken Sie auf eine Position, um das Segment zu verschieben.</span>
-          </div>
-        )}
-        {movingPointInfo && (
-          <div className="flex items-start gap-1 font-medium text-primary overflow-visible">
-            <Move className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span className="whitespace-normal break-words">Punkt wird verschoben. Klicken Sie, um die neue Position zu bestätigen.</span>
-          </div>
-        )}
+    <Alert variant="warning" className="mb-2 animate-fade-in">
+      {icon}
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription className="flex justify-between items-center">
+        <span>{description}</span>
         <Button 
           variant="outline" 
           size="sm" 
-          className="w-full mt-2"
+          className="mt-2" 
           onClick={handleCancelEditing}
         >
-          Bearbeitung beenden
+          <X className="h-4 w-4 mr-1" />
+          Abbrechen
         </Button>
       </AlertDescription>
     </Alert>

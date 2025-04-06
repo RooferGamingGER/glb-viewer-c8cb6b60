@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -22,6 +23,7 @@ import MeasurementToolControls from './MeasurementToolControls';
 import MeasurementControls from './MeasurementControls';
 import EditingAlert from './EditingAlert';
 import RoofElementControls from './RoofElementControls';
+import TabbedMeasurementSidebar from './TabbedMeasurementSidebar';
 import { Measurement } from '@/types/measurements';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -425,9 +427,15 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   };
 
   // Calculate if we need to show notifications in the footer
-  const showNotifications = (editMeasurementId || editingSegmentId || movingPointInfo || 
-                            (activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode)) || 
-                            isRoofElementMode);
+  const isEditing = editMeasurementId !== null || editingSegmentId !== null || movingPointInfo !== null;
+  const showNotifications = isEditing || 
+    (activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode)) || isRoofElementMode;
+
+  // Determine if an area measurement is being edited
+  const editingAreaMeasurement = editMeasurementId ? 
+    measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
+    measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
+    : false;
 
   // Component rendering with improved sidebar structure
   return (
@@ -436,81 +444,60 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         <div 
           className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''} ${isMobile ? 'w-full' : 'w-80'}`}
         >
-          {/* Main structure with proper scrolling and fixed notification area */}
-          <div className="flex flex-col h-full">
-            {/* Top scrollable area for tools */}
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-              <ScrollArea className="h-full flex-grow overflow-y-auto">
-                <div className="p-3 flex flex-col">
-                  <MeasurementToolControls 
+          {/* Use our new tabbed sidebar component */}
+          <TabbedMeasurementSidebar
+            activeMode={activeMode}
+            toggleMeasurementTool={toggleMeasurementTool}
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            movingPointInfo={movingPointInfo}
+            measurements={measurements}
+            showTable={showTable}
+            setShowTable={setShowTable}
+            toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+            toggleLabelVisibility={handleToggleLabelVisibility}
+            handleStartPointEdit={handleStartPointEdit}
+            handleDeleteMeasurement={handleDeleteMeasurement}
+            handleDeletePoint={handleDeletePoint}
+            updateMeasurement={updateMeasurement}
+            segmentsOpen={segmentsOpen}
+            toggleSegments={toggleSegments}
+            onEditSegment={setEditingSegmentId}
+            handleCancelEditing={handleCancelEditingWithCleanup}
+            handleMoveMeasurementUp={handleMoveMeasurementUp}
+            handleMoveMeasurementDown={handleMoveMeasurementDown}
+            isEditing={showNotifications}
+            editingAreaMeasurement={editingAreaMeasurement}
+          />
+          
+          {/* Active measurement controls (when creating new measurements) */}
+          {(activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) || isRoofElementMode) && !isEditing && (
+            <div className="border-t border-border/30 overflow-visible">
+              <ScrollArea className="max-h-[240px]" autoMaxHeight>
+                {/* Standard measurement controls */}
+                {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
+                  <MeasurementControls
                     activeMode={activeMode}
-                    toggleMeasurementTool={toggleMeasurementTool}
-                    editMeasurementId={editMeasurementId}
-                    measurements={measurements}
-                    showTable={showTable}
-                    setShowTable={setShowTable}
-                    toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-                    toggleLabelVisibility={handleToggleLabelVisibility}
-                    handleStartPointEdit={handleStartPointEdit}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                    handleDeletePoint={handleDeletePoint}
-                    updateMeasurement={updateMeasurement}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    onEditSegment={setEditingSegmentId}
-                    movingPointInfo={movingPointInfo}
-                    handleMoveMeasurementUp={handleMoveMeasurementUp}
-                    handleMoveMeasurementDown={handleMoveMeasurementDown}
+                    currentPoints={currentPoints}
+                    handleFinalizeMeasurement={handleFinalizeMeasurement}
+                    handleUndoLastPoint={handleUndoLastPoint}
+                    clearCurrentPoints={clearCurrentPoints}
                   />
-                </div>
+                )}
+                
+                {/* Roof element controls */}
+                {isRoofElementMode && (
+                  <RoofElementControls
+                    activeMode={activeMode}
+                    currentPoints={currentPoints}
+                    handleFinalizeMeasurement={handleFinalizeMeasurement}
+                    handleUndoLastPoint={handleUndoLastPoint}
+                    clearCurrentPoints={clearCurrentPoints}
+                  />
+                )}
               </ScrollArea>
             </div>
-            
-            {/* Bottom notification area with independent scrolling when needed */}
-            {showNotifications && (
-              <div className="border-t border-border/30 overflow-visible">
-                <ScrollArea className="max-h-[240px]" autoMaxHeight>
-                  {/* Standard measurement controls */}
-                  {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
-                    <MeasurementControls
-                      activeMode={activeMode}
-                      currentPoints={currentPoints}
-                      handleFinalizeMeasurement={handleFinalizeMeasurement}
-                      handleUndoLastPoint={handleUndoLastPoint}
-                      clearCurrentPoints={clearCurrentPoints}
-                    />
-                  )}
-                  
-                  {/* Roof element controls */}
-                  {isRoofElementMode && (
-                    <RoofElementControls
-                      activeMode={activeMode}
-                      currentPoints={currentPoints}
-                      handleFinalizeMeasurement={handleFinalizeMeasurement}
-                      handleUndoLastPoint={handleUndoLastPoint}
-                      clearCurrentPoints={clearCurrentPoints}
-                    />
-                  )}
-                  
-                  {/* Editing alert */}
-                  {(editMeasurementId || editingSegmentId || movingPointInfo) && (
-                    <div className="p-3">
-                      <EditingAlert 
-                        editMeasurementId={editMeasurementId}
-                        editingSegmentId={editingSegmentId}
-                        movingPointInfo={movingPointInfo}
-                        handleCancelEditing={handleCancelEditingWithCleanup}
-                        editingAreaMeasurement={editMeasurementId ? 
-                          measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
-                          measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
-                          : false}
-                      />
-                    </div>
-                  )}
-                </ScrollArea>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
