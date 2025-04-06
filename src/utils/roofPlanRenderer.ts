@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
@@ -653,8 +654,8 @@ export const createCombinedRoofPlan = (
               24 // Increased height for larger font
             );
             
-            // Type text
-            ctx.fillStyle = segmentColors[segmentType] || segmentColors.default;
+            // Type text - Fix this line to use getSegmentColor instead of segmentColors
+            ctx.fillStyle = getSegmentColor(segmentType);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);
