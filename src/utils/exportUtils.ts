@@ -92,3 +92,103 @@ export const groupSegmentsByType = (measurements: Measurement[]) => {
   
   return segmentGroups;
 };
+
+/**
+ * Consolidate penetration elements (skylight, chimney, vent, hook, etc.) for reporting
+ */
+export const consolidatePenetrations = (measurements: Measurement[]): Measurement[] => {
+  // Clone the measurements to avoid modifying the original array
+  const consolidatedMeasurements = [...measurements];
+  
+  // Group penetrations by type for simplified reporting
+  const penetrationTypes = ['skylight', 'chimney', 'vent', 'hook', 'other'];
+  const penetrationCounts: Record<string, number> = {};
+  
+  penetrationTypes.forEach(type => {
+    const typeCount = measurements.filter(m => m.type === type).length;
+    if (typeCount > 0) {
+      penetrationCounts[type] = typeCount;
+    }
+  });
+  
+  return consolidatedMeasurements;
+};
+
+/**
+ * Calculate appropriate scale factor for roof plan rendering
+ */
+export const calculateRoofPlanScaleFactor = (measurements: Measurement[], canvasWidth: number, canvasHeight: number): number => {
+  // Default scale factor if there are no measurements
+  if (measurements.length === 0) return 1.0;
+  
+  // Find bounds of all measurements
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  
+  measurements.forEach(measurement => {
+    if (measurement.points && measurement.points.length > 0) {
+      measurement.points.forEach(point => {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.z); // Using z as 2D y-coordinate
+        maxY = Math.max(maxY, point.z);
+      });
+    }
+  });
+  
+  // Calculate dimensions
+  const width = maxX - minX;
+  const height = maxY - minY;
+  
+  // Avoid division by zero
+  if (width === 0 || height === 0) return 1.0;
+  
+  // Calculate scale factors for both dimensions and use the smaller one
+  const scaleX = (canvasWidth * 0.9) / width;
+  const scaleY = (canvasHeight * 0.9) / height;
+  
+  return Math.min(scaleX, scaleY);
+};
+
+/**
+ * Get summary of roof elements for reporting
+ */
+export const getRoofElementsSummary = (measurements: Measurement[]): Record<string, { count: number; totalArea?: number; totalLength?: number }> => {
+  const summary: Record<string, { count: number; totalArea?: number; totalLength?: number }> = {};
+  
+  // Area-based elements
+  ['area', 'solar', 'skylight', 'chimney'].forEach(type => {
+    const elements = measurements.filter(m => m.type === type);
+    if (elements.length > 0) {
+      const totalArea = elements.reduce((sum, m) => sum + m.value, 0);
+      summary[type] = { 
+        count: elements.length,
+        totalArea: Number(totalArea.toFixed(2))
+      };
+    }
+  });
+  
+  // Length-based elements
+  ['length', 'height'].forEach(type => {
+    const elements = measurements.filter(m => m.type === type);
+    if (elements.length > 0) {
+      const totalLength = elements.reduce((sum, m) => sum + m.value, 0);
+      summary[type] = { 
+        count: elements.length,
+        totalLength: Number(totalLength.toFixed(2))
+      };
+    }
+  });
+  
+  // Point-based elements
+  ['vent', 'hook', 'other'].forEach(type => {
+    const count = measurements.filter(m => m.type === type).length;
+    if (count > 0) {
+      summary[type] = { count };
+    }
+  });
+  
+  return summary;
+};
