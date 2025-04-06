@@ -6,11 +6,10 @@ import { Ruler, ListOrdered } from "lucide-react";
 import { Measurement } from '@/types/measurements';
 import MeasurementToolControls from './MeasurementToolControls';
 import EditingAlert from './EditingAlert';
-import { MeasurementMode } from '@/hooks/useMeasurements';
 
 interface TabbedMeasurementSidebarProps {
-  activeMode: MeasurementMode;
-  toggleMeasurementTool: (mode: MeasurementMode) => void;
+  activeMode: string;
+  toggleMeasurementTool: (mode: string) => void;
   editMeasurementId: string | null;
   editingSegmentId: string | null;
   movingPointInfo: { measurementId: string; pointIndex: number } | null;

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Sun } from 'lucide-react';
+import { Sun, Zap } from 'lucide-react';
 import { MeasurementMode } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
@@ -33,6 +33,8 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
       // Show appropriate tool selection messages
       if (mode === 'solar') {
         toast.info('Solaranlage ausgewählt - Platzieren Sie 4 Punkte für die Fläche');
+      } else if (mode === 'pvmodule') {
+        toast.info('PV-Modul ausgewählt - Platzieren Sie 4 Punkte für die Modulfläche');
       }
     }
   };
@@ -56,6 +58,18 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
                   >
                     <Sun />
                     <span>Solaranlage</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'pvmodule'}
+                    onClick={() => selectTool('pvmodule')}
+                    tooltip={activeMode === 'pvmodule' ? "PV-Modul deaktivieren" : "PV-Modul platzieren"}
+                    disabled={!!editMeasurementId}
+                  >
+                    <Zap />
+                    <span>PV-Modul</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
