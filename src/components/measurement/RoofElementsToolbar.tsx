@@ -68,6 +68,7 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
                     onClick={() => selectTool('skylight')}
                     tooltip={activeMode === 'skylight' ? "Dachfenster deaktivieren" : "Dachfenster platzieren"}
                     disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
                   >
                     <Square />
                     <span>Dachfenster</span>
@@ -80,6 +81,7 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
                     onClick={() => selectTool('chimney')}
                     tooltip={activeMode === 'chimney' ? "Kaminausschnitt deaktivieren" : "Kamin platzieren"}
                     disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
                   >
                     <Home />
                     <span>Kamin</span>
@@ -92,6 +94,7 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
                     onClick={() => selectTool('vent')}
                     tooltip={activeMode === 'vent' ? "Lüfter deaktivieren" : "Lüfter platzieren"}
                     disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
                   >
                     <Asterisk />
                     <span>Lüfter</span>
@@ -104,6 +107,7 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
                     onClick={() => selectTool('hook')}
                     tooltip={activeMode === 'hook' ? "Dachhaken deaktivieren" : "Dachhaken platzieren"}
                     disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
                   >
                     <CircleDot />
                     <span>Dachhaken</span>
@@ -116,6 +120,7 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
                     onClick={() => selectTool('other')}
                     tooltip={activeMode === 'other' ? "Sonstige Einbauten deaktivieren" : "Sonstige Einbauten platzieren"}
                     disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
                   >
                     <CircleX />
                     <span>Sonstiges</span>

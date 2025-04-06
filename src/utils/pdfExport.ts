@@ -160,7 +160,7 @@ const createSegmentSummary = (measurements: Measurement[]): HTMLElement => {
   summaryTitle.textContent = 'Dachkanten-Auswertung';
   container.appendChild(summaryTitle);
   
-  const segmentTypeOrder = ['ridge', 'hip', 'valley', 'eave', 'verge'];
+  const segmentTypeOrder = ['ridge', 'hip', 'valley', 'eave', 'verge', 'flashing', 'connection'];
   
   segmentTypeOrder.forEach(type => {
     if (segmentGroups[type] && segmentGroups[type].count > 0) {

@@ -59,6 +59,7 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
                     onClick={() => selectTool('solar')}
                     tooltip={activeMode === 'solar' ? "Solarfläche deaktivieren" : "Solarfläche platzieren"}
                     disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
                   >
                     <Sun />
                     <span>Solarfläche</span>
