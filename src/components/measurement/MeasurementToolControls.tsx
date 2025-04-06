@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -234,6 +235,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             <h3 className="text-sm font-medium mb-2">Messungen</h3>
             <MeasurementList 
               measurements={measurements}
+              editMeasurementId={editMeasurementId}
               showTable={showTable}
               toggleMeasurementVisibility={toggleMeasurementVisibility}
               toggleLabelVisibility={toggleLabelVisibility}
