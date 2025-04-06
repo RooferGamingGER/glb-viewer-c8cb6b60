@@ -38,7 +38,7 @@ export interface Segment {
   inclination?: number;
   type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
   shared?: boolean;            // Indicates if this segment is shared with another measurement
-  sharedWithSegmentId?: string; // ID of the segment this is shared with
+  sharedWithSegmentId?: string | null; // ID of the segment this is shared with
   isOriginal?: boolean;        // For shared segments, indicates if this is the "original" one
 }
 
@@ -80,19 +80,6 @@ export interface PVModuleInfo {
   roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)
   roofInclination?: number;   // Roof inclination in degrees 
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
-  points?: Point[];           // Store the original points used for the solar area calculation
-  modulePositions?: Point[];  // Array of position points for each module (center points)
-  moduleCorners?: Point[][];  // Array of corner points for each module (4 corners per module)
-  moduleVisuals?: {           // Visual properties for module rendering
-    frameBorder?: number;     // Frame border width in meters
-    frameColor?: number;      // Frame color (hex)
-    panelColor?: number;      // Panel color (hex)
-    cellRows?: number;        // Number of cell rows in module
-    cellColumns?: number;     // Number of cell columns in module
-    cellSpacing?: number;     // Spacing between cells in meters
-    cellColor?: number;       // Cell color (hex)
-    busbarCount?: number;     // Number of busbars per cell
-  };
 }
 
 export interface PVModuleSpec {
@@ -146,6 +133,8 @@ export interface Measurement {
   description?: string;
   segments?: Segment[];
   inclination?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
   
   subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
   dimensions?: {         // Specific dimensions for roof elements

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Point, Segment } from '@/types/measurements';
 import { nanoid } from 'nanoid';
@@ -222,18 +221,17 @@ function calculateSimple2DArea(points: Point[]): number {
 
 /**
  * Calculate the nearest point index on a list of points
- * @param points - Array of points to search
  * @param point - The reference point
- * @param threshold - Maximum distance threshold (optional)
- * @returns The index of the nearest point, or -1 if none found within threshold
+ * @param points - Array of points to search
+ * @returns The index of the nearest point
  */
-export const getNearestPointIndex = (points: Point[], point: Point, threshold: number = Infinity): number => {
+export const getNearestPointIndex = (point: Point, points: Point[]): number => {
   let nearestIndex = -1;
   let minDistance = Infinity;
   
   for (let i = 0; i < points.length; i++) {
     const distance = calculateDistance(point, points[i]);
-    if (distance < minDistance && distance <= threshold) {
+    if (distance < minDistance) {
       minDistance = distance;
       nearestIndex = i;
     }

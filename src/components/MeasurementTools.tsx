@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -9,7 +9,6 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
-import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 // Import visualization utilities
 import { 
@@ -20,6 +19,7 @@ import {
 } from '@/utils/measurementVisuals';
 
 // Import components
+import MeasurementSidebar from './measurement/MeasurementSidebar';
 import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
@@ -38,21 +38,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   camera,
   autoOpenSidebar = false
 }) => {
-  // Register the scene with the point snapping context
-  const { registerScene } = usePointSnapping();
-  
-  // Register scene when component mounts
-  React.useEffect(() => {
-    if (scene && enabled) {
-      registerScene(scene);
-    }
-    
-    return () => {
-      // Clean up when component unmounts
-      registerScene(null);
-    };
-  }, [scene, enabled, registerScene]);
-
   // Measurement state from main hook
   const { 
     measurements,
@@ -191,12 +176,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   // Update visibility when allLabelsVisible changes
-  React.useEffect(() => {
+  useEffect(() => {
     updateAllLabelsVisibility(allLabelsVisible);
   }, [allLabelsVisible, updateAllLabelsVisibility]);
 
   // Handle label visibility based on edit mode
-  React.useEffect(() => {
+  useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
     
     // Determine if we're in any edit mode
@@ -243,7 +228,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
 
   // Clean up labels when editing starts and re-render when editing is complete
-  React.useEffect(() => {
+  useEffect(() => {
     if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
       // When editing is complete, re-render all measurements to ensure labels are updated
       renderMeasurements(
@@ -257,7 +242,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
 
   // Re-render measurements when they change
-  React.useEffect(() => {
+  useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
       labelsRef.current, 
@@ -268,7 +253,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [measurements]);
 
   // Re-render current points when they change
-  React.useEffect(() => {
+  useEffect(() => {
     renderCurrentPoints(
       pointsRef.current, 
       linesRef.current, 
@@ -279,7 +264,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [currentPoints, activeMode]);
 
   // Re-render edit points when edit state changes
-  React.useEffect(() => {
+  useEffect(() => {
     renderEditPoints(
       editPointsRef.current, 
       measurements, 
@@ -290,7 +275,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   }, [measurements, editMeasurementId, editingPointIndex]);
 
   // Clean up when enabled state changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!enabled) {
       clearAllVisuals(
         pointsRef.current,
@@ -333,8 +318,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     handleCancelEditing();
     setMovingPointInfo(null);
     
-    // Clear preview displays
-    if (clearPreviewGroup) {
+    // Only call clearPreviewGroup if it exists
+    if (typeof clearPreviewGroup === 'function') {
       clearPreviewGroup();
     }
     
@@ -368,15 +353,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full flex flex-col">
         <div 
-          className={`absolute top-0 right-0 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
-          style={{ 
-            width: '20rem', 
-            height: 'calc(100vh - 2.75rem)', // Set full height minus footer
-            bottom: '2.75rem' // Add space above footer
-          }}
+          className={`absolute top-0 right-0 bottom-[2.75rem] glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+          style={{ width: '20rem', maxHeight: 'calc(100% - 2.75rem)' }}
         >
-          {/* Main sidebar content with MeasurementToolControls that has a single ScrollArea */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Fixed Header - Tools Section */}
+          <div className="flex-shrink-0 border-b border-border/50">
             <MeasurementToolControls 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool}
@@ -384,21 +365,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               measurements={measurements}
               showTable={showTable}
               setShowTable={setShowTable}
-              toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-              toggleLabelVisibility={handleToggleLabelVisibility}
-              handleStartPointEdit={handleStartPointEdit}
-              handleDeleteMeasurement={handleDeleteMeasurement}
-              handleDeletePoint={handleDeletePoint}
-              updateMeasurement={updateMeasurement}
-              segmentsOpen={segmentsOpen}
-              toggleSegments={toggleSegments}
-              onEditSegment={setEditingSegmentId}
-              movingPointInfo={movingPointInfo}
-              handleClearMeasurements={handleClearMeasurements}
-              toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
-              allLabelsVisible={allLabelsVisible}
-              handleMoveMeasurementUp={handleMoveMeasurementUp}
-              handleMoveMeasurementDown={handleMoveMeasurementDown}
             />
             
             {/* Only render MeasurementControls for standard measurements */}
@@ -438,6 +404,29 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </div>
             )}
           </div>
+          
+          {/* Measurement list */}
+          <MeasurementSidebar
+            measurements={measurements}
+            toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+            toggleLabelVisibility={handleToggleLabelVisibility}
+            handleStartPointEdit={handleStartPointEdit}
+            handleDeleteMeasurement={handleDeleteMeasurement}
+            handleDeletePoint={handleDeletePoint}
+            updateMeasurement={updateMeasurement}
+            editMeasurementId={editMeasurementId}
+            segmentsOpen={segmentsOpen}
+            toggleSegments={toggleSegments}
+            onEditSegment={setEditingSegmentId}
+            movingPointInfo={movingPointInfo}
+            showTable={showTable}
+            handleClearMeasurements={handleClearMeasurements}
+            toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
+            allLabelsVisible={allLabelsVisible}
+            activeMode={activeMode}
+            handleMoveMeasurementUp={handleMoveMeasurementUp}
+            handleMoveMeasurementDown={handleMoveMeasurementDown}
+          />
         </div>
       </div>
     </div>

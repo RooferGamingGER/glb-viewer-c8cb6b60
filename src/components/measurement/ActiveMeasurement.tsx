@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { 
   CheckCircle2,
   ArrowLeft,
-  X
+  X,
+  Magnet
 } from 'lucide-react';
 import { Point, MeasurementMode } from '@/types/measurements';
 import { 
@@ -12,7 +13,8 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { usePointSnapping } from '@/hooks/usePointSnapping';
+import { Badge } from "@/components/ui/badge";
 
 interface ActiveMeasurementProps {
   activeMode: MeasurementMode;
@@ -29,28 +31,11 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  // Don't render anything if no measurement tool is active or if there are no points
+  // Don't render anything if no measurement tool is active
   if (activeMode === 'none') return null;
   
-  const measurementTypeLabels = {
-    'length': "Längenmessung",
-    'height': "Höhenmessung",
-    'area': "Flächenmessung",
-    'chimney': "Kamin",
-    'skylight': "Dachfenster",
-    'solar': "Solarplanung",
-    'pvmodule': "PV-Module",
-    'vent': "Lüfter",
-    'hook': "Dachhaken",
-    'other': "Sonstige Einbauten",
-    'ridge': "First",
-    'eave': "Traufe",
-    'verge': "Ortgang",
-    'valley': "Kehle",
-    'hip': "Grat"
-  };
-  
-  const showFinalizeButton = activeMode === 'area' && currentPoints.length >= 3;
+  // Get point snapping state - pass null for scene as we don't need it here
+  const { snapEnabled, isSnapping } = usePointSnapping(null);
   
   return (
     <SidebarGroup>
@@ -59,16 +44,26 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         <div className="mb-2">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium">
-              {measurementTypeLabels[activeMode] || activeMode}
+              {activeMode === 'length' && "Längenmessung"}
+              {activeMode === 'height' && "Höhenmessung"}
+              {activeMode === 'area' && "Flächenmessung"}
             </div>
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-              {currentPoints.length} Punkte
-            </span>
+            <div className="flex items-center gap-1">
+              {isSnapping && (
+                <Badge variant="outline" className="bg-green-100 text-green-800 text-[10px] h-5 px-1">
+                  <Magnet className="h-3 w-3 mr-1" />
+                  Punktfang aktiv
+                </Badge>
+              )}
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                {currentPoints.length} Punkte
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Show the finalize button only for area measurements with 3+ points */}
-        {showFinalizeButton && (
+        {activeMode === 'area' && currentPoints.length >= 3 && (
           <Button 
             variant="default" 
             className="w-full mb-2"
@@ -103,20 +98,15 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         {currentPoints.length > 0 && (
           <div className="mt-3">
             <p className="text-xs text-muted-foreground mb-1">Messpunkte:</p>
-            <ScrollArea 
-              className="max-h-40" 
-              autoMaxHeight
-            >
-              <div className="space-y-1 pl-2 pr-1">
-                {currentPoints.map((point, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
-                    <span>
-                      Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+            <div className="space-y-1 max-h-32 overflow-y-auto pl-2 pr-1">
+              {currentPoints.map((point, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
+                  <span>
+                    Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </SidebarGroupContent>

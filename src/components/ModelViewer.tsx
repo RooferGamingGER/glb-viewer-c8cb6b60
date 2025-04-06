@@ -8,7 +8,6 @@ import * as THREE from 'three';
 import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
-import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -211,28 +210,26 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   };
 
   return (
-    <PointSnappingProvider>
-      <ThreeContext.Provider value={threeContext}>
-        <div className="relative w-full h-full overflow-hidden">
-          <div className="absolute inset-0">
-            <ModelCanvas 
-              fileUrl={fileUrl} 
-              onSceneReady={handleSceneReady} 
-              canvasRef={canvasRef} 
-            />
-          </div>
-          
-          {threeContext.scene && threeContext.camera && (
-            <MeasurementTools 
-              enabled={measurementsEnabled} 
-              scene={threeContext.scene} 
-              camera={threeContext.camera} 
-              autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
-            />
-          )}
+    <ThreeContext.Provider value={threeContext}>
+      <div className="relative w-full h-full overflow-hidden">
+        <div className="absolute inset-0">
+          <ModelCanvas 
+            fileUrl={fileUrl} 
+            onSceneReady={handleSceneReady} 
+            canvasRef={canvasRef} 
+          />
         </div>
-      </ThreeContext.Provider>
-    </PointSnappingProvider>
+        
+        {threeContext.scene && threeContext.camera && (
+          <MeasurementTools 
+            enabled={measurementsEnabled} 
+            scene={threeContext.scene} 
+            camera={threeContext.camera} 
+            autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
+          />
+        )}
+      </div>
+    </ThreeContext.Provider>
   );
 };
 

@@ -7,7 +7,6 @@ import {
   X 
 } from 'lucide-react';
 import { MeasurementMode, Point } from '@/types/measurements';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MeasurementControlsProps {
   activeMode: MeasurementMode;
@@ -27,8 +26,6 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  const isMobile = useIsMobile();
-  
   // Exit early if no measurement tool is active
   if (activeMode === 'none') return null;
   
@@ -40,8 +37,8 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   
   // Standard measurement controls for length, height, area
   return (
-    <div className="p-3">
-      <div className={`p-2 border border-primary/30 rounded-md bg-primary/5 ${isMobile ? 'mb-2' : 'mb-4'}`}>
+    <div className="p-3 pb-0">
+      <div className="p-2 border border-primary/30 rounded-md bg-primary/5">
         <div className="text-sm font-medium mb-2">
           {activeMode === 'length' && "Längenmessung aktiv"}
           {activeMode === 'height' && "Höhenmessung aktiv"}
@@ -51,13 +48,13 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
           </span>
         </div>
         
-        <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'space-x-1'} mb-1`}>
+        <div className="flex space-x-1 mb-1">
           {(activeMode === 'area' || activeMode === 'length' || activeMode === 'height') && (
             <>
               <Button
                 variant="default" 
-                size={isMobile ? "sm" : "sm"} // Changed size to sm for mobile to save space
-                className={isMobile ? "w-full" : "flex-1"}
+                size="sm"
+                className="flex-1"
                 onClick={handleFinalizeMeasurement}
                 disabled={
                   (activeMode === 'area' && currentPoints.length < 3) ||
@@ -71,8 +68,8 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
               
               <Button
                 variant="outline" 
-                size={isMobile ? "sm" : "sm"}
-                className={isMobile ? "w-full" : "flex-1"}
+                size="sm"
+                className="flex-1"
                 onClick={handleUndoLastPoint}
                 disabled={currentPoints.length === 0}
                 title="Letzten Punkt rückgängig machen"
@@ -85,22 +82,20 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
           
           <Button
             variant="outline" 
-            size={isMobile ? "sm" : "sm"}
-            className={isMobile ? "w-full" : activeMode === 'area' ? "w-9" : "flex-1"}
+            size="sm"
+            className={activeMode === 'area' ? "w-9" : "flex-1"}
             onClick={clearCurrentPoints}
             title="Abbrechen"
           >
             <X className="h-3 w-3" />
-            {(activeMode !== 'area' || isMobile) && <span className="ml-1">Abbrechen</span>}
+            {activeMode !== 'area' && <span className="ml-1">Abbrechen</span>}
           </Button>
         </div>
         
         {activeMode === 'area' && (
-          <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">
-            <span className="whitespace-normal break-words">
-              Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
-              Mindestens 3 Punkte werden benötigt.
-            </span>
+          <div className="text-xs text-muted-foreground mt-1">
+            Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
+            Mindestens 3 Punkte werden benötigt.
           </div>
         )}
       </div>

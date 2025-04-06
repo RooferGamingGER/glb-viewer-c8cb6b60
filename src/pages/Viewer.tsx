@@ -5,18 +5,15 @@ import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
 import { useRequiredURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, X, HelpCircle } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
-import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
-import { useTutorial } from '@/contexts/TutorialContext';
 
 const Viewer = () => {
   const navigate = useNavigate();
   const { isPortrait } = useScreenOrientation();
   const [isFullscreen, setIsFullscreen] = useState(true);
-  const { showTutorial, setShowTutorial } = useTutorial();
   
   // Get the file URL and name from the URL parameters
   const fileUrl = useRequiredURLParam('fileUrl', '/', 'Keine Datei ausgewählt');
@@ -84,10 +81,6 @@ const Viewer = () => {
     }
   };
 
-  const handleOpenTutorial = () => {
-    setShowTutorial(true);
-  };
-
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
       {isPortrait && <OrientationWarning />}
@@ -107,29 +100,17 @@ const Viewer = () => {
           <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
         </div>
         
-        <div className="flex gap-2">
-          <Button 
+        {isFullscreen && (
+          <Button
             variant="outline"
             size="sm"
             className="glass-button"
-            onClick={handleOpenTutorial}
+            onClick={exitFullscreen}
+            title="Vollbildmodus beenden"
           >
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Tutorial
+            <X className="h-4 w-4" />
           </Button>
-
-          {isFullscreen && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="glass-button"
-              onClick={exitFullscreen}
-              title="Vollbildmodus beenden"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        )}
       </header>
       
       <div className="flex-1 relative flex overflow-hidden">
@@ -141,9 +122,6 @@ const Viewer = () => {
           </main>
         </SidebarProvider>
       </div>
-      
-      {/* Tutorial Overlay with showButton set to false */}
-      <TutorialOverlay showButton={false} />
     </div>
   );
 };

@@ -1,78 +1,62 @@
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import * as THREE from 'three';
-import { toast } from 'sonner';
-import { Point } from '@/hooks/useMeasurements';
-import { useMeasurementRaycasting } from './useMeasurementRaycasting';
+import { Point } from '@/types/measurements';
 
 /**
- * Hook zur Verwaltung der Punktbewegung
+ * Hook for handling point movement operations with improved state management
  */
 export const usePointMovement = (
   scene: THREE.Scene | null,
   camera: THREE.Camera | null,
   updateMeasurementPoint: (id: string, index: number, point: Point) => void
 ) => {
+  // State for tracking the point currently being moved
   const [movingPointInfo, setMovingPointInfo] = useState<{
     measurementId: string;
     pointIndex: number;
+    originalPoint: Point;
   } | null>(null);
-  
-  const { getPointFromIntersection } = useMeasurementRaycasting();
 
-  // Funktion zum Starten der Punktbewegung
+  // Start moving a point
   const startPointMovement = useCallback((
     measurementId: string,
     pointIndex: number,
-    initialPoint: Point
+    originalPoint: Point
   ) => {
-    setMovingPointInfo({
+    const info = {
       measurementId,
-      pointIndex
-    });
-    
-    toast.info(`Punkt ${pointIndex + 1} wird verschoben. Klicken Sie an die neue Position.`);
-    
-    return initialPoint;
+      pointIndex,
+      originalPoint
+    };
+    setMovingPointInfo(info);
+    return info;
   }, []);
 
-  // Funktion zum Beenden der Punktbewegung
-  const finishPointMovement = useCallback((newPoint: Point | null) => {
-    if (!movingPointInfo || !newPoint) {
-      setMovingPointInfo(null);
-      return false;
-    }
-    
-    // Update the point position with the new point
-    updateMeasurementPoint(
-      movingPointInfo.measurementId, 
-      movingPointInfo.pointIndex, 
-      newPoint
-    );
-    
-    // Reset movement state
-    const completedInfo = { ...movingPointInfo };
-    setMovingPointInfo(null);
-    
-    toast.success(`Punkt ${completedInfo.pointIndex + 1} wurde verschoben`);
-    return true;
-  }, [movingPointInfo, updateMeasurementPoint]);
-
-  // Funktion zum Aktualisieren des Punkts während der Bewegung
+  // Update a moving point
   const updateMovingPoint = useCallback((
-    event: MouseEvent | TouchEvent,
-    canvasElement: HTMLCanvasElement
-  ): Point | null => {
-    if (!movingPointInfo || !scene || !camera) return null;
-    
-    return getPointFromIntersection(event, camera, scene, canvasElement);
-  }, [movingPointInfo, scene, camera, getPointFromIntersection]);
+    measurementId: string,
+    pointIndex: number,
+    newPoint: Point
+  ) => {
+    updateMeasurementPoint(measurementId, pointIndex, newPoint);
+  }, [updateMeasurementPoint]);
+
+  // Finish moving a point
+  const finishPointMovement = useCallback((
+    measurementId: string,
+    pointIndex: number,
+    finalPoint: Point
+  ) => {
+    updateMeasurementPoint(measurementId, pointIndex, finalPoint);
+    setMovingPointInfo(null);
+  }, [updateMeasurementPoint]);
 
   return {
     movingPointInfo,
     setMovingPointInfo,
     startPointMovement,
-    finishPointMovement,
-    updateMovingPoint
+    updateMovingPoint,
+    finishPointMovement
   };
 };

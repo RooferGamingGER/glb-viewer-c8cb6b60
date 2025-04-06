@@ -13,7 +13,7 @@ const toggleVariants = cva(
         outline:
           "border border-input bg-transparent hover:bg-accent hover:text-accent-foreground",
         customActive: 
-          "border border-input data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 data-[state=on]:border-green-500 hover:bg-accent hover:text-accent-foreground",
+          "bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-700 data-[state=on]:bg-blue-200 data-[state=on]:text-blue-700",
       },
       size: {
         default: "h-10 px-3",
