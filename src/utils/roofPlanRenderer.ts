@@ -463,6 +463,8 @@ export const createCombinedRoofPlan = (
       'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  // Added vent
       'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, // Added hook
       'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' }, // Added other
+      'flashing': { fill: 'rgba(217, 70, 239, 0.2)', stroke: '#D946EF' }, // Verfallung
+      'connection': { fill: 'rgba(14, 165, 233, 0.2)', stroke: '#0EA5E9' }, // Anschluss
       'default': { fill: 'rgba(200, 200, 200, 0.2)', stroke: '#888888' }
     };
     
