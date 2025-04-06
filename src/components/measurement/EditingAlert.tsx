@@ -25,35 +25,35 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   const isEditingSegment = editingSegmentId !== null && editingSegmentId !== undefined;
   
   let title = 'Messung wird bearbeitet';
-  let description = 'Sie bearbeiten gerade eine Messung. Klicken Sie auf Abbrechen, um den Bearbeitungsmodus zu verlassen.';
-  let icon = <Edit className="h-4 w-4" />;
+  let description = 'Sie bearbeiten gerade eine Messung. Klicken Sie auf Bearbeitung beenden, um den Bearbeitungsmodus zu verlassen.';
+  let icon = <Edit className="h-4 w-4 text-white" />;
   
   if (isMovingPoint) {
     title = 'Punkt wird verschoben';
-    description = `Sie verschieben Punkt ${movingPointInfo?.pointIndex + 1}. Klicken Sie an eine neue Position oder auf Abbrechen.`;
-    icon = <MoveHorizontal className="h-4 w-4" />;
+    description = `Sie verschieben Punkt ${movingPointInfo?.pointIndex + 1}. Klicken Sie an eine neue Position oder auf Bearbeitung beenden.`;
+    icon = <MoveHorizontal className="h-4 w-4 text-white" />;
   } else if (isEditingSegment) {
     title = 'Segment wird bearbeitet';
-    description = 'Sie bearbeiten ein Segment einer Messung. Klicken Sie auf Abbrechen, um den Bearbeitungsmodus zu verlassen.';
+    description = 'Sie bearbeiten ein Segment einer Messung. Klicken Sie auf Bearbeitung beenden, um den Bearbeitungsmodus zu verlassen.';
   } else if (isEditingMeasurement && editingAreaMeasurement) {
     title = 'Fläche wird bearbeitet';
-    description = 'Sie bearbeiten eine Flächenmessung. Klicken Sie auf Abbrechen, um den Bearbeitungsmodus zu verlassen.';
+    description = 'Sie bearbeiten eine Flächenmessung. Klicken Sie auf Bearbeitung beenden, um den Bearbeitungsmodus zu verlassen.';
   }
 
   return (
-    <Alert variant="warning" className="mb-2 animate-fade-in">
+    <Alert variant="warning" className="mb-2 animate-fade-in text-white">
       {icon}
-      <AlertTitle>{title}</AlertTitle>
-      <AlertDescription className="flex justify-between items-center">
+      <AlertTitle className="text-white">{title}</AlertTitle>
+      <AlertDescription className="flex justify-between items-center text-white">
         <span>{description}</span>
         <Button 
           variant="outline" 
           size="sm" 
-          className="mt-2" 
+          className="mt-2 text-white border-white hover:text-white" 
           onClick={handleCancelEditing}
         >
           <X className="h-4 w-4 mr-1" />
-          Abbrechen
+          Bearbeitung beenden
         </Button>
       </AlertDescription>
     </Alert>

@@ -11,7 +11,7 @@ export interface Segment {
   length: number;
   inclination?: number;
   label?: string;
-  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
+  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'anschluss' | 'verfallung' | 'custom';
   shared?: boolean;
   sharedWithSegmentId?: string;
   isOriginal?: boolean;
