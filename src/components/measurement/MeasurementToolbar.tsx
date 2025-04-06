@@ -5,9 +5,11 @@ import {
   ArrowUpDown, 
   Square, 
   Trash2,
-  Magnet
+  Magnet,
+  Eye,
+  EyeOff
 } from 'lucide-react';
-import { MeasurementMode, Measurement } from '@/hooks/useMeasurements';
+import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -25,8 +27,11 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 interface MeasurementToolbarProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
-  handleClearMeasurements: () => void;
-  measurements: Measurement[];
+  visible?: boolean;
+  setVisible?: (visible: boolean) => void;
+  handleClearMeasurements?: () => void;
+  measurements?: any[];
+  editMeasurementId?: string | null;
   onCategoryClick?: (category: MeasurementMode) => void;
   toggleAllLabelsVisibility?: () => void;
   allLabelsVisible?: boolean;
@@ -35,8 +40,11 @@ interface MeasurementToolbarProps {
 const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   activeMode,
   toggleMeasurementTool,
+  visible,
+  setVisible,
   handleClearMeasurements,
   measurements,
+  editMeasurementId,
   onCategoryClick,
   toggleAllLabelsVisibility,
   allLabelsVisible
@@ -71,82 +79,107 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
       : "Punktfang deaktiviert: Punkte werden exakt platziert"
     );
   };
-
-  // Punktfang toggle moved outside of the accordion
+  
   return (
     <SidebarGroup className="mt-0">
-      {/* Punktfang toggle moved above measurement tools */}
-      <div className="mb-3">
-        <Toggle
-          pressed={snapEnabled}
-          onPressedChange={handleToggleSnap}
-          size="sm"
-          variant={snapEnabled ? "default" : "outline"}
-          aria-label="Punktfang ein/aus"
-          title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-          className={`w-full justify-start ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
-        >
-          <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-          Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-        </Toggle>
-      </div>
-      
-      <Accordion type="single" collapsible defaultValue="measurement-tools">
+      <Accordion type="multiple" defaultValue={["measurement-tools"]}>
         <AccordionItem value="measurement-tools" className="border-0">
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Messwerkzeuge</SidebarGroupLabel>
           </AccordionTrigger>
           <AccordionContent>
             <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'length'}
-                    onClick={() => selectTool('length')}
-                    tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
-                  >
-                    <Ruler />
-                    <span>Länge</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'height'}
-                    onClick={() => selectTool('height')}
-                    tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
-                  >
-                    <ArrowUpDown />
-                    <span>Höhe</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'area'}
-                    onClick={() => selectTool('area')}
-                    tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
-                  >
-                    <Square />
-                    <span>Fläche</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-              
-              <div className="flex flex-col gap-2 mt-4">
-                {measurements.length > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={handleClearMeasurements}
-                    title="Alle Messungen löschen"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Alle löschen
-                  </Button>
-                )}
+              <div className="text-xs text-muted-foreground mb-2">
+                Wählen Sie ein Werkzeug zur Messung.
               </div>
+              
+              {/* Control buttons at the top - Added Eye/EyeOff toggle button */}
+              {measurements && measurements.length > 0 && toggleAllLabelsVisibility && (
+                <div className="flex items-center justify-between mb-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleAllLabelsVisibility}
+                    title={allLabelsVisible ? "Beschriftungen ausblenden" : "Beschriftungen einblenden"}
+                    className="h-8 w-8"
+                  >
+                    {allLabelsVisible ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                  
+                  {handleClearMeasurements && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleClearMeasurements}
+                      title="Alle Messungen löschen"
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              
+              {/* Point Snapping Toggle - Moved to top as requested */}
+              <Toggle
+                pressed={snapEnabled}
+                onPressedChange={handleToggleSnap}
+                size="sm"
+                variant={snapEnabled ? "customActive" : "outline"}
+                aria-label="Punktfang ein/aus"
+                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+                className={`w-full justify-start mb-4 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+              >
+                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+              </Toggle>
+              
+              <SidebarMenu>
+                <div className="flex flex-col gap-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'length'}
+                      onClick={() => selectTool('length')}
+                      tooltip={activeMode === 'length' ? "Längenmessung deaktivieren" : "Länge messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
+                    >
+                      <Ruler className="h-4 w-4" />
+                      <span className="text-xs">Länge</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'height'}
+                      onClick={() => selectTool('height')}
+                      tooltip={activeMode === 'height' ? "Höhenmessung deaktivieren" : "Höhe messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      <span className="text-xs">Höhe</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'area'}
+                      onClick={() => selectTool('area')}
+                      tooltip={activeMode === 'area' ? "Flächenmessung deaktivieren" : "Fläche messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
+                    >
+                      <Square className="h-4 w-4" />
+                      <span className="text-xs">Fläche</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </div>
+              </SidebarMenu>
             </SidebarGroupContent>
           </AccordionContent>
         </AccordionItem>
