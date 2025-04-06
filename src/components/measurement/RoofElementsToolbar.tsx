@@ -39,7 +39,7 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Dachelemente</SidebarGroupLabel>
           </AccordionTrigger>
-          <AccordionContent>
+          <AccordionContent className="bg-white">
             <SidebarGroupContent>
               <SidebarMenu>
                 {/* Removed solar and pvmodule items */}
