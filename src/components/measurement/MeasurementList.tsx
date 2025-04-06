@@ -20,6 +20,8 @@ interface MeasurementListProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   activeCategory?: string;
+  showTable?: boolean;  // Added missing prop
+  editingDisabled?: boolean; // Making this prop optional
 }
 
 const MeasurementList: React.FC<MeasurementListProps> = ({
@@ -37,7 +39,8 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   movingPointInfo,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  activeCategory
+  activeCategory,
+  showTable // Added this prop to the destructuring
 }) => {
   if (!measurements || measurements.length === 0 && !editMeasurementId) {
     return (
