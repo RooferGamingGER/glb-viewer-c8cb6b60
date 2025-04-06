@@ -12,6 +12,37 @@ import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 
+// Mapping of segment types to ensure consistency between English and German
+export const normalizeSegmentType = (type: string): string => {
+  // Convert to lowercase for case-insensitive comparison
+  const lowerType = type.toLowerCase();
+  
+  // Define mappings for German to English segment types
+  const typeMapping: Record<string, string> = {
+    // English internal types
+    'ridge': 'ridge',
+    'valley': 'valley',
+    'hip': 'hip',
+    'eave': 'eave',
+    'verge': 'verge',
+    'edge': 'edge',
+    'flashing': 'flashing',
+    'connection': 'connection',
+    
+    // German UI types
+    'first': 'ridge',
+    'kehle': 'valley',
+    'grat': 'hip',
+    'traufe': 'eave',
+    'ortgang': 'verge',
+    'kante': 'edge',
+    'verfallung': 'flashing',
+    'anschluss': 'connection'
+  };
+  
+  return typeMapping[lowerType] || lowerType; // Return mapped type or original if not found
+};
+
 const Viewer = () => {
   const navigate = useNavigate();
   const { isPortrait } = useScreenOrientation();

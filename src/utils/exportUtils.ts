@@ -1,5 +1,5 @@
-
 import { Measurement, Segment } from '@/types/measurements';
+import { normalizeSegmentType } from '@/pages/Viewer';
 
 /**
  * Returns a user-friendly display name for a measurement type
@@ -31,6 +31,9 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
  * Returns a user-friendly display name for a segment type
  */
 export const getSegmentTypeDisplayName = (type: string): string => {
+  // Normalize the segment type to ensure consistent case and naming
+  const normalizedType = normalizeSegmentType(type);
+  
   const displayNames: Record<string, string> = {
     'ridge': 'First',
     'valley': 'Kehle',
@@ -42,13 +45,16 @@ export const getSegmentTypeDisplayName = (type: string): string => {
     'connection': 'Anschluss'
   };
   
-  return displayNames[type] || 'Undefiniert';
+  return displayNames[normalizedType] || 'Undefiniert';
 };
 
 /**
  * Returns an appropriate color for a segment type
  */
 export const getSegmentColor = (type: string): string => {
+  // Normalize the segment type to ensure consistent case and naming
+  const normalizedType = normalizeSegmentType(type);
+  
   const segmentColors: Record<string, string> = {
     'ridge': '#FF0000',    // Bright red for ridge
     'valley': '#0000FF',   // Blue for valley
@@ -60,7 +66,7 @@ export const getSegmentColor = (type: string): string => {
     'connection': '#0EA5E9' // Ocean blue for connection
   };
   
-  return segmentColors[type] || '#000000'; // Default to black if type not found
+  return segmentColors[normalizedType] || '#000000'; // Default to black if type not found
 };
 
 /**
@@ -96,14 +102,15 @@ export const groupSegmentsByType = (measurements: Measurement[]) => {
   measurements.forEach(measurement => {
     if (measurement.segments) {
       measurement.segments.forEach(segment => {
-        const type = segment.type || 'undefined';
+        // Normalize the segment type to ensure consistent case and naming
+        const normalizedType = normalizeSegmentType(segment.type || 'undefined');
         
-        if (!segmentGroups[type]) {
-          segmentGroups[type] = { count: 0, totalLength: 0 };
+        if (!segmentGroups[normalizedType]) {
+          segmentGroups[normalizedType] = { count: 0, totalLength: 0 };
         }
         
-        segmentGroups[type].count++;
-        segmentGroups[type].totalLength += segment.length;
+        segmentGroups[normalizedType].count++;
+        segmentGroups[normalizedType].totalLength += segment.length;
       });
     }
   });
