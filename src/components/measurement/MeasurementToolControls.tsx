@@ -82,7 +82,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   handleMoveMeasurementDown
 }) => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("measurements");
+  const [activeTab, setActiveTab] = useState("tools"); // Changed from "measurements" to "tools"
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
