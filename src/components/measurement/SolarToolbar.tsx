@@ -4,7 +4,7 @@ import {
   Sun, 
   Grid
 } from 'lucide-react';
-import { MeasurementMode } from '@/hooks/useMeasurements';
+import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
+// Extend the MeasurementMode type to include 'solar' for this component
+type ExtendedMeasurementMode = MeasurementMode | 'solar';
 
 interface SolarToolbarProps {
   activeMode: MeasurementMode;
@@ -36,8 +39,6 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
       // Show appropriate tool selection messages
       if (mode === 'solar') {
         toast.info('Solarfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
-      } else if (mode === 'pvplanning') {
-        toast.info('PV-Planungsfläche ausgewählt - Platzieren Sie 4 Punkte');
       }
     }
   };
@@ -64,19 +65,7 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'pvplanning'}
-                    onClick={() => selectTool('pvplanning')}
-                    tooltip={activeMode === 'pvplanning' ? "PV-Planungsfläche deaktivieren" : "PV-Planungsfläche platzieren"}
-                    disabled={!!editMeasurementId}
-                  >
-                    <Grid />
-                    <span>PV-Planungsfläche</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                {/* PV-Modul button has been removed as requested */}
+                {/* Removed PV-Modul button as requested */}
               </SidebarMenu>
             </SidebarGroupContent>
           </AccordionContent>

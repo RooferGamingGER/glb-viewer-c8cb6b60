@@ -93,6 +93,20 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 Wählen Sie ein Werkzeug zur Messung.
               </div>
               
+              {/* Point Snapping Toggle - Moved to top as requested */}
+              <Toggle
+                pressed={snapEnabled}
+                onPressedChange={handleToggleSnap}
+                size="sm"
+                variant={snapEnabled ? "customActive" : "outline"}
+                aria-label="Punktfang ein/aus"
+                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
+                className={`w-full justify-start mb-4 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
+              >
+                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
+                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+              </Toggle>
+              
               {/* Control buttons at the top - Added Eye/EyeOff toggle button */}
               {measurements && measurements.length > 0 && toggleAllLabelsVisibility && (
                 <div className="flex items-center justify-between mb-3">
@@ -123,20 +137,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                   )}
                 </div>
               )}
-              
-              {/* Point Snapping Toggle - Moved to top as requested */}
-              <Toggle
-                pressed={snapEnabled}
-                onPressedChange={handleToggleSnap}
-                size="sm"
-                variant={snapEnabled ? "customActive" : "outline"}
-                aria-label="Punktfang ein/aus"
-                title={snapEnabled ? "Punktfang deaktivieren" : "Punktfang aktivieren"}
-                className={`w-full justify-start mb-4 ${snapEnabled ? 'bg-green-500/20 text-green-600 border-green-500' : ''}`}
-              >
-                <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
-                Punktfang {snapEnabled ? 'Ein' : 'Aus'}
-              </Toggle>
               
               <SidebarMenu>
                 <div className="flex flex-col gap-1">

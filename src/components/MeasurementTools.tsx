@@ -397,6 +397,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               movingPointInfo={movingPointInfo}
               handleMoveMeasurementUp={handleMoveMeasurementUp}
               handleMoveMeasurementDown={handleMoveMeasurementDown}
+              handleClearMeasurements={handleClearMeasurements}
             />
             
             {/* Only render MeasurementControls for standard measurements */}
