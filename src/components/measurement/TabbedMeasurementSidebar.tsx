@@ -1,19 +1,21 @@
 
-import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Ruler, ListOrdered } from "lucide-react";
-import { Measurement } from '@/types/measurements';
+import { MeasurementMode, Measurement } from '@/types/measurements';
 import MeasurementToolControls from './MeasurementToolControls';
 import EditingAlert from './EditingAlert';
-import { MeasurementMode } from '@/types/measurements';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TabbedMeasurementSidebarProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
   editMeasurementId: string | null;
-  editingSegmentId: string | null;
-  movingPointInfo: { measurementId: string; pointIndex: number } | null;
+  editingSegmentId?: string | null;
+  movingPointInfo?: {
+    measurementId: string;
+    pointIndex: number;
+  } | null;
   measurements: Measurement[];
   showTable: boolean;
   setShowTable: (show: boolean) => void;
@@ -30,9 +32,13 @@ interface TabbedMeasurementSidebarProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   isEditing: boolean;
-  editingAreaMeasurement: boolean;
+  editingAreaMeasurement?: boolean;
+  handleClearMeasurements: () => void;
 }
 
+/**
+ * A tabbed sidebar component for the measurement tools that switches between tools and measurements
+ */
 const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
   activeMode,
   toggleMeasurementTool,
@@ -55,42 +61,62 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
   isEditing,
-  editingAreaMeasurement
+  editingAreaMeasurement,
+  handleClearMeasurements
 }) => {
-  // Dummy handleClearMeasurements function that will be passed to MeasurementToolControls
-  const handleClearMeasurements = () => {
-    // This is just a placeholder since we don't actually need this functionality here
-    console.log("Clear measurements requested from TabbedMeasurementSidebar");
-  };
-
+  const [activeTab, setActiveTab] = useState(isEditing ? "measurements" : "tools");
+  const isMobile = useIsMobile();
+  
+  // When editing mode changes, switch tabs appropriately
+  React.useEffect(() => {
+    if (isEditing) {
+      setActiveTab("measurements");
+    }
+  }, [isEditing]);
+  
   return (
     <div className="flex flex-col h-full">
       {/* Tabs for navigation between tools and measurements */}
-      <Tabs defaultValue="tools" className="w-full">
-        <div className="border-b border-border/30">
-          <TabsList className="w-full rounded-none bg-transparent p-0 h-12">
-            <TabsTrigger value="tools" className="flex-1 rounded-none data-[state=active]:bg-background data-[state=active]:shadow-none">
-              <Ruler className="h-4 w-4 mr-2" />
-              Werkzeuge
-            </TabsTrigger>
-            <TabsTrigger value="measurements" className="flex-1 rounded-none data-[state=active]:bg-background data-[state=active]:shadow-none">
-              <ListOrdered className="h-4 w-4 mr-2" />
-              Messungen
+      <div className="p-3 border-b border-border/50">
+        <Tabs 
+          defaultValue="tools" 
+          value={activeTab} 
+          onValueChange={setActiveTab} 
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="tools">Werkzeuge</TabsTrigger>
+            <TabsTrigger value="measurements">
+              Messungen{" "}
+              {measurements.length > 0 && <span className="ml-1 text-xs text-muted-foreground">({measurements.length})</span>}
             </TabsTrigger>
           </TabsList>
+        </Tabs>
+      </div>
+      
+      {/* Show editing alerts at the top when in editing mode */}
+      {isEditing && (
+        <div className="px-3 pt-3">
+          <EditingAlert 
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            movingPointInfo={movingPointInfo}
+            handleCancelEditing={handleCancelEditing}
+            editingAreaMeasurement={editingAreaMeasurement}
+          />
         </div>
-
-        {/* Tools tab content */}
-        <TabsContent value="tools" className="flex-1 min-h-0 overflow-hidden flex flex-col mt-0">
-          <ScrollArea className="h-full flex-grow overflow-y-auto">
+      )}
+      
+      {/* Tab content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "tools" && (
+          <ScrollArea className="h-full">
             <div className="p-3">
               <MeasurementToolControls
                 activeMode={activeMode}
                 toggleMeasurementTool={toggleMeasurementTool}
                 editMeasurementId={editMeasurementId}
-                measurements={[]} // Don't need to display measurements in this tab
-                showTable={showTable}
-                setShowTable={setShowTable}
+                measurements={measurements}
                 toggleMeasurementVisibility={toggleMeasurementVisibility}
                 toggleLabelVisibility={toggleLabelVisibility}
                 handleStartPointEdit={handleStartPointEdit}
@@ -101,6 +127,8 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
                 toggleSegments={toggleSegments}
                 onEditSegment={onEditSegment}
                 movingPointInfo={movingPointInfo}
+                showTable={showTable}
+                setShowTable={setShowTable}
                 handleMoveMeasurementUp={handleMoveMeasurementUp}
                 handleMoveMeasurementDown={handleMoveMeasurementDown}
                 showMeasurementList={false}
@@ -108,19 +136,16 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
               />
             </div>
           </ScrollArea>
-        </TabsContent>
-
-        {/* Measurements tab content */}
-        <TabsContent value="measurements" className="flex-1 min-h-0 overflow-hidden flex flex-col mt-0">
-          <ScrollArea className="h-full flex-grow overflow-y-auto">
+        )}
+        
+        {activeTab === "measurements" && (
+          <ScrollArea className="h-full">
             <div className="p-3">
               <MeasurementToolControls
                 activeMode={activeMode}
                 toggleMeasurementTool={toggleMeasurementTool}
                 editMeasurementId={editMeasurementId}
                 measurements={measurements}
-                showTable={showTable}
-                setShowTable={setShowTable}
                 toggleMeasurementVisibility={toggleMeasurementVisibility}
                 toggleLabelVisibility={toggleLabelVisibility}
                 handleStartPointEdit={handleStartPointEdit}
@@ -131,6 +156,8 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
                 toggleSegments={toggleSegments}
                 onEditSegment={onEditSegment}
                 movingPointInfo={movingPointInfo}
+                showTable={showTable}
+                setShowTable={setShowTable}
                 handleMoveMeasurementUp={handleMoveMeasurementUp}
                 handleMoveMeasurementDown={handleMoveMeasurementDown}
                 showMeasurementList={true}
@@ -138,25 +165,8 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
               />
             </div>
           </ScrollArea>
-        </TabsContent>
-      </Tabs>
-
-      {/* Notification area for editing state */}
-      {isEditing && (
-        <div className="border-t border-border/30">
-          <ScrollArea className="max-h-[240px]" autoMaxHeight>
-            <div className="p-3">
-              <EditingAlert
-                editMeasurementId={editMeasurementId}
-                editingSegmentId={editingSegmentId}
-                movingPointInfo={movingPointInfo}
-                handleCancelEditing={handleCancelEditing}
-                editingAreaMeasurement={editingAreaMeasurement}
-              />
-            </div>
-          </ScrollArea>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

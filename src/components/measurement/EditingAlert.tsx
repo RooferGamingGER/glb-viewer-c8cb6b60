@@ -26,12 +26,12 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   
   let title = 'Messung wird bearbeitet';
   let description = 'Sie bearbeiten gerade eine Messung. Klicken Sie auf Bearbeitung beenden, um den Bearbeitungsmodus zu verlassen.';
-  let icon = <Edit className="h-4 w-4 text-white" />;
+  let icon = <Edit className="h-4 w-4" />;
   
   if (isMovingPoint) {
     title = 'Punkt wird verschoben';
     description = `Sie verschieben Punkt ${movingPointInfo?.pointIndex + 1}. Klicken Sie an eine neue Position oder auf Bearbeitung beenden.`;
-    icon = <MoveHorizontal className="h-4 w-4 text-white" />;
+    icon = <MoveHorizontal className="h-4 w-4" />;
   } else if (isEditingSegment) {
     title = 'Segment wird bearbeitet';
     description = 'Sie bearbeiten ein Segment einer Messung. Klicken Sie auf Bearbeitung beenden, um den Bearbeitungsmodus zu verlassen.';
@@ -41,15 +41,15 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   }
 
   return (
-    <Alert variant="warning" className="mb-2 animate-fade-in text-white">
+    <Alert variant="warning" className="mb-2 animate-fade-in">
       {icon}
-      <AlertTitle className="text-white">{title}</AlertTitle>
-      <AlertDescription className="flex justify-between items-center text-white">
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription className="flex justify-between items-center">
         <span>{description}</span>
         <Button 
           variant="outline" 
           size="sm" 
-          className="mt-2 text-white border-white hover:text-white" 
+          className="mt-2" 
           onClick={handleCancelEditing}
         >
           <X className="h-4 w-4 mr-1" />

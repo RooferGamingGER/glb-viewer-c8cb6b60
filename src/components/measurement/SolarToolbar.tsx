@@ -1,6 +1,9 @@
 
 import React from 'react';
-import { Sun, Zap } from 'lucide-react';
+import { 
+  Sun, 
+  Grid
+} from 'lucide-react';
 import { MeasurementMode } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
@@ -28,21 +31,21 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
     toggleMeasurementTool(mode);
     
     if (activeMode === mode) {
-      toast.info(`Solar-Werkzeug deaktiviert. Zurück zum Navigationsmodus.`);
+      toast.info(`Solarplanungswerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
       // Show appropriate tool selection messages
       if (mode === 'solar') {
-        toast.info('Solaranlage ausgewählt - Platzieren Sie 4 Punkte für die Fläche');
-      } else if (mode === 'pvmodule') {
-        toast.info('PV-Modul ausgewählt - Platzieren Sie 4 Punkte für die Modulfläche');
+        toast.info('Solarfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
+      } else if (mode === 'pvplanning') {
+        toast.info('PV-Planungsfläche ausgewählt - Platzieren Sie 4 Punkte');
       }
     }
   };
 
   return (
     <SidebarGroup className="mt-4">
-      <Accordion type="single" collapsible defaultValue="solar-tools">
-        <AccordionItem value="solar-tools" className="border-0">
+      <Accordion type="single" collapsible defaultValue="solar-planning">
+        <AccordionItem value="solar-planning" className="border-0">
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Solarplanung</SidebarGroupLabel>
           </AccordionTrigger>
@@ -53,25 +56,27 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
                   <SidebarMenuButton
                     isActive={activeMode === 'solar'}
                     onClick={() => selectTool('solar')}
-                    tooltip={activeMode === 'solar' ? "Solaranlage deaktivieren" : "Solaranlage planen"}
+                    tooltip={activeMode === 'solar' ? "Solarfläche deaktivieren" : "Solarfläche platzieren"}
                     disabled={!!editMeasurementId}
                   >
                     <Sun />
-                    <span>Solaranlage</span>
+                    <span>Solarfläche</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    isActive={activeMode === 'pvmodule'}
-                    onClick={() => selectTool('pvmodule')}
-                    tooltip={activeMode === 'pvmodule' ? "PV-Modul deaktivieren" : "PV-Modul platzieren"}
+                    isActive={activeMode === 'pvplanning'}
+                    onClick={() => selectTool('pvplanning')}
+                    tooltip={activeMode === 'pvplanning' ? "PV-Planungsfläche deaktivieren" : "PV-Planungsfläche platzieren"}
                     disabled={!!editMeasurementId}
                   >
-                    <Zap />
-                    <span>PV-Modul</span>
+                    <Grid />
+                    <span>PV-Planungsfläche</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                
+                {/* PV-Modul button has been removed as requested */}
               </SidebarMenu>
             </SidebarGroupContent>
           </AccordionContent>

@@ -467,6 +467,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
             handleMoveMeasurementDown={handleMoveMeasurementDown}
             isEditing={showNotifications}
             editingAreaMeasurement={editingAreaMeasurement}
+            handleClearMeasurements={handleClearMeasurements}
           />
           
           {/* Active measurement controls (when creating new measurements) */}
