@@ -30,21 +30,11 @@ export const useMeasurementVisibilityToggle = (
     });
   }, [setMeasurements, allLabelsVisible, updateVisualState]);
 
-  // Toggle label visibility for a single measurement
+  // Toggle label visibility for a single measurement (kept for backward compatibility)
   const toggleLabelVisibility = useCallback((id: string) => {
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m =>
-        m.id === id ? { ...m, labelVisible: m.labelVisible === false ? true : false } : m
-      );
-      
-      // Update visual state if the callback is provided
-      if (updateVisualState) {
-        updateVisualState(updatedMeasurements, allLabelsVisible);
-      }
-      
-      return updatedMeasurements;
-    });
-  }, [setMeasurements, allLabelsVisible, updateVisualState]);
+    // This function is now a no-op since we always show labels
+    console.log('Label visibility toggle is deprecated - labels are always visible');
+  }, []);
 
   // Toggle visibility for all measurements
   const toggleAllMeasurementsVisibility = useCallback(() => {
@@ -63,22 +53,11 @@ export const useMeasurementVisibilityToggle = (
     });
   }, [allMeasurementsVisible, setAllMeasurementsVisible, setMeasurements, allLabelsVisible, updateVisualState]);
 
-  // Toggle visibility for all labels
+  // Toggle visibility for all labels (kept for backward compatibility)
   const toggleAllLabelsVisibility = useCallback(() => {
-    const newVisibility = !allLabelsVisible;
-    setAllLabelsVisible(newVisibility);
-    
-    setMeasurements(prev => {
-      const updatedMeasurements = prev.map(m => ({ ...m, labelVisible: newVisibility }));
-      
-      // Update visual state if the callback is provided
-      if (updateVisualState) {
-        updateVisualState(updatedMeasurements, newVisibility);
-      }
-      
-      return updatedMeasurements;
-    });
-  }, [allLabelsVisible, setAllLabelsVisible, setMeasurements, updateVisualState]);
+    // This function is now a no-op since we always show labels
+    console.log('All labels visibility toggle is deprecated - labels are always visible');
+  }, []);
 
   // Move a measurement up in the list within its type category
   const moveMeasurementUp = useCallback((id: string) => {
@@ -144,9 +123,9 @@ export const useMeasurementVisibilityToggle = (
 
   return {
     toggleMeasurementVisibility,
-    toggleLabelVisibility,
+    toggleLabelVisibility, // Keep for backward compatibility
     toggleAllMeasurementsVisibility,
-    toggleAllLabelsVisibility,
+    toggleAllLabelsVisibility, // Keep for backward compatibility
     moveMeasurementUp,
     moveMeasurementDown
   };

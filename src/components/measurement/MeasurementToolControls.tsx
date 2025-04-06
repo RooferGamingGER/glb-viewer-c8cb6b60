@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
-import CollapsibleSection from '@/components/ui/collapsible-section';
+// Replace CollapsibleSection import with the SidebarGroup components
+import { SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@/components/ui/collapsible-section";
 import MeasurementToolbar from './MeasurementToolbar';
+import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
@@ -54,6 +56,7 @@ interface MeasurementToolControlsProps {
   setShowTable: (show: boolean) => void;
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
+  showMeasurementList?: boolean;
 }
 
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
@@ -79,10 +82,11 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   showTable,
   setShowTable,
   handleMoveMeasurementUp,
-  handleMoveMeasurementDown
+  handleMoveMeasurementDown,
+  showMeasurementList = true
 }) => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("measurements");
+  const [activeTab, setActiveTab] = useState("tools"); // Changed from "measurements" to "tools"
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -207,6 +211,16 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               allLabelsVisible={allLabelsVisible}
             />
             
+            {/* Add the new Solar toolbar between measurement tools and roof elements */}
+            <SolarToolbar 
+              activeMode={activeMode}
+              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
+                console.log('Toggle measurement tool', mode);
+                // Default implementation if not provided
+              })}
+              editMeasurementId={editMeasurementId}
+            />
+            
             <RoofElementsToolbar 
               activeMode={activeMode}
               toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
@@ -246,7 +260,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               </div>
             </div>
             
-            {/* Export options - Moved from MeasurementToolbar to here */}
+            {/* Export options - Only in Measurements tab */}
             {measurements && measurements.length > 0 && (
               <div className="flex flex-col gap-2 mb-4 border-b pb-3">
                 <div className="text-xs text-muted-foreground mb-1">
@@ -267,40 +281,43 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   CSV Export
                 </Button>
                 
-                {/* PDF Export button */}
+                {/* PDF Export button - only in Measurements tab */}
                 <ExportPdfButton measurements={measurements} />
               </div>
             )}
             
-            <div style={tableContainerStyle}>
-              {showTable ? (
-                <MeasurementTable 
-                  measurements={measurements}
-                  toggleMeasurementVisibility={toggleMeasurementVisibility}
-                  handleDeleteMeasurement={handleDeleteMeasurement}
-                />
-              ) : (
-                <div className="flex-1">
-                  <MeasurementList 
+            {showMeasurementList && (
+              <div style={tableContainerStyle}>
+                {showTable ? (
+                  <MeasurementTable 
                     measurements={measurements}
                     toggleMeasurementVisibility={toggleMeasurementVisibility}
-                    toggleLabelVisibility={toggleLabelVisibility}
-                    handleStartPointEdit={handleStartPointEdit}
                     handleDeleteMeasurement={handleDeleteMeasurement}
-                    handleDeletePoint={handleDeletePoint}
-                    updateMeasurement={updateMeasurement}
-                    editMeasurementId={editMeasurementId}
-                    segmentsOpen={segmentsOpen}
-                    toggleSegments={toggleSegments}
-                    onEditSegment={onEditSegment}
-                    movingPointInfo={movingPointInfo}
-                    handleMoveMeasurementUp={handleMoveMeasurementUp}
-                    handleMoveMeasurementDown={handleMoveMeasurementDown}
-                    activeCategory={activeCategory || undefined}
                   />
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="flex-1">
+                    <MeasurementList 
+                      measurements={measurements}
+                      toggleMeasurementVisibility={toggleMeasurementVisibility}
+                      toggleLabelVisibility={toggleLabelVisibility}
+                      handleStartPointEdit={handleStartPointEdit}
+                      handleDeleteMeasurement={handleDeleteMeasurement}
+                      handleDeletePoint={handleDeletePoint}
+                      updateMeasurement={updateMeasurement}
+                      editMeasurementId={editMeasurementId}
+                      segmentsOpen={segmentsOpen}
+                      toggleSegments={toggleSegments}
+                      onEditSegment={onEditSegment}
+                      movingPointInfo={movingPointInfo}
+                      handleMoveMeasurementUp={handleMoveMeasurementUp}
+                      handleMoveMeasurementDown={handleMoveMeasurementDown}
+                      activeCategory={activeCategory || undefined}
+                      showTable={showTable}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

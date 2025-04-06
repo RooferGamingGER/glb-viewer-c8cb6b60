@@ -1,25 +1,38 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+interface SidebarGroupProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const SidebarGroup = ({ children, className }: SidebarGroupProps) => {
+  return <div className={cn("mb-4", className)}>{children}</div>;
+};
+
+export const SidebarGroupLabel = ({ children }: { children: React.ReactNode }) => {
+  return <h3 className="font-medium text-sm mb-2">{children}</h3>;
+};
+
+export const SidebarGroupContent = ({ children }: { children: React.ReactNode }) => {
+  return <div className="space-y-2">{children}</div>;
+};
 
 interface CollapsibleSectionProps {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
   className?: string;
-  headerClassName?: string;
-  contentClassName?: string;
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
   children,
-  defaultOpen = true,
-  className,
-  headerClassName,
-  contentClassName
+  defaultOpen = false,
+  className
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -27,17 +40,18 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className={cn("w-full border rounded-md", className)}
+      className={cn("border rounded-md", className)}
     >
-      <CollapsibleTrigger className={cn("flex items-center justify-between w-full p-2 text-sm font-medium bg-muted/30", headerClassName)}>
-        {title}
-        {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
+      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 text-sm font-medium">
+        <span>{title}</span>
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 transition-transform",
+            isOpen && "transform rotate-90"
+          )}
+        />
       </CollapsibleTrigger>
-      <CollapsibleContent className={cn("p-2", contentClassName)}>
+      <CollapsibleContent className="px-3 pb-3 pt-0">
         {children}
       </CollapsibleContent>
     </Collapsible>

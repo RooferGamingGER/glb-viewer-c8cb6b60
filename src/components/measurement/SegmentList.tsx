@@ -30,6 +30,8 @@ const SEGMENT_TYPES = [
   { value: 'valley', label: 'Kehle' },
   { value: 'eave', label: 'Traufe' },
   { value: 'verge', label: 'Ortgang' },
+  { value: 'anschluss', label: 'Anschluss' },
+  { value: 'verfallung', label: 'Verfallung' },
   { value: 'custom', label: 'Dachkante' }
 ];
 

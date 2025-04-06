@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Measurement, Point, Point2D } from '@/types/measurements';
 import { projectPointsTo2D } from './renderPolygon2D';
 import { calculateBoundingBox, calculateCentroid } from './measurementCalculations';
-import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName } from '@/utils/exportUtils';
+import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, getSegmentColor } from '@/utils/exportUtils';
 
 /**
  * Projects all measurements to a common 2D coordinate system
@@ -463,22 +463,9 @@ export const createCombinedRoofPlan = (
       'vent': { fill: 'rgba(0, 0, 255, 0.2)', stroke: '#0000cc' },  // Added vent
       'hook': { fill: 'rgba(128, 0, 128, 0.2)', stroke: '#800080' }, // Added hook
       'other': { fill: 'rgba(100, 100, 100, 0.2)', stroke: '#555555' }, // Added other
+      'flashing': { fill: 'rgba(217, 70, 239, 0.2)', stroke: '#D946EF' }, // Verfallung
+      'connection': { fill: 'rgba(14, 165, 233, 0.2)', stroke: '#0EA5E9' }, // Anschluss
       'default': { fill: 'rgba(200, 200, 200, 0.2)', stroke: '#888888' }
-    };
-    
-    // Define segment type colors - similar to the reference image
-    const segmentColors: Record<string, string> = {
-      'ridge': '#FF0000', // First - Red
-      'first': '#FF0000', // First - Red (alternative name)
-      'hip': '#800080',   // Grat - Purple
-      'grat': '#800080',  // Grat - Purple (alternative name)
-      'valley': '#FF8C00', // Kehle - Orange
-      'kehle': '#FF8C00',  // Kehle - Orange (alternative name)
-      'eave': '#0000FF',   // Traufe - Blue
-      'traufe': '#0000FF', // Traufe - Blue (alternative name)
-      'verge': '#008000',  // Ortgang - Green
-      'ortgang': '#008000', // Ortgang - Green (alternative name)
-      'default': '#666666'  // Default - Gray
     };
     
     // Track all segment types used for the legend
@@ -639,10 +626,12 @@ export const createCombinedRoofPlan = (
           ctx.moveTo(toCanvasX(p1.x), toCanvasY(p1.y));
           ctx.lineTo(toCanvasX(p2.x), toCanvasY(p2.y));
           
-          // Use segment type color or default
+          // Use segment type color from exportUtils.getSegmentColor function
           const segmentType = segment.type?.toLowerCase() || 'default';
           usedSegmentTypes.add(segmentType);
-          ctx.strokeStyle = segmentColors[segmentType] || segmentColors.default;
+          
+          // Use the centralized getSegmentColor function for consistent colors
+          ctx.strokeStyle = getSegmentColor(segmentType);
           ctx.lineWidth = 5; // Increased from 4 to 5 for better visibility
           ctx.stroke();
           
@@ -667,8 +656,8 @@ export const createCombinedRoofPlan = (
               24 // Increased height for larger font
             );
             
-            // Type text
-            ctx.fillStyle = segmentColors[segmentType] || segmentColors.default;
+            // Type text - Fix this line to use getSegmentColor instead of segmentColors
+            ctx.fillStyle = getSegmentColor(segmentType);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(segmentTypeDisplayName, toCanvasX(midX), toCanvasY(midY) - 18);

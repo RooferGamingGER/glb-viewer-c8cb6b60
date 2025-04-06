@@ -1,3 +1,4 @@
+
 import React from 'react';
 import * as THREE from 'three';
 
@@ -371,11 +372,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           className={`absolute top-0 right-0 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
           style={{ 
             width: '20rem', 
-            height: 'calc(100vh - 2.75rem)', // Set full height minus footer
+            maxHeight: 'calc(100vh - 2.75rem)', // Ensure it doesn't overlap with footer
             bottom: '2.75rem' // Add space above footer
           }}
         >
-          {/* Main sidebar content with MeasurementToolControls that has a single ScrollArea */}
+          {/* Fixed Header - Tools Section */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <MeasurementToolControls 
               activeMode={activeMode}
@@ -394,11 +395,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               toggleSegments={toggleSegments}
               onEditSegment={setEditingSegmentId}
               movingPointInfo={movingPointInfo}
-              handleClearMeasurements={handleClearMeasurements}
-              toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
-              allLabelsVisible={allLabelsVisible}
               handleMoveMeasurementUp={handleMoveMeasurementUp}
               handleMoveMeasurementDown={handleMoveMeasurementDown}
+              handleClearMeasurements={handleClearMeasurements}
             />
             
             {/* Only render MeasurementControls for standard measurements */}

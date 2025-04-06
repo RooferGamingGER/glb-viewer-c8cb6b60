@@ -13,6 +13,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ActiveMeasurementProps {
   activeMode: MeasurementMode;
@@ -29,28 +30,10 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
+  const isMobile = useIsMobile();
+  
   // Don't render anything if no measurement tool is active or if there are no points
   if (activeMode === 'none') return null;
-  
-  const measurementTypeLabels = {
-    'length': "Längenmessung",
-    'height': "Höhenmessung",
-    'area': "Flächenmessung",
-    'chimney': "Kamin",
-    'skylight': "Dachfenster",
-    'solar': "Solarplanung",
-    'pvmodule': "PV-Module",
-    'vent': "Lüfter",
-    'hook': "Dachhaken",
-    'other': "Sonstige Einbauten",
-    'ridge': "First",
-    'eave': "Traufe",
-    'verge': "Ortgang",
-    'valley': "Kehle",
-    'hip': "Grat"
-  };
-  
-  const showFinalizeButton = activeMode === 'area' && currentPoints.length >= 3;
   
   return (
     <SidebarGroup>
@@ -59,7 +42,9 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         <div className="mb-2">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium">
-              {measurementTypeLabels[activeMode] || activeMode}
+              {activeMode === 'length' && "Längenmessung"}
+              {activeMode === 'height' && "Höhenmessung"}
+              {activeMode === 'area' && "Flächenmessung"}
             </div>
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
               {currentPoints.length} Punkte
@@ -68,7 +53,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         </div>
 
         {/* Show the finalize button only for area measurements with 3+ points */}
-        {showFinalizeButton && (
+        {activeMode === 'area' && currentPoints.length >= 3 && (
           <Button 
             variant="default" 
             className="w-full mb-2"

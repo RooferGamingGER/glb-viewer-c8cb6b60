@@ -1,14 +1,13 @@
 
 import React from 'react';
 import { 
-  Cylinder, 
-  SplitSquareVertical,
-  Sun, 
-  Wind,
-  Anchor,
-  X
+  Square, 
+  Home, 
+  Asterisk, 
+  CircleDot, 
+  CircleX
 } from 'lucide-react';
-import { MeasurementMode } from '@/types/measurements';
+import { MeasurementMode } from '@/hooks/useMeasurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
@@ -20,167 +19,113 @@ import {
 import { toast } from 'sonner';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-interface RoofElementsToolbarProps {
+interface RoofElementToolbarProps {
   activeMode: MeasurementMode;
   toggleMeasurementTool: (mode: MeasurementMode) => void;
-  editMeasurementId?: string | null;
+  editMeasurementId: string | null;
 }
 
-const RoofElementsToolbar: React.FC<RoofElementsToolbarProps> = ({
+const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
   activeMode,
   toggleMeasurementTool,
   editMeasurementId
 }) => {
-  
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
     
     if (activeMode === mode) {
-      toast.info(`Dachelementwerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
+      toast.info(`Dachelemente-Werkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
-      const toolMessages: Record<string, string> = {
-        'chimney': 'Kamin-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
-        'skylight': 'Dachfenster-Messung ausgewählt - Messen Sie mit 4 Punkten die Ecken',
-        'solar': 'Geplante Solarfläche ausgewählt - Definieren Sie die Fläche mit 4 Punkten, PV-Module werden automatisch berechnet',
-        'vent': 'Lüfter-Markierung ausgewählt - Platzieren Sie einen Punkt',
-        'hook': 'Dachhaken-Markierung ausgewählt - Platzieren Sie einen Punkt',
-        'other': 'Sonstige Einbauten-Markierung ausgewählt - Platzieren Sie einen Punkt'
-      };
-      
-      toast.info(toolMessages[mode] || 'Navigationsmodus aktiviert');
+      // Show appropriate tool selection messages
+      if (mode === 'skylight') {
+        toast.info('Dachfenster ausgewählt - Platzieren Sie 4 Punkte');
+      } else if (mode === 'chimney') {
+        toast.info('Kamin ausgewählt - Platzieren Sie 4 Punkte');
+      } else if (mode === 'vent') {
+        toast.info('Lüfter ausgewählt - Platzieren Sie den Punkt');
+      } else if (mode === 'hook') {
+        toast.info('Dachhaken ausgewählt - Platzieren Sie den Punkt');
+      } else if (mode === 'other') {
+        toast.info('Sonstige Einbauten ausgewählt - Platzieren Sie den Punkt');
+      }
     }
   };
-  
+
   return (
-    <SidebarGroup className="mt-0">
-      <Accordion type="multiple" defaultValue={["solar-planning", "roof-elements", "roof-penetrations"]}>
-        {/* Solar Planning Section */}
-        <AccordionItem value="solar-planning" className="border-0">
-          <AccordionTrigger className="py-2 px-1">
-            <SidebarGroupLabel className="!m-0">Solar</SidebarGroupLabel>
-          </AccordionTrigger>
-          <AccordionContent>
-            <SidebarGroupContent>
-              <div className="text-xs text-muted-foreground mb-2">
-                Solarplanung und Photovoltaik
-              </div>
-              
-              <SidebarMenu>
-                <div className="flex flex-col gap-1">
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'solar'}
-                      onClick={() => selectTool('solar')}
-                      tooltip="Solarfläche messen"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <Sun className="h-4 w-4" />
-                      <span className="text-xs">Geplante Solarfläche</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </div>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </AccordionContent>
-        </AccordionItem>
-        
-        {/* Roof Elements Section */}
+    <SidebarGroup className="mt-4">
+      <Accordion type="single" collapsible defaultValue="roof-elements">
         <AccordionItem value="roof-elements" className="border-0">
           <AccordionTrigger className="py-2 px-1">
             <SidebarGroupLabel className="!m-0">Dachelemente</SidebarGroupLabel>
           </AccordionTrigger>
           <AccordionContent>
             <SidebarGroupContent>
-              <div className="text-xs text-muted-foreground mb-2">
-                Wählen Sie ein Werkzeug für Dachelemente.
-              </div>
-              
               <SidebarMenu>
-                <div className="flex flex-col gap-1">
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'skylight'}
-                      onClick={() => selectTool('skylight')}
-                      tooltip="Dachfenster messen"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <SplitSquareVertical className="h-4 w-4" />
-                      <span className="text-xs">Dachfenster</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'chimney'}
-                      onClick={() => selectTool('chimney')}
-                      tooltip="Kamin messen"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <Cylinder className="h-4 w-4" />
-                      <span className="text-xs">Kamin</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </div>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </AccordionContent>
-        </AccordionItem>
-        
-        {/* Roof Penetrations Section */}
-        <AccordionItem value="roof-penetrations" className="border-0">
-          <AccordionTrigger className="py-2 px-1">
-            <SidebarGroupLabel className="!m-0">Dacheinbauten</SidebarGroupLabel>
-          </AccordionTrigger>
-          <AccordionContent>
-            <SidebarGroupContent>
-              <div className="text-xs text-muted-foreground mb-2">
-                Markieren Sie Einbauten und Durchdringungen auf dem Dach.
-              </div>
-              
-              <SidebarMenu>
-                <div className="flex flex-col gap-1">
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'vent'}
-                      onClick={() => selectTool('vent')}
-                      tooltip="Lüfter markieren"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <Wind className="h-4 w-4" />
-                      <span className="text-xs">Lüfter</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'hook'}
-                      onClick={() => selectTool('hook')}
-                      tooltip="Dachhaken markieren"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <Anchor className="h-4 w-4" />
-                      <span className="text-xs">Haken</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeMode === 'other'}
-                      onClick={() => selectTool('other')}
-                      tooltip="Sonstige Einbauten markieren"
-                      disabled={!!editMeasurementId}
-                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50 w-full"
-                    >
-                      <X className="h-4 w-4" />
-                      <span className="text-xs">Sonstiges</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </div>
+                {/* Removed solar and pvmodule items */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'skylight'}
+                    onClick={() => selectTool('skylight')}
+                    tooltip={activeMode === 'skylight' ? "Dachfenster deaktivieren" : "Dachfenster platzieren"}
+                    disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
+                  >
+                    <Square />
+                    <span>Dachfenster</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'chimney'}
+                    onClick={() => selectTool('chimney')}
+                    tooltip={activeMode === 'chimney' ? "Kaminausschnitt deaktivieren" : "Kamin platzieren"}
+                    disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
+                  >
+                    <Home />
+                    <span>Kamin</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'vent'}
+                    onClick={() => selectTool('vent')}
+                    tooltip={activeMode === 'vent' ? "Lüfter deaktivieren" : "Lüfter platzieren"}
+                    disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
+                  >
+                    <Asterisk />
+                    <span>Lüfter</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'hook'}
+                    onClick={() => selectTool('hook')}
+                    tooltip={activeMode === 'hook' ? "Dachhaken deaktivieren" : "Dachhaken platzieren"}
+                    disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
+                  >
+                    <CircleDot />
+                    <span>Dachhaken</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={activeMode === 'other'}
+                    onClick={() => selectTool('other')}
+                    tooltip={activeMode === 'other' ? "Sonstige Einbauten deaktivieren" : "Sonstige Einbauten platzieren"}
+                    disabled={!!editMeasurementId}
+                    className="bg-white hover:bg-gray-100"
+                  >
+                    <CircleX />
+                    <span>Sonstiges</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </AccordionContent>
