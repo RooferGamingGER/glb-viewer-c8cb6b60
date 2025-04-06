@@ -1,8 +1,9 @@
+
 import { useMeasurementCore } from './useMeasurementCore';
 import { useMeasurementEditing } from './useMeasurementEditing';
 import { useMeasurementVisibilityToggle } from './useMeasurementVisibilityToggle';
 import { useMeasurementToolToggle } from './useMeasurementToolToggle';
-import { getNearestPointIndex, calculateSegmentLength } from '@/utils/measurementCalculations';
+import { calculateSegmentLength } from '@/utils/measurementCalculations';
 import { extractRoofEdgeMeasurements, calculatePVMaterials } from '@/utils/pvCalculations';
 import { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';
 import { useCallback, useRef, useState } from 'react';
@@ -307,7 +308,7 @@ export const useMeasurements = () => {
     
     return measurementsWithLinkedSegments;
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-
+  
   // Update segment with shared properties propagation
   const updateSegmentWithSharing = useCallback((
     measurementId: string,
@@ -375,13 +376,14 @@ export const useMeasurements = () => {
     setMeasurements(finalMeasurements);
     updateVisualState(finalMeasurements, allLabelsVisible);
   }, [measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-
+  
   // Enhance the initial finalization to detect shared segments
   const finalizeWithSharedSegments = useCallback(() => {
     // First, call the original finalize
     const newMeasurement = finalizeMeasurement();
     
-    if (newMeasurement !== undefined) {
+    // Check if newMeasurement exists before proceeding
+    if (newMeasurement) {
       // After creating a new measurement, check for shared segments
       const measurementsWithSharedSegments = findAndLinkSharedSegments([...measurements, newMeasurement]);
       
@@ -392,7 +394,28 @@ export const useMeasurements = () => {
     
     return newMeasurement;
   }, [finalizeMeasurement, measurements, setMeasurements, updateVisualState, allLabelsVisible, findAndLinkSharedSegments]);
-
+  
+  // Implement a getNearestPointIndex function with the correct signature
+  const getNearestPointIndex = useCallback((points: Point[], point: Point, threshold: number = Infinity): number => {
+    let nearestIndex = -1;
+    let minDistance = Infinity;
+    
+    for (let i = 0; i < points.length; i++) {
+      const distance = Math.sqrt(
+        Math.pow(points[i].x - point.x, 2) + 
+        Math.pow(points[i].y - point.y, 2) + 
+        Math.pow(points[i].z - point.z, 2)
+      );
+      
+      if (distance < minDistance && distance <= threshold) {
+        minDistance = distance;
+        nearestIndex = i;
+      }
+    }
+    
+    return nearestIndex;
+  }, []);
+  
   // Export all functionality and state from the composed hooks, adding our new functions
   return {
     // State

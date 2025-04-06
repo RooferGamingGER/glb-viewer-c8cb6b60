@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { 
   CheckCircle2,
   ArrowLeft,
-  X,
-  Magnet
+  X
 } from 'lucide-react';
 import { Point, MeasurementMode } from '@/types/measurements';
 import { 
@@ -13,8 +12,8 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-import { usePointSnapping } from '@/hooks/usePointSnapping';
-import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ActiveMeasurementProps {
   activeMode: MeasurementMode;
@@ -31,11 +30,10 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  // Don't render anything if no measurement tool is active
-  if (activeMode === 'none') return null;
+  const isMobile = useIsMobile();
   
-  // Get point snapping state - pass null for scene as we don't need it here
-  const { snapEnabled, isSnapping } = usePointSnapping(null);
+  // Don't render anything if no measurement tool is active or if there are no points
+  if (activeMode === 'none') return null;
   
   return (
     <SidebarGroup>
@@ -48,17 +46,9 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
               {activeMode === 'height' && "Höhenmessung"}
               {activeMode === 'area' && "Flächenmessung"}
             </div>
-            <div className="flex items-center gap-1">
-              {isSnapping && (
-                <Badge variant="outline" className="bg-green-100 text-green-800 text-[10px] h-5 px-1">
-                  <Magnet className="h-3 w-3 mr-1" />
-                  Punktfang aktiv
-                </Badge>
-              )}
-              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                {currentPoints.length} Punkte
-              </span>
-            </div>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+              {currentPoints.length} Punkte
+            </span>
           </div>
         </div>
 
@@ -98,15 +88,20 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         {currentPoints.length > 0 && (
           <div className="mt-3">
             <p className="text-xs text-muted-foreground mb-1">Messpunkte:</p>
-            <div className="space-y-1 max-h-32 overflow-y-auto pl-2 pr-1">
-              {currentPoints.map((point, idx) => (
-                <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
-                  <span>
-                    Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
-                  </span>
-                </div>
-              ))}
-            </div>
+            <ScrollArea 
+              className="max-h-40" 
+              autoMaxHeight
+            >
+              <div className="space-y-1 pl-2 pr-1">
+                {currentPoints.map((point, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs border border-border p-1 rounded">
+                    <span>
+                      Punkt {idx + 1}: ({point.x.toFixed(2)}, {point.y.toFixed(2)}, {point.z.toFixed(2)})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         )}
       </SidebarGroupContent>

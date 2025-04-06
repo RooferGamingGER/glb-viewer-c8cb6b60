@@ -1,25 +1,66 @@
-import { useRef, useCallback } from 'react';
+
+import { useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
-import { Measurement } from '@/types/measurements';
 
 /**
- * Hook for managing add point indicators
+ * Hook zur Verwaltung der Hinzufüge-Indikatoren (Plus-Symbole) für Flächenmessungen
  */
 export const useAddPointIndicators = (scene: THREE.Scene | null) => {
   const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
   
-  // Clear add point indicators
-  const clearAddPointIndicators = useCallback(() => {
-    if (addPointIndicatorsRef.current && scene) {
-      scene.remove(addPointIndicatorsRef.current);
-      addPointIndicatorsRef.current = null;
+  // Initialize indicators group
+  useEffect(() => {
+    if (!scene) return;
+    
+    if (!addPointIndicatorsRef.current) {
+      addPointIndicatorsRef.current = new THREE.Group();
+      addPointIndicatorsRef.current.name = "addPointIndicators";
+      scene.add(addPointIndicatorsRef.current);
     }
+    
+    return () => {
+      if (addPointIndicatorsRef.current && scene) {
+        clearAddPointIndicators();
+        scene.remove(addPointIndicatorsRef.current);
+        addPointIndicatorsRef.current = null;
+      }
+    };
   }, [scene]);
-  
-  // Update add point indicators
+
+  // Function to clear add point indicators
+  const clearAddPointIndicators = useCallback(() => {
+    if (!addPointIndicatorsRef.current) return;
+    
+    while (addPointIndicatorsRef.current.children.length > 0) {
+      const child = addPointIndicatorsRef.current.children[0];
+      
+      // Dispose of geometries and materials
+      if ('geometry' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.geometry) {
+          meshChild.geometry.dispose();
+        }
+      }
+      
+      if ('material' in child) {
+        const meshChild = child as THREE.Mesh;
+        if (meshChild.material) {
+          if (Array.isArray(meshChild.material)) {
+            meshChild.material.forEach(mat => mat.dispose());
+          } else {
+            meshChild.material.dispose();
+          }
+        }
+      }
+      
+      addPointIndicatorsRef.current.remove(child);
+    }
+  }, []);
+
+  // Update add point indicators for area measurements
   const updateAddPointIndicators = useCallback((
     editMeasurementId: string | null,
-    measurements: Measurement[]
+    measurements: any[]
   ) => {
     if (!addPointIndicatorsRef.current || !editMeasurementId) {
       clearAddPointIndicators();
@@ -102,7 +143,7 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
       addPointIndicatorsRef.current.add(indicatorGroup);
     }
   }, [clearAddPointIndicators]);
-  
+
   return {
     addPointIndicatorsRef,
     clearAddPointIndicators,

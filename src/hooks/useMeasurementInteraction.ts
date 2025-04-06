@@ -6,8 +6,7 @@ import { useMeasurementPreview } from './useMeasurementPreview';
 import { useAddPointIndicators } from './useAddPointIndicators';
 import { usePointMovement } from './usePointMovement';
 import { useMeasurementEvents } from './useMeasurementEvents';
-import { usePointSnapping } from './usePointSnapping';
-import { useMeasurementRaycasting } from './useMeasurementRaycasting';
+import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 /**
  * Main hook for measurement interactions - combines all other specialized hooks
@@ -36,108 +35,66 @@ export const useMeasurementInteraction = (
   editMeasurementId: string | null,
   editingPointIndex: number | null
 ) => {
-  // State for preview point
-  const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
+  // Register scene with the point snapping context
+  const { 
+    clearSnapIndicator, 
+    snapEnabled, 
+    isSnapping, 
+    snapTarget,
+    registerScene 
+  } = usePointSnapping();
+  
+  // Register scene when component mounts
+  useEffect(() => {
+    if (scene && enabled) {
+      registerScene(scene);
+    }
+    return () => {
+      // No need to explicitly unregister, the provider handles cleanup
+    };
+  }, [scene, enabled, registerScene]);
 
-  // Use the enhanced raycasting hook which includes preview functionality
+  // Hook for preview visualization
   const {
-    raycast,
+    previewPoint,
+    setPreviewPoint,
+    clearPreviewGroup,
+    updatePreviewVisualization
+  } = useMeasurementPreview(scene);
+
+  // Hook for plus symbols for adding points
+  const {
     addPointIndicatorsRef,
     clearAddPointIndicators,
-    updateAddPointIndicators,
-    clearPreviewGroup,
-    createPreviewGroup,
-    getPointFromIntersection
-  } = useMeasurementRaycasting(scene, camera);
+    updateAddPointIndicators
+  } = useAddPointIndicators(scene);
 
-  // Hook for point snapping with enhanced functionality
-  const {
-    snapEnabled,
-    setSnapEnabled,
-    isSnapping,
-    snapTarget,
-    setSnapping,
-    checkPointForSnapping,
-    clearSnapIndicator,
-    applySnap,
-    findSnapPoint
-  } = usePointSnapping(scene);
-
-  // Hook for point movement with adapted interfaces
+  // Hook for point movement
   const {
     movingPointInfo,
     setMovingPointInfo,
-    startPointMovement: originalStartPointMovement,
-    updateMovingPoint: originalUpdateMovingPoint,
-    finishPointMovement: originalFinishPointMovement
+    startPointMovement,
+    finishPointMovement,
+    updateMovingPoint
   } = usePointMovement(scene, camera, handlers.updateMeasurementPoint);
 
-  // Wrapper functions to match expected interfaces
-  const updateMovingPoint = useCallback((
-    event: MouseEvent | TouchEvent, 
-    canvasElement: HTMLCanvasElement
-  ): Point | null => {
-    if (!camera || !scene || !movingPointInfo) return null;
-    
-    const point = getPointFromIntersection(event, camera, scene, canvasElement);
-    
-    if (point) {
-      originalUpdateMovingPoint(
-        movingPointInfo.measurementId, 
-        movingPointInfo.pointIndex, 
-        point
-      );
-      return point;
-    }
-    
-    return null;
-  }, [camera, scene, movingPointInfo, originalUpdateMovingPoint, getPointFromIntersection]);
-
-  const finishPointMovement = useCallback((
-    newPoint: Point | null
-  ): boolean => {
-    if (!movingPointInfo || !newPoint) return false;
-    
-    originalFinishPointMovement(
-      movingPointInfo.measurementId, 
-      movingPointInfo.pointIndex, 
-      newPoint
-    );
-    
-    return true;
-  }, [movingPointInfo, originalFinishPointMovement]);
-
-  const startPointMovement = useCallback((
-    measurementId: string, 
-    pointIndex: number, 
-    initialPoint: Point
-  ): Point => {
-    const info = originalStartPointMovement(measurementId, pointIndex, initialPoint);
-    return initialPoint; // Return the point, not the info object
-  }, [originalStartPointMovement]);
+  // Update preview display when the preview point changes
+  useEffect(() => {
+    updatePreviewVisualization(movingPointInfo, measurements);
+  }, [previewPoint, movingPointInfo, measurements, updatePreviewVisualization]);
 
   // Update the plus symbols for area measurements in edit mode
   useEffect(() => {
     updateAddPointIndicators(editMeasurementId, measurements);
   }, [editMeasurementId, measurements, updateAddPointIndicators]);
 
-  // Clean up visual indicators when enabled status changes
-  useEffect(() => {
-    if (!enabled) {
-      if (clearPreviewGroup) clearPreviewGroup();
-      clearAddPointIndicators();
-      clearSnapIndicator();
-      setMovingPointInfo(null);
-    }
-  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo]);
-
-  // Event handlers for measurement interactions
+  // Event handlers for interactions
   useMeasurementEvents(
     enabled,
     scene,
     camera,
     open,
-    activeMode as any,
+    activeMode,
     editMeasurementId,
     editingPointIndex,
     measurements,
@@ -152,9 +109,71 @@ export const useMeasurementInteraction = (
     },
     {
       editPointsRef: refs.editPointsRef,
-      addPointIndicatorsRef: addPointIndicatorsRef as React.RefObject<THREE.Group>
+      addPointIndicatorsRef
     }
   );
+
+  // Clean up when enabled status changes
+  useEffect(() => {
+    if (!enabled) {
+      clearPreviewGroup();
+      clearAddPointIndicators();
+      clearSnapIndicator();
+      setMovingPointInfo(null);
+      
+      // Ensure all PV module visualizations are cleared when disabling the tool
+      if (refs.measurementsRef.current) {
+        console.log("Cleaning up PV module visualizations on disable");
+        refs.measurementsRef.current.children.forEach(child => {
+          if (child.userData && child.userData.isPVModule) {
+            console.log("Removing PV module visualization:", child.name || "unnamed");
+            refs.measurementsRef.current?.remove(child);
+          }
+        });
+      }
+    }
+  }, [enabled, clearPreviewGroup, clearAddPointIndicators, clearSnapIndicator, setMovingPointInfo, refs]);
+
+  // Special handling for PV module visibility
+  useEffect(() => {
+    if (enabled && refs.measurementsRef.current) {
+      // Ensure PV modules are visible when the measurement tool is enabled
+      console.log("Updating PV module visibility when tool is enabled");
+      
+      const pvModules = refs.measurementsRef.current.children.filter(
+        child => child.userData && (child.userData.isPVModule || child.userData.measurementType === 'pvmodule')
+      );
+      
+      console.log(`Found ${pvModules.length} PV module visualizations to update`);
+      
+      pvModules.forEach(module => {
+        // Find the corresponding measurement to check its visibility
+        const measurement = measurements.find(m => m.id === module.userData.measurementId);
+        if (measurement) {
+          module.visible = measurement.visible !== false;
+          console.log(`Setting PV module ${module.name || 'unnamed'} visibility to ${module.visible}`);
+          
+          // Enhance visibility with increased material opacity
+          if (module instanceof THREE.Mesh && module.material instanceof THREE.MeshBasicMaterial) {
+            module.material.opacity = 0.95; // Increased from 0.9 for better visibility
+            module.material.color.set(0x0EA5E9); // Bright blue color
+            module.material.transparent = true;
+            module.material.side = THREE.DoubleSide; // Show both sides
+            module.material.needsUpdate = true;
+            
+            // Raise position slightly to avoid z-fighting
+            module.position.y += 0.01;
+            
+            console.log("Updated PV module material properties for better visibility:", {
+              opacity: module.material.opacity,
+              color: module.material.color.getHexString(),
+              position: module.position
+            });
+          }
+        }
+      });
+    }
+  }, [enabled, measurements, refs.measurementsRef]);
 
   return {
     movingPointInfo,

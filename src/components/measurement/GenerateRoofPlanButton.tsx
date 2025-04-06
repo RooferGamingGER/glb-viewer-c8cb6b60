@@ -1,21 +1,20 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Measurement, Point, Segment } from '@/types/measurements';
-import { calculateCentroid } from '@/utils/measurementCalculations';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-  DialogTrigger
-} from "@/components/ui/dialog";
-import { useToast } from '@/hooks/use-toast';
 import { Maximize, Download, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
+import { Measurement, Segment } from '@/types/measurements';
 import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 
 interface GenerateRoofPlanButtonProps {
   measurements: Measurement[];
@@ -24,15 +23,10 @@ interface GenerateRoofPlanButtonProps {
 const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measurements }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [roofPlan, setRoofPlan] = useState<string | null>(null);
-  const { toast } = useToast();
   
   const handleGenerateRoofPlan = () => {
     if (measurements.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: 'Keine Messungen für den Dachplan vorhanden'
-      });
+      toast.error('Keine Messungen für den Dachplan vorhanden');
       return;
     }
     
@@ -44,24 +38,13 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
       setRoofPlan(plan);
       
       if (!plan) {
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: 'Fehler beim Erstellen des Dachplans'
-        });
+        toast.error('Fehler beim Erstellen des Dachplans');
       } else {
-        toast({
-          title: "Erfolg",
-          description: 'Dachplan erfolgreich erstellt'
-        });
+        toast.success('Dachplan erfolgreich erstellt');
       }
     } catch (error) {
       console.error('Error generating roof plan:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: 'Ein Fehler ist beim Erstellen des Dachplans aufgetreten'
-      });
+      toast.error('Ein Fehler ist beim Erstellen des Dachplans aufgetreten');
     } finally {
       setIsGenerating(false);
     }
@@ -77,10 +60,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     link.click();
     document.body.removeChild(link);
     
-    toast({
-      title: "Erfolg",
-      description: 'Dachplan wurde heruntergeladen'
-    });
+    toast.success('Dachplan wurde heruntergeladen');
   };
   
   const handleOpenInNewTab = () => {
@@ -105,6 +85,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     }
   };
   
+  // Count the number of roof surfaces and special elements available
   const areaCount = measurements.filter(m => 
     ['area'].includes(m.type) && m.points && m.points.length >= 3
   ).length;
@@ -115,7 +96,9 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     m.points.length >= 3
   ).length;
   
+  // Count segments, considering shared segments only once
   const uniqueSegmentCount = (() => {
+    // Collect all segments
     const allSegments = measurements.reduce((total, m) => {
       if (m.segments && m.segments.length > 0) {
         return [...total, ...m.segments];
@@ -123,12 +106,35 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
       return total;
     }, [] as (Segment | undefined)[]);
     
+    // Filter out segments that are marked as shared but not original
     const uniqueSegments = allSegments.filter(segment => 
       !segment?.shared || (segment.shared && segment.isOriginal)
     );
     
     return uniqueSegments.length;
   })();
+  
+  // Count the number of solar/PV modules
+  const pvModuleCount = measurements.reduce((total, m) => {
+    if ((m.type === 'solar' || m.type === 'pvmodule') && m.pvModuleInfo?.moduleCount) {
+      return total + m.pvModuleInfo.moduleCount;
+    }
+    return total;
+  }, 0);
+  
+  // Calculate total power output with proper formatting
+  const totalPowerOutput = measurements.reduce((total, m) => {
+    if ((m.type === 'solar' || m.type === 'pvmodule') && m.pvModuleInfo?.pvMaterials?.totalPower) {
+      return total + m.pvModuleInfo.pvMaterials.totalPower;
+    }
+    return total;
+  }, 0);
+  
+  // Format power output to 2 decimal places for display
+  const formattedPowerOutput = totalPowerOutput.toFixed(2);
+  
+  // Show PV information if we have PV modules
+  const hasPVModules = pvModuleCount > 0;
   
   return (
     <Dialog>
@@ -150,6 +156,11 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
             {areaCount > 0 
               ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
+            {hasPVModules && (
+              <span className="block mt-1 text-green-600 font-medium">
+                {pvModuleCount} PV-Module mit insgesamt {formattedPowerOutput} kWp Leistung werden visualisiert.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
         

@@ -1,3 +1,4 @@
+
 export interface Point {
   x: number;
   y: number;
@@ -100,4 +101,5 @@ export interface PVModuleInfo {
   roofDirection?: string;     // Cardinal direction (N, NE, E, SE, S, SW, W, NW)  
   roofInclination?: number;   // Roof inclination in degrees
   yieldFactor?: number;       // Yield factor in kWh/kWp per year
+  points?: Point[];           // Store the original points used for the solar area calculation
 }

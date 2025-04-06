@@ -4,7 +4,7 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     // Check for mobile devices using matchMedia
@@ -22,11 +22,20 @@ export function useIsMobile() {
       setIsMobile(checkIfMobile());
     }
     
-    mql.addEventListener("change", onChange);
+    // Set initial value
     setIsMobile(checkIfMobile());
     
-    return () => mql.removeEventListener("change", onChange);
+    // Add event listener for window resize
+    mql.addEventListener("change", onChange);
+    
+    // Also check on orientation change for mobile devices
+    window.addEventListener("orientationchange", onChange);
+    
+    return () => {
+      mql.removeEventListener("change", onChange);
+      window.removeEventListener("orientationchange", onChange);
+    };
   }, [])
 
-  return !!isMobile
+  return isMobile
 }
