@@ -57,6 +57,12 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
   isEditing,
   editingAreaMeasurement
 }) => {
+  // Dummy handleClearMeasurements function that will be passed to MeasurementToolControls
+  const handleClearMeasurements = () => {
+    // This is just a placeholder since we don't actually need this functionality here
+    console.log("Clear measurements requested from TabbedMeasurementSidebar");
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Tabs for navigation between tools and measurements */}
@@ -98,6 +104,7 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
                 handleMoveMeasurementUp={handleMoveMeasurementUp}
                 handleMoveMeasurementDown={handleMoveMeasurementDown}
                 showMeasurementList={false}
+                handleClearMeasurements={handleClearMeasurements}
               />
             </div>
           </ScrollArea>
@@ -127,6 +134,7 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
                 handleMoveMeasurementUp={handleMoveMeasurementUp}
                 handleMoveMeasurementDown={handleMoveMeasurementDown}
                 showMeasurementList={true}
+                handleClearMeasurements={handleClearMeasurements}
               />
             </div>
           </ScrollArea>

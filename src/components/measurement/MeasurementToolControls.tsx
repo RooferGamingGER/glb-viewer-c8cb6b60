@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
-import CollapsibleSection from '@/components/ui/collapsible-section';
+// Replace CollapsibleSection import with the SidebarGroup components
+import { SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@/components/ui/collapsible-section";
 import MeasurementToolbar from './MeasurementToolbar';
 import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
