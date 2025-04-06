@@ -46,6 +46,24 @@ export const getSegmentTypeDisplayName = (type: string): string => {
 };
 
 /**
+ * Returns an appropriate color for a segment type
+ */
+export const getSegmentColor = (type: string): string => {
+  const segmentColors: Record<string, string> = {
+    'ridge': '#FF0000',    // Bright red for ridge
+    'valley': '#0000FF',   // Blue for valley
+    'hip': '#FFA500',      // Orange for hip
+    'eave': '#008000',     // Green for eave
+    'verge': '#800080',    // Purple for verge
+    'edge': '#A0A0A0',     // Grey for edge
+    'flashing': '#D946EF', // Magenta pink for flashing
+    'connection': '#0EA5E9' // Ocean blue for connection
+  };
+  
+  return segmentColors[type] || '#000000'; // Default to black if type not found
+};
+
+/**
  * Formats a measurement value with the appropriate unit based on type
  */
 export const formatMeasurementValue = (measurement: Measurement): string => {
