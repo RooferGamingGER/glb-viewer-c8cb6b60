@@ -22,8 +22,8 @@ const Index = () => {
           </p>
           
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl mx-auto hidden md:block">
-            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter{" "}</p>
-            <p<a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
+            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter<br /> {/* Erzwingt einen Zeilenumbruch */}
+            <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
               info@drohnenvermessung-roofergaming.de
             </a>
           </p>
