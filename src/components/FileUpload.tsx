@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,6 @@ import { toast } from 'sonner';
 import { Upload, File, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
-
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -15,29 +13,24 @@ const FileUpload: React.FC = () => {
   const [rotateModel, setRotateModel] = useState(true); // NEU: Option für Rotation
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   }, []);
-
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }, []);
-
   const validateFile = (file: File): boolean => {
     setFileError(null);
-
     if (!file.name.toLowerCase().endsWith('.glb')) {
       const errorMsg = 'Bitte laden Sie eine gültige GLB-Datei hoch.';
       setFileError(errorMsg);
       toast.error(errorMsg);
       return false;
     }
-
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 100MB.';
@@ -45,75 +38,50 @@ const FileUpload: React.FC = () => {
       toast.error(errorMsg);
       return false;
     }
-
     return true;
   };
-
   const handleFileSelect = useCallback((file: File) => {
     if (validateFile(file)) {
       setSelectedFile(file);
       toast.success('Datei ausgewählt: ' + file.name);
     }
   }, []);
-
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleFileSelect(e.target.files[0]);
     }
   }, [handleFileSelect]);
-
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0]);
     }
   }, [handleFileSelect]);
-
   const handleUploadClick = useCallback(() => {
     if (!selectedFile) {
       toast.error('Bitte wählen Sie zuerst eine Datei aus.');
       return;
     }
-
     setUploading(true);
     const fileUrl = URL.createObjectURL(selectedFile);
-
     setTimeout(() => {
       setUploading(false);
       // rotateModel true/false an die Viewer-Route übergeben
-      navigate(
-        `/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`
-      );
+      navigate(`/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`);
     }, 1000);
   }, [selectedFile, navigate, rotateModel]);
-
   const clickFileInput = () => {
     if (inputRef.current) {
       inputRef.current.click();
     }
   };
-
-  return (
-    <div className="w-full animate-fade-in">
-      <div
-        className={`file-drop-area glass-panel relative border-2 border-dashed border-border/50 p-6 rounded-lg 
+  return <div className="w-full animate-fade-in">
+      <div className={`file-drop-area glass-panel relative border-2 border-dashed border-border/50 p-6 rounded-lg 
                    ${isDragging ? 'bg-primary/5 border-primary/30' : ''} 
-                   transition-all duration-300 cursor-pointer`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={clickFileInput}
-      >
-        <input
-          type="file"
-          ref={inputRef}
-          className="hidden"
-          accept=".glb"
-          onChange={handleInputChange}
-        />
+                   transition-all duration-300 cursor-pointer`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={clickFileInput}>
+        <input type="file" ref={inputRef} className="hidden" accept=".glb" onChange={handleInputChange} />
 
         <div className="text-center">
           <div className="mb-4 flex justify-center">
@@ -125,61 +93,45 @@ const FileUpload: React.FC = () => {
           </h3>
 
           <p className="text-muted-foreground text-sm mb-4">
-            {selectedFile 
-              ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` 
-              : 'oder klicken Sie, um eine Datei auszuwählen'}
+            {selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` : 'oder klicken Sie, um eine Datei auszuwählen'}
           </p>
 
-          {fileError && (
-            <Alert variant="warning" className="mt-4 mb-4">
+          {fileError && <Alert variant="warning" className="mt-4 mb-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{fileError}</AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
 
           {/* Auswahloption für Drehung */}
           <div className="flex flex-col items-center gap-2 mt-4">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
-              <span className="text-sm">Modell gemäß RooferGaming drehen?</span>
+              <span className="text-sm">Modell von Drohnenvermessung by RooferGaming?</span>
             </label>
             <span className="text-xs text-muted-foreground">
               Ausschalten für Fremdmodelle, aktiv lassen für Drohnenvermessung von RooferGaming
             </span>
           </div>
 
-          {selectedFile && (
-            <div className="mt-6 flex justify-center">
-              <Button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleUploadClick();
-                }}
-                className="button-hover px-6 py-2"
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <div className="flex items-center gap-2">
+          {selectedFile && <div className="mt-6 flex justify-center">
+              <Button onClick={e => {
+            e.stopPropagation();
+            handleUploadClick();
+          }} className="button-hover px-6 py-2" disabled={uploading}>
+                {uploading ? <div className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                     <span>Wird geladen...</span>
-                  </div>
-                ) : (
-                  <>
+                  </div> : <>
                     <File className="mr-2 h-4 w-4" />
                     3D-Modell anzeigen
-                  </>
-                )}
+                  </>}
               </Button>
-            </div>
-          )}
+            </div>}
         </div>
       </div>
 
       <div className="mt-4 text-center text-xs text-muted-foreground">
         Unterstützte Dateien: .glb (bis zu 100MB)
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default FileUpload;
