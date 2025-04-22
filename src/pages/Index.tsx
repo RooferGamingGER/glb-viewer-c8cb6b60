@@ -22,7 +22,7 @@ const Index = () => {
           </p>
           
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl mx-auto hidden md:block">
-            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter<br /> {/* Erzwingt einen Zeilenumbruch */}
+            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter
             <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
               info@drohnenvermessung-roofergaming.de
             </a>
