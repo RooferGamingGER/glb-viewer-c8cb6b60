@@ -23,10 +23,11 @@ const Index = () => {
           
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl mx-auto hidden md:block">
             Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter
+            </p>
             <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
               info@drohnenvermessung-roofergaming.de
             </a>
-          </p>
+         
           
           <div className="mt-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/test')} className="animate-fade-in">
