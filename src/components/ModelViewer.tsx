@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -13,6 +12,7 @@ import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
+  rotateModel?: boolean;
 };
 
 function Loader3D() {
@@ -26,9 +26,11 @@ function Loader3D() {
 }
 
 function Model({
-  url
+  url,
+  rotate = true
 }: {
   url: string;
+  rotate?: boolean;
   onClick?: (event: THREE.Intersection) => void;
 }) {
   const { scene } = useGLTF(url);
@@ -41,7 +43,8 @@ function Model({
   useEffect(() => {
     if (modelRef.current) {
       modelRef.current.position.set(0, 0, 0);
-      modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
+      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+
       const box = new THREE.Box3().setFromObject(modelRef.current);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
@@ -63,7 +66,7 @@ function Model({
       modelRef.current.position.z = -center.z;
       toast.success('Modell erfolgreich geladen');
     }
-  }, [modelScene, camera, isMobile]);
+  }, [modelScene, camera, isMobile, rotate]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -114,11 +117,13 @@ function SceneSetup({
 const ModelCanvas = ({
   fileUrl,
   onSceneReady,
-  canvasRef
+  canvasRef,
+  rotateModel
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
+  rotateModel?: boolean;
 }) => {
   const isMobile = useIsMobile();
   
@@ -142,7 +147,7 @@ const ModelCanvas = ({
         
         <Environment preset="city" />
         
-        <Model url={fileUrl} />
+        <Model url={fileUrl} rotate={rotateModel !== false} />
         
         <OrbitControls 
           makeDefault 
@@ -167,7 +172,8 @@ const ModelCanvas = ({
 
 const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
-  fileName
+  fileName,
+  rotateModel = true
 }) => {
   const [threeContext, setThreeContext] = useState<ThreeContextProps>({
     scene: null,
@@ -198,7 +204,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     canvas: HTMLCanvasElement
   ) => {
     if (newRenderer) {
-      // Reduzierte Pixel-Ratio für geringere RAM-Nutzung
       newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     }
     
@@ -219,6 +224,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               fileUrl={fileUrl} 
               onSceneReady={handleSceneReady} 
               canvasRef={canvasRef} 
+              rotateModel={rotateModel}
             />
           </div>
           

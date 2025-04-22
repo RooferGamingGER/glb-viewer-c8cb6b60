@@ -9,7 +9,7 @@ const Index = () => {
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
-            DrohnenGLB by RooferGaming®
+            DrohnenGLB by RooferGaming® - ein kostenloser Service von Drohnenvermessung by RooferGaming®
           </div>
           
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mt-2 mb-2 animate-slide-up">
@@ -22,11 +22,12 @@ const Index = () => {
           </p>
           
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl mx-auto hidden md:block">
-            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter{" "}
+            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter:
+            <br /> 
             <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
               info@drohnenvermessung-roofergaming.de
             </a>
-          </p>
+         </p>
           
           <div className="mt-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/test')} className="animate-fade-in">

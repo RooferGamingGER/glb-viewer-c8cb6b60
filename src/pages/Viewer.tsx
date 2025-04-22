@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
-import { useRequiredURLParam } from '@/hooks/useURLState';
+import { useRequiredURLParam, useURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, X, HelpCircle } from 'lucide-react';
@@ -48,11 +47,14 @@ const Viewer = () => {
   const { isPortrait } = useScreenOrientation();
   const [isFullscreen, setIsFullscreen] = useState(true);
   const { showTutorial, setShowTutorial } = useTutorial();
-  
+
   // Get the file URL and name from the URL parameters
   const fileUrl = useRequiredURLParam('fileUrl', '/', 'Keine Datei ausgewählt');
   const fileName = useRequiredURLParam('fileName', '/', 'Unbekannte Datei');
-  
+  // NEU: Prüfe rotateModel Parameter
+  const rotateModelParam = useURLParam('rotateModel');
+  const rotateModel = rotateModelParam !== 'false'; // true, außer explizit "false"
+
   useEffect(() => {
     // Check if the URL is a valid blob URL
     if (!fileUrl.startsWith('blob:')) {
@@ -167,7 +169,11 @@ const Viewer = () => {
         <SidebarProvider defaultOpen={true} open={true}>
           <main className="flex-1 relative w-full h-full">
             {fileUrl && (
-              <ModelViewer fileUrl={fileUrl} fileName={fileName} />
+              <ModelViewer 
+                fileUrl={fileUrl} 
+                fileName={fileName} 
+                rotateModel={rotateModel}
+              />
             )}
           </main>
         </SidebarProvider>
