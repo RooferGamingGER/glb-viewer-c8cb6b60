@@ -9,7 +9,7 @@ const Index = () => {
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
-            DrohnenGLB by RooferGaming®
+            DrohnenGLB by RooferGaming® - ein kostenloser Service von Drohnenvermessung by RooferGaming®
           </div>
           
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mt-2 mb-2 animate-slide-up">
