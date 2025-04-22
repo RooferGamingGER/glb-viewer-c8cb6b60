@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import { Upload, File, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
 
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [rotateModel, setRotateModel] = useState(true); // NEU: Option für Rotation
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -28,24 +30,22 @@ const FileUpload: React.FC = () => {
 
   const validateFile = (file: File): boolean => {
     setFileError(null);
-    
-    // Check if the file is a GLB file
+
     if (!file.name.toLowerCase().endsWith('.glb')) {
       const errorMsg = 'Bitte laden Sie eine gültige GLB-Datei hoch.';
       setFileError(errorMsg);
       toast.error(errorMsg);
       return false;
     }
-    
-    // Check file size (limit to 100MB) - updated from 50MB
-    const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+
+    const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 100MB.';
       setFileError(errorMsg);
       toast.error(errorMsg);
       return false;
     }
-    
+
     return true;
   };
 
@@ -66,7 +66,7 @@ const FileUpload: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0]);
     }
@@ -79,20 +79,16 @@ const FileUpload: React.FC = () => {
     }
 
     setUploading(true);
-
-    // Create a URL for the local file
     const fileUrl = URL.createObjectURL(selectedFile);
-    
-    // In a real app, you might want to upload the file to a server here
-    // and then get a URL back. For now, we'll just use the local URL.
-    
-    // Simulate upload delay
+
     setTimeout(() => {
       setUploading(false);
-      // Redirect to the viewer page with the file URL as a parameter
-      navigate(`/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}`);
+      // rotateModel true/false an die Viewer-Route übergeben
+      navigate(
+        `/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`
+      );
     }, 1000);
-  }, [selectedFile, navigate]);
+  }, [selectedFile, navigate, rotateModel]);
 
   const clickFileInput = () => {
     if (inputRef.current) {
@@ -118,29 +114,40 @@ const FileUpload: React.FC = () => {
           accept=".glb"
           onChange={handleInputChange}
         />
-        
+
         <div className="text-center">
           <div className="mb-4 flex justify-center">
             <Upload className={`w-14 h-14 text-primary/70 ${isDragging ? 'scale-110' : ''} transition-transform`} />
           </div>
-          
+
           <h3 className="text-lg font-medium mb-2">
             {selectedFile ? selectedFile.name : 'GLB-Datei hier ablegen'}
           </h3>
-          
+
           <p className="text-muted-foreground text-sm mb-4">
             {selectedFile 
               ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` 
               : 'oder klicken Sie, um eine Datei auszuwählen'}
           </p>
-          
+
           {fileError && (
             <Alert variant="warning" className="mt-4 mb-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{fileError}</AlertDescription>
             </Alert>
           )}
-          
+
+          {/* Auswahloption für Drehung */}
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
+              <span className="text-sm">Modell gemäß RooferGaming drehen?</span>
+            </label>
+            <span className="text-xs text-muted-foreground">
+              Ausschalten für Fremdmodelle, aktiv lassen für Drohnenvermessung von RooferGaming
+            </span>
+          </div>
+
           {selectedFile && (
             <div className="mt-6 flex justify-center">
               <Button 
@@ -167,7 +174,7 @@ const FileUpload: React.FC = () => {
           )}
         </div>
       </div>
-      
+
       <div className="mt-4 text-center text-xs text-muted-foreground">
         Unterstützte Dateien: .glb (bis zu 100MB)
       </div>
