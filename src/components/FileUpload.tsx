@@ -107,9 +107,7 @@ const FileUpload: React.FC = () => {
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
               <span className="text-sm">Modell von Drohnenvermessung by RooferGaming?</span>
             </label>
-            <span className="text-xs text-muted-foreground">
-              Ausschalten für Fremdmodelle, aktiv lassen für Drohnenvermessung von RooferGaming
-            </span>
+            <span className="text-xs text-muted-foreground">Möchten Sie GLB-Dateien von einem anderen Anbieter hochladen, müssen Sie den Button darüber deaktivieren. </span>
           </div>
 
           {selectedFile && <div className="mt-6 flex justify-center">
