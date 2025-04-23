@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
@@ -35,7 +36,7 @@ function Model({
 }) {
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     console.error("Error loading model:", error);
-    toast.error(`Fehler beim Laden des Modells: ${error.message}`);
+    toast.error(`Fehler beim Laden des Modells: ${error.toString()}`);
   });
   const modelRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
