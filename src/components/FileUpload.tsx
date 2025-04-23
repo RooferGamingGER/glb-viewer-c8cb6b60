@@ -151,7 +151,11 @@ const FileUpload: React.FC = () => {
                   <span>Wird verarbeitet...</span>
                 </div> : <>
                   <RotateCw className="mr-2 h-4 w-4" />
-                  Modell für Fremdanbieter exportieren
+                   <span> {/* Span umschliesst den Text für die Zeilenumbrüche */}
+                    Modell
+                    <br />
+                    für Fremdanbieter exportieren
+                  </span>
                 </>}
             </Button>
 
