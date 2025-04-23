@@ -151,7 +151,7 @@ const FileUpload: React.FC = () => {
                   <span>Wird verarbeitet...</span>
                 </div> : <>
                   <RotateCw className="mr-2 h-4 w-4" />
-                  Modell drehen & herunterladen
+                  Modell für Fremdanbieter exportieren
                 </>}
             </Button>
 
