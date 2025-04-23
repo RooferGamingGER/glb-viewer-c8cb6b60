@@ -1,7 +1,6 @@
-
 import React, { useRef, useState, useEffect, Suspense } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
+import { Canvas, useThree } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import * as THREE from 'three';
@@ -34,7 +33,7 @@ function Model({
   rotate?: boolean;
   onClick?: (event: THREE.Intersection) => void;
 }) {
-  const { scene } = useGLTF(url, undefined, (error) => {
+  const { scene } = useGLTF(url, undefined, undefined, (error) => {
     console.error("Error loading model:", error);
     toast.error(`Fehler beim Laden des Modells: ${error.message}`);
   });
@@ -193,14 +192,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
-  // Use a state variable to manage the blobUrl
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    // Set the processed URL initially
     setProcessedUrl(fileUrl);
     
-    // Cleanup function to revoke the blob URL when component unmounts
     return () => {
       if (processedUrl && processedUrl.startsWith('blob:')) {
         console.log("Revoking blob URL on unmount:", processedUrl);
@@ -227,7 +223,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     });
   };
 
-  // If we don't have a processed URL yet, don't render anything
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
       <Loader2 className="animate-spin mr-2" /> Bereite Modell vor...
