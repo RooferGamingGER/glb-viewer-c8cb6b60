@@ -89,6 +89,8 @@ const FileUpload: React.FC = () => {
 
     try {
       setUploading(true);
+      toast.loading('Modell wird gedreht...');
+      
       const url = await rotateAndExportModel(selectedFile);
       
       const a = document.createElement('a');
@@ -96,11 +98,17 @@ const FileUpload: React.FC = () => {
       a.download = `rotated_${selectedFile.name}`;
       a.click();
       
-      URL.revokeObjectURL(url);
+      // Clean up the URL after download
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.dismiss();
       toast.success('Modell wurde erfolgreich gedreht und heruntergeladen');
     } catch (error) {
-      toast.error('Fehler beim Drehen des Modells');
       console.error('Error rotating model:', error);
+      toast.dismiss();
+      toast.error('Fehler beim Drehen des Modells. Bitte versuchen Sie es erneut.');
     } finally {
       setUploading(false);
     }
