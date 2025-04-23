@@ -16,11 +16,18 @@ export const rotateAndExportModel = async (file: File): Promise<string> => {
         scene.rotation.x = -Math.PI / 2; // Rotate -90 degrees around X axis
         
         const exporter = new GLTFExporter();
-        exporter.parse(scene, (result) => {
-          const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
-          const url = URL.createObjectURL(blob);
-          resolve(url);
-        }, { binary: true });
+        exporter.parse(
+          scene, 
+          (result) => {
+            const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
+            const url = URL.createObjectURL(blob);
+            resolve(url);
+          },
+          (error) => {
+            reject(error);
+          },
+          { binary: true } // Options object as the fourth parameter
+        );
       }, reject);
     };
     
