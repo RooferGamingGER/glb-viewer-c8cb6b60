@@ -2,27 +2,32 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
-import { Upload, File, AlertTriangle } from 'lucide-react';
+import { Upload, File, AlertTriangle, RotateCw } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
+import { rotateAndExportModel } from '@/utils/modelTransformer';
+
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [rotateModel, setRotateModel] = useState(true); // NEU: Option für Rotation
+  const [rotateModel, setRotateModel] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   }, []);
+
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }, []);
+
   const validateFile = (file: File): boolean => {
     setFileError(null);
     if (!file.name.toLowerCase().endsWith('.glb')) {
@@ -40,17 +45,20 @@ const FileUpload: React.FC = () => {
     }
     return true;
   };
+
   const handleFileSelect = useCallback((file: File) => {
     if (validateFile(file)) {
       setSelectedFile(file);
       toast.success('Datei ausgewählt: ' + file.name);
     }
   }, []);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleFileSelect(e.target.files[0]);
     }
   }, [handleFileSelect]);
+
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -59,6 +67,7 @@ const FileUpload: React.FC = () => {
       handleFileSelect(e.dataTransfer.files[0]);
     }
   }, [handleFileSelect]);
+
   const handleUploadClick = useCallback(() => {
     if (!selectedFile) {
       toast.error('Bitte wählen Sie zuerst eine Datei aus.');
@@ -68,19 +77,50 @@ const FileUpload: React.FC = () => {
     const fileUrl = URL.createObjectURL(selectedFile);
     setTimeout(() => {
       setUploading(false);
-      // rotateModel true/false an die Viewer-Route übergeben
       navigate(`/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`);
     }, 1000);
   }, [selectedFile, navigate, rotateModel]);
+
+  const handleRotateAndDownload = async () => {
+    if (!selectedFile) {
+      toast.error('Bitte wählen Sie zuerst eine Datei aus.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const url = await rotateAndExportModel(selectedFile);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rotated_${selectedFile.name}`;
+      a.click();
+      
+      URL.revokeObjectURL(url);
+      toast.success('Modell wurde erfolgreich gedreht und heruntergeladen');
+    } catch (error) {
+      toast.error('Fehler beim Drehen des Modells');
+      console.error('Error rotating model:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const clickFileInput = () => {
     if (inputRef.current) {
       inputRef.current.click();
     }
   };
+
   return <div className="w-full animate-fade-in">
       <div className={`file-drop-area glass-panel relative border-2 border-dashed border-border/50 p-6 rounded-lg 
                    ${isDragging ? 'bg-primary/5 border-primary/30' : ''} 
-                   transition-all duration-300 cursor-pointer`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={clickFileInput}>
+                   transition-all duration-300 cursor-pointer`} 
+           onDragOver={handleDragOver} 
+           onDragLeave={handleDragLeave} 
+           onDrop={handleDrop} 
+           onClick={clickFileInput}>
+        
         <input type="file" ref={inputRef} className="hidden" accept=".glb" onChange={handleInputChange} />
 
         <div className="text-center">
@@ -101,29 +141,43 @@ const FileUpload: React.FC = () => {
               <AlertDescription>{fileError}</AlertDescription>
             </Alert>}
 
-          {/* Auswahloption für Drehung */}
           <div className="flex flex-col items-center gap-2 mt-4">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
-              <span className="text-sm">Modell von Drohnenvermessung by RooferGaming?</span>
+              <span className="text-sm">Modell um 90° drehen</span>
             </label>
-            <span className="text-xs text-muted-foreground">Möchten Sie GLB-Dateien von einem anderen Anbieter hochladen, müssen Sie den Button darüber deaktivieren. </span>
+            <span className="text-xs text-muted-foreground">
+              Aktivieren Sie diese Option, um das Modell vor dem Upload um 90° zu drehen
+            </span>
           </div>
 
-          {selectedFile && <div className="mt-6 flex justify-center">
-              <Button onClick={e => {
-            e.stopPropagation();
-            handleUploadClick();
-          }} className="button-hover px-6 py-2" disabled={uploading}>
-                {uploading ? <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                    <span>Wird geladen...</span>
-                  </div> : <>
-                    <File className="mr-2 h-4 w-4" />
-                    3D-Modell anzeigen
-                  </>}
-              </Button>
-            </div>}
+          {selectedFile && <div className="mt-6 flex justify-center gap-2">
+            <Button onClick={e => {
+              e.stopPropagation();
+              handleRotateAndDownload();
+            }} className="button-hover px-6 py-2" disabled={uploading}>
+              {uploading ? <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  <span>Wird verarbeitet...</span>
+                </div> : <>
+                  <RotateCw className="mr-2 h-4 w-4" />
+                  Modell drehen & herunterladen
+                </>}
+            </Button>
+
+            <Button onClick={e => {
+              e.stopPropagation();
+              handleUploadClick();
+            }} className="button-hover px-6 py-2" disabled={uploading}>
+              {uploading ? <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  <span>Wird geladen...</span>
+                </div> : <>
+                  <File className="mr-2 h-4 w-4" />
+                  3D-Modell anzeigen
+                </>}
+            </Button>
+          </div>}
         </div>
       </div>
 
@@ -132,4 +186,5 @@ const FileUpload: React.FC = () => {
       </div>
     </div>;
 };
+
 export default FileUpload;
