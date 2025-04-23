@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,10 @@ const FileUpload: React.FC = () => {
       return;
     }
     setUploading(true);
+    
+    // Create a new blob URL for viewing (not rotating)
     const fileUrl = URL.createObjectURL(selectedFile);
+    
     setTimeout(() => {
       setUploading(false);
       navigate(`/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`);
@@ -101,7 +105,7 @@ const FileUpload: React.FC = () => {
       // Clean up the URL after download
       setTimeout(() => {
         URL.revokeObjectURL(url);
-      }, 100);
+      }, 500);  // Increased timeout to ensure download starts
       
       toast.dismiss();
       toast.success('Modell wurde erfolgreich gedreht und heruntergeladen');

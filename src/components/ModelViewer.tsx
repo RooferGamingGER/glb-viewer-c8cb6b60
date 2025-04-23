@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress, Stats } from '@react-three/drei';
@@ -33,7 +34,10 @@ function Model({
   rotate?: boolean;
   onClick?: (event: THREE.Intersection) => void;
 }) {
-  const { scene } = useGLTF(url);
+  const { scene } = useGLTF(url, undefined, (error) => {
+    console.error("Error loading model:", error);
+    toast.error(`Fehler beim Laden des Modells: ${error.message}`);
+  });
   const modelRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const isMobile = useIsMobile();
@@ -189,10 +193,18 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
+  // Use a state variable to manage the blobUrl
+  const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+
   useEffect(() => {
+    // Set the processed URL initially
+    setProcessedUrl(fileUrl);
+    
+    // Cleanup function to revoke the blob URL when component unmounts
     return () => {
-      if (fileUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(fileUrl);
+      if (processedUrl && processedUrl.startsWith('blob:')) {
+        console.log("Revoking blob URL on unmount:", processedUrl);
+        URL.revokeObjectURL(processedUrl);
       }
     };
   }, [fileUrl]);
@@ -215,13 +227,20 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     });
   };
 
+  // If we don't have a processed URL yet, don't render anything
+  if (!processedUrl) {
+    return <div className="flex items-center justify-center h-full">
+      <Loader2 className="animate-spin mr-2" /> Bereite Modell vor...
+    </div>;
+  }
+
   return (
     <PointSnappingProvider>
       <ThreeContext.Provider value={threeContext}>
         <div className="relative w-full h-full overflow-hidden">
           <div className="absolute inset-0">
             <ModelCanvas 
-              fileUrl={fileUrl} 
+              fileUrl={processedUrl} 
               onSceneReady={handleSceneReady} 
               canvasRef={canvasRef} 
               rotateModel={rotateModel}

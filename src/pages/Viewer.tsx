@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
@@ -60,6 +61,7 @@ const Viewer = () => {
     if (!fileUrl.startsWith('blob:')) {
       toast.error('Ungültige Datei-URL');
       navigate('/');
+      return;
     }
     
     // Enable fullscreen on component mount
@@ -131,7 +133,13 @@ const Viewer = () => {
             variant="outline" 
             size="sm" 
             className="glass-button"
-            onClick={() => navigate('/')}
+            onClick={() => {
+              // Ensure we cleanup the blob URL when navigating away
+              if (fileUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(fileUrl);
+              }
+              navigate('/');
+            }}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück
