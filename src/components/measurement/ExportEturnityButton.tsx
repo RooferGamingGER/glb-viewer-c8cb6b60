@@ -9,12 +9,12 @@ import { useThreeContext } from '@/hooks/useThreeContext';
 import { Progress } from '@/components/ui/progress';
 
 interface ExportEturnityButtonProps {
-  measurements: Measurement[];
+  measurements?: Measurement[];
   fileName?: string;
 }
 
 const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({ 
-  measurements,
+  measurements = [],
   fileName = 'eturnity-export.glb' 
 }) => {
   const { scene } = useThreeContext();
@@ -27,16 +27,11 @@ const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({
       return;
     }
 
-    if (measurements.length === 0) {
-      toast.error('Keine Messungen für den Export vorhanden');
-      return;
-    }
-
     try {
       setExporting(true);
       setProgress(10);
 
-      // Filter out invisible measurements
+      // Filter out invisible measurements (if any exist)
       const visibleMeasurements = measurements.filter(m => m.visible);
       
       // Generate timestamped filename
@@ -45,7 +40,7 @@ const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({
       
       setProgress(30);
       
-      // Export the model with measurements
+      // Export the model with measurements (empty array if no measurements)
       await exportModelWithMeasurements(
         scene,
         visibleMeasurements,
@@ -82,7 +77,7 @@ const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({
         size="sm" 
         className="w-full"
         onClick={handleExport}
-        disabled={exporting || measurements.length === 0}
+        disabled={exporting}
       >
         <ExternalLink className="h-4 w-4 mr-2" />
         Export für Eturnity
