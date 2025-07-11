@@ -1,6 +1,13 @@
 import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
-import { getMeasurementTypeDisplayName, getSegmentTypeDisplayName, formatMeasurementValue, calculateTotalArea, groupSegmentsByType } from './exportUtils';
+import { 
+  getMeasurementTypeDisplayName, 
+  getSegmentTypeDisplayName, 
+  formatMeasurementValue, 
+  calculateTotalArea, 
+  calculateNetTotalArea, 
+  groupSegmentsByType 
+} from './exportUtils';
 
 export interface CoverPageData {
   title: string;
@@ -77,7 +84,9 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
  */
 const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
   const totalArea = calculateTotalArea(measurements);
+  const netTotalArea = calculateNetTotalArea(measurements); // Get net total area
   const areaMeasurements = measurements.filter(m => m.type === 'area');
+  const deductionMeasurements = measurements.filter(m => m.type === 'deductionarea'); // Get deduction areas
   
   const container = document.createElement('div');
   container.style.marginTop = '40px';
@@ -111,6 +120,7 @@ const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
   
   const tableBody = document.createElement('tbody');
   
+  // Regular areas
   areaMeasurements.forEach((measurement, index) => {
     const row = document.createElement('tr');
     
@@ -124,17 +134,73 @@ const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
     
     tableBody.appendChild(row);
   });
+
+  // Add subtotal row for regular areas if there are deduction areas
+  if (deductionMeasurements.length > 0) {
+    const subtotalRow = document.createElement('tr');
+    
+    const subtotalLabelCell = document.createElement('td');
+    subtotalLabelCell.textContent = 'Zwischensumme Flächen';
+    subtotalLabelCell.style.fontWeight = 'bold';
+    subtotalRow.appendChild(subtotalLabelCell);
+    
+    const subtotalValueCell = document.createElement('td');
+    subtotalValueCell.textContent = `${totalArea.toFixed(2)} m²`;
+    subtotalValueCell.style.fontWeight = 'bold';
+    subtotalRow.appendChild(subtotalValueCell);
+    
+    tableBody.appendChild(subtotalRow);
+  }
   
+  // Deduction areas
+  deductionMeasurements.forEach((measurement, index) => {
+    const row = document.createElement('tr');
+    row.className = 'deduction-row';
+    
+    const nameCell = document.createElement('td');
+    nameCell.textContent = measurement.description || `Abzugsfläche ${index + 1}`;
+    nameCell.style.color = '#F97316'; // Orange color for deduction areas
+    row.appendChild(nameCell);
+    
+    const valueCell = document.createElement('td');
+    valueCell.textContent = `- ${measurement.value.toFixed(2)} m²`;
+    valueCell.style.color = '#F97316'; // Orange color for deduction areas
+    row.appendChild(valueCell);
+    
+    tableBody.appendChild(row);
+  });
+  
+  // Add total deduction area if there are deduction areas
+  if (deductionMeasurements.length > 0) {
+    const deductionTotalRow = document.createElement('tr');
+    
+    const deductionTotalLabelCell = document.createElement('td');
+    deductionTotalLabelCell.textContent = 'Summe Abzugsflächen';
+    deductionTotalLabelCell.style.fontWeight = 'bold';
+    deductionTotalLabelCell.style.color = '#F97316'; // Orange color for deduction areas
+    deductionTotalRow.appendChild(deductionTotalLabelCell);
+    
+    const deductionTotalValueCell = document.createElement('td');
+    const totalDeduction = deductionMeasurements.reduce((sum, m) => sum + m.value, 0);
+    deductionTotalValueCell.textContent = `- ${totalDeduction.toFixed(2)} m²`;
+    deductionTotalValueCell.style.fontWeight = 'bold';
+    deductionTotalValueCell.style.color = '#F97316'; // Orange color for deduction areas
+    deductionTotalRow.appendChild(deductionTotalValueCell);
+    
+    tableBody.appendChild(deductionTotalRow);
+  }
+  
+  // Net total row (after deductions)
   const totalRow = document.createElement('tr');
   totalRow.className = 'total-row';
   
   const totalLabelCell = document.createElement('td');
-  totalLabelCell.textContent = 'Gesamtfläche';
+  totalLabelCell.textContent = deductionMeasurements.length > 0 ? 'Nettofläche' : 'Gesamtfläche';
   totalLabelCell.style.fontWeight = 'bold';
   totalRow.appendChild(totalLabelCell);
   
   const totalValueCell = document.createElement('td');
-  totalValueCell.textContent = `${totalArea.toFixed(2)} m²`;
+  totalValueCell.textContent = `${netTotalArea.toFixed(2)} m²`;
   totalValueCell.style.fontWeight = 'bold';
   totalRow.appendChild(totalValueCell);
   
@@ -404,6 +470,7 @@ const createTableOfContents = (measurements: Measurement[]): HTMLElement => {
   
   currentPage++;
   
+  // Check for regular areas
   if (measurements.filter(m => m.type === 'area').length > 0) {
     const areaRow = document.createElement('tr');
     const areaLabel = document.createElement('td');
@@ -423,6 +490,29 @@ const createTableOfContents = (measurements: Measurement[]): HTMLElement => {
     
     currentPage++;
   }
+  
+  // Check for deduction areas - add them as a separate entry in the TOC
+  if (measurements.filter(m => m.type === 'deductionarea').length > 0) {
+    const deductionRow = document.createElement('tr');
+    const deductionLabel = document.createElement('td');
+    deductionLabel.textContent = 'Abzugsflächen';
+    deductionLabel.style.padding = '5px 0';
+    deductionLabel.style.borderBottom = '1px solid #eee';
+    
+    const deductionPage = document.createElement('td');
+    deductionPage.textContent = currentPage.toString();
+    deductionPage.style.textAlign = 'right';
+    deductionPage.style.padding = '5px 0';
+    deductionPage.style.borderBottom = '1px solid #eee';
+    
+    deductionRow.appendChild(deductionLabel);
+    deductionRow.appendChild(deductionPage);
+    tbody.appendChild(deductionRow);
+    
+    currentPage++;
+  }
+  
+  currentPage++;
   
   if (measurements.filter(m => m.type === 'length').length > 0) {
     const lengthRow = document.createElement('tr');
@@ -533,7 +623,12 @@ const createCoverPageSummary = (summary: any): HTMLElement => {
   areaLabel.style.borderBottom = '1px solid #eee';
   
   const areaValue = document.createElement('td');
-  areaValue.textContent = `${summary.totalArea ? summary.totalArea.toFixed(2) : '0.00'} m²`;
+  // Use net total area for the summary if there are deduction areas
+  const areaValueText = summary.deductionAreas && summary.deductionAreas > 0 ?
+    `${summary.netTotalArea ? summary.netTotalArea.toFixed(2) : '0.00'} m²` :
+    `${summary.totalArea ? summary.totalArea.toFixed(2) : '0.00'} m²`;
+  
+  areaValue.textContent = areaValueText;
   areaValue.style.textAlign = 'right';
   areaValue.style.padding = '3px 0';
   areaValue.style.borderBottom = '1px solid #eee';
@@ -541,6 +636,26 @@ const createCoverPageSummary = (summary: any): HTMLElement => {
   areaRow.appendChild(areaLabel);
   areaRow.appendChild(areaValue);
   tbody.appendChild(areaRow);
+  
+  // Add deduction areas info if present
+  if (summary.deductionAreas && summary.deductionAreas > 0) {
+    const deductionRow = document.createElement('tr');
+    
+    const deductionLabel = document.createElement('td');
+    deductionLabel.textContent = 'Abzugsflächen';
+    deductionLabel.style.padding = '3px 0';
+    deductionLabel.style.borderBottom = '1px solid #eee';
+    
+    const deductionValue = document.createElement('td');
+    deductionValue.textContent = `${summary.deductionAreas} (${summary.totalDeductionArea.toFixed(2)} m²)`;
+    deductionValue.style.textAlign = 'right';
+    deductionValue.style.padding = '3px 0';
+    deductionValue.style.borderBottom = '1px solid #eee';
+    
+    deductionRow.appendChild(deductionLabel);
+    deductionRow.appendChild(deductionValue);
+    tbody.appendChild(deductionRow);
+  }
   
   if (summary.pvModules > 0) {
     const pvRow = document.createElement('tr');

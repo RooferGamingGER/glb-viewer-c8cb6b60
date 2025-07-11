@@ -1,4 +1,3 @@
 
-import { useToast as useToastOriginal } from "@/components/ui/toast"
-
-export { useToast } from "@/components/ui/toast"
+// This file should re-export from the hooks/use-toast file
+export { useToast } from "@/hooks/use-toast";

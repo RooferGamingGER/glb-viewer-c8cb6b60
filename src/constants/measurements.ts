@@ -3,8 +3,8 @@
 export const MIN_INCLINATION_THRESHOLD = 5.0;
 
 // Format measurement value based on measurement type
-export const formatMeasurement = (value: number, type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'pvmodule'): string => {
-  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney' || type === 'pvmodule') {
+export const formatMeasurement = (value: number, type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'pvmodule' | 'deductionarea'): string => {
+  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney' || type === 'pvmodule' || type === 'deductionarea') {
     // Format area measurements
     if (value < 0.01) {
       return `${(value * 10000).toFixed(2)} cm²`;
@@ -22,6 +22,7 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'length': 'Länge',
     'height': 'Höhe',
     'area': 'Fläche',
+    'deductionarea': 'Abzugsfläche',
     'dormer': 'Gaube',
     'chimney': 'Kamin',
     'skylight': 'Dachfenster',
@@ -39,11 +40,11 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
 // Format measurement label based on measurement type
 export const formatMeasurementLabel = (
   value: number, 
-  type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'vent' | 'hook' | 'other' | 'pvmodule' | string,
+  type: 'length' | 'height' | 'area' | 'solar' | 'skylight' | 'chimney' | 'vent' | 'hook' | 'other' | 'pvmodule' | 'deductionarea' | string,
   inclination?: number
 ): string => {
   // For area-based measurements (including specialized roof elements)
-  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney') {
+  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney' || type === 'deductionarea') {
     // Format area measurements
     if (value < 0.01) {
       return `${(value * 10000).toFixed(2)} cm²`;

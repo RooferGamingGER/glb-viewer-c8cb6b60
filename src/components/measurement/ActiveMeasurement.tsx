@@ -45,6 +45,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
               {activeMode === 'length' && "Längenmessung"}
               {activeMode === 'height' && "Höhenmessung"}
               {activeMode === 'area' && "Flächenmessung"}
+              {activeMode === 'deductionarea' && "Abzugsfläche"}
             </div>
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
               {currentPoints.length} Punkte
@@ -53,7 +54,7 @@ const ActiveMeasurement: React.FC<ActiveMeasurementProps> = ({
         </div>
 
         {/* Show the finalize button only for area measurements with 3+ points */}
-        {activeMode === 'area' && currentPoints.length >= 3 && (
+        {(activeMode === 'area' || activeMode === 'deductionarea') && currentPoints.length >= 3 && (
           <Button 
             variant="default" 
             className="w-full mb-2"

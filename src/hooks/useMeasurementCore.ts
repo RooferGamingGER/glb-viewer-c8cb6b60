@@ -667,6 +667,49 @@ export const useMeasurementCore = () => {
         return undefined;
       }
     }
+    else if (activeMode === 'deductionarea' && points.length >= 3) {
+      const validation = validatePolygon(points);
+      if (!validation.valid) {
+        toast.error(validation.message || 'Ungültiges Polygon');
+        return undefined;
+      }
+      
+      if (validation.message) {
+        toast.warning(validation.message);
+      }
+      
+      try {
+        const value = calculateArea(points);
+        const label = formatMeasurement(value, 'area');
+        const segments = generateSegments(points);
+        
+        toast.success(
+          `Abzugsfläche berechnet: ${label}`
+        );
+        
+        measurement = {
+          id: nanoid(),
+          type: 'deductionarea',
+          points: [...points],
+          value,
+          label,
+          visible: true,
+          labelVisible: allLabelsVisible,
+          unit: 'm²',
+          description: 'Abzugsfläche',
+          segments
+        };
+        
+        setMeasurements(prev => [...prev, measurement]);
+        setCurrentPoints([]);
+        currentPointsRef.current = [];
+        setActiveMode('none');
+      } catch (error) {
+        console.error("Error finalizing deduction area measurement:", error);
+        toast.error("Fehler bei der Abzugsflächen-Berechnung. Bitte versuchen Sie es mit anderen Punkten.");
+        return undefined;
+      }
+    }
     else if (activeMode === 'solar' && points.length >= 4) {
       const validation = validatePolygon(points);
       if (!validation.valid) {
@@ -734,7 +777,7 @@ export const useMeasurementCore = () => {
       currentPointsRef.current = [];
       setActiveMode('none');
     }
-    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'none'].includes(activeMode)) {
+    else if (!['length', 'height', 'area', 'solar', 'pvmodule', 'deductionarea', 'none'].includes(activeMode)) {
       const requiredPoints: Record<MeasurementMode, number> = {
         'chimney': 4,
         'skylight': 4,
@@ -751,6 +794,7 @@ export const useMeasurementCore = () => {
         'length': 2,
         'height': 2,
         'area': 3,
+        'deductionarea': 3,
         'none': 0
       };
       

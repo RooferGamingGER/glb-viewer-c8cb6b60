@@ -4,7 +4,8 @@ import * as THREE from 'three';
 export type MeasurementMode = 
   | 'length' 
   | 'height' 
-  | 'area' 
+  | 'area'
+  | 'deductionarea' // Added new deduction area type
   | 'none' 
   | 'chimney'   // Kamin
   | 'skylight'  // Dachfenster
@@ -146,6 +147,7 @@ export interface Measurement {
   description?: string;
   segments?: Segment[];
   inclination?: number;
+  color?: string;      // Add color property for visualization
   
   subType?: string;      // Additional classification within type (e.g. "Kaminausschnitt" for chimney)
   dimensions?: {         // Specific dimensions for roof elements

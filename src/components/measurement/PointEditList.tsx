@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { CircleMinus } from 'lucide-react';
@@ -15,7 +16,7 @@ const PointEditList: React.FC<PointEditListProps> = ({
   movingPointInfo
 }) => {
   // Only show for area measurements in edit mode
-  if (measurement.type !== 'area' || !measurement.editMode) {
+  if ((measurement.type !== 'area' && measurement.type !== 'deductionarea') || !measurement.editMode) {
     return null;
   }
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { FileDown, Image } from 'lucide-react';
@@ -96,6 +97,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const lengthCount = measurements.filter(m => m.type === 'length').length;
   const heightCount = measurements.filter(m => m.type === 'height').length;
   const areaCount = measurements.filter(m => m.type === 'area').length;
+  const deductionAreaCount = measurements.filter(m => m.type === 'deductionarea').length;
   const previewMeasurements = consolidatePenetrations(measurements);
   const screenshotCount = measurements.reduce((total, m) => total + (m.customScreenshots?.length || 0), 0);
 
@@ -108,10 +110,31 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     setExportProgress(10);
     try {
       const areaMeasurements = measurements.filter(m => m.type === 'area');
+      const deductionAreaMeasurements = measurements.filter(m => m.type === 'deductionarea');
       const solarMeasurements = measurements.filter(m => m.type === 'solar');
       const measurementsWithVisuals = [...measurements];
       const perspCamera = asPerspectiveCamera(camera);
       setExportProgress(20);
+      
+      // Ensure that skylight measurements have proper dimensions
+      const skylightMeasurements = measurements.filter(m => m.type === 'skylight');
+      skylightMeasurements.forEach(skylight => {
+        // If dimensions are missing, try to calculate them from the area
+        if (!skylight.dimensions || (!skylight.dimensions.width && !skylight.dimensions.height)) {
+          // Assuming a square skylight if dimensions are missing
+          const estimatedDimension = Math.sqrt(skylight.value);
+          const index = measurementsWithVisuals.findIndex(m => m.id === skylight.id);
+          if (index !== -1) {
+            measurementsWithVisuals[index] = {
+              ...measurementsWithVisuals[index],
+              dimensions: {
+                width: estimatedDimension,
+                height: estimatedDimension
+              }
+            };
+          }
+        }
+      });
       
       if (!topDownScreenshot && scene && camera && renderer) {
         const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
@@ -122,6 +145,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         (measurementsWithVisuals as any).topDownScreenshot = topDownScreenshot;
       }
       
+      // Process area measurements
       for (let i = 0; i < areaMeasurements.length; i++) {
         const measurement = areaMeasurements[i];
         if (use2DRendering) {
@@ -148,9 +172,40 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         }
-        setExportProgress(20 + Math.floor(i / areaMeasurements.length * 30));
+        setExportProgress(20 + Math.floor(i / areaMeasurements.length * 20));
+      }
+
+      // Process deduction area measurements
+      for (let i = 0; i < deductionAreaMeasurements.length; i++) {
+        const measurement = deductionAreaMeasurements[i];
+        if (use2DRendering) {
+          const polygon2D = generatePolygon2D(measurement);
+          if (polygon2D) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                polygon2D,
+                screenshot: polygon2D
+              };
+            }
+          }
+        } else if (scene && perspCamera && renderer && canvas) {
+          const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
+          if (screenshot) {
+            const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
+            if (index !== -1) {
+              measurementsWithVisuals[index] = {
+                ...measurementsWithVisuals[index],
+                screenshot
+              };
+            }
+          }
+        }
+        setExportProgress(40 + Math.floor(i / deductionAreaMeasurements.length * 10));
       }
       
+      // Process solar measurements
       for (let i = 0; i < solarMeasurements.length; i++) {
         const measurement = solarMeasurements[i];
         if (use2DRendering) {
@@ -177,9 +232,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         }
+        setExportProgress(50 + Math.floor(i / solarMeasurements.length * 10));
       }
       
-      setExportProgress(50);
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
           const width = 3000; // Increased from 2480
@@ -205,6 +260,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       
       // Add flag to skip table of contents
       (measurementsWithVisuals as any).skipTableOfContents = true;
+      
+      // Make sure the cover image is included
+      (measurementsWithVisuals as any).includeCoverImage = true;
       
       const coverData = form.getValues();
       const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
@@ -375,7 +433,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
           <TabsContent value="preview">
             <Card>
               <CardContent className="pt-4">
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-4 gap-2 mb-4">
                   <div className="bg-secondary/40 p-3 rounded-md text-center">
                     <div className="text-lg font-semibold">{lengthCount}</div>
                     <div className="text-xs">Längenmessungen</div>
@@ -387,6 +445,10 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                   <div className="bg-secondary/40 p-3 rounded-md text-center">
                     <div className="text-lg font-semibold">{areaCount}</div>
                     <div className="text-xs">Flächenmessungen</div>
+                  </div>
+                  <div className="bg-secondary/40 p-3 rounded-md text-center">
+                    <div className="text-lg font-semibold">{deductionAreaCount}</div>
+                    <div className="text-xs">Abzugsflächen</div>
                   </div>
                 </div>
                 

@@ -32,13 +32,19 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
   // Exit early if no measurement tool is active
   if (activeMode === 'none') return null;
   
-  // For roof elements and penetrations, don't render anything here
-  // This prevents duplicate UI for roof elements like 'solar'
-  if (!['length', 'height', 'area'].includes(activeMode)) {
+  // Only render for standard measurements and deduction areas
+  // This component handles 'length', 'height', 'area', and 'deductionarea'
+  if (!['length', 'height', 'area', 'deductionarea'].includes(activeMode)) {
     return null;
   }
   
-  // Standard measurement controls for length, height, area
+  // Check if the current mode is an area type (area or deductionarea)
+  const isAreaType = activeMode === 'area' || activeMode === 'deductionarea';
+  
+  // Minimum points required based on measurement type
+  const minPointsRequired = isAreaType ? 3 : 2;
+  
+  // Standard measurement controls for length, height, area, deductionarea
   return (
     <div className="p-3">
       <div className={`p-2 border border-primary/30 rounded-md bg-primary/5 ${isMobile ? 'mb-2' : 'mb-4'}`}>
@@ -46,60 +52,56 @@ const MeasurementControls: React.FC<MeasurementControlsProps> = ({
           {activeMode === 'length' && "Längenmessung aktiv"}
           {activeMode === 'height' && "Höhenmessung aktiv"}
           {activeMode === 'area' && "Flächenmessung aktiv"}
+          {activeMode === 'deductionarea' && "Abzugsfläche aktiv"}
           <span className="text-xs text-muted-foreground ml-2">
-            ({currentPoints.length} Punkte)
+            ({currentPoints.length} {isAreaType && `/ ${minPointsRequired}+`} Punkte)
           </span>
         </div>
         
         <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'space-x-1'} mb-1`}>
-          {(activeMode === 'area' || activeMode === 'length' || activeMode === 'height') && (
-            <>
-              <Button
-                variant="default" 
-                size={isMobile ? "sm" : "sm"} // Changed size to sm for mobile to save space
-                className={isMobile ? "w-full" : "flex-1"}
-                onClick={handleFinalizeMeasurement}
-                disabled={
-                  (activeMode === 'area' && currentPoints.length < 3) ||
-                  ((activeMode === 'length' || activeMode === 'height') && currentPoints.length < 2)
-                }
-                title="Messung abschließen"
-              >
-                <Check className="h-3 w-3 mr-1" />
-                Abschließen
-              </Button>
-              
-              <Button
-                variant="outline" 
-                size={isMobile ? "sm" : "sm"}
-                className={isMobile ? "w-full" : "flex-1"}
-                onClick={handleUndoLastPoint}
-                disabled={currentPoints.length === 0}
-                title="Letzten Punkt rückgängig machen"
-              >
-                <Undo2 className="h-3 w-3 mr-1" />
-                Rückgängig
-              </Button>
-            </>
-          )}
+          <Button
+            variant="default" 
+            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? "w-full" : "flex-1"}
+            onClick={handleFinalizeMeasurement}
+            disabled={currentPoints.length < minPointsRequired}
+            title="Messung abschließen"
+          >
+            <Check className="h-3 w-3 mr-1" />
+            Abschließen
+          </Button>
           
           <Button
             variant="outline" 
             size={isMobile ? "sm" : "sm"}
-            className={isMobile ? "w-full" : activeMode === 'area' ? "w-9" : "flex-1"}
+            className={isMobile ? "w-full" : "flex-1"}
+            onClick={handleUndoLastPoint}
+            disabled={currentPoints.length === 0}
+            title="Letzten Punkt rückgängig machen"
+          >
+            <Undo2 className="h-3 w-3 mr-1" />
+            Rückgängig
+          </Button>
+          
+          <Button
+            variant="outline" 
+            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? "w-full" : isAreaType ? "w-9" : "flex-1"}
             onClick={clearCurrentPoints}
             title="Abbrechen"
           >
             <X className="h-3 w-3" />
-            {(activeMode !== 'area' || isMobile) && <span className="ml-1">Abbrechen</span>}
+            {(!isAreaType || isMobile) && <span className="ml-1">Abbrechen</span>}
           </Button>
         </div>
         
-        {activeMode === 'area' && (
+        {isAreaType && (
           <div className="flex items-start mt-2 text-xs text-muted-foreground overflow-visible">
             <span className="whitespace-normal break-words">
-              Klicken Sie auf die Punkte, um eine Fläche zu definieren. 
-              Mindestens 3 Punkte werden benötigt.
+              {activeMode === 'deductionarea' 
+                ? "Klicken Sie auf die Punkte, um eine Abzugsfläche zu definieren. Mindestens 3 Punkte werden benötigt."
+                : "Klicken Sie auf die Punkte, um eine Fläche zu definieren. Mindestens 3 Punkte werden benötigt."
+              }
             </span>
           </div>
         )}

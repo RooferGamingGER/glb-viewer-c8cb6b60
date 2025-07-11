@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import * as THREE from 'three';
 import { Measurement } from '@/types/measurements';
@@ -80,11 +79,8 @@ export const useVisibilityManager = (
     const measurement = measurements.find(m => m.id === id);
     if (measurement && (measurement.type === 'pvmodule' || measurement.type === 'solar')) {
       const newState = measurement.visible === false ? 'visible' : 'hidden';
-      toast({
-        title: `PV Module ${newState}`,
-        description: `The PV module area is now ${newState}`,
-        duration: 2000,
-      });
+      // Use toast as a simple function call with the message string
+      toast(`The PV module area is now ${newState}`);
     }
   }, [toggleMeasurementVisibility, measurements]);
 

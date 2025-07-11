@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
+import { Progress } from "@/components/ui/progress";
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -17,11 +18,21 @@ type ModelViewerProps = {
 };
 
 function Loader3D() {
-  const { progress } = useProgress();
+  const { progress, errors } = useProgress();
+  
+  // Show error if any
+  useEffect(() => {
+    if (errors.length > 0) {
+      console.error("Loading errors:", errors);
+      toast.error(`Fehler beim Laden: ${errors[0]}`);
+    }
+  }, [errors]);
+  
   return <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
         <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
-        <div className="text-sm font-medium">{progress.toFixed(0)}% geladen</div>
+        <div className="text-sm font-medium mb-2">{progress.toFixed(0)}% geladen</div>
+        <Progress value={progress} className="w-48" />
       </div>
     </Html>;
 }
@@ -36,8 +47,46 @@ function Model({
 }) {
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     console.error("Error loading model:", error);
-    toast.error(`Fehler beim Laden des Modells: ${error.toString()}`);
+    
+    // Convert error to more readable format
+    let errorMessage = "Unbekannter Fehler";
+    try {
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Extract useful info from complex error objects
+        const errorInfo = {
+          message: (error as any).message || "Kein Fehlertext verfügbar",
+          type: error.constructor?.name || typeof error,
+          details: {}
+        };
+        
+        // Try to extract more details from error object
+        for (const key in error) {
+          if (typeof (error as any)[key] !== 'function' && key !== 'manager') {
+            (errorInfo.details as any)[key] = String((error as any)[key]);
+          }
+        }
+        
+        errorMessage = `${errorInfo.message || "Fehler beim Laden des 3D-Modells"}. 
+          Typ: ${errorInfo.type}`;
+          
+        if (Object.keys(errorInfo.details).length > 0) {
+          const detailsStr = JSON.stringify(errorInfo.details).slice(0, 100);
+          console.log("Error details:", errorInfo.details);
+          errorMessage += ` (Details: ${detailsStr}...)`;
+        }
+      } else {
+        errorMessage = String(error);
+      }
+    } catch (e) {
+      errorMessage = "Fehler beim Parsen der Fehlermeldung";
+      console.error("Error parsing error:", e);
+    }
+    
+    toast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
   });
+  
   const modelRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const isMobile = useIsMobile();
@@ -53,18 +102,24 @@ function Model({
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
+      
+      // Check if camera is PerspectiveCamera before accessing fov property
       if (camera instanceof THREE.PerspectiveCamera) {
-        const fov = camera.fov * (Math.PI / 180);
+        // Use type assertion after the check to make TypeScript happy
+        const perspectiveCamera = camera as THREE.PerspectiveCamera;
+        const fov = perspectiveCamera.fov * (Math.PI / 180);
         let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
         cameraZ = Math.max(cameraZ, 1.0);
         const mobileFactor = isMobile ? 1.2 : 1.0;
         camera.position.set(center.x, center.y + cameraZ * 0.15 * mobileFactor, center.z + cameraZ * mobileFactor);
         camera.lookAt(center);
       } else {
+        // Handle OrthographicCamera or other camera types
         const distance = maxDim * (isMobile ? 1.2 : 1.0);
         camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
         camera.lookAt(center);
       }
+      
       modelRef.current.position.x = -center.x;
       modelRef.current.position.y = -center.y;
       modelRef.current.position.z = -center.z;
@@ -96,14 +151,15 @@ function SceneSetup({
 }: {
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
 }) {
-  const { scene, camera, gl, get } = useThree();
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-
+  const { scene, camera, gl } = useThree();
+  
   useEffect(() => {
-    canvasRef.current = gl.domElement;
-    
-    if (scene && camera && gl && canvasRef.current) {
-      scene.traverse(obj => {
+    // Type casting scene to THREE.Scene to fix the error
+    if (scene && camera && gl) {
+      // Fix: Ensure scene is properly typed as THREE.Scene for compatibility with exportModelWithMeasurements
+      const threeScene = scene as THREE.Scene;
+      
+      threeScene.traverse(obj => {
         if (obj instanceof THREE.Group) {
           if (obj.name === '') {
             obj.name = "unnamed_group";
@@ -111,7 +167,7 @@ function SceneSetup({
         }
       });
       
-      onSceneReady(scene, camera, gl, canvasRef.current);
+      onSceneReady(threeScene, camera, gl, gl.domElement);
     }
   }, [scene, camera, gl, onSceneReady]);
 
@@ -131,6 +187,12 @@ const ModelCanvas = ({
 }) => {
   const isMobile = useIsMobile();
   
+  // Configure loader options - this helps with the draco loader configuration
+  useEffect(() => {
+    // Pre-configure GLTF loaders
+    useGLTF.preload(fileUrl, undefined, undefined, undefined);
+  }, [fileUrl]);
+  
   return <Canvas shadows style={{
     background: '#222222',
     position: 'absolute', 
@@ -140,7 +202,21 @@ const ModelCanvas = ({
     height: '100%',
     zIndex: 1,
     touchAction: 'none'
-  }} className="w-full h-full" ref={canvasRef}>
+  }} className="w-full h-full" ref={canvasRef}
+    onCreated={({ gl }) => {
+      // Configure WebGL for better performance with large models
+      gl.outputColorSpace = THREE.SRGBColorSpace;
+      gl.toneMapping = THREE.ACESFilmicToneMapping;
+      gl.toneMappingExposure = 1;
+      
+      // Add event listener for WebGL context lost
+      gl.domElement.addEventListener('webglcontextlost', (event) => {
+        event.preventDefault();
+        console.error('WebGL context lost');
+        toast.error('WebGL-Kontext verloren. Bitte laden Sie die Seite neu.');
+      });
+    }}
+  >
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />

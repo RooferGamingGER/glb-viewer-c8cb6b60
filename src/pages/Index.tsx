@@ -1,10 +1,18 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+
 const Index = () => {
   const navigate = useNavigate();
+  
+  const handleDemoClick = () => {
+    // Navigate directly to the test page without opening file dialog
+    navigate('/test');
+  };
+  
   return <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
@@ -30,7 +38,12 @@ const Index = () => {
          </p>
           
           <div className="mt-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/test')} className="animate-fade-in">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDemoClick} 
+              className="animate-fade-in"
+            >
               Demo-Modell ansehen
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -149,4 +162,5 @@ const Index = () => {
       </div>
     </div>;
 };
+
 export default Index;

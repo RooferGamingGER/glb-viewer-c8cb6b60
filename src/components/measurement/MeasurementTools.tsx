@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 
@@ -8,6 +9,7 @@ import { useVisibilityManager } from '@/hooks/useVisibilityManager';
 import { useMeasurementInteractionManager } from '@/hooks/useMeasurementInteractionManager';
 import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
 // Import visualization utilities
 import { 
@@ -62,6 +64,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   autoOpenSidebar = false
 }) => {
   const isMobile = useIsMobile();
+  const { isTablet, isLandscape } = useScreenOrientation();
+  
   // Get measurement state and actions from context
   const { 
     measurements,
@@ -436,14 +440,25 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
     : false;
 
+  // Calculate sidebar width based on screen size and orientation
+  const getSidebarWidthClass = () => {
+    if (isMobile) {
+      return "w-full"; // Full width on phones
+    } else if (isTablet) {
+      return isLandscape ? "w-72" : "w-64"; // Narrower on tablets
+    } else {
+      return "w-80"; // Default desktop width
+    }
+  };
+
   // Component rendering with improved sidebar structure
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
-          className={`absolute top-0 right-0 h-full w-80 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''} ${isMobile ? 'w-full' : 'w-80'}`}
+          className={`absolute top-0 right-0 h-full glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''} ${getSidebarWidthClass()}`}
         >
-          {/* Use our new tabbed sidebar component */}
+          {/* Use our tabbed sidebar component */}
           <TabbedMeasurementSidebar
             activeMode={activeMode}
             toggleMeasurementTool={toggleMeasurementTool}

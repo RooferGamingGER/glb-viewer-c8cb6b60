@@ -5,12 +5,25 @@ import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
 import { useRequiredURLParam, useURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, X, HelpCircle } from 'lucide-react';
+import { ArrowLeft, X, HelpCircle, AlertTriangle } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
+import { validateModelFile } from '@/utils/modelTransformer';
 
 // Mapping of segment types to ensure consistency between English and German
 export const normalizeSegmentType = (type: string): string => {
@@ -48,13 +61,25 @@ const Viewer = () => {
   const { isPortrait } = useScreenOrientation();
   const [isFullscreen, setIsFullscreen] = useState(true);
   const { showTutorial, setShowTutorial } = useTutorial();
-
+  const [showWebGLWarning, setShowWebGLWarning] = useState(false);
+  const [webGLInfo, setWebGLInfo] = useState<ReturnType<typeof checkWebGLCompatibility> | null>(null);
+  
   // Get the file URL and name from the URL parameters
   const fileUrl = useRequiredURLParam('fileUrl', '/', 'Keine Datei ausgewählt');
   const fileName = useRequiredURLParam('fileName', '/', 'Unbekannte Datei');
-  // NEU: Prüfe rotateModel Parameter
+  // Check rotateModel parameter
   const rotateModelParam = useURLParam('rotateModel');
-  const rotateModel = rotateModelParam !== 'false'; // true, außer explizit "false"
+  const rotateModel = rotateModelParam !== 'false'; // true, unless explicitly "false"
+  
+  // Check WebGL compatibility on component mount
+  useEffect(() => {
+    const compatibility = checkWebGLCompatibility();
+    setWebGLInfo(compatibility);
+    
+    if (!compatibility.compatible || compatibility.warnings.length > 0) {
+      setShowWebGLWarning(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Check if the URL is a valid blob URL
@@ -122,6 +147,10 @@ const Viewer = () => {
   const handleOpenTutorial = () => {
     setShowTutorial(true);
   };
+  
+  const closeWebGLWarning = () => {
+    setShowWebGLWarning(false);
+  };
 
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
@@ -186,6 +215,53 @@ const Viewer = () => {
           </main>
         </SidebarProvider>
       </div>
+      
+      {/* WebGL Warning Dialog */}
+      <AlertDialog open={showWebGLWarning} onOpenChange={setShowWebGLWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
+              Hinweis zur 3D-Darstellung
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {webGLInfo?.compatible ? (
+                <div className="space-y-3">
+                  <p>
+                    Unsere 3D-Ansicht stellt hohe Anforderungen an die Grafikkarte, um alle Details flüssig darzustellen. Für die bestmögliche Leistung auf Ihrem System haben wir folgende Empfehlungen:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    {webGLInfo.warnings.map((warning, i) => (
+                      <li key={i}>{warning}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs mt-4 text-gray-500">
+                    Ihre Grafik-Hardware: {webGLInfo.renderer || 'Nicht erkannt'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p>
+                    Für die interaktive 3D-Ansicht wird die moderne Browser-Technologie "WebGL" benötigt. Diese scheint in Ihrem Browser nicht vollständig aktiviert zu sein.
+                  </p>
+                  <p>
+                    Dadurch kann es sein, dass die 3D-Darstellung nicht oder nur eingeschränkt funktioniert.
+                  </p>
+                  <p className="font-medium">Was Sie tun können:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li>Aktualisieren Sie Ihren Browser auf die neueste Version.</li>
+                    <li>Stellen Sie sicher, dass die Hardwarebeschleunigung in den Browser-Einstellungen aktiviert ist.</li>
+                    <li>Aktualisieren Sie den Treiber Ihrer Grafikkarte.</li>
+                  </ul>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       {/* Tutorial Overlay with showButton set to false */}
       <TutorialOverlay showButton={false} />

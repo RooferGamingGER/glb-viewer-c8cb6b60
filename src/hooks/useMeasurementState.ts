@@ -54,7 +54,7 @@ export const useMeasurementState = (
 
   // Handler for finalizing a measurement
   const handleFinalizeMeasurement = useCallback(() => {
-    if (activeMode === 'area') {
+    if (activeMode === 'area' || activeMode === 'deductionarea') {
       if (currentPoints.length < 3) {
         toast.error('Mindestens 3 Punkte für eine Flächenmessung erforderlich');
         return;

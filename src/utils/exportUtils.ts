@@ -1,3 +1,4 @@
+
 import { Measurement, Segment } from '@/types/measurements';
 import { normalizeSegmentType } from '@/pages/Viewer';
 
@@ -9,6 +10,7 @@ export const getMeasurementTypeDisplayName = (type: string): string => {
     'area': 'Fläche',
     'length': 'Länge',
     'height': 'Höhe',
+    'deductionarea': 'Abzugsfläche',
     'solar': 'Solarfläche',
     'skylight': 'Dachfenster',
     'chimney': 'Kamin',
@@ -75,7 +77,11 @@ export const getSegmentColor = (type: string): string => {
 export const formatMeasurementValue = (measurement: Measurement): string => {
   const { type, value } = measurement;
   
-  if (type === 'area' || type === 'solar' || type === 'skylight' || type === 'chimney') {
+  if (type === 'skylight' && measurement.dimensions) {
+    const width = measurement.dimensions.width?.toFixed(2) || '0.00';
+    const height = measurement.dimensions.height?.toFixed(2) || '0.00';
+    return `${width} × ${height} m (${value.toFixed(2)} m²)`;
+  } else if (type === 'area' || type === 'solar' || type === 'chimney' || type === 'deductionarea') {
     return `${value.toFixed(2)} m²`;
   } else if (type === 'length' || type === 'height') {
     return `${value.toFixed(2)} m`;
@@ -88,9 +94,26 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
  * Calculates the total area from an array of measurements
  */
 export const calculateTotalArea = (measurements: Measurement[]): number => {
-  return measurements
+  const totalRegularArea = measurements
     .filter(m => m.type === 'area')
     .reduce((sum, m) => sum + m.value, 0);
+    
+  return totalRegularArea;
+};
+
+/**
+ * Calculates the net total area (regular areas minus deduction areas)
+ */
+export const calculateNetTotalArea = (measurements: Measurement[]): number => {
+  const totalRegularArea = measurements
+    .filter(m => m.type === 'area')
+    .reduce((sum, m) => sum + m.value, 0);
+    
+  const totalDeductionArea = measurements
+    .filter(m => m.type === 'deductionarea')
+    .reduce((sum, m) => sum + m.value, 0);
+    
+  return Math.max(0, totalRegularArea - totalDeductionArea);
 };
 
 /**
@@ -184,7 +207,7 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
   const summary: Record<string, { count: number; totalArea?: number; totalLength?: number }> = {};
   
   // Area-based elements
-  ['area', 'solar', 'skylight', 'chimney'].forEach(type => {
+  ['area', 'deductionarea', 'solar', 'skylight', 'chimney'].forEach(type => {
     const elements = measurements.filter(m => m.type === type);
     if (elements.length > 0) {
       const totalArea = elements.reduce((sum, m) => sum + m.value, 0);
@@ -194,6 +217,21 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
       };
     }
   });
+  
+  // Calculate net area (regular areas - deduction areas)
+  const regularAreas = measurements.filter(m => m.type === 'area');
+  const deductionAreas = measurements.filter(m => m.type === 'deductionarea');
+  
+  if (regularAreas.length > 0 && deductionAreas.length > 0) {
+    const totalRegularArea = regularAreas.reduce((sum, m) => sum + m.value, 0);
+    const totalDeductionArea = deductionAreas.reduce((sum, m) => sum + m.value, 0);
+    const netArea = Math.max(0, totalRegularArea - totalDeductionArea);
+    
+    summary['netarea'] = {
+      count: 1,
+      totalArea: Number(netArea.toFixed(2))
+    };
+  }
   
   // Length-based elements
   ['length', 'height'].forEach(type => {

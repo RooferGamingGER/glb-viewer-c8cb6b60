@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import MeasurementItem from './MeasurementItem';
@@ -51,9 +50,9 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   }
   
   // Group measurements by category
-  // 1. Dach (standard measurements: length, height, area)
+  // 1. Dach (standard measurements: length, height, area, deductionarea)
   const dachMeasurements = measurements.filter(m => 
-    ['length', 'height', 'area'].includes(m.type)
+    ['length', 'height', 'area', 'deductionarea'].includes(m.type)
   );
   
   // 2. Solar (solar planning measurements)
@@ -73,7 +72,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
   
   // 5. Any other measurements not categorized
   const otherMeasurements = measurements.filter(m => 
-    !['length', 'height', 'area', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
+    !['length', 'height', 'area', 'deductionarea', 'solar', 'skylight', 'chimney', 'vent', 'hook', 'other'].includes(m.type)
   );
   
   const renderMeasurementGroup = (title: string, items: Measurement[], showEmpty: boolean = false) => {

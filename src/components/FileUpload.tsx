@@ -21,13 +21,11 @@ const FileUpload: React.FC = () => {
     e.stopPropagation();
     setIsDragging(true);
   }, []);
-
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }, []);
-
   const validateFile = (file: File): boolean => {
     setFileError(null);
     if (!file.name.toLowerCase().endsWith('.glb')) {
@@ -74,7 +72,6 @@ const FileUpload: React.FC = () => {
       return;
     }
     setUploading(true);
-
     const fileUrl = URL.createObjectURL(selectedFile);
     setTimeout(() => {
       setUploading(false);
@@ -95,17 +92,17 @@ const FileUpload: React.FC = () => {
       a.href = url;
       a.download = `rotated_${selectedFile.name}`;
       a.click();
-
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 500);
-
       toast.dismiss();
       toast.success('Modell wurde erfolgreich gedreht und heruntergeladen');
     } catch (error) {
       console.error('Error rotating model:', error);
       toast.dismiss();
-      toast.error('Fehler beim Drehen des Modells. Bitte versuchen Sie es erneut.');
+      // Fixed: Convert error to string to avoid [object Object] display
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      toast.error(`Fehler beim Drehen des Modells: ${errorMessage}`);
     } finally {
       setUploading(false);
     }
@@ -115,6 +112,10 @@ const FileUpload: React.FC = () => {
     if (inputRef.current) {
       inputRef.current.click();
     }
+  };
+
+  const handleSwitchClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop the click from propagating to the parent
   };
 
   return <div className="w-full animate-fade-in">
@@ -142,7 +143,7 @@ const FileUpload: React.FC = () => {
               <AlertDescription>{fileError}</AlertDescription>
             </Alert>}
 
-          <div className="flex flex-col items-center gap-2 mt-4">
+          <div className="flex flex-col items-center gap-2 mt-4" onClick={handleSwitchClick}>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
               <span className="text-sm">Modell von Drohnenvermessung by RooferGaming®?</span>
@@ -151,29 +152,12 @@ const FileUpload: React.FC = () => {
           </div>
 
           {selectedFile && <div className="mt-6 flex justify-center gap-2">
-            {rotateModel && (
-              <Button onClick={e => {
-                e.stopPropagation();
-                handleRotateAndDownload();
-              }} className="button-hover px-6 py-2" disabled={uploading}>
-                {uploading ? <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                    <span>Wird verarbeitet...</span>
-                  </div> : <>
-                    <RotateCw className="mr-2 h-4 w-4" />
-                    <span>
-                      Modell
-                      <br />
-                      für Fremdanbieter exportieren
-                    </span>
-                  </>}
-              </Button>
-            )}
+            {rotateModel}
 
             <Button onClick={e => {
-              e.stopPropagation();
-              handleUploadClick();
-            }} className="button-hover px-6 py-2" disabled={uploading}>
+            e.stopPropagation(); // Prevent triggering the clickFileInput
+            handleUploadClick();
+          }} className="button-hover px-6 py-2" disabled={uploading}>
               {uploading ? <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                   <span>Wird geladen...</span>

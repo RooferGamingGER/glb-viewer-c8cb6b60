@@ -1,4 +1,3 @@
-
 import React from 'react';
 import * as THREE from 'three';
 
@@ -353,9 +352,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     );
   };
 
-  // Check if current mode is a roof element mode
+  // Check if current mode is a roof element mode - exclude deductionarea since it should be treated like area
   const isRoofElementMode = ![
-    'length', 'height', 'area', 'none'
+    'length', 'height', 'area', 'deductionarea', 'none'
   ].includes(activeMode);
 
   // Handle label visibility toggling
@@ -400,8 +399,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               handleClearMeasurements={handleClearMeasurements}
             />
             
-            {/* Only render MeasurementControls for standard measurements */}
-            {activeMode !== 'none' && ['length', 'height', 'area'].includes(activeMode) && (
+            {/* Show MeasurementControls for standard measurements AND deductionarea */}
+            {activeMode !== 'none' && ['length', 'height', 'area', 'deductionarea'].includes(activeMode) && (
               <MeasurementControls
                 activeMode={activeMode}
                 currentPoints={currentPoints}
@@ -411,7 +410,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               />
             )}
             
-            {/* Only render RoofElementControls for roof elements */}
+            {/* Only render RoofElementControls for roof elements, excluding deductionarea */}
             {isRoofElementMode && (
               <RoofElementControls
                 activeMode={activeMode}

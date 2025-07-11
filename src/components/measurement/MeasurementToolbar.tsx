@@ -3,7 +3,8 @@ import React from 'react';
 import { 
   Ruler, 
   ArrowUpDown, 
-  Square, 
+  Square,
+  MinusSquare, // Added new icon for deduction area
   Trash2,
   Magnet,
   Eye,
@@ -65,6 +66,8 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
         toast.info('Höhenmessung ausgewählt - Platzieren Sie 2 Punkte');
       } else if (mode === 'area') {
         toast.info('Flächenmessung ausgewählt - Platzieren Sie mindestens 3 Punkte');
+      } else if (mode === 'deductionarea') {
+        toast.info('Abzugsfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
       } else {
         toast.info('Navigationsmodus aktiviert');
       }
@@ -176,6 +179,20 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                     >
                       <Square className="h-4 w-4" />
                       <span className="text-xs">Fläche</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  {/* Add new Deduction Area tool */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={activeMode === 'deductionarea'}
+                      onClick={() => selectTool('deductionarea')}
+                      tooltip={activeMode === 'deductionarea' ? "Abzugsfläche deaktivieren" : "Abzugsfläche messen"}
+                      disabled={!!editMeasurementId}
+                      className="bg-white shadow-sm border border-border/60 hover:bg-gray-50"
+                    >
+                      <MinusSquare className="h-4 w-4" />
+                      <span className="text-xs">Abzugsfläche</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </div>

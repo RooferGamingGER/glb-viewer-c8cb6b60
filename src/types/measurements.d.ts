@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -29,6 +28,7 @@ export interface Measurement {
   labelVisible?: boolean;
   powerOutput?: number;
   pvModuleInfo?: PVModuleInfo;
+  color?: string;  // Added color property for visualization
 }
 
 export type MeasurementMode = 'length' | 'height' | 'area' | 'pvmodule' | 'ridge' | 'eave' | 'verge' | 'solar' | 'none' | 'chimney' | 'skylight' | 'vent' | 'hook' | 'other';

@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import * as THREE from 'three';
 import { Measurement } from '@/types/measurements';
@@ -30,11 +29,8 @@ export const useMeasurementVisibility = (
     const measurement = measurements.find(m => m.id === id);
     if (measurement && (measurement.type === 'pvmodule' || measurement.type === 'solar')) {
       const newState = measurement.visible === false ? 'visible' : 'hidden';
-      toast({
-        title: `PV Module ${newState}`,
-        description: `The PV module area is now ${newState}`,
-        duration: 2000,
-      });
+      // Use toast as a simple function call with the message string
+      toast(`The PV module area is now ${newState}`);
     }
   }, [toggleMeasurementVisibility, measurements]);
 
@@ -116,6 +112,27 @@ export const useMeasurementVisibility = (
       const measurement = measurements.find(m => m.id === mesh.userData.measurementId);
       if (measurement) {
         mesh.visible = measurement.visible !== false;
+        
+        // Special handling for deduction areas - display in red
+        if (measurement.type === 'deductionarea' && mesh instanceof THREE.Mesh) {
+          const material = mesh.material as THREE.MeshBasicMaterial;
+          if (material) {
+            material.color.set(0xea384c); // Red color
+            material.opacity = 0.7;
+            material.transparent = true;
+            material.side = THREE.DoubleSide;
+            material.needsUpdate = true;
+          }
+          
+          // Apply red color to all line segments for deduction areas
+          mesh.children.forEach(child => {
+            if (child instanceof THREE.Line && child.material instanceof THREE.LineBasicMaterial) {
+              child.material.color.set(0xea384c); // Red color
+              child.material.linewidth = 2;
+              child.material.needsUpdate = true;
+            }
+          });
+        }
         
         // Special handling for PV modules and solar areas
         if ((measurement.type === 'pvmodule' || measurement.type === 'solar') && mesh instanceof THREE.Mesh) {

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -33,7 +32,9 @@ const RoofElementControls: React.FC<RoofElementControlsProps> = ({
   handleUndoLastPoint,
   clearCurrentPoints
 }) => {
-  if (!activeMode || activeMode === 'none' || ['length', 'height', 'area'].includes(activeMode)) {
+  // Don't render for standard measurement tools, area tools, or when no tool is active
+  // Important: 'area' and 'deductionarea' are handled by MeasurementControls.tsx
+  if (!activeMode || activeMode === 'none' || ['length', 'height', 'area', 'deductionarea'].includes(activeMode)) {
     return null;
   }
   

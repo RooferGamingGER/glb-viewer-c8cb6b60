@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { MeasurementMode, Measurement, Point, Segment, PVMaterials } from '@/types/measurements';
 import { useMeasurements } from '@/hooks/useMeasurements';
@@ -86,6 +85,7 @@ export const getMeasurementTypeDisplayName = (type: MeasurementMode | ExtendedMe
     'length': 'Länge',
     'height': 'Höhe',
     'area': 'Fläche',
+    'deductionarea': 'Abzugsfläche', // Added new deduction area display name
     'chimney': 'Kamin',
     'skylight': 'Dachfenster',
     'solar': 'Solaranlage',
@@ -120,7 +120,7 @@ export const isRoofEdge = (type: MeasurementMode | ExtendedMeasurementMode): boo
 
 // Helper function to check if a measurement is a standard measurement
 export const isStandardMeasurement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['length', 'height', 'area'].includes(type as string);
+  return ['length', 'height', 'area', 'deductionarea'].includes(type as string); // Added deductionarea
 };
 
 // Helper function to check if a measurement is a point-based element
@@ -135,7 +135,7 @@ export const isQuadrilateralElement = (type: MeasurementMode | ExtendedMeasureme
 
 // Helper function to check if a measurement is an area-based element
 export const isAreaElement = (type: MeasurementMode | ExtendedMeasurementMode): boolean => {
-  return ['area', 'solar'].includes(type as string);
+  return ['area', 'solar', 'deductionarea'].includes(type as string); // Added deductionarea
 };
 
 // Helper function to check if a measurement is a line-based element
@@ -168,6 +168,7 @@ export const getMeasurementTypeColor = (type: MeasurementMode | ExtendedMeasurem
     'length': '#3b82f6', // blue-500
     'height': '#10b981', // emerald-500
     'area': '#8b5cf6', // violet-500
+    'deductionarea': '#F97316', // orange-500 - distinct color for deduction areas
     'chimney': '#ef4444', // red-500
     'skylight': '#f59e0b', // amber-500
     'solar': '#06b6d4', // cyan-500
