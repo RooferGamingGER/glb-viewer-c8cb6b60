@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement } from '@/types/measurements';
-import { exportModelWithMeasurements } from '@/utils/modelTransformer';
+import { exportModelOnlyForEturnity } from '@/utils/modelTransformer';
 import { useThreeContext } from '@/hooks/useThreeContext';
 import { Progress } from '@/components/ui/progress';
 
@@ -31,19 +31,15 @@ const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({
       setExporting(true);
       setProgress(10);
 
-      // Filter out invisible measurements (if any exist)
-      const visibleMeasurements = measurements.filter(m => m.visible);
-      
       // Generate timestamped filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const exportFileName = fileName.replace('.glb', '') + '_' + timestamp + '.glb';
       
       setProgress(30);
       
-      // Export the model with measurements (empty array if no measurements)
-      await exportModelWithMeasurements(
+      // Export only the optimized base model (no measurements for smaller file size)
+      await exportModelOnlyForEturnity(
         scene,
-        visibleMeasurements,
         exportFileName,
         (exportProgress) => {
           // Map export progress to 30-90% of our total progress
