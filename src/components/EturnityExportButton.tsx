@@ -24,15 +24,8 @@ const EturnityExportButton: React.FC<EturnityExportButtonProps> = ({
   const [progress, setProgress] = useState(0);
 
   const handleExport = async () => {
-    // Wait for scene to be available
     if (!scene) {
-      toast.error('3D-Szene wird noch geladen. Bitte warten Sie einen Moment.');
-      return;
-    }
-
-    // Additional check to ensure scene has actual content
-    if (scene.children.length === 0) {
-      toast.error('Das 3D-Modell wird noch geladen. Bitte warten Sie einen Moment.');
+      toast.error('Keine 3D-Szene verfügbar');
       return;
     }
 
@@ -76,7 +69,7 @@ const EturnityExportButton: React.FC<EturnityExportButtonProps> = ({
         size={size}
         className={`eturnity-button ${className}`}
         onClick={handleExport}
-        disabled={exporting || !scene || (scene && scene.children.length === 0)}
+        disabled={exporting || !scene}
         style={{
           background: exporting 
             ? 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)))'
@@ -88,7 +81,7 @@ const EturnityExportButton: React.FC<EturnityExportButtonProps> = ({
         }}
       >
         <Download className="h-4 w-4 mr-2" />
-        {exporting ? `Export läuft... ${progress}%` : (!scene || scene.children.length === 0) ? 'Modell wird geladen...' : 'Export für Eturnity'}
+        {exporting ? `Export läuft... ${progress}%` : 'Export für Eturnity'}
       </Button>
       
       {exporting && (
