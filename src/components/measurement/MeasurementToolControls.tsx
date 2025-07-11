@@ -286,7 +286,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 <ExportPdfButton measurements={measurements} />
                 
                 {/* Add our new Eturnity Export button */}
-               {/*<ExportEturnityButton measurements={measurements} />*/}
+               <ExportEturnityButton measurements={measurements} />
               </div>
             )}
             
