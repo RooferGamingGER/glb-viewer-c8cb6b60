@@ -14,6 +14,7 @@ import { toast } from '@/components/ui/use-toast';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
+import EturnityExportButton from '@/components/EturnityExportButton';
 
 const Test = () => {
   const navigate = useNavigate();
@@ -68,6 +69,12 @@ const Test = () => {
         </div>
         
         <div className="flex gap-2">
+          <EturnityExportButton 
+            size="sm"
+            variant="outline"
+            className="glass-button"
+          />
+          
           <Button
             variant="outline" 
             size="sm" 
