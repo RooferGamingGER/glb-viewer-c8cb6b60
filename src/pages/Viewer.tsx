@@ -11,7 +11,6 @@ import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
-import EturnityExportButton from '@/components/EturnityExportButton';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
 import { 
   AlertDialog,
@@ -179,12 +178,6 @@ const Viewer = () => {
         </div>
         
         <div className="flex gap-2">
-          <EturnityExportButton 
-            size="sm"
-            variant="outline"
-            className="glass-button"
-          />
-          
           <Button 
             variant="outline"
             size="sm"
