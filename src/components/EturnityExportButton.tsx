@@ -69,7 +69,7 @@ const EturnityExportButton: React.FC<EturnityExportButtonProps> = ({
         size={size}
         className={`eturnity-button ${className}`}
         onClick={handleExport}
-        disabled={exporting || !scene}
+        disabled={exporting}
         style={{
           background: exporting 
             ? 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)))'
