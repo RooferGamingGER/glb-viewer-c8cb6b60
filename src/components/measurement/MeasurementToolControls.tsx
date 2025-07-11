@@ -28,7 +28,7 @@ import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
-import ExportEturnityButton from './ExportEturnityButton'; // Import our new component
+
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -284,9 +284,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 
                 {/* PDF Export button */}
                 <ExportPdfButton measurements={measurements} />
-                
-                {/* Add our new Eturnity Export button */}
-               <ExportEturnityButton measurements={measurements} />
               </div>
             )}
             

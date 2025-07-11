@@ -12,6 +12,7 @@ import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
+import EturnityExportButton from '@/components/EturnityExportButton';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -178,6 +179,8 @@ const Viewer = () => {
         </div>
         
         <div className="flex gap-2">
+          <EturnityExportButton fileName={fileName} />
+          
           <Button 
             variant="outline"
             size="sm"
