@@ -12,9 +12,6 @@ import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
-import EturnityExportButton from '@/components/EturnityExportButton';
-import { SceneProvider, useScene } from '@/components/SceneProvider';
-import ViewerWrapper from '@/components/ViewerWrapper';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -73,143 +70,6 @@ const Viewer = () => {
   // Check rotateModel parameter
   const rotateModelParam = useURLParam('rotateModel');
   const rotateModel = rotateModelParam !== 'false'; // true, unless explicitly "false"
-
-  // Scene context for export button
-  const SceneAwareViewer = () => {
-    const { scene } = useScene();
-
-    const handleOpenTutorial = () => {
-      setShowTutorial(true);
-    };
-    
-    // Exit fullscreen function
-    const exitFullscreen = () => {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(err => {
-          console.error("Error attempting to exit fullscreen:", err);
-        });
-      }
-    };
-
-    return (
-      <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
-        {isPortrait && <OrientationWarning />}
-        
-        <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
-          <div className="flex items-center">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="glass-button"
-              onClick={() => {
-                // Ensure we cleanup the blob URL when navigating away
-                if (fileUrl.startsWith('blob:')) {
-                  URL.revokeObjectURL(fileUrl);
-                }
-                navigate('/');
-              }}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Zurück
-            </Button>
-            
-            <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
-          </div>
-          
-          <div className="flex gap-2">
-            <EturnityExportButton fileName={fileName} scene={scene} />
-            
-            <Button 
-              variant="outline"
-              size="sm"
-              className="glass-button"
-              onClick={handleOpenTutorial}
-            >
-              <HelpCircle className="h-4 w-4 mr-2" />
-              Tutorial
-            </Button>
-
-            {isFullscreen && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="glass-button"
-                onClick={exitFullscreen}
-                title="Vollbildmodus beenden"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </header>
-        
-        <div className="flex-1 relative flex overflow-hidden">
-          <SidebarProvider defaultOpen={true} open={true}>
-            <main className="flex-1 relative w-full h-full">
-              {fileUrl && (
-                <ViewerWrapper 
-                  fileUrl={fileUrl} 
-                  fileName={fileName} 
-                  rotateModel={rotateModel}
-                />
-              )}
-            </main>
-          </SidebarProvider>
-        </div>
-        
-        {/* WebGL Warning Dialog */}
-        <AlertDialog open={showWebGLWarning} onOpenChange={setShowWebGLWarning}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center">
-                <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
-                Hinweis zur 3D-Darstellung
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {webGLInfo?.compatible ? (
-                  <div className="space-y-3">
-                    <p>
-                      Unsere 3D-Ansicht stellt hohe Anforderungen an die Grafikkarte, um alle Details flüssig darzustellen. Für die bestmögliche Leistung auf Ihrem System haben wir folgende Empfehlungen:
-                    </p>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                      {webGLInfo.warnings.map((warning, i) => (
-                        <li key={i}>{warning}</li>
-                      ))}
-                    </ul>
-                    <p className="text-xs mt-4 text-gray-500">
-                      Ihre Grafik-Hardware: {webGLInfo.renderer || 'Nicht erkannt'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p>
-                      Für die interaktive 3D-Ansicht wird die moderne Browser-Technologie "WebGL" benötigt. Diese scheint in Ihrem Browser nicht vollständig aktiviert zu sein.
-                    </p>
-                    <p>
-                      Dadurch kann es sein, dass die 3D-Darstellung nicht oder nur eingeschränkt funktioniert.
-                    </p>
-                    <p className="font-medium">Was Sie tun können:</p>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                      <li>Aktualisieren Sie Ihren Browser auf die neueste Version.</li>
-                      <li>Stellen Sie sicher, dass die Hardwarebeschleunigung in den Browser-Einstellungen aktiviert ist.</li>
-                      <li>Aktualisieren Sie den Treiber Ihrer Grafikkarte.</li>
-                    </ul>
-                  </div>
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        
-        {/* Tutorial Overlay with showButton set to false */}
-        <TutorialOverlay showButton={false} />
-      </div>
-    );
-  };
-  
   
   // Check WebGL compatibility on component mount
   useEffect(() => {
@@ -275,14 +135,137 @@ const Viewer = () => {
     };
   }, []);
   
+  // Exit fullscreen function
+  const exitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch(err => {
+        console.error("Error attempting to exit fullscreen:", err);
+      });
+    }
+  };
+
+  const handleOpenTutorial = () => {
+    setShowTutorial(true);
+  };
+  
   const closeWebGLWarning = () => {
     setShowWebGLWarning(false);
   };
 
   return (
-    <SceneProvider>
-      <SceneAwareViewer />
-    </SceneProvider>
+    <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
+      {isPortrait && <OrientationWarning />}
+      
+      <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
+        <div className="flex items-center">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="glass-button"
+            onClick={() => {
+              // Ensure we cleanup the blob URL when navigating away
+              if (fileUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(fileUrl);
+              }
+              navigate('/');
+            }}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Zurück
+          </Button>
+          
+          <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            size="sm"
+            className="glass-button"
+            onClick={handleOpenTutorial}
+          >
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Tutorial
+          </Button>
+
+          {isFullscreen && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="glass-button"
+              onClick={exitFullscreen}
+              title="Vollbildmodus beenden"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </header>
+      
+      <div className="flex-1 relative flex overflow-hidden">
+        <SidebarProvider defaultOpen={true} open={true}>
+          <main className="flex-1 relative w-full h-full">
+            {fileUrl && (
+              <ModelViewer 
+                fileUrl={fileUrl} 
+                fileName={fileName} 
+                rotateModel={rotateModel}
+              />
+            )}
+          </main>
+        </SidebarProvider>
+      </div>
+      
+      {/* WebGL Warning Dialog */}
+      <AlertDialog open={showWebGLWarning} onOpenChange={setShowWebGLWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
+              Hinweis zur 3D-Darstellung
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {webGLInfo?.compatible ? (
+                <div className="space-y-3">
+                  <p>
+                    Unsere 3D-Ansicht stellt hohe Anforderungen an die Grafikkarte, um alle Details flüssig darzustellen. Für die bestmögliche Leistung auf Ihrem System haben wir folgende Empfehlungen:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    {webGLInfo.warnings.map((warning, i) => (
+                      <li key={i}>{warning}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs mt-4 text-gray-500">
+                    Ihre Grafik-Hardware: {webGLInfo.renderer || 'Nicht erkannt'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p>
+                    Für die interaktive 3D-Ansicht wird die moderne Browser-Technologie "WebGL" benötigt. Diese scheint in Ihrem Browser nicht vollständig aktiviert zu sein.
+                  </p>
+                  <p>
+                    Dadurch kann es sein, dass die 3D-Darstellung nicht oder nur eingeschränkt funktioniert.
+                  </p>
+                  <p className="font-medium">Was Sie tun können:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li>Aktualisieren Sie Ihren Browser auf die neueste Version.</li>
+                    <li>Stellen Sie sicher, dass die Hardwarebeschleunigung in den Browser-Einstellungen aktiviert ist.</li>
+                    <li>Aktualisieren Sie den Treiber Ihrer Grafikkarte.</li>
+                  </ul>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Tutorial Overlay with showButton set to false */}
+      <TutorialOverlay showButton={false} />
+    </div>
   );
 };
 
