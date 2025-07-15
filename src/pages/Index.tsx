@@ -90,7 +90,7 @@ const Index = () => {
 
         <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2 flex-grow overflow-hidden">
           {/* Swapped the order: Upload panel first (left side), features grid second (right side) */}
-          <div className="glass-panel p-5 md:p-6 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300 order-1 lg:order-1">
+          <div className="glass-panel p-5 md:p-6 rounded-lg flex flex-col justify-start items-center backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300 order-1 lg:order-1">
             <div className="w-full max-w-md mx-auto space-y-6">
               <div>
                 <h2 className="text-xl font-bold mb-5 text-center">Modell hochladen</h2>
