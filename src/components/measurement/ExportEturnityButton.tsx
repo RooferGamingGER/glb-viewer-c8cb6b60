@@ -37,7 +37,7 @@ const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({
       
       setProgress(30);
       
-      // Export ONLY the model without measurements for optimal file size
+      // Export only the optimized base model (no measurements for smaller file size)
       await exportModelOnlyForEturnity(
         scene,
         exportFileName,
