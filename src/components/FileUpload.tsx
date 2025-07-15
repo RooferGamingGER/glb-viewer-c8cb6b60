@@ -146,7 +146,9 @@ const FileUpload: React.FC = () => {
           <div className="flex flex-col items-center gap-2 mt-4" onClick={handleSwitchClick}>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
-              <span className="text-sm">Modell von Drohnenvermessung by RooferGaming®?</span>
+              <span className="text-sm">
+                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®?" : "Fremdanbieter"}
+              </span>
             </label>
             <span className="text-xs text-muted-foreground">Möchten Sie eine GLB-Datei von einem anderen Anbieter verwenden, dann deaktivieren Sie den Button darüber. </span>
           </div>
