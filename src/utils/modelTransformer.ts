@@ -264,32 +264,19 @@ export const exportModelOnlyForEturnity = (
       
       onProgress?.(25);
       
-      // Aggressive geometry optimization
-      optimizeGeometryForMaximumCompression(modelClone);
-      
-      onProgress?.(35);
-      
-      // Compress textures to reduce file size
-      compressTexturesForEturnity(modelClone);
-      
-      onProgress?.(45);
-      
-      // Export with maximum compression
+      // Export with original quality - only rotate as needed
       const exporter = new GLTFExporter();
       
-      // Minimal export options focused on file size reduction
+      // Standard export options - maintain original quality
       const exportOptions = {
         binary: true,
-        // Note: GLTFExporter may not support all DRACO options as expected
-        // We'll use the most reliable compression settings
         onlyExportVisible: true,
-        includeCustomExtensions: false,
-        truncateDrawRange: true,
-        embedImages: false,  // Don't embed to allow texture compression
-        maxTextureSize: 256  // Aggressive texture compression
+        includeCustomExtensions: true,
+        truncateDrawRange: false,
+        embedImages: true  // Keep original image quality
       };
       
-      onProgress?.(55);
+      onProgress?.(50);
       
       exporter.parse(
         exportScene,
