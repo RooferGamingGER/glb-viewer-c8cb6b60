@@ -58,6 +58,7 @@ interface MeasurementToolControlsProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   showMeasurementList?: boolean;
+  rotateModel?: boolean;
 }
 
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
@@ -84,7 +85,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   setShowTable,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  showMeasurementList = true
+  showMeasurementList = true,
+  rotateModel
 }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("tools"); // Changed from "measurements" to "tools"
@@ -149,7 +151,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       <div className="p-3 flex flex-col h-full">
         {/* Eturnity Export Button - Always visible */}
         <div className="mb-3">
-          <ExportEturnityButton measurements={measurements} />
+          <ExportEturnityButton measurements={measurements} rotateModel={rotateModel} />
         </div>
         
         <div className="flex items-center justify-between mb-2">

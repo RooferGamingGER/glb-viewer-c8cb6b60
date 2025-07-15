@@ -231,7 +231,8 @@ export const exportModelWithMeasurements = (
 export const exportModelOnlyForEturnity = (
   modelScene: THREE.Scene | THREE.Group,
   fileName: string = 'eturnity-export.glb',
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  rotateModel: boolean = true
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
@@ -252,8 +253,11 @@ export const exportModelOnlyForEturnity = (
       // Clone the pure model to avoid modifying the original
       const modelClone = pureModel.clone(true);
       
-      // Apply ONLY 90-degree rotation around X-axis for Eturnity format
-      modelClone.rotation.x = -Math.PI / 2;
+      // Apply rotation for Eturnity format only if rotateModel is false
+      // (if rotateModel is true, the model is already rotated in the viewer)
+      if (!rotateModel) {
+        modelClone.rotation.x = -Math.PI / 2;
+      }
       modelClone.updateMatrixWorld(true);
       
       exportScene.add(modelClone);

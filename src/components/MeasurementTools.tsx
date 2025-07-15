@@ -30,13 +30,15 @@ interface MeasurementToolsProps {
   scene: THREE.Scene;
   camera: THREE.Camera;
   autoOpenSidebar?: boolean;
+  rotateModel?: boolean;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
   camera,
-  autoOpenSidebar = false
+  autoOpenSidebar = false,
+  rotateModel
 }) => {
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
@@ -397,6 +399,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               handleMoveMeasurementUp={handleMoveMeasurementUp}
               handleMoveMeasurementDown={handleMoveMeasurementDown}
               handleClearMeasurements={handleClearMeasurements}
+              rotateModel={rotateModel}
             />
             
             {/* Show MeasurementControls for standard measurements AND deductionarea */}

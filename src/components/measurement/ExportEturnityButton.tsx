@@ -11,11 +11,13 @@ import { Progress } from '@/components/ui/progress';
 interface ExportEturnityButtonProps {
   measurements?: Measurement[];
   fileName?: string;
+  rotateModel?: boolean;
 }
 
 const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({ 
   measurements = [],
-  fileName = 'eturnity-export.glb' 
+  fileName = 'eturnity-export.glb',
+  rotateModel = true
 }) => {
   const { scene } = useThreeContext();
   const [exporting, setExporting] = useState(false);
@@ -44,7 +46,8 @@ const ExportEturnityButton: React.FC<ExportEturnityButtonProps> = ({
         (exportProgress) => {
           // Map export progress to 30-90% of our total progress
           setProgress(30 + Math.round(exportProgress * 0.6));
-        }
+        },
+        rotateModel
       );
       
       setProgress(100);
