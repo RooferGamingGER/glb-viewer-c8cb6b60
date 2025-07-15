@@ -28,7 +28,7 @@ import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
-
+import ExportEturnityButton from './ExportEturnityButton'; // Import our new component
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -147,6 +147,10 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-3 flex flex-col h-full">
+        {/* Eturnity Export Button - Always visible */}
+        <div className="mb-3">
+          <ExportEturnityButton measurements={measurements} />
+        </div>
         
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-medium">Messwerkzeuge</h3>
