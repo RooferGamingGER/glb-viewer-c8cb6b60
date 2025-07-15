@@ -235,32 +235,54 @@ export const exportModelOnlyForEturnity = (
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
-      // Create a new scene for the export
-      const exportScene = new THREE.Scene();
-      
-      // Clone only the base model without any measurement objects
-      const modelClone = filterAndCloneBaseModel(modelScene);
-      exportScene.add(modelClone);
-      
-      // Optimize geometry before export
-      optimizeGeometryForExport(exportScene);
-      
-      // Update all matrices for correct export
-      exportScene.updateMatrixWorld(true);
-      
-      // Report initial progress
       onProgress?.(10);
       
-      // Export the scene with optimized settings for smallest file size
+      // Clone the original model and apply 90-degree rotation
+      const modelClone = modelScene.clone(true);
+      
+      // Remove all measurement-related objects from the clone
+      removeMeasurementObjects(modelClone);
+      
+      // Apply 90-degree rotation around X-axis for Eturnity format
+      modelClone.rotation.x = -Math.PI / 2;
+      modelClone.updateMatrixWorld(true);
+      
+      onProgress?.(30);
+      
+      // Configure DRACO encoder for maximum compression
+      const dracoLoader = getDracoLoader();
+      
+      // Export with maximum compression settings
       const exporter = new GLTFExporter();
+      
+      // Set up export options with DRACO compression
+      const exportOptions = {
+        binary: true,
+        draco: {
+          compressionLevel: 10,      // Maximum compression
+          quantizePosition: 11,      // Optimized for buildings
+          quantizeNormal: 8,         // Reduce normal precision
+          quantizeColor: 8,          // Reduce color precision  
+          quantizeTexcoord: 10,      // Reduce texture coordinate precision
+          quantizeGeneric: 8         // Generic attributes precision
+        },
+        includeCustomExtensions: false,
+        truncateDrawRange: true,
+        embedImages: true,           // Embed for consistency
+        maxTextureSize: 1024,        // Compress textures
+        onlyExportVisible: true      // Only export visible objects
+      };
+      
+      onProgress?.(50);
+      
       exporter.parse(
-        exportScene,
+        modelClone,
         (result) => {
           try {
             const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
             const url = URL.createObjectURL(blob);
             
-            // Trigger download if fileName is provided
+            // Trigger download
             if (fileName) {
               const link = document.createElement('a');
               link.href = url;
@@ -271,32 +293,57 @@ export const exportModelOnlyForEturnity = (
             onProgress?.(100);
             resolve(url);
           } catch (exportError) {
-            reject(new Error(`Error creating optimized Eturnity export: ${(exportError instanceof Error) ? exportError.message : String(exportError)}`));
+            reject(new Error(`Error creating Eturnity export: ${(exportError instanceof Error) ? exportError.message : String(exportError)}`));
           }
         },
         (error) => {
-          reject(new Error(`Error exporting optimized model for Eturnity: ${(error instanceof Error) ? error.message : String(error)}`));
+          reject(new Error(`Error exporting for Eturnity: ${(error instanceof Error) ? error.message : String(error)}`));
         },
-        {
-          binary: true,
-          // Maximum compression settings for Eturnity export
-          draco: {
-            compressionLevel: 10, // Maximum compression
-            quantizePosition: 12, // Reduced precision for smaller size
-            quantizeNormal: 8,    // Reduced normal precision  
-            quantizeColor: 8,     // Reduced color precision
-            quantizeTexcoord: 10, // Reduced texture coordinate precision
-            quantizeGeneric: 8    // Generic attributes precision
-          },
-          // Additional optimization options
-          includeCustomExtensions: false,
-          truncateDrawRange: true,
-          embedImages: false, // Don't embed images to reduce size
-          maxTextureSize: 1024 // Limit texture resolution
-        }
+        exportOptions
       );
     } catch (error) {
-      reject(new Error(`Error setting up optimized Eturnity export: ${(error instanceof Error) ? error.message : String(error)}`));
+      reject(new Error(`Error setting up Eturnity export: ${(error instanceof Error) ? error.message : String(error)}`));
+    }
+  });
+};
+
+// Helper function to remove measurement objects from a scene
+const removeMeasurementObjects = (object: THREE.Object3D) => {
+  const objectsToRemove: THREE.Object3D[] = [];
+  
+  object.traverse((child) => {
+    // Check if this is a measurement-related object by name patterns
+    const isMeasurement = child.name && (
+      child.name.includes('Measurement') ||
+      child.name.includes('measurement') ||
+      child.name.includes('Point_') ||
+      child.name.includes('Line_') ||
+      child.name.includes('Area_') ||
+      child.name.includes('segment') ||
+      child.name.includes('Segment') ||
+      child.name.includes('label') ||
+      child.name.includes('Label') ||
+      child.name.includes('indicator') ||
+      child.name.includes('Indicator')
+    );
+    
+    // Check if this has measurement userData
+    const hasMeasurementData = child.userData && (
+      child.userData.measurementId ||
+      child.userData.isSegment ||
+      child.userData.isMeasurement ||
+      child.userData.type === 'measurement'
+    );
+    
+    if (isMeasurement || hasMeasurementData) {
+      objectsToRemove.push(child);
+    }
+  });
+  
+  // Remove identified measurement objects
+  objectsToRemove.forEach(obj => {
+    if (obj.parent) {
+      obj.parent.remove(obj);
     }
   });
 };
