@@ -246,13 +246,18 @@ export const exportModelOnlyForEturnity = (
             child.name?.includes('Point') ||
             child.name?.includes('Label') ||
             child.name?.includes('Helper') ||
+            child.userData.isMeasurement ||
+            child.userData.isLabel ||
+            child.userData.isMeasurementLine ||
+            child.userData.isMeasurementArea ||
+            child.userData.isMeasurementPoint ||
             child.type === 'GridHelper' ||
             child.type === 'AxesHelper') {
           return;
         }
         
-        // Only include actual model geometry
-        if (child.type === 'Mesh' && child.parent === modelScene) {
+        // Only include actual model geometry (removed restrictive parent check)
+        if (child.type === 'Mesh') {
           const clonedChild = child.clone();
           
           // Optimize geometry if it exists
