@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect, Suspense } from 'react';
+import React, { useRef, useState, useEffect, Suspense, useCallback } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -10,6 +10,8 @@ import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
+import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
+import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -23,7 +25,6 @@ function Loader3D() {
   // Show error if any
   useEffect(() => {
     if (errors.length > 0) {
-      console.error("Loading errors:", errors);
       toast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
@@ -46,50 +47,22 @@ function Model({
   onClick?: (event: THREE.Intersection) => void;
 }) {
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
-    console.error("Error loading model:", error);
-    
-    // Convert error to more readable format
     let errorMessage = "Unbekannter Fehler";
-    try {
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // Extract useful info from complex error objects
-        const errorInfo = {
-          message: (error as any).message || "Kein Fehlertext verfügbar",
-          type: error.constructor?.name || typeof error,
-          details: {}
-        };
-        
-        // Try to extract more details from error object
-        for (const key in error) {
-          if (typeof (error as any)[key] !== 'function' && key !== 'manager') {
-            (errorInfo.details as any)[key] = String((error as any)[key]);
-          }
-        }
-        
-        errorMessage = `${errorInfo.message || "Fehler beim Laden des 3D-Modells"}. 
-          Typ: ${errorInfo.type}`;
-          
-        if (Object.keys(errorInfo.details).length > 0) {
-          const detailsStr = JSON.stringify(errorInfo.details).slice(0, 100);
-          console.log("Error details:", errorInfo.details);
-          errorMessage += ` (Details: ${detailsStr}...)`;
-        }
-      } else {
-        errorMessage = String(error);
-      }
-    } catch (e) {
-      errorMessage = "Fehler beim Parsen der Fehlermeldung";
-      console.error("Error parsing error:", e);
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = (error as any).message || "Fehler beim Laden des 3D-Modells";
+    } else {
+      errorMessage = String(error);
     }
-    
     toast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
   });
   
   const modelRef = useRef<THREE.Group>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const isMobile = useIsMobile();
+  const { disposeObject } = useMemoryOptimization();
+  const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
 
   const modelScene = React.useMemo(() => scene.clone(), [scene]);
 
@@ -110,12 +83,12 @@ function Model({
         const fov = perspectiveCamera.fov * (Math.PI / 180);
         let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
         cameraZ = Math.max(cameraZ, 1.0);
-        const mobileFactor = isMobile ? 1.2 : 1.0;
+        const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.2 : 1.0;
         camera.position.set(center.x, center.y + cameraZ * 0.15 * mobileFactor, center.z + cameraZ * mobileFactor);
         camera.lookAt(center);
       } else {
         // Handle OrthographicCamera or other camera types
-        const distance = maxDim * (isMobile ? 1.2 : 1.0);
+        const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.2 : 1.0);
         camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
         camera.lookAt(center);
       }
@@ -125,7 +98,16 @@ function Model({
       modelRef.current.position.z = -center.z;
       toast.success('Modell erfolgreich geladen');
     }
-  }, [modelScene, camera, isMobile, rotate]);
+  }, [modelScene, camera, qualitySettings, rotate]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (modelRef.current) {
+        disposeObject(modelRef.current);
+      }
+    };
+  }, [disposeObject]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -186,12 +168,16 @@ const ModelCanvas = ({
   rotateModel?: boolean;
 }) => {
   const isMobile = useIsMobile();
+  const { clearGLTFCache } = useMemoryOptimization();
   
-  // Configure loader options - this helps with the draco loader configuration
+  // Configure loader options and cleanup
   useEffect(() => {
-    // Pre-configure GLTF loaders
     useGLTF.preload(fileUrl, undefined, undefined, undefined);
-  }, [fileUrl]);
+    
+    return () => {
+      clearGLTFCache(fileUrl);
+    };
+  }, [fileUrl, clearGLTFCache]);
   
   return <Canvas shadows style={{
     background: '#222222',
@@ -212,7 +198,6 @@ const ModelCanvas = ({
       // Add event listener for WebGL context lost
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
-        console.error('WebGL context lost');
         toast.error('WebGL-Kontext verloren. Bitte laden Sie die Seite neu.');
       });
     }}
@@ -263,6 +248,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = useIsMobile();
+  const { clearGLTFCache } = useMemoryOptimization();
   
   const [measurementsEnabled] = useState(true);
   const [measurementToolsEverEnabled] = useState(true);
@@ -276,13 +262,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     
     return () => {
       if (processedUrl && processedUrl.startsWith('blob:')) {
-        console.log("Revoking blob URL on unmount:", processedUrl);
         URL.revokeObjectURL(processedUrl);
       }
+      clearGLTFCache(fileUrl);
     };
-  }, [fileUrl]);
+  }, [fileUrl, clearGLTFCache]);
 
-  const handleSceneReady = (
+  const handleSceneReady = useCallback((
     newScene: THREE.Scene, 
     newCamera: THREE.Camera, 
     newRenderer: THREE.WebGLRenderer, 
@@ -298,7 +284,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       renderer: newRenderer,
       canvas: canvas
     });
-  };
+  }, [isMobile]);
 
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
