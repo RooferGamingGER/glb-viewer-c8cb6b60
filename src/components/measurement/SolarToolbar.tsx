@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // Extend the MeasurementMode type to include 'solar' for this component
@@ -34,11 +34,11 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
     toggleMeasurementTool(mode);
     
     if (activeMode === mode) {
-      toast.info(`Solarplanungswerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
+      smartToast.guidance(`Solarplanungswerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
       // Show appropriate tool selection messages
       if (mode === 'solar') {
-        toast.info('Solarfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
+        smartToast.guidance('Solarfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
       }
     }
   };

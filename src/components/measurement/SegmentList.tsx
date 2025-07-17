@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Move, ChevronDown, ChevronRight, Edit, Check, X, Link } from 'lucide-react';
 import { Segment } from '@/types/measurements';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -72,7 +72,7 @@ const SegmentList: React.FC<SegmentListProps> = ({
     setSelectedType('');
     setCustomLabel('');
     
-    toast.success('Teilmessung wurde aktualisiert');
+    smartToast.success('Teilmessung wurde aktualisiert');
   };
   
   const handleCancelEdit = () => {
@@ -203,7 +203,7 @@ const SegmentList: React.FC<SegmentListProps> = ({
                       className="h-6 w-6"
                       onClick={() => {
                         onEditSegment(segment.id);
-                        toast.info(`Teilmessung ${index + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
+                        smartToast.guidance(`Teilmessung ${index + 1} wird bearbeitet. Klicken Sie an eine neue Position.`);
                       }}
                       title="Teilmessung verschieben"
                     >

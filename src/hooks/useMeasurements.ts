@@ -7,7 +7,8 @@ import { calculateSegmentLength } from '@/utils/measurementCalculations';
 import { extractRoofEdgeMeasurements, calculatePVMaterials } from '@/utils/pvCalculations';
 import { MeasurementMode, Point, Measurement, Segment, PVMaterials } from '@/types/measurements';
 import { useCallback, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
+import { devLog, devError } from '@/utils/consoleCleanup';
 
 /**
  * Main measurements hook that composes functionality from specialized hooks
@@ -106,57 +107,57 @@ export const useMeasurements = () => {
 
   // Calculate PV materials for a measurement with improved error handling
   const calculatePVMaterialsForMeasurement = useCallback((measurementId: string, inverterDistance: number = 10): PVMaterials | undefined => {
-    console.log('Starting PV materials calculation for measurement:', measurementId);
+    devLog('Starting PV materials calculation for measurement:', measurementId);
     setCalculatingMaterials(true);
     
     try {
       // Find the measurement
       const measurement = measurements.find(m => m.id === measurementId);
       if (!measurement) {
-        console.error('Cannot calculate PV materials: measurement not found', { measurementId });
-        toast.error('Fehler: Messung nicht gefunden');
+        devError('Cannot calculate PV materials: measurement not found', { measurementId });
+        smartToast.error('Fehler: Messung nicht gefunden');
         setCalculatingMaterials(false);
         return undefined;
       }
       
       // Check if pvModuleInfo exists
       if (!measurement.pvModuleInfo) {
-        console.error('Cannot calculate PV materials: pvModuleInfo not found', { measurementId });
-        toast.error('Fehler: PV-Modul-Informationen fehlen');
+        devError('Cannot calculate PV materials: pvModuleInfo not found', { measurementId });
+        smartToast.error('Fehler: PV-Modul-Informationen fehlen');
         setCalculatingMaterials(false);
         return undefined;
       }
       
       // Check if pvModuleSpec exists
       if (!measurement.pvModuleInfo.pvModuleSpec) {
-        console.error('Cannot calculate PV materials: pvModuleSpec is missing', { measurementId, pvInfo: measurement.pvModuleInfo });
-        toast.error('Fehler: PV-Modul-Spezifikation fehlt');
+        devError('Cannot calculate PV materials: pvModuleSpec is missing', { measurementId, pvInfo: measurement.pvModuleInfo });
+        smartToast.error('Fehler: PV-Modul-Spezifikation fehlt');
         setCalculatingMaterials(false);
         return undefined;
       }
       
-      console.log('PV module info before calculation:', measurement.pvModuleInfo);
+      devLog('PV module info before calculation:', measurement.pvModuleInfo);
       
       // Calculate materials with detailed error handling
       let materials: PVMaterials | undefined;
       try {
         materials = calculatePVMaterials(measurement.pvModuleInfo, inverterDistance);
-        console.log('Raw calculation result:', materials);
+        devLog('Raw calculation result:', materials);
       } catch (calcError) {
-        console.error('Error in calculatePVMaterials function:', calcError);
-        toast.error('Fehler bei der Materialberechnung');
+        devError('Error in calculatePVMaterials function:', calcError);
+        smartToast.error('Fehler bei der Materialberechnung');
         setCalculatingMaterials(false);
         return undefined;
       }
       
       if (!materials) {
-        console.error('PV materials calculation returned undefined');
-        toast.error('Materialberechnung fehlgeschlagen');
+        devError('PV materials calculation returned undefined');
+        smartToast.error('Materialberechnung fehlgeschlagen');
         setCalculatingMaterials(false);
         return undefined;
       }
       
-      console.log('Successfully calculated PV materials:', materials);
+      devLog('Successfully calculated PV materials:', materials);
       
       // Update the measurement with the calculated materials
       const updatedMeasurement = {
@@ -173,18 +174,18 @@ export const useMeasurements = () => {
       );
       
       // Update state and trigger visual update
-      console.log('Updating measurements with new PV materials');
+      devLog('Updating measurements with new PV materials');
       setMeasurements(updatedMeasurements);
       updateVisualState(updatedMeasurements, allLabelsVisible);
       
       // Show success toast
-      toast.success('Materialliste erfolgreich berechnet');
+      smartToast.success('Materialliste erfolgreich berechnet');
       
       setCalculatingMaterials(false);
       return materials;
     } catch (error) {
-      console.error('Unexpected error in calculatePVMaterialsForMeasurement:', error);
-      toast.error('Unerwarteter Fehler bei der Berechnung');
+      devError('Unexpected error in calculatePVMaterialsForMeasurement:', error);
+      smartToast.error('Unerwarteter Fehler bei der Berechnung');
       setCalculatingMaterials(false);
       return undefined;
     }
@@ -363,7 +364,7 @@ export const useMeasurements = () => {
           };
           
           // Show a notification about the shared update
-          toast.info('Änderung wurde auf geteilte Kante übertragen');
+          smartToast.guidance('Änderung wurde auf geteilte Kante übertragen');
           break;
         }
       }

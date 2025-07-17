@@ -7,6 +7,7 @@
 if (process.env.NODE_ENV === 'production') {
   const noop = () => {};
   
+  // Completely silence all console output in production
   console.log = noop;
   console.warn = noop;
   console.error = noop;

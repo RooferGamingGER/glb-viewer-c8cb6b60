@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect, Suspense, useCallback } from 'react
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
 import * as THREE from 'three';
 import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
@@ -25,7 +25,7 @@ function Loader3D() {
   // Show error if any
   useEffect(() => {
     if (errors.length > 0) {
-      toast.error(`Fehler beim Laden: ${errors[0]}`);
+      smartToast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
   
@@ -55,7 +55,7 @@ function Model({
     } else {
       errorMessage = String(error);
     }
-    toast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
+    smartToast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
   });
   
   const modelRef = useRef<THREE.Group>(null);
@@ -96,7 +96,7 @@ function Model({
       modelRef.current.position.x = -center.x;
       modelRef.current.position.y = -center.y;
       modelRef.current.position.z = -center.z;
-      toast.success('Modell erfolgreich geladen');
+      smartToast.success('Modell erfolgreich geladen');
     }
   }, [modelScene, camera, qualitySettings, rotate]);
 
@@ -198,7 +198,7 @@ const ModelCanvas = ({
       // Add event listener for WebGL context lost
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
-        toast.error('WebGL-Kontext verloren. Bitte laden Sie die Seite neu.');
+        smartToast.error('WebGL-Kontext verloren. Bitte laden Sie die Seite neu.');
       });
     }}
   >

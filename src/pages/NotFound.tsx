@@ -1,12 +1,14 @@
 
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { devError } from "@/utils/consoleCleanup";
 
 const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.error(
+    // Only log in development mode
+    devError(
       "404 Error: User attempted to access non-existent route:",
       location.pathname
     );

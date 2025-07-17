@@ -19,7 +19,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -57,19 +57,19 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
     toggleMeasurementTool(mode);
     
     if (activeMode === mode) {
-      toast.info(`Messwerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
+      smartToast.guidance(`Messwerkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
       // Show appropriate tool selection messages
       if (mode === 'length') {
-        toast.info('Längenmessung ausgewählt - Platzieren Sie 2 Punkte');
+        smartToast.guidance('Längenmessung ausgewählt - Platzieren Sie 2 Punkte');
       } else if (mode === 'height') {
-        toast.info('Höhenmessung ausgewählt - Platzieren Sie 2 Punkte');
+        smartToast.guidance('Höhenmessung ausgewählt - Platzieren Sie 2 Punkte');
       } else if (mode === 'area') {
-        toast.info('Flächenmessung ausgewählt - Platzieren Sie mindestens 3 Punkte');
+        smartToast.guidance('Flächenmessung ausgewählt - Platzieren Sie mindestens 3 Punkte');
       } else if (mode === 'deductionarea') {
-        toast.info('Abzugsfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
+        smartToast.guidance('Abzugsfläche ausgewählt - Platzieren Sie mindestens 3 Punkte');
       } else {
-        toast.info('Navigationsmodus aktiviert');
+        smartToast.guidance('Navigationsmodus aktiviert');
       }
     }
   };
@@ -77,7 +77,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
   const handleToggleSnap = () => {
     const newValue = !snapEnabled;
     setSnapEnabled(newValue);
-    toast.info(newValue 
+    smartToast.guidance(newValue 
       ? "Punktfang aktiviert: Punkte rasten automatisch ein" 
       : "Punktfang deaktiviert: Punkte werden exakt platziert"
     );

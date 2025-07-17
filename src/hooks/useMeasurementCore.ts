@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { nanoid } from 'nanoid';
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
+import { devError } from '@/utils/consoleCleanup';
 import { 
   MeasurementMode, 
   Point, 
@@ -70,7 +71,7 @@ export const useMeasurementCore = () => {
         } else if (m.type === 'area' || m.type === 'solar') {
           const validation = validatePolygon(newPoints);
           if (!validation.valid) {
-            toast.error(validation.message || 'Ungültiges Polygon');
+            smartToast.error(validation.message || 'Ungültiges Polygon');
             return m;
           }
           
@@ -219,11 +220,11 @@ export const useMeasurementCore = () => {
   const createPVModuleMeasurement = useCallback((points: Point[]) => {
     if (points.length !== 4) {
       if (points.length < 4) {
-        toast.error("Für PV-Module werden genau 4 Punkte benötigt.");
+        smartToast.error("Für PV-Module werden genau 4 Punkte benötigt.");
         return;
       } else {
         points = points.slice(0, 4);
-        toast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
+        smartToast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
       }
     }
     
@@ -267,13 +268,13 @@ export const useMeasurementCore = () => {
     
     setActiveMode('none');
     
-    toast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
+    smartToast.success(`PV-Modulfläche berechnet: ${moduleInfo.moduleCount} Module (${powerInKWp.toFixed(2)} kWp), ${moduleInfo.coveragePercent.toFixed(1)}% Dachflächennutzung`);
     
     if (roofEdgeInfo.hasAllEdges) {
       if (roofEdgeInfo.isValid === false && roofEdgeInfo.validationMessage) {
-        toast.warning(`Hinweis zu Dachkanten: ${roofEdgeInfo.validationMessage}`);
+        smartToast.warning(`Hinweis zu Dachkanten: ${roofEdgeInfo.validationMessage}`);
       } else {
-        toast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
+        smartToast.success("Dachkanten (First, Traufe, Ortgang) wurden für präzisere Berechnung verwendet.");
       }
     }
   }, [allLabelsVisible, measurements, setMeasurements, setCurrentPoints, setActiveMode]);
@@ -414,7 +415,7 @@ export const useMeasurementCore = () => {
             labelVisible: allLabelsVisible
           };
         } else {
-          toast.error("Für Solarplanung werden genau 4 Punkte benötigt.");
+          smartToast.error("Für Solarplanung werden genau 4 Punkte benötigt.");
           return;
         }
         break;
@@ -422,11 +423,11 @@ export const useMeasurementCore = () => {
       case 'pvmodule':
         if (points.length !== 4) {
           if (points.length < 4) {
-            toast.error("Für PV-Module werden genau 4 Punkte benötigt.");
+            smartToast.error("Für PV-Module werden genau 4 Punkte benötigt.");
             return;
           } else {
             points = points.slice(0, 4);
-            toast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
+            smartToast.warning("Nur die ersten 4 Punkte werden für die PV-Modul-Berechnung verwendet.");
           }
         }
         
@@ -506,10 +507,10 @@ export const useMeasurementCore = () => {
     if ((currentMode === 'length' || currentMode === 'height') && updatedPoints.length === 2) {
       if (currentMode === 'length') {
         createLengthMeasurement(updatedPoints);
-        toast.success('Längenmessung abgeschlossen - Messwerkzeug deaktiviert');
+        smartToast.success('Längenmessung abgeschlossen - Messwerkzeug deaktiviert');
       } else if (currentMode === 'height') {
         createHeightMeasurement(updatedPoints);
-        toast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
+        smartToast.success('Höhenmessung abgeschlossen - Messwerkzeug deaktiviert');
       }
     }
     
@@ -520,40 +521,40 @@ export const useMeasurementCore = () => {
         'hook': 'Dachhaken',
         'other': 'Sonstige Einbauten'
       };
-      toast.success(`${labels[currentMode]} markiert - Messwerkzeug bleibt aktiviert`);
+      smartToast.success(`${labels[currentMode]} markiert - Messwerkzeug bleibt aktiviert`);
       return;
     }
     
     if (currentMode === 'skylight' && updatedPoints.length === 4) {
       createRoofElementMeasurement(currentMode, updatedPoints);
-      toast.success(`Dachfenster-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+      smartToast.success(`Dachfenster-Messung abgeschlossen - Messwerkzeug deaktiviert`);
     } else if (currentMode === 'skylight' && updatedPoints.length > 0 && updatedPoints.length < 4) {
-      toast.info(`Punkt ${updatedPoints.length} von 4 für Dachfenster platziert`);
+      smartToast.guidance(`Punkt ${updatedPoints.length} von 4 für Dachfenster platziert`);
     }
     
     if (currentMode === 'chimney' && updatedPoints.length === 4) {
       createRoofElementMeasurement(currentMode, updatedPoints);
-      toast.success(`Kamin-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+      smartToast.success(`Kamin-Messung abgeschlossen - Messwerkzeug deaktiviert`);
     } else if (currentMode === 'chimney' && updatedPoints.length > 0 && updatedPoints.length < 4) {
-      toast.info(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
+      smartToast.guidance(`Punkt ${updatedPoints.length} von 4 für Kamin platziert`);
     }
     
     if (currentMode === 'solar' && updatedPoints.length === 4) {
       createRoofElementMeasurement(currentMode, updatedPoints);
-      toast.success(`Solarplanung-Messung abgeschlossen - Messwerkzeug deaktiviert`);
+      smartToast.success(`Solarplanung-Messung abgeschlossen - Messwerkzeug deaktiviert`);
     } else if (currentMode === 'solar' && updatedPoints.length > 0 && updatedPoints.length < 4) {
-      toast.info(`Punkt ${updatedPoints.length} von 4 für Solarplanung platziert`);
+      smartToast.guidance(`Punkt ${updatedPoints.length} von 4 für Solarplanung platziert`);
     }
     
     if (currentMode === 'pvmodule' && updatedPoints.length === 4) {
       createPVModuleMeasurement(updatedPoints);
-      toast.success(`PV-Modul-Zeichnung abgeschlossen - Messwerkzeug deaktiviert`);
+      smartToast.success(`PV-Modul-Zeichnung abgeschlossen - Messwerkzeug deaktiviert`);
     } else if (currentMode === 'pvmodule' && updatedPoints.length > 0 && updatedPoints.length < 4) {
-      toast.info(`Punkt ${updatedPoints.length} von 4 für PV-Modul platziert`);
+      smartToast.guidance(`Punkt ${updatedPoints.length} von 4 für PV-Modul platziert`);
     } else if (currentMode === 'pvmodule') {
       if (updatedPoints.length > 4) {
         createPVModuleMeasurement(updatedPoints.slice(0, 4));
-        toast.warning(`Mehr als 4 Punkte platziert. Nur die ersten 4 wurden verwendet.`);
+        smartToast.warning(`Mehr als 4 Punkte platziert. Nur die ersten 4 wurden verwendet.`);
       }
     }
   }, [activeMode, editMeasurementId, editingPointIndex, createLengthMeasurement, createHeightMeasurement, createRoofElementMeasurement, createPVModuleMeasurement, updateMeasurementPoint, setEditingPointIndex]);
@@ -627,12 +628,12 @@ export const useMeasurementCore = () => {
     else if (activeMode === 'area' && points.length >= 3) {
       const validation = validatePolygon(points);
       if (!validation.valid) {
-        toast.error(validation.message || 'Ungültiges Polygon');
+        smartToast.error(validation.message || 'Ungültiges Polygon');
         return undefined;
       }
       
       if (validation.message) {
-        toast.warning(validation.message);
+        smartToast.warning(validation.message);
       }
       
       try {
@@ -640,7 +641,7 @@ export const useMeasurementCore = () => {
         const label = formatMeasurement(value, 'area');
         const segments = generateSegments(points);
         
-        toast.success(
+        smartToast.success(
           `3D-Fläche berechnet: ${label}`
         );
         
@@ -662,20 +663,20 @@ export const useMeasurementCore = () => {
         currentPointsRef.current = [];
         setActiveMode('none');
       } catch (error) {
-        console.error("Error finalizing area measurement:", error);
-        toast.error("Fehler bei der Flächenberechnung. Bitte versuchen Sie es mit anderen Punkten.");
+        devError("Error finalizing area measurement:", error);
+        smartToast.error("Fehler bei der Flächenberechnung. Bitte versuchen Sie es mit anderen Punkten.");
         return undefined;
       }
     }
     else if (activeMode === 'deductionarea' && points.length >= 3) {
       const validation = validatePolygon(points);
       if (!validation.valid) {
-        toast.error(validation.message || 'Ungültiges Polygon');
+        smartToast.error(validation.message || 'Ungültiges Polygon');
         return undefined;
       }
       
       if (validation.message) {
-        toast.warning(validation.message);
+        smartToast.warning(validation.message);
       }
       
       try {
@@ -683,7 +684,7 @@ export const useMeasurementCore = () => {
         const label = formatMeasurement(value, 'area');
         const segments = generateSegments(points);
         
-        toast.success(
+        smartToast.success(
           `Abzugsfläche berechnet: ${label}`
         );
         
@@ -705,15 +706,15 @@ export const useMeasurementCore = () => {
         currentPointsRef.current = [];
         setActiveMode('none');
       } catch (error) {
-        console.error("Error finalizing deduction area measurement:", error);
-        toast.error("Fehler bei der Abzugsflächen-Berechnung. Bitte versuchen Sie es mit anderen Punkten.");
+        devError("Error finalizing deduction area measurement:", error);
+        smartToast.error("Fehler bei der Abzugsflächen-Berechnung. Bitte versuchen Sie es mit anderen Punkten.");
         return undefined;
       }
     }
     else if (activeMode === 'solar' && points.length >= 4) {
       const validation = validatePolygon(points);
       if (!validation.valid) {
-        toast.error(validation.message || 'Ungültiges Polygon');
+        smartToast.error(validation.message || 'Ungültiges Polygon');
         return undefined;
       }
       
@@ -740,7 +741,7 @@ export const useMeasurementCore = () => {
       setCurrentPoints([]);
       currentPointsRef.current = [];
       setActiveMode('none');
-      toast.success(`Solaranlage-Messung abgeschlossen`);
+      smartToast.success(`Solaranlage-Messung abgeschlossen`);
     }
     else if (activeMode === 'pvmodule' && points.length >= 4) {
       const polygonArea = calculateArea(points);
@@ -894,19 +895,19 @@ export const useMeasurementCore = () => {
           'hip': 'Grat'
         }[activeMode] || activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
         
-        toast.success(`${typeName}-Messung abgeschlossen`);
+        smartToast.success(`${typeName}-Messung abgeschlossen`);
         
         if (!['vent', 'hook', 'other'].includes(activeMode)) {
           setActiveMode('none');
         }
       } else {
-        toast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
+        smartToast.error(`Mindestens ${requiredPoints[activeMode]} Punkte werden benötigt.`);
         
         if (['skylight', 'chimney', 'pvmodule', 'solar'].includes(activeMode)) {
           const elementName = activeMode === 'skylight' ? 'Dachfenster' : 
                               activeMode === 'chimney' ? 'Kamin' : 
                               activeMode === 'solar' ? 'Solarplanung' : 'PV-Modul';
-          toast.error(`Für ${elementName} werden genau 4 Punkte benötigt.`);
+          smartToast.error(`Für ${elementName} werden genau 4 Punkte benötigt.`);
         }
         return undefined;
       }

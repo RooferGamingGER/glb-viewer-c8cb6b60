@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
+import { devError } from '@/utils/consoleCleanup';
 import { Upload, File, AlertTriangle, RotateCw } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
@@ -31,14 +32,14 @@ const FileUpload: React.FC = () => {
     if (!file.name.toLowerCase().endsWith('.glb')) {
       const errorMsg = 'Bitte laden Sie eine gültige GLB-Datei hoch.';
       setFileError(errorMsg);
-      toast.error(errorMsg);
+      smartToast.error(errorMsg);
       return false;
     }
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 100MB.';
       setFileError(errorMsg);
-      toast.error(errorMsg);
+      smartToast.error(errorMsg);
       return false;
     }
     return true;
@@ -47,7 +48,7 @@ const FileUpload: React.FC = () => {
   const handleFileSelect = useCallback((file: File) => {
     if (validateFile(file)) {
       setSelectedFile(file);
-      toast.success('Datei ausgewählt: ' + file.name);
+      smartToast.success('Datei ausgewählt: ' + file.name);
     }
   }, []);
 
@@ -68,7 +69,7 @@ const FileUpload: React.FC = () => {
 
   const handleUploadClick = useCallback(() => {
     if (!selectedFile) {
-      toast.error('Bitte wählen Sie zuerst eine Datei aus.');
+      smartToast.error('Bitte wählen Sie zuerst eine Datei aus.');
       return;
     }
     setUploading(true);
@@ -81,12 +82,12 @@ const FileUpload: React.FC = () => {
 
   const handleRotateAndDownload = async () => {
     if (!selectedFile) {
-      toast.error('Bitte wählen Sie zuerst eine Datei aus.');
+      smartToast.error('Bitte wählen Sie zuerst eine Datei aus.');
       return;
     }
     try {
       setUploading(true);
-      toast.loading('Modell wird gedreht...');
+      smartToast.technical('Modell wird gedreht...');
       const url = await rotateAndExportModel(selectedFile);
       const a = document.createElement('a');
       a.href = url;
@@ -95,14 +96,12 @@ const FileUpload: React.FC = () => {
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 500);
-      toast.dismiss();
-      toast.success('Modell wurde erfolgreich gedreht und heruntergeladen');
+      smartToast.success('Modell wurde erfolgreich gedreht und heruntergeladen');
     } catch (error) {
-      console.error('Error rotating model:', error);
-      toast.dismiss();
+      devError('Error rotating model:', error);
       // Fixed: Convert error to string to avoid [object Object] display
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast.error(`Fehler beim Drehen des Modells: ${errorMessage}`);
+      smartToast.error(`Fehler beim Drehen des Modells: ${errorMessage}`);
     } finally {
       setUploading(false);
     }
