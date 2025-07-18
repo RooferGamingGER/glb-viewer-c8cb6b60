@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, Suspense, useCallback } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
@@ -394,7 +393,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               scene={threeContext.scene} 
               camera={threeContext.camera} 
               autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
-              rotateModel={rotateModel}
             />
           )}
         </div>

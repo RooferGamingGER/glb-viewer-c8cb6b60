@@ -152,10 +152,15 @@ const FileUpload: React.FC = () => {
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
               <span className="text-sm">
-                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®?" : "Fremdanbieter"}
+                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®" : "Fremdanbieter"}
               </span>
             </label>
-            <span className="text-xs text-muted-foreground">Möchten Sie eine GLB-Datei von einem anderen Anbieter verwenden, dann deaktivieren Sie den Button darüber. </span>
+            <span className="text-xs text-muted-foreground">
+              {rotateModel 
+                ? "Für RooferGaming-Modelle ist die Eturnity-Konvertierung verfügbar."
+                : "Für Fremdanbieter-Modelle ist keine Eturnity-Konvertierung verfügbar."
+              }
+            </span>
           </div>
 
           {selectedFile && <div className="mt-6 flex flex-col sm:flex-row justify-center gap-2">
@@ -172,24 +177,27 @@ const FileUpload: React.FC = () => {
                 </>}
             </Button>
 
-            <Button 
-              onClick={handleEturnityConvert}
-              variant="outline" 
-              className="button-hover px-6 py-2" 
-              disabled={uploading || converting}
-            >
-              {converting ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                  <span>Konvertiert...</span>
-                </div>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Für Eturnity konvertieren
-                </>
-              )}
-            </Button>
+            {/* Eturnity Button nur für RooferGaming-Uploads anzeigen */}
+            {rotateModel && (
+              <Button 
+                onClick={handleEturnityConvert}
+                variant="outline" 
+                className="button-hover px-6 py-2" 
+                disabled={uploading || converting}
+              >
+                {converting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                    <span>Konvertiert...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Für Eturnity konvertieren
+                  </>
+                )}
+              </Button>
+            )}
           </div>}
         </div>
       </div>
@@ -203,6 +211,3 @@ const FileUpload: React.FC = () => {
         )}
       </div>
     </div>;
-};
-
-export default FileUpload;
