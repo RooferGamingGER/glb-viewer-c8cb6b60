@@ -78,11 +78,11 @@ const Model = React.memo(({
     return { center, size, maxDim };
   }, [modelScene]);
 
-  // Stable camera position calculation
+  // Stable camera position calculation - for centered model at (0,0,0)
   const cameraPosition = React.useMemo(() => {
     if (!modelTransform || !camera) return null;
     
-    const { center, maxDim } = modelTransform;
+    const { maxDim } = modelTransform;
     
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
@@ -91,21 +91,21 @@ const Model = React.memo(({
       const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.2 : 1.0;
       return {
         position: new THREE.Vector3(
-          center.x, 
-          center.y + cameraZ * 0.15 * mobileFactor, 
-          center.z + cameraZ * mobileFactor
+          0, 
+          cameraZ * 0.15 * mobileFactor, 
+          cameraZ * mobileFactor
         ),
-        center
+        center: new THREE.Vector3(0, 0, 0) // Look at centered model
       };
     } else {
       const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.2 : 1.0);
       return {
         position: new THREE.Vector3(
-          center.x, 
-          center.y + distance * 0.15, 
-          center.z + distance
+          0, 
+          distance * 0.15, 
+          distance
         ),
-        center
+        center: new THREE.Vector3(0, 0, 0) // Look at centered model
       };
     }
   }, [modelTransform, camera, qualitySettings]);
