@@ -28,7 +28,6 @@ import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
-import ExportEturnityButton from './ExportEturnityButton'; // Import our new component
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -58,7 +57,6 @@ interface MeasurementToolControlsProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   showMeasurementList?: boolean;
-  rotateModel?: boolean;
 }
 
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
@@ -85,8 +83,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   setShowTable,
   handleMoveMeasurementUp,
   handleMoveMeasurementDown,
-  showMeasurementList = true,
-  rotateModel
+  showMeasurementList = true
 }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("tools"); // Changed from "measurements" to "tools"
@@ -149,11 +146,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-3 flex flex-col h-full">
-        {/* Eturnity Export Button - Always visible */}
-        <div className="mb-3">
-          <ExportEturnityButton measurements={measurements} rotateModel={rotateModel} />
-        </div>
-        
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-medium">Messwerkzeuge</h3>
           
