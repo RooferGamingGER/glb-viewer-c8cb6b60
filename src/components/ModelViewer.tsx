@@ -100,8 +100,8 @@ const Model = React.memo(({
     
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.6; // Better distance formula
-      cameraZ = Math.max(cameraZ, 2.0); // Increased minimum distance
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42; // Closer zoom: reduced from 0.6 to 0.42
+      cameraZ = Math.max(cameraZ, 1.5); // Reduced minimum distance from 2.0 to 1.5
       const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
       return {
         position: new THREE.Vector3(
