@@ -41,17 +41,18 @@ export const useMemoryOptimization = () => {
     }
   }, [isLowMemory]);
 
-  // Start memory monitoring
+  // Start memory monitoring with debounced checks
   useEffect(() => {
     checkMemoryUsage();
-    memoryCheckInterval.current = setInterval(checkMemoryUsage, 2000);
+    // Reduce frequency to prevent performance issues
+    memoryCheckInterval.current = setInterval(checkMemoryUsage, 5000);
     
     return () => {
       if (memoryCheckInterval.current) {
         clearInterval(memoryCheckInterval.current);
       }
     };
-  }, [checkMemoryUsage]);
+  }, []); // Remove checkMemoryUsage dependency to prevent re-creation
 
   // Comprehensive dispose function for Three.js objects
   const disposeObject = useCallback((obj: THREE.Object3D) => {
@@ -115,13 +116,12 @@ export const useMemoryOptimization = () => {
     material.dispose();
   }, []);
 
-  // Clear GLTF cache
-  const clearGLTFCache = useCallback((url?: string) => {
+  // Clear GLTF cache - stable reference to prevent dependency issues
+  const clearGLTFCache = useRef((url?: string) => {
     if (url) {
       useGLTF.clear(url);
     }
-    // Note: useGLTF.clear() without arguments is not supported in current version
-  }, []);
+  }).current;
 
   // Force garbage collection (if available)
   const forceGarbageCollection = useCallback(() => {

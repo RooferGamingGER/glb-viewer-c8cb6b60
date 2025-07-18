@@ -38,14 +38,14 @@ function Loader3D() {
     </Html>;
 }
 
-function Model({
+const Model = React.memo(({
   url,
   rotate = true
 }: {
   url: string;
   rotate?: boolean;
   onClick?: (event: THREE.Intersection) => void;
-}) {
+}) => {
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
     if (error instanceof Error) {
@@ -61,58 +61,84 @@ function Model({
   const modelRef = useRef<THREE.Group>(null);
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
-  const { disposeObject } = useMemoryOptimization();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
 
-  const modelScene = React.useMemo(() => scene.clone(), [scene]);
+  // Use scene directly instead of cloning to avoid repeated model creation
+  const modelScene = React.useMemo(() => scene, [scene]);
 
+  // Memoize calculations to prevent unnecessary recalculations
+  const modelTransform = React.useMemo(() => {
+    if (!modelScene) return null;
+    
+    const box = new THREE.Box3().setFromObject(modelScene);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    return { center, size, maxDim };
+  }, [modelScene]);
+
+  // Stable camera position calculation
+  const cameraPosition = React.useMemo(() => {
+    if (!modelTransform || !camera) return null;
+    
+    const { center, maxDim } = modelTransform;
+    
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
+      cameraZ = Math.max(cameraZ, 1.0);
+      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.2 : 1.0;
+      return {
+        position: new THREE.Vector3(
+          center.x, 
+          center.y + cameraZ * 0.15 * mobileFactor, 
+          center.z + cameraZ * mobileFactor
+        ),
+        center
+      };
+    } else {
+      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.2 : 1.0);
+      return {
+        position: new THREE.Vector3(
+          center.x, 
+          center.y + distance * 0.15, 
+          center.z + distance
+        ),
+        center
+      };
+    }
+  }, [modelTransform, camera, qualitySettings]);
+
+  // Apply transformations only when necessary
   useEffect(() => {
-    if (modelRef.current) {
-      modelRef.current.position.set(0, 0, 0);
+    if (modelRef.current && modelTransform && cameraPosition) {
+      // Set model rotation
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-
-      const box = new THREE.Box3().setFromObject(modelRef.current);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
       
-      // Check if camera is PerspectiveCamera before accessing fov property
-      if (camera instanceof THREE.PerspectiveCamera) {
-        // Use type assertion after the check to make TypeScript happy
-        const perspectiveCamera = camera as THREE.PerspectiveCamera;
-        const fov = perspectiveCamera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
-        cameraZ = Math.max(cameraZ, 1.0);
-        const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.2 : 1.0;
-        camera.position.set(center.x, center.y + cameraZ * 0.15 * mobileFactor, center.z + cameraZ * mobileFactor);
-        camera.lookAt(center);
-      } else {
-        // Handle OrthographicCamera or other camera types
-        const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.2 : 1.0);
-        camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
-        camera.lookAt(center);
-      }
+      // Set camera position
+      camera.position.copy(cameraPosition.position);
+      camera.lookAt(cameraPosition.center);
       
-      modelRef.current.position.x = -center.x;
-      modelRef.current.position.y = -center.y;
-      modelRef.current.position.z = -center.z;
+      // Center the model
+      const { center } = modelTransform;
+      modelRef.current.position.set(-center.x, -center.y, -center.z);
+      
       smartToast.success('Modell erfolgreich geladen');
     }
-  }, [modelScene, camera, qualitySettings, rotate]);
+  }, [modelTransform, cameraPosition, camera, rotate]);
 
-  // Cleanup on unmount
+  // Cleanup only on unmount - no dependencies to avoid re-running
   useEffect(() => {
     return () => {
-      if (modelRef.current) {
-        disposeObject(modelRef.current);
-      }
+      // No cleanup needed as we're not cloning the scene anymore
     };
-  }, [disposeObject]);
+  }, []);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
     </group>;
-}
+});
 
 export interface ThreeContextProps {
   scene: THREE.Scene | null;
@@ -156,7 +182,7 @@ function SceneSetup({
   return null;
 }
 
-const ModelCanvas = ({
+const ModelCanvas = React.memo(({
   fileUrl,
   onSceneReady,
   canvasRef,
@@ -168,16 +194,11 @@ const ModelCanvas = ({
   rotateModel?: boolean;
 }) => {
   const isMobile = useIsMobile();
-  const { clearGLTFCache } = useMemoryOptimization();
   
-  // Configure loader options and cleanup
+  // Preload only once when fileUrl changes - no cleanup dependencies
   useEffect(() => {
     useGLTF.preload(fileUrl, undefined, undefined, undefined);
-    
-    return () => {
-      clearGLTFCache(fileUrl);
-    };
-  }, [fileUrl, clearGLTFCache]);
+  }, [fileUrl]);
   
   return <Canvas shadows style={{
     background: '#222222',
@@ -233,7 +254,7 @@ const ModelCanvas = ({
         />
       </Suspense>
     </Canvas>;
-};
+});
 
 const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
@@ -257,16 +278,20 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
 
+  // Stable URL processing without problematic cleanup
   useEffect(() => {
     setProcessedUrl(fileUrl);
-    
+  }, [fileUrl]);
+
+  // Cleanup only blob URLs and cache on unmount
+  useEffect(() => {
     return () => {
       if (processedUrl && processedUrl.startsWith('blob:')) {
         URL.revokeObjectURL(processedUrl);
       }
       clearGLTFCache(fileUrl);
     };
-  }, [fileUrl, clearGLTFCache]);
+  }, []); // Only run on unmount
 
   const handleSceneReady = useCallback((
     newScene: THREE.Scene, 
