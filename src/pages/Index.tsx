@@ -156,7 +156,7 @@ const Index = () => {
         </div>
         
         <footer className="w-full text-center text-xs text-muted-foreground mt-2 mb-0">
-          <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming® | Alle Rechte vorbehalten | Version 1.02</p>
+          <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming® | Alle Rechte vorbehalten</p>
           <p className="text-xs mt-1 hidden md:block">Unterstützt GLB-Dateien bis zu 100MB</p>
         </footer>
       </div>
