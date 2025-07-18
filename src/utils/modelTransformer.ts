@@ -227,7 +227,7 @@ export const exportModelWithMeasurements = (
   });
 };
 
-// Pure model extraction and export for Eturnity - maximum file size optimization
+// Pure model extraction and export for Eturnity - repaired version
 export const exportModelOnlyForEturnity = (
   modelScene: THREE.Scene | THREE.Group,
   fileName: string = 'eturnity-export.glb',
@@ -238,24 +238,36 @@ export const exportModelOnlyForEturnity = (
     try {
       onProgress?.(5);
       
-      // Extract ONLY the original model mesh (no measurements, UI objects, etc.)
+      // Extract model with debug logging
+      console.log('Starting model extraction...');
       const pureModel = extractPureModel(modelScene);
+      
+      // Debug logging
       if (!pureModel) {
-        reject(new Error('Kein gültiges 3D-Modell gefunden'));
-        return;
+        console.warn('No pure model found, using entire scene');
+        // Fallback: use the entire scene if no model found
+        const fallbackModel = modelScene.clone(true);
+        if (fallbackModel.children.length === 0) {
+          reject(new Error('Kein gültiges 3D-Modell in der Szene gefunden'));
+          return;
+        }
+        console.log('Using fallback model with', fallbackModel.children.length, 'children');
+      } else {
+        console.log('Pure model extracted successfully:', pureModel.type, 'with', pureModel.children.length, 'children');
       }
+      
+      const modelToExport = pureModel || modelScene.clone(true);
       
       onProgress?.(15);
       
-      // Create a minimal scene with only the pure model
+      // Create a minimal scene with only the model
       const exportScene = new THREE.Scene();
       
-      // Use shallow clone to avoid duplicating textures and materials
-      const modelClone = pureModel.clone(false);
+      // Use deep clone to ensure complete model data
+      const modelClone = modelToExport.clone(true);
       
-      // Apply rotation for Eturnity format only if rotateModel is false
-      // (if rotateModel is true, the model is already rotated in the viewer)
-      if (!rotateModel) {
+      // Apply rotation for Eturnity format only if requested
+      if (rotateModel) {
         modelClone.rotation.x = -Math.PI / 2;
       }
       modelClone.updateMatrixWorld(true);
@@ -264,43 +276,38 @@ export const exportModelOnlyForEturnity = (
       
       onProgress?.(30);
       
-      // Apply aggressive optimizations for smaller file size
-      console.log('Applying geometry optimizations...');
-      optimizeGeometryForMaximumCompression(modelClone);
+      // Count meshes for validation
+      let meshCount = 0;
+      exportScene.traverse((child) => {
+        if (child instanceof THREE.Mesh) meshCount++;
+      });
+      console.log('Export scene contains', meshCount, 'meshes');
       
-      onProgress?.(40);
-      
-      console.log('Applying texture compression...');
-      compressTexturesForEturnity(modelClone);
+      if (meshCount === 0) {
+        reject(new Error('Keine Meshes im Export-Modell gefunden'));
+        return;
+      }
       
       onProgress?.(50);
       
-      // Setup Draco loader for compression
-      const dracoLoader = getDracoLoader();
-      
-      // Export with optimized options for maximum compression
-      const exporter = new GLTFExporter();
-      
-      // Optimized export options for smaller file size
+      // Use minimal export options for debugging
       const exportOptions = {
         binary: true,
         onlyExportVisible: true,
-        includeCustomExtensions: false,  // Remove custom extensions
-        truncateDrawRange: true,         // Reduce draw range
-        embedImages: false,              // Don't embed images to reduce size
-        maxTextureSize: 1024,           // Limit texture size
-        trs: false,                     // Use matrix instead of TRS for smaller size
-        dracoLoader: dracoLoader        // Enable Draco compression
+        embedImages: true  // Keep images embedded for complete export
       };
       
       onProgress?.(60);
       
-      console.log('Starting GLB export with compression...');
+      console.log('Starting GLB export...');
+      const exporter = new GLTFExporter();
       exporter.parse(
         exportScene,
         (result) => {
           try {
             const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
+            console.log(`Export successful! File size: ${(blob.size / (1024 * 1024)).toFixed(2)}MB`);
+            
             const url = URL.createObjectURL(blob);
             
             // Trigger download
@@ -312,21 +319,20 @@ export const exportModelOnlyForEturnity = (
             }
             
             onProgress?.(100);
-            
-            // Log file size comparison for debugging
-            console.log(`Eturnity export file size: ${(blob.size / (1024 * 1024)).toFixed(2)}MB`);
-            
             resolve(url);
           } catch (exportError) {
+            console.error('Export creation error:', exportError);
             reject(new Error(`Fehler beim Erstellen der Eturnity-Datei: ${(exportError instanceof Error) ? exportError.message : String(exportError)}`));
           }
         },
         (error) => {
+          console.error('Export parsing error:', error);
           reject(new Error(`Fehler beim Eturnity-Export: ${(error instanceof Error) ? error.message : String(error)}`));
         },
         exportOptions
       );
     } catch (error) {
+      console.error('Export setup error:', error);
       reject(new Error(`Fehler beim Vorbereiten des Eturnity-Exports: ${(error instanceof Error) ? error.message : String(error)}`));
     }
   });
@@ -334,104 +340,99 @@ export const exportModelOnlyForEturnity = (
 
 // Extract only the original GLB model (no measurement objects, UI elements, etc.)
 const extractPureModel = (scene: THREE.Scene | THREE.Group): THREE.Object3D | null => {
-  // First, try to find the root model group/object
+  console.log('Starting model extraction from scene with', scene.children.length, 'children');
+  
   let bestCandidate: THREE.Object3D | null = null;
   let maxVertexCount = 0;
+  let candidates: Array<{obj: THREE.Object3D, vertices: number}> = [];
   
   scene.traverse((child) => {
-    // Skip measurement objects, UI elements, helpers, etc.
-    if (child.name && (
-      child.name.includes('Measurement') ||
-      child.name.includes('measurement') ||
-      child.name.includes('Point_') ||
-      child.name.includes('Line_') ||
-      child.name.includes('Area_') ||
-      child.name.includes('segment') ||
-      child.name.includes('Segment') ||
-      child.name.includes('label') ||
-      child.name.includes('Label') ||
-      child.name.includes('indicator') ||
-      child.name.includes('Indicator') ||
-      child.name.includes('Helper') ||
-      child.name.includes('Guide') ||
-      child.name.includes('Preview')
-    )) {
-      return; // Skip this object
+    // Debug logging
+    if (child.name) {
+      console.log('Found object:', child.name, 'type:', child.type);
     }
     
-    // Skip objects with measurement userData
-    if (child.userData && (
+    // Skip only clearly identified measurement objects
+    const isMeasurementObject = child.name && (
+      child.name.startsWith('Measurement') ||
+      child.name.startsWith('Point_') ||
+      child.name.startsWith('Line_') ||
+      child.name.startsWith('Area_') ||
+      child.name.includes('_measurement') ||
+      child.name.includes('_segment')
+    );
+    
+    const hasMeasurementUserData = child.userData && (
       child.userData.measurementId ||
-      child.userData.isSegment ||
       child.userData.isMeasurement ||
-      child.userData.type === 'measurement' ||
-      child.userData.isHelper ||
-      child.userData.isPreview
-    )) {
-      return; // Skip this object
+      child.userData.isSegment ||
+      child.userData.type === 'measurement'
+    );
+    
+    if (isMeasurementObject || hasMeasurementUserData) {
+      console.log('Skipping measurement object:', child.name);
+      return;
     }
     
-    // Look for mesh objects and count their vertices
+    // Look for meshes with geometry
     if (child instanceof THREE.Mesh && child.geometry && child.material) {
       const vertexCount = child.geometry.attributes.position?.count || 0;
+      console.log('Found mesh:', child.name || 'unnamed', 'vertices:', vertexCount);
       
-      // Find the mesh with the most vertices (likely the main building model)
+      candidates.push({obj: child, vertices: vertexCount});
+      
       if (vertexCount > maxVertexCount) {
         maxVertexCount = vertexCount;
-        
-        // Try to get the highest-level parent that still contains only model data
-        let candidate = child;
-        let parent = child.parent;
-        
-        while (parent && parent !== scene) {
-          // Check if parent contains only model-related objects
-          const hasOnlyModelObjects = parent.children.every(sibling => {
-            return !sibling.name || !sibling.name.includes('Measurement');
-          });
-          
-          if (hasOnlyModelObjects) {
-            candidate = parent;
-            parent = parent.parent;
-          } else {
-            break;
-          }
+        bestCandidate = child;
+      }
+    }
+    
+    // Also consider groups that might contain the model
+    if (child instanceof THREE.Group && child.children.length > 0) {
+      let groupVertices = 0;
+      child.traverse((grandchild) => {
+        if (grandchild instanceof THREE.Mesh && grandchild.geometry) {
+          groupVertices += grandchild.geometry.attributes.position?.count || 0;
         }
-        
-        bestCandidate = candidate;
+      });
+      
+      if (groupVertices > maxVertexCount) {
+        maxVertexCount = groupVertices;
+        bestCandidate = child;
       }
     }
   });
   
-  // If we found a good candidate, create a clean copy
+  console.log('Found', candidates.length, 'mesh candidates');
+  console.log('Best candidate:', bestCandidate?.name || 'unnamed', 'with', maxVertexCount, 'vertices');
+  
+  // If we found a candidate, find its root parent or return it directly
   if (bestCandidate) {
-    const cleanModel = new THREE.Group();
-    cleanModel.name = 'PureModel';
+    // Try to find the root model container, but be less aggressive
+    let currentCandidate = bestCandidate;
+    let parent = bestCandidate.parent;
     
-    // Clone the model structure but be selective about what we include
-    bestCandidate.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.geometry && child.material) {
-        // Skip any mesh that has measurement-related names or userData
-        if (child.name && (child.name.includes('Measurement') || child.name.includes('Point_'))) {
-          return;
-        }
-        if (child.userData && child.userData.isMeasurement) {
-          return;
-        }
-        
-        // Create a shallow clone of the mesh to preserve materials and textures
-        const meshClone = child.clone(false);
-        
-        // Apply world matrix to maintain proper positioning
-        meshClone.applyMatrix4(child.matrixWorld);
-        
-        cleanModel.add(meshClone);
+    while (parent && parent !== scene && parent.children.length < 50) {
+      // Only move up if the parent doesn't contain too many objects (likely UI clutter)
+      const hasReasonableChildCount = parent.children.length < 20;
+      const hasMainlyMeshes = parent.children.filter(child => 
+        child instanceof THREE.Mesh || child instanceof THREE.Group
+      ).length > parent.children.length * 0.7;
+      
+      if (hasReasonableChildCount && hasMainlyMeshes) {
+        currentCandidate = parent;
+        parent = parent.parent;
+      } else {
+        break;
       }
-    });
+    }
     
-    return cleanModel.children.length > 0 ? cleanModel : bestCandidate;
+    console.log('Selected candidate:', currentCandidate.name || 'unnamed', 'type:', currentCandidate.type);
+    return currentCandidate;
   }
   
-  return bestCandidate;
+  console.warn('No suitable model candidate found');
+  return null;
 };
 
 // Aggressive geometry optimization for maximum file size reduction
