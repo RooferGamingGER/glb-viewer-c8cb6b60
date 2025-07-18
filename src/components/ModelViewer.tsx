@@ -62,6 +62,9 @@ const Model = React.memo(({
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  
+  // Flag to show success message only once
+  const [hasShownLoadSuccess, setHasShownLoadSuccess] = useState(false);
 
   // Use scene directly instead of cloning to avoid repeated model creation
   const modelScene = React.useMemo(() => scene, [scene]);
@@ -139,16 +142,19 @@ const Model = React.memo(({
       camera.lookAt(cameraPosition.center);
       camera.updateProjectionMatrix();
       
-      // 4. Verify model is visible
-      setTimeout(() => {
-        if (modelRef.current) {
-          const box = new THREE.Box3().setFromObject(modelRef.current);
-          const size = box.getSize(new THREE.Vector3());
-          if (size.length() > 0) {
-            smartToast.success('Modell erfolgreich geladen');
+      // 4. Verify model is visible and show success message only once
+      if (!hasShownLoadSuccess) {
+        setTimeout(() => {
+          if (modelRef.current) {
+            const box = new THREE.Box3().setFromObject(modelRef.current);
+            const size = box.getSize(new THREE.Vector3());
+            if (size.length() > 0) {
+              setHasShownLoadSuccess(true);
+              smartToast.success('Modell erfolgreich geladen');
+            }
           }
-        }
-      }, 100);
+        }, 100);
+      }
     }
   }, [modelTransform, cameraPosition, camera, rotate]);
 
@@ -244,14 +250,20 @@ const ModelCanvas = React.memo(({
       gl.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
       gl.setClearColor(0x222222, 1);
       
-      // Improved WebGL context lost/restored handling
+      // Improved WebGL context lost/restored handling - only show messages for unexpected loss
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
-        smartToast.error('WebGL-Kontext verloren. Wird wiederhergestellt...');
+        // Only show warning if page is still visible (not navigating away)
+        if (!document.hidden) {
+          smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
+        }
       });
       
       gl.domElement.addEventListener('webglcontextrestored', () => {
-        smartToast.success('WebGL-Kontext wiederhergestellt');
+        // Only show success message if page is still visible
+        if (!document.hidden) {
+          smartToast.success('WebGL-Kontext wiederhergestellt');
+        }
         // Force re-render
         gl.setSize(gl.domElement.width, gl.domElement.height);
       });
