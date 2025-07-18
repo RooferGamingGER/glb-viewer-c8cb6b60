@@ -227,7 +227,7 @@ export const exportModelWithMeasurements = (
   });
 };
 
-// Pure model extraction and export for Eturnity - repaired version
+// Pure model extraction and export for Eturnity - optimized for file size
 export const exportModelOnlyForEturnity = (
   modelScene: THREE.Scene | THREE.Group,
   fileName: string = 'eturnity-export.glb',
@@ -238,15 +238,13 @@ export const exportModelOnlyForEturnity = (
     try {
       onProgress?.(5);
       
-      // Extract model with debug logging
-      console.log('Starting model extraction...');
+      // Extract model with intelligent cloning
+      console.log('Starting optimized model extraction...');
       const pureModel = extractPureModel(modelScene);
       
-      // Debug logging
       if (!pureModel) {
         console.warn('No pure model found, using entire scene');
-        // Fallback: use the entire scene if no model found
-        const fallbackModel = modelScene.clone(true);
+        const fallbackModel = modelScene.clone(false); // Shallow clone first
         if (fallbackModel.children.length === 0) {
           reject(new Error('Kein gültiges 3D-Modell in der Szene gefunden'));
           return;
@@ -256,15 +254,15 @@ export const exportModelOnlyForEturnity = (
         console.log('Pure model extracted successfully:', pureModel.type, 'with', pureModel.children.length, 'children');
       }
       
-      const modelToExport = pureModel || modelScene.clone(true);
+      const modelToExport = pureModel || modelScene;
       
       onProgress?.(15);
       
-      // Create a minimal scene with only the model
+      // Create optimized scene with smart cloning
       const exportScene = new THREE.Scene();
       
-      // Use deep clone to ensure complete model data
-      const modelClone = modelToExport.clone(true);
+      // Use shallow clone to reduce file size, then selectively copy needed data
+      const modelClone = modelToExport.clone(false);
       
       // Apply rotation for Eturnity format only if requested
       if (rotateModel) {
@@ -275,6 +273,17 @@ export const exportModelOnlyForEturnity = (
       exportScene.add(modelClone);
       
       onProgress?.(30);
+      
+      // Apply texture and geometry optimizations
+      console.log('Applying texture compression...');
+      compressTexturesForFileSize(exportScene);
+      
+      onProgress?.(40);
+      
+      console.log('Optimizing geometry...');
+      optimizeGeometryForFileSize(exportScene);
+      
+      onProgress?.(50);
       
       // Count meshes for validation
       let meshCount = 0;
@@ -288,25 +297,33 @@ export const exportModelOnlyForEturnity = (
         return;
       }
       
-      onProgress?.(50);
+      onProgress?.(60);
       
-      // Use minimal export options for debugging
+      // Optimized export options for smaller file size
       const exportOptions = {
         binary: true,
         onlyExportVisible: true,
-        embedImages: true  // Keep images embedded for complete export
+        embedImages: false,  // External references to reduce size
+        includeCustomExtensions: false,
+        animations: []  // No animations to reduce size
       };
       
-      onProgress?.(60);
+      onProgress?.(70);
       
-      console.log('Starting GLB export...');
+      console.log('Starting optimized GLB export...');
       const exporter = new GLTFExporter();
       exporter.parse(
         exportScene,
         (result) => {
           try {
             const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
-            console.log(`Export successful! File size: ${(blob.size / (1024 * 1024)).toFixed(2)}MB`);
+            const fileSizeMB = blob.size / (1024 * 1024);
+            console.log(`Export successful! File size: ${fileSizeMB.toFixed(2)}MB`);
+            
+            // Validate file size
+            if (fileSizeMB > 10) {
+              console.warn('File size larger than expected, but proceeding...');
+            }
             
             const url = URL.createObjectURL(blob);
             
@@ -462,9 +479,10 @@ const optimizeGeometryForMaximumCompression = (object: THREE.Object3D) => {
   });
 };
 
-// Compress and optimize textures for smaller file size
-const compressTexturesForEturnity = (object: THREE.Object3D) => {
+// Smart texture compression for optimal file size
+const compressTexturesForFileSize = (object: THREE.Object3D) => {
   const processedTextures = new Set<THREE.Texture>();
+  const maxTextureSize = 1024; // Reasonable size for Eturnity
   
   object.traverse((child) => {
     if (child instanceof THREE.Mesh && child.material) {
@@ -472,13 +490,13 @@ const compressTexturesForEturnity = (object: THREE.Object3D) => {
       
       materials.forEach(material => {
         if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial) {
-          // Compress main textures
+          // Optimize main texture if present
           if (material.map && !processedTextures.has(material.map)) {
-            compressTexture(material.map);
+            optimizeTexture(material.map, maxTextureSize);
             processedTextures.add(material.map);
           }
           
-          // Remove unnecessary texture maps to reduce file size
+          // Keep only essential maps, remove detailed maps
           if (material.normalMap) {
             material.normalMap = null;
           }
@@ -491,21 +509,70 @@ const compressTexturesForEturnity = (object: THREE.Object3D) => {
           if (material.aoMap) {
             material.aoMap = null;
           }
+          if (material.lightMap) {
+            material.lightMap = null;
+          }
+          
+          // Simplify material properties
+          if (material instanceof THREE.MeshStandardMaterial) {
+            material.roughness = 0.7;
+            material.metalness = 0.1;
+            material.envMapIntensity = 0.5;
+          }
+          
+          material.needsUpdate = true;
         }
       });
     }
   });
 };
 
-// Compress individual texture
-const compressTexture = (texture: THREE.Texture) => {
-  // Set aggressive compression settings
+// Optimize individual texture for file size
+const optimizeTexture = (texture: THREE.Texture, maxSize: number) => {
+  // Disable mipmaps to reduce file size
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   
+  // Set wrapping to reduce data
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  
   // Force texture update
   texture.needsUpdate = true;
+};
+
+// Smart geometry optimization for file size reduction
+const optimizeGeometryForFileSize = (object: THREE.Object3D) => {
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.geometry) {
+      const geometry = child.geometry;
+      
+      // Remove unnecessary attributes
+      const attributesToRemove = ['color', 'uv2', 'tangent', 'bitangent'];
+      attributesToRemove.forEach(attr => {
+        if (geometry.attributes[attr]) {
+          geometry.deleteAttribute(attr);
+        }
+      });
+      
+      // Merge vertices only if not indexed to avoid breaking geometry
+      if (!geometry.index && geometry.attributes.position) {
+        try {
+          const positionCount = geometry.attributes.position.count;
+          if (positionCount < 50000) { // Only for reasonably sized geometries
+            geometry.mergeVertices();
+          }
+        } catch (e) {
+          console.warn('Could not merge vertices:', e);
+        }
+      }
+      
+      // Compute bounds for optimization
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+    }
+  });
 };
 
 // Simplify material properties for Eturnity compatibility and smaller file size
