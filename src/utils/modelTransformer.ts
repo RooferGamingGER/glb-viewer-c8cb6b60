@@ -250,8 +250,8 @@ export const exportModelOnlyForEturnity = (
       // Create a minimal scene with only the pure model
       const exportScene = new THREE.Scene();
       
-      // Clone the pure model to avoid modifying the original
-      const modelClone = pureModel.clone(true);
+      // Use shallow clone to avoid duplicating textures and materials
+      const modelClone = pureModel.clone(false);
       
       // Apply rotation for Eturnity format only if rotateModel is false
       // (if rotateModel is true, the model is already rotated in the viewer)
@@ -262,22 +262,40 @@ export const exportModelOnlyForEturnity = (
       
       exportScene.add(modelClone);
       
-      onProgress?.(25);
+      onProgress?.(30);
       
-      // Export with original quality - only rotate as needed
-      const exporter = new GLTFExporter();
+      // Apply aggressive optimizations for smaller file size
+      console.log('Applying geometry optimizations...');
+      optimizeGeometryForMaximumCompression(modelClone);
       
-      // Standard export options - maintain original quality
-      const exportOptions = {
-        binary: true,
-        onlyExportVisible: true,
-        includeCustomExtensions: true,
-        truncateDrawRange: false,
-        embedImages: true  // Keep original image quality
-      };
+      onProgress?.(40);
+      
+      console.log('Applying texture compression...');
+      compressTexturesForEturnity(modelClone);
       
       onProgress?.(50);
       
+      // Setup Draco loader for compression
+      const dracoLoader = getDracoLoader();
+      
+      // Export with optimized options for maximum compression
+      const exporter = new GLTFExporter();
+      
+      // Optimized export options for smaller file size
+      const exportOptions = {
+        binary: true,
+        onlyExportVisible: true,
+        includeCustomExtensions: false,  // Remove custom extensions
+        truncateDrawRange: true,         // Reduce draw range
+        embedImages: false,              // Don't embed images to reduce size
+        maxTextureSize: 1024,           // Limit texture size
+        trs: false,                     // Use matrix instead of TRS for smaller size
+        dracoLoader: dracoLoader        // Enable Draco compression
+      };
+      
+      onProgress?.(60);
+      
+      console.log('Starting GLB export with compression...');
       exporter.parse(
         exportScene,
         (result) => {
@@ -295,7 +313,7 @@ export const exportModelOnlyForEturnity = (
             
             onProgress?.(100);
             
-            // Log file size for debugging
+            // Log file size comparison for debugging
             console.log(`Eturnity export file size: ${(blob.size / (1024 * 1024)).toFixed(2)}MB`);
             
             resolve(url);
@@ -316,7 +334,9 @@ export const exportModelOnlyForEturnity = (
 
 // Extract only the original GLB model (no measurement objects, UI elements, etc.)
 const extractPureModel = (scene: THREE.Scene | THREE.Group): THREE.Object3D | null => {
-  let pureModel: THREE.Object3D | null = null;
+  // First, try to find the root model group/object
+  let bestCandidate: THREE.Object3D | null = null;
+  let maxVertexCount = 0;
   
   scene.traverse((child) => {
     // Skip measurement objects, UI elements, helpers, etc.
@@ -351,25 +371,67 @@ const extractPureModel = (scene: THREE.Scene | THREE.Group): THREE.Object3D | nu
       return; // Skip this object
     }
     
-    // Look for the main mesh object (usually has geometry and is a Mesh or Group)
+    // Look for mesh objects and count their vertices
     if (child instanceof THREE.Mesh && child.geometry && child.material) {
-      // This looks like the original model mesh
-      if (!pureModel || child.geometry.attributes.position.count > (pureModel as THREE.Mesh).geometry?.attributes?.position?.count) {
-        pureModel = child.parent || child; // Take the parent group if available
-      }
-    }
-    
-    // Also check for groups that contain the main model
-    if (child instanceof THREE.Group && child.children.length > 0 && !pureModel) {
-      // Check if this group contains mesh objects (likely the original model)
-      const hasMeshes = child.children.some(c => c instanceof THREE.Mesh && c.geometry);
-      if (hasMeshes) {
-        pureModel = child;
+      const vertexCount = child.geometry.attributes.position?.count || 0;
+      
+      // Find the mesh with the most vertices (likely the main building model)
+      if (vertexCount > maxVertexCount) {
+        maxVertexCount = vertexCount;
+        
+        // Try to get the highest-level parent that still contains only model data
+        let candidate = child;
+        let parent = child.parent;
+        
+        while (parent && parent !== scene) {
+          // Check if parent contains only model-related objects
+          const hasOnlyModelObjects = parent.children.every(sibling => {
+            return !sibling.name || !sibling.name.includes('Measurement');
+          });
+          
+          if (hasOnlyModelObjects) {
+            candidate = parent;
+            parent = parent.parent;
+          } else {
+            break;
+          }
+        }
+        
+        bestCandidate = candidate;
       }
     }
   });
   
-  return pureModel;
+  // If we found a good candidate, create a clean copy
+  if (bestCandidate) {
+    const cleanModel = new THREE.Group();
+    cleanModel.name = 'PureModel';
+    
+    // Clone the model structure but be selective about what we include
+    bestCandidate.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry && child.material) {
+        // Skip any mesh that has measurement-related names or userData
+        if (child.name && (child.name.includes('Measurement') || child.name.includes('Point_'))) {
+          return;
+        }
+        if (child.userData && child.userData.isMeasurement) {
+          return;
+        }
+        
+        // Create a shallow clone of the mesh to preserve materials and textures
+        const meshClone = child.clone(false);
+        
+        // Apply world matrix to maintain proper positioning
+        meshClone.applyMatrix4(child.matrixWorld);
+        
+        cleanModel.add(meshClone);
+      }
+    });
+    
+    return cleanModel.children.length > 0 ? cleanModel : bestCandidate;
+  }
+  
+  return bestCandidate;
 };
 
 // Aggressive geometry optimization for maximum file size reduction
