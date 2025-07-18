@@ -172,26 +172,24 @@ const FileUpload: React.FC = () => {
                 </>}
             </Button>
 
-            {rotateModel && (
-              <Button 
-                onClick={handleEturnityConvert}
-                variant="outline" 
-                className="button-hover px-6 py-2" 
-                disabled={uploading || converting}
-              >
-                {converting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                    <span>Konvertiert...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Für Eturnity konvertieren
-                  </>
-                )}
-              </Button>
-            )}
+            <Button 
+              onClick={handleEturnityConvert}
+              variant="outline" 
+              className="button-hover px-6 py-2" 
+              disabled={uploading || converting}
+            >
+              {converting ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  <span>Konvertiert...</span>
+                </div>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Für Eturnity konvertieren
+                </>
+              )}
+            </Button>
           </div>}
         </div>
       </div>
