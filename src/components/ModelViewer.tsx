@@ -66,65 +66,89 @@ const Model = React.memo(({
   // Use scene directly instead of cloning to avoid repeated model creation
   const modelScene = React.useMemo(() => scene, [scene]);
 
-  // Memoize calculations to prevent unnecessary recalculations
+  // Calculate model transform after rotation for proper centering
   const modelTransform = React.useMemo(() => {
     if (!modelScene) return null;
     
-    const box = new THREE.Box3().setFromObject(modelScene);
+    // Apply rotation first, then calculate bounding box
+    const tempGroup = new THREE.Group();
+    tempGroup.add(modelScene.clone());
+    tempGroup.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+    
+    const box = new THREE.Box3().setFromObject(tempGroup);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     
+    // Clean up temp group
+    tempGroup.clear();
+    
     return { center, size, maxDim };
-  }, [modelScene]);
+  }, [modelScene, rotate]);
 
-  // Stable camera position calculation - for centered model at (0,0,0)
+  // Stable camera position calculation with fallback
   const cameraPosition = React.useMemo(() => {
-    if (!modelTransform || !camera) return null;
+    if (!modelTransform || !camera) {
+      // Fallback position
+      return {
+        position: new THREE.Vector3(0, 2, 5),
+        center: new THREE.Vector3(0, 0, 0)
+      };
+    }
     
     const { maxDim } = modelTransform;
     
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
-      cameraZ = Math.max(cameraZ, 1.0);
-      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.2 : 1.0;
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.6; // Better distance formula
+      cameraZ = Math.max(cameraZ, 2.0); // Increased minimum distance
+      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
       return {
         position: new THREE.Vector3(
           0, 
-          cameraZ * 0.15 * mobileFactor, 
+          cameraZ * 0.05 * mobileFactor, // Reduced Y offset from 0.15 to 0.05
           cameraZ * mobileFactor
         ),
-        center: new THREE.Vector3(0, 0, 0) // Look at centered model
+        center: new THREE.Vector3(0, 0, 0)
       };
     } else {
-      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.2 : 1.0);
+      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
       return {
         position: new THREE.Vector3(
           0, 
-          distance * 0.15, 
+          distance * 0.05, // Reduced Y offset
           distance
         ),
-        center: new THREE.Vector3(0, 0, 0) // Look at centered model
+        center: new THREE.Vector3(0, 0, 0)
       };
     }
   }, [modelTransform, camera, qualitySettings]);
 
-  // Apply transformations only when necessary
+  // Apply transformations with stable order: rotation → centering → camera
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
-      // Set model rotation
+      // 1. Set model rotation first
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       
-      // Set camera position
-      camera.position.copy(cameraPosition.position);
-      camera.lookAt(cameraPosition.center);
-      
-      // Center the model
+      // 2. Center the model after rotation
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
       
-      smartToast.success('Modell erfolgreich geladen');
+      // 3. Set camera position last
+      camera.position.copy(cameraPosition.position);
+      camera.lookAt(cameraPosition.center);
+      camera.updateProjectionMatrix();
+      
+      // 4. Verify model is visible
+      setTimeout(() => {
+        if (modelRef.current) {
+          const box = new THREE.Box3().setFromObject(modelRef.current);
+          const size = box.getSize(new THREE.Vector3());
+          if (size.length() > 0) {
+            smartToast.success('Modell erfolgreich geladen');
+          }
+        }
+      }, 100);
     }
   }, [modelTransform, cameraPosition, camera, rotate]);
 
@@ -211,21 +235,31 @@ const ModelCanvas = React.memo(({
     touchAction: 'none'
   }} className="w-full h-full" ref={canvasRef}
     onCreated={({ gl }) => {
-      // Configure WebGL for better performance with large models
+      // Optimized WebGL settings for stability
       gl.outputColorSpace = THREE.SRGBColorSpace;
       gl.toneMapping = THREE.ACESFilmicToneMapping;
       gl.toneMappingExposure = 1;
       
-      // Add event listener for WebGL context lost
+      // Less aggressive memory settings to prevent context loss
+      gl.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+      gl.setClearColor(0x222222, 1);
+      
+      // Improved WebGL context lost/restored handling
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
-        smartToast.error('WebGL-Kontext verloren. Bitte laden Sie die Seite neu.');
+        smartToast.error('WebGL-Kontext verloren. Wird wiederhergestellt...');
+      });
+      
+      gl.domElement.addEventListener('webglcontextrestored', () => {
+        smartToast.success('WebGL-Kontext wiederhergestellt');
+        // Force re-render
+        gl.setSize(gl.domElement.width, gl.domElement.height);
       });
     }}
   >
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
-        <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
+        <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
         
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -247,6 +281,7 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
+          target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
