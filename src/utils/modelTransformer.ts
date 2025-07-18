@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Measurement, Point } from '@/types/measurements';
 import { triangulate3D, calculate3DTriangleArea } from '@/utils/triangulation';
+import { rotateGLBDirect, getOriginalGLBBlob } from './glbDirectManipulation';
 
 // Singleton pattern for DRACOLoader - better performance by reusing
 let dracoLoaderInstance: DRACOLoader | null = null;
@@ -234,17 +235,47 @@ export const exportModelOnlyForEturnity = (
   onProgress?: (progress: number) => void,
   rotateModel: boolean = true
 ): Promise<string> => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       onProgress?.(5);
       
-      // Extract model with intelligent cloning
-      console.log('Starting optimized model extraction...');
+      // Try direct GLB manipulation first (preserves original file size)
+      console.log('Attempting direct GLB manipulation...');
+      try {
+        const originalBlob = await getOriginalGLBBlob(modelScene);
+        
+        if (originalBlob) {
+          console.log('Original GLB blob found, using direct manipulation');
+          onProgress?.(20);
+          
+          const result = await rotateGLBDirect(
+            originalBlob,
+            fileName,
+            (directProgress) => {
+              // Map direct manipulation progress to 20-90% of total
+              onProgress?.(20 + Math.round(directProgress * 0.7));
+            }
+          );
+          
+          onProgress?.(100);
+          console.log('Direct GLB manipulation successful');
+          resolve(result);
+          return;
+        }
+      } catch (directError) {
+        console.warn('Direct GLB manipulation failed, falling back to traditional export:', directError);
+      }
+      
+      // Fallback to traditional export method
+      console.log('Using traditional export method...');
+      onProgress?.(15);
+      
+      // Extract model with intelligent cloning  
       const pureModel = extractPureModel(modelScene);
       
       if (!pureModel) {
         console.warn('No pure model found, using entire scene');
-        const fallbackModel = modelScene.clone(false); // Shallow clone first
+        const fallbackModel = modelScene.clone(true); // Deep clone for fallback
         if (fallbackModel.children.length === 0) {
           reject(new Error('Kein gültiges 3D-Modell in der Szene gefunden'));
           return;
@@ -256,13 +287,13 @@ export const exportModelOnlyForEturnity = (
       
       const modelToExport = pureModel || modelScene;
       
-      onProgress?.(15);
+      onProgress?.(30);
       
-      // Create optimized scene with smart cloning
+      // Create optimized scene with deep cloning to preserve geometry
       const exportScene = new THREE.Scene();
       
-      // Use shallow clone to reduce file size, then selectively copy needed data
-      const modelClone = modelToExport.clone(false);
+      // Use deep clone to preserve all geometry and textures
+      const modelClone = modelToExport.clone(true);
       
       // Apply rotation for Eturnity format only if requested
       if (rotateModel) {
@@ -272,25 +303,17 @@ export const exportModelOnlyForEturnity = (
       
       exportScene.add(modelClone);
       
-      onProgress?.(30);
-      
-      // Apply texture and geometry optimizations
-      console.log('Applying texture compression...');
-      compressTexturesForFileSize(exportScene);
-      
-      onProgress?.(40);
-      
-      console.log('Optimizing geometry...');
-      optimizeGeometryForFileSize(exportScene);
-      
       onProgress?.(50);
       
       // Count meshes for validation
       let meshCount = 0;
       exportScene.traverse((child) => {
-        if (child instanceof THREE.Mesh) meshCount++;
+        if (child instanceof THREE.Mesh && child.geometry) {
+          const hasVertices = child.geometry.attributes.position?.count > 0;
+          if (hasVertices) meshCount++;
+        }
       });
-      console.log('Export scene contains', meshCount, 'meshes');
+      console.log('Export scene contains', meshCount, 'valid meshes');
       
       if (meshCount === 0) {
         reject(new Error('Keine Meshes im Export-Modell gefunden'));
@@ -299,18 +322,18 @@ export const exportModelOnlyForEturnity = (
       
       onProgress?.(60);
       
-      // Optimized export options for smaller file size
+      // Conservative export options for reliability
       const exportOptions = {
         binary: true,
         onlyExportVisible: true,
-        embedImages: false,  // External references to reduce size
+        embedImages: true,  // Embed images to avoid broken references
         includeCustomExtensions: false,
         animations: []  // No animations to reduce size
       };
       
       onProgress?.(70);
       
-      console.log('Starting optimized GLB export...');
+      console.log('Starting traditional GLB export...');
       const exporter = new GLTFExporter();
       exporter.parse(
         exportScene,
@@ -318,12 +341,7 @@ export const exportModelOnlyForEturnity = (
           try {
             const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
             const fileSizeMB = blob.size / (1024 * 1024);
-            console.log(`Export successful! File size: ${fileSizeMB.toFixed(2)}MB`);
-            
-            // Validate file size
-            if (fileSizeMB > 10) {
-              console.warn('File size larger than expected, but proceeding...');
-            }
+            console.log(`Traditional export successful! File size: ${fileSizeMB.toFixed(2)}MB`);
             
             const url = URL.createObjectURL(blob);
             

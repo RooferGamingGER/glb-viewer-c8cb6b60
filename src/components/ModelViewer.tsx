@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect, Suspense, useCallback } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
+import { useOriginalFileStorage, fetchAndStoreOriginalFile } from '@/hooks/useOriginalFileStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { smartToast } from '@/utils/smartToast';
 import * as THREE from 'three';
@@ -68,6 +69,16 @@ const Model = React.memo(({
 
   // Use scene directly instead of cloning to avoid repeated model creation
   const modelScene = React.useMemo(() => scene, [scene]);
+
+  // Store original file for direct GLB manipulation
+  useOriginalFileStorage(modelScene, url);
+
+  // Fetch and store original file when URL changes
+  useEffect(() => {
+    if (url && (url.endsWith('.glb') || url.endsWith('.gltf'))) {
+      fetchAndStoreOriginalFile(url).catch(console.warn);
+    }
+  }, [url]);
 
   // Calculate model transform after rotation for proper centering
   const modelTransform = React.useMemo(() => {
