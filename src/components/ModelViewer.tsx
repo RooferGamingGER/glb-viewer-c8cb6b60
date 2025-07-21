@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect, Suspense, useCallback } from 'react';
+
+import React, { useRef, useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
 import { useOriginalFileStorage, fetchAndStoreOriginalFile } from '@/hooks/useOriginalFileStorage';
@@ -38,14 +39,24 @@ function Loader3D() {
     </Html>;
 }
 
+// Track loaded models to prevent duplicate loading
+const loadedModels = new Set<string>();
+
 const Model = React.memo(({
   url,
-  rotate = true
+  rotate = true,
+  onLoadComplete
 }: {
   url: string;
   rotate?: boolean;
-  onClick?: (event: THREE.Intersection) => void;
+  onLoadComplete?: () => void;
 }) => {
+  const modelRef = useRef<THREE.Group>(null);
+  const { camera, gl } = useThree();
+  const isMobile = useIsMobile();
+  const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  
+  // Stable reference to loaded scene - only load once per URL
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
     if (error instanceof Error) {
@@ -57,30 +68,29 @@ const Model = React.memo(({
     }
     smartToast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
   });
-  
-  const modelRef = useRef<THREE.Group>(null);
-  const { camera, gl } = useThree();
-  const isMobile = useIsMobile();
-  const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
-  
-  // Flag to show success message only once
-  const [hasShownLoadSuccess, setHasShownLoadSuccess] = useState(false);
 
-  // Use scene directly instead of cloning to avoid repeated model creation
-  const modelScene = React.useMemo(() => scene, [scene]);
+  // Stable scene reference - use useMemo with proper dependencies
+  const modelScene = useMemo(() => {
+    if (!scene) return null;
+    return scene;
+  }, [scene]);
 
-  // Store original file for direct GLB manipulation
+  // Store original file for direct GLB manipulation - only once
   useOriginalFileStorage(modelScene, url);
 
-  // Fetch and store original file when URL changes
+  // Fetch and store original file when URL changes - with stable reference
+  const stableUrl = useMemo(() => url, [url]);
   useEffect(() => {
-    if (url && (url.endsWith('.glb') || url.endsWith('.gltf'))) {
-      fetchAndStoreOriginalFile(url).catch(console.warn);
+    if (stableUrl && (stableUrl.endsWith('.glb') || stableUrl.endsWith('.gltf'))) {
+      if (!loadedModels.has(stableUrl)) {
+        loadedModels.add(stableUrl);
+        fetchAndStoreOriginalFile(stableUrl).catch(console.warn);
+      }
     }
-  }, [url]);
+  }, [stableUrl]);
 
-  // Calculate model transform after rotation for proper centering
-  const modelTransform = React.useMemo(() => {
+  // Calculate model transform with stable dependencies
+  const modelTransform = useMemo(() => {
     if (!modelScene) return null;
     
     // Apply rotation first, then calculate bounding box
@@ -100,7 +110,7 @@ const Model = React.memo(({
   }, [modelScene, rotate]);
 
   // Stable camera position calculation with fallback
-  const cameraPosition = React.useMemo(() => {
+  const cameraPosition = useMemo(() => {
     if (!modelTransform || !camera) {
       // Fallback position
       return {
@@ -113,13 +123,13 @@ const Model = React.memo(({
     
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42; // Closer zoom: reduced from 0.6 to 0.42
-      cameraZ = Math.max(cameraZ, 1.5); // Reduced minimum distance from 2.0 to 1.5
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
+      cameraZ = Math.max(cameraZ, 1.5);
       const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
       return {
         position: new THREE.Vector3(
           0, 
-          cameraZ * 0.05 * mobileFactor, // Reduced Y offset from 0.15 to 0.05
+          cameraZ * 0.05 * mobileFactor,
           cameraZ * mobileFactor
         ),
         center: new THREE.Vector3(0, 0, 0)
@@ -129,7 +139,7 @@ const Model = React.memo(({
       return {
         position: new THREE.Vector3(
           0, 
-          distance * 0.05, // Reduced Y offset
+          distance * 0.05,
           distance
         ),
         center: new THREE.Vector3(0, 0, 0)
@@ -137,7 +147,7 @@ const Model = React.memo(({
     }
   }, [modelTransform, camera, qualitySettings]);
 
-  // Apply transformations with stable order: rotation → centering → camera
+  // Apply transformations with stable order - only when necessary
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
       // 1. Set model rotation first
@@ -152,28 +162,21 @@ const Model = React.memo(({
       camera.lookAt(cameraPosition.center);
       camera.updateProjectionMatrix();
       
-      // 4. Verify model is visible and show success message only once
-      if (!hasShownLoadSuccess) {
+      // 4. Call onLoadComplete only once when model is ready
+      if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
+        loadedModels.add(`${url}_completed`);
         setTimeout(() => {
           if (modelRef.current) {
             const box = new THREE.Box3().setFromObject(modelRef.current);
             const size = box.getSize(new THREE.Vector3());
             if (size.length() > 0) {
-              setHasShownLoadSuccess(true);
-              smartToast.success('Modell erfolgreich geladen');
+              onLoadComplete();
             }
           }
         }, 100);
       }
     }
-  }, [modelTransform, cameraPosition, camera, rotate]);
-
-  // Cleanup only on unmount - no dependencies to avoid re-running
-  useEffect(() => {
-    return () => {
-      // No cleanup needed as we're not cloning the scene anymore
-    };
-  }, []);
+  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -202,9 +205,7 @@ function SceneSetup({
   const { scene, camera, gl } = useThree();
   
   useEffect(() => {
-    // Type casting scene to THREE.Scene to fix the error
     if (scene && camera && gl) {
-      // Fix: Ensure scene is properly typed as THREE.Scene for compatibility with exportModelWithMeasurements
       const threeScene = scene as THREE.Scene;
       
       threeScene.traverse(obj => {
@@ -226,18 +227,23 @@ const ModelCanvas = React.memo(({
   fileUrl,
   onSceneReady,
   canvasRef,
-  rotateModel
+  rotateModel,
+  onModelLoadComplete
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   rotateModel?: boolean;
+  onModelLoadComplete?: () => void;
 }) => {
   const isMobile = useIsMobile();
   
-  // Preload only once when fileUrl changes - no cleanup dependencies
+  // Preload only once when fileUrl changes - prevent race conditions
   useEffect(() => {
-    useGLTF.preload(fileUrl, undefined, undefined, undefined);
+    if (!loadedModels.has(`${fileUrl}_preloaded`)) {
+      loadedModels.add(`${fileUrl}_preloaded`);
+      useGLTF.preload(fileUrl, undefined, undefined, undefined);
+    }
   }, [fileUrl]);
   
   return <Canvas shadows style={{
@@ -256,25 +262,20 @@ const ModelCanvas = React.memo(({
       gl.toneMapping = THREE.ACESFilmicToneMapping;
       gl.toneMappingExposure = 1;
       
-      // Less aggressive memory settings to prevent context loss
       gl.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
       gl.setClearColor(0x222222, 1);
       
-      // Improved WebGL context lost/restored handling - only show messages for unexpected loss
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
-        // Only show warning if page is still visible (not navigating away)
         if (!document.hidden) {
           smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
         }
       });
       
       gl.domElement.addEventListener('webglcontextrestored', () => {
-        // Only show success message if page is still visible
         if (!document.hidden) {
           smartToast.success('WebGL-Kontext wiederhergestellt');
         }
-        // Force re-render
         gl.setSize(gl.domElement.width, gl.domElement.height);
       });
     }}
@@ -289,7 +290,11 @@ const ModelCanvas = React.memo(({
         
         <Environment preset="city" />
         
-        <Model url={fileUrl} rotate={rotateModel !== false} />
+        <Model 
+          url={fileUrl} 
+          rotate={rotateModel !== false} 
+          onLoadComplete={onModelLoadComplete}
+        />
         
         <OrbitControls 
           makeDefault 
@@ -333,23 +338,33 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
-  const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  // Stable processed URL - only change when fileUrl actually changes
+  const processedUrl = useMemo(() => fileUrl, [fileUrl]);
 
-  // Stable URL processing without problematic cleanup
-  useEffect(() => {
-    setProcessedUrl(fileUrl);
-  }, [fileUrl]);
+  // Show success message only once per model
+  const handleModelLoadComplete = useCallback(() => {
+    if (!loadedModels.has(`${processedUrl}_success_shown`)) {
+      loadedModels.add(`${processedUrl}_success_shown`);
+      smartToast.success('Modell erfolgreich geladen');
+    }
+  }, [processedUrl]);
 
-  // Cleanup only blob URLs and cache on unmount
+  // Cleanup only on unmount or when URL actually changes
   useEffect(() => {
     return () => {
       if (processedUrl && processedUrl.startsWith('blob:')) {
         URL.revokeObjectURL(processedUrl);
       }
-      clearGLTFCache(fileUrl);
+      // Clear from loaded models cache
+      loadedModels.delete(processedUrl);
+      loadedModels.delete(`${processedUrl}_preloaded`);
+      loadedModels.delete(`${processedUrl}_completed`);
+      loadedModels.delete(`${processedUrl}_success_shown`);
+      clearGLTFCache(processedUrl);
     };
-  }, []); // Only run on unmount
+  }, [processedUrl, clearGLTFCache]);
 
+  // Stable scene ready handler
   const handleSceneReady = useCallback((
     newScene: THREE.Scene, 
     newCamera: THREE.Camera, 
@@ -384,6 +399,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               onSceneReady={handleSceneReady} 
               canvasRef={canvasRef} 
               rotateModel={rotateModel}
+              onModelLoadComplete={handleModelLoadComplete}
             />
           </div>
           
