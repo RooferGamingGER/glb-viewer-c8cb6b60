@@ -6,6 +6,17 @@ import { Measurement, Point } from '@/types/measurements';
 import { triangulate3D, calculate3DTriangleArea } from '@/utils/triangulation';
 import { rotateGLBDirect, getOriginalGLBBlob } from './glbDirectManipulation';
 
+// Eturnity Export Settings Interface
+export interface EturnityExportSettings {
+  format: 'glb';
+  applyModifiers: boolean;
+  includeSelectedObjects: boolean;
+  compression: 'none' | 'draco';
+  materials: 'keep' | 'combine';
+  embedImages: boolean;
+  binary: boolean;
+}
+
 // Singleton pattern for DRACOLoader - better performance by reusing
 let dracoLoaderInstance: DRACOLoader | null = null;
 const getDracoLoader = () => {
@@ -228,64 +239,82 @@ export const exportModelWithMeasurements = (
   });
 };
 
-// Pure model extraction and export for Eturnity - optimized for file size
+// Pure model extraction and export for Eturnity with configurable settings
 export const exportModelOnlyForEturnity = (
   modelScene: THREE.Scene | THREE.Group,
   fileName: string = 'eturnity-export.glb',
   onProgress?: (progress: number) => void,
-  rotateModel: boolean = true
+  rotateModel: boolean = true,
+  exportSettings: Partial<EturnityExportSettings> = {}
 ): Promise<string> => {
   return new Promise(async (resolve, reject) => {
     try {
+      // Default Eturnity settings
+      const defaultSettings: EturnityExportSettings = {
+        format: 'glb',
+        applyModifiers: true,
+        includeSelectedObjects: true,
+        compression: 'none',
+        materials: 'combine',
+        embedImages: true,
+        binary: true
+      };
+      
+      const settings = { ...defaultSettings, ...exportSettings };
+      
       onProgress?.(5);
+      console.log('Eturnity export with settings:', settings);
       
       // Try direct GLB manipulation first (preserves original file size)
-      console.log('Attempting direct GLB manipulation...');
-      try {
-        const originalBlob = await getOriginalGLBBlob(modelScene);
-        
-        if (originalBlob) {
-          console.log('Original GLB blob found, using direct manipulation');
-          onProgress?.(20);
+      if (!settings.includeSelectedObjects && settings.materials !== 'combine') {
+        console.log('Attempting direct GLB manipulation...');
+        try {
+          const originalBlob = await getOriginalGLBBlob(modelScene);
           
-          const result = await rotateGLBDirect(
-            originalBlob,
-            fileName,
-            (directProgress) => {
-              // Map direct manipulation progress to 20-90% of total
-              onProgress?.(20 + Math.round(directProgress * 0.7));
-            }
-          );
-          
-          onProgress?.(100);
-          console.log('Direct GLB manipulation successful');
-          resolve(result);
-          return;
+          if (originalBlob) {
+            console.log('Original GLB blob found, using direct manipulation');
+            onProgress?.(20);
+            
+            const result = await rotateGLBDirect(
+              originalBlob,
+              fileName,
+              (directProgress) => {
+                // Map direct manipulation progress to 20-90% of total
+                onProgress?.(20 + Math.round(directProgress * 0.7));
+              }
+            );
+            
+            onProgress?.(100);
+            console.log('Direct GLB manipulation successful');
+            resolve(result);
+            return;
+          }
+        } catch (directError) {
+          console.warn('Direct GLB manipulation failed, falling back to traditional export:', directError);
         }
-      } catch (directError) {
-        console.warn('Direct GLB manipulation failed, falling back to traditional export:', directError);
       }
       
-      // Fallback to traditional export method
-      console.log('Using traditional export method...');
+      // Use advanced export method with Eturnity settings
+      console.log('Using advanced export method with Eturnity settings...');
       onProgress?.(15);
       
-      // Extract model with intelligent cloning  
-      const pureModel = extractPureModel(modelScene);
+      // Select relevant objects based on settings
+      const selectedModel = settings.includeSelectedObjects ? 
+        selectRelevantObjects(modelScene) : extractPureModel(modelScene);
       
-      if (!pureModel) {
-        console.warn('No pure model found, using entire scene');
-        const fallbackModel = modelScene.clone(true); // Deep clone for fallback
+      if (!selectedModel) {
+        console.warn('No relevant model found, using entire scene');
+        const fallbackModel = modelScene.clone(true);
         if (fallbackModel.children.length === 0) {
           reject(new Error('Kein gültiges 3D-Modell in der Szene gefunden'));
           return;
         }
         console.log('Using fallback model with', fallbackModel.children.length, 'children');
       } else {
-        console.log('Pure model extracted successfully:', pureModel.type, 'with', pureModel.children.length, 'children');
+        console.log('Selected model extracted successfully:', selectedModel.type, 'with', selectedModel.children.length, 'children');
       }
       
-      const modelToExport = pureModel || modelScene;
+      const modelToExport = selectedModel || modelScene;
       
       onProgress?.(30);
       
@@ -295,6 +324,11 @@ export const exportModelOnlyForEturnity = (
       // Use deep clone to preserve all geometry and textures
       const modelClone = modelToExport.clone(true);
       
+      // Apply modifiers if requested
+      if (settings.applyModifiers) {
+        applyModifiersToModel(modelClone);
+      }
+      
       // Apply rotation for Eturnity format only if requested
       if (rotateModel) {
         modelClone.rotation.x = -Math.PI / 2;
@@ -303,7 +337,16 @@ export const exportModelOnlyForEturnity = (
       
       exportScene.add(modelClone);
       
-      onProgress?.(50);
+      onProgress?.(40);
+      
+      // Combine materials if requested
+      if (settings.materials === 'combine') {
+        console.log('Combining materials...');
+        await combineMaterials(exportScene);
+        onProgress?.(60);
+      } else {
+        onProgress?.(50);
+      }
       
       // Count meshes for validation
       let meshCount = 0;
@@ -320,22 +363,30 @@ export const exportModelOnlyForEturnity = (
         return;
       }
       
-      onProgress?.(60);
-      
-      // Conservative export options for reliability
-      const exportOptions = {
-        binary: true,
-        onlyExportVisible: true,
-        embedImages: true,  // Embed images to avoid broken references
-        includeCustomExtensions: false,
-        animations: []  // No animations to reduce size
-      };
-      
       onProgress?.(70);
       
-      console.log('Starting traditional GLB export...');
+      // Eturnity-specific export options
+      const exportOptions = {
+        binary: settings.binary,
+        onlyExportVisible: true,
+        embedImages: settings.embedImages,
+        includeCustomExtensions: false,
+        animations: [],
+        forcePowerOfTwoTextures: false,
+        maxTextureSize: Infinity,
+        trs: !settings.applyModifiers  // Disable TRS decomposition when applying modifiers
+      };
+      
+      onProgress?.(80);
+      
+      console.log('Starting Eturnity GLB export...');
       const exporter = new GLTFExporter();
-      exporter.parse(
+      
+      // Ensure no Draco compression - initialize exporter without draco
+      const gltfExporter = settings.compression === 'none' ? 
+        new GLTFExporter() : new GLTFExporter();
+      
+      gltfExporter.parse(
         exportScene,
         (result) => {
           try {
@@ -468,6 +519,161 @@ const extractPureModel = (scene: THREE.Scene | THREE.Group): THREE.Object3D | nu
   
   console.warn('No suitable model candidate found');
   return null;
+};
+
+// Select only relevant objects for Eturnity export (no measurements, UI elements, etc.)
+const selectRelevantObjects = (scene: THREE.Scene | THREE.Group): THREE.Object3D | null => {
+  console.log('Selecting relevant objects for Eturnity export...');
+  
+  const relevantObjects = new THREE.Group();
+  relevantObjects.name = 'EturnityRelevantObjects';
+  
+  scene.traverse((child) => {
+    // Skip measurement objects
+    const isMeasurementObject = child.name && (
+      child.name.includes('Measurement') ||
+      child.name.includes('Point_') ||
+      child.name.includes('Line_') ||
+      child.name.includes('Area_') ||
+      child.name.includes('_measurement') ||
+      child.name.includes('_segment') ||
+      child.name.includes('Label') ||
+      child.name.includes('Gizmo') ||
+      child.name.includes('Helper')
+    );
+    
+    const hasMeasurementUserData = child.userData && (
+      child.userData.measurementId ||
+      child.userData.isMeasurement ||
+      child.userData.isSegment ||
+      child.userData.type === 'measurement' ||
+      child.userData.debug
+    );
+    
+    // Skip debug and UI objects
+    if (isMeasurementObject || hasMeasurementUserData || child.userData?.export === false) {
+      return;
+    }
+    
+    // Include meshes with valid geometry and materials
+    if (child instanceof THREE.Mesh && child.geometry && child.material) {
+      const vertexCount = child.geometry.attributes.position?.count || 0;
+      if (vertexCount > 0) {
+        console.log('Including relevant mesh:', child.name || 'unnamed', 'vertices:', vertexCount);
+        const meshClone = child.clone(true);
+        // Preserve world transformation
+        meshClone.applyMatrix4(child.matrixWorld);
+        relevantObjects.add(meshClone);
+      }
+    }
+    
+    // Include groups that contain relevant meshes
+    if (child instanceof THREE.Group && child.children.length > 0) {
+      let hasRelevantContent = false;
+      child.traverse((grandchild) => {
+        if (grandchild instanceof THREE.Mesh && grandchild.geometry && grandchild.material) {
+          hasRelevantContent = true;
+        }
+      });
+      
+      if (hasRelevantContent && !isMeasurementObject && !hasMeasurementUserData) {
+        console.log('Including relevant group:', child.name || 'unnamed');
+        const groupClone = child.clone(true);
+        relevantObjects.add(groupClone);
+      }
+    }
+  });
+  
+  console.log('Selected', relevantObjects.children.length, 'relevant objects for export');
+  return relevantObjects.children.length > 0 ? relevantObjects : null;
+};
+
+// Apply modifiers to model (transforms, etc.)
+const applyModifiersToModel = (object: THREE.Object3D) => {
+  console.log('Applying modifiers to model...');
+  
+  object.traverse((child) => {
+    // Update all matrix transformations
+    child.updateMatrix();
+    child.updateMatrixWorld(true);
+    
+    // For meshes, apply transformations to geometry
+    if (child instanceof THREE.Mesh && child.geometry) {
+      // Apply the object's transformation matrix to the geometry
+      child.geometry.applyMatrix4(child.matrix);
+      
+      // Reset the object's transformation since it's now baked into geometry
+      child.position.set(0, 0, 0);
+      child.rotation.set(0, 0, 0);
+      child.scale.set(1, 1, 1);
+      child.updateMatrix();
+    }
+  });
+  
+  console.log('Modifiers applied successfully');
+};
+
+// Combine similar materials to reduce complexity
+const combineMaterials = async (scene: THREE.Scene): Promise<void> => {
+  console.log('Combining materials...');
+  
+  const materialMap = new Map<string, THREE.Material>();
+  const materialKey = (material: THREE.Material): string => {
+    // Create a key based on material properties
+    if (material instanceof THREE.MeshStandardMaterial) {
+      return `standard_${material.color.getHexString()}_${material.roughness}_${material.metalness}`;
+    } else if (material instanceof THREE.MeshBasicMaterial) {
+      return `basic_${material.color.getHexString()}`;
+    }
+    return `other_${material.type}`;
+  };
+  
+  // Collect all materials and group similar ones
+  scene.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      
+      materials.forEach((material, index) => {
+        const key = materialKey(material);
+        
+        if (!materialMap.has(key)) {
+          // Create a simplified version of the material
+          let combinedMaterial: THREE.Material;
+          
+          if (material instanceof THREE.MeshStandardMaterial) {
+            combinedMaterial = new THREE.MeshStandardMaterial({
+              color: material.color.clone(),
+              roughness: material.roughness,
+              metalness: material.metalness,
+              transparent: material.transparent,
+              opacity: material.opacity,
+              side: material.side
+            });
+          } else if (material instanceof THREE.MeshBasicMaterial) {
+            combinedMaterial = new THREE.MeshBasicMaterial({
+              color: material.color.clone(),
+              transparent: material.transparent,
+              opacity: material.opacity,
+              side: material.side
+            });
+          } else {
+            combinedMaterial = material.clone();
+          }
+          
+          materialMap.set(key, combinedMaterial);
+        }
+        
+        // Replace the material with the combined version
+        if (Array.isArray(child.material)) {
+          child.material[index] = materialMap.get(key)!;
+        } else {
+          child.material = materialMap.get(key)!;
+        }
+      });
+    }
+  });
+  
+  console.log(`Combined materials from many to ${materialMap.size} unique materials`);
 };
 
 // Aggressive geometry optimization for maximum file size reduction
