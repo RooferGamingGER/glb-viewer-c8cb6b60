@@ -194,7 +194,7 @@ const FileUpload: React.FC = () => {
             </Button>
 
             {/* Eturnity Button nur für RooferGaming-Uploads anzeigen */}
-            {rotateModel && (
+            {/* {rotateModel && (
               <Button 
                 onClick={handleEturnityConvert}
                 variant="outline" 
@@ -213,7 +213,7 @@ const FileUpload: React.FC = () => {
                   </>
                 )}
               </Button>
-            )}
+            )} */}
           </div>}
         </div>
       </div>
