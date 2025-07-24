@@ -249,12 +249,24 @@ export function exportModelOnlyForEturnity(
   modelGroup: THREE.Group,
   fileName: string = 'eturnity-export.glb'
 ) {
+  console.log('🔄 Starte Eturnity Export...');
+  console.log('📊 Original modelGroup children:', modelGroup.children.length);
+  
+  // Model klonen um das Original nicht zu beschädigen
+  const clonedGroup = modelGroup.clone(true);
+  console.log('📊 Geklontes modelGroup children:', clonedGroup.children.length);
+  
+  // Validierung vor Export
+  if (clonedGroup.children.length === 0) {
+    console.error('❌ Keine Geometrie zum Exportieren gefunden!');
+    throw new Error('Keine Geometrie zum Exportieren gefunden');
+  }
+
   const exporter = new GLTFExporter();
 
-  // 1. Rotation Z-up → Y-up (WebODM → Eturnity)
-  const rotationFix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
-  modelGroup.applyMatrix4(rotationFix);
-  modelGroup.updateMatrixWorld(true);
+  // 1. Rotation Z-up → Y-up (WebODM → Eturnity) - non-destructive
+  clonedGroup.rotation.x = -Math.PI / 2;
+  clonedGroup.updateMatrixWorld(true);
 
   // 2. Materialien vereinheitlichen und "Unlit" entfernen
   const sharedMaterial = new THREE.MeshStandardMaterial({
@@ -264,24 +276,30 @@ export function exportModelOnlyForEturnity(
 
   let firstTexture: THREE.Texture | null = null;
 
-  modelGroup.traverse(obj => {
+  let meshCount = 0;
+  clonedGroup.traverse(obj => {
     if (obj instanceof THREE.Mesh) {
+      meshCount++;
       const oldMat = obj.material as THREE.MeshStandardMaterial;
 
       // Erste verwendbare Textur merken
       if (!firstTexture && oldMat?.map) {
         firstTexture = oldMat.map;
+        console.log('🖼️ Textur gefunden für Material');
       }
 
       // Unlit entfernen, falls vorhanden
       if ((oldMat as any)?.extensions?.KHR_materials_unlit) {
         delete (oldMat as any).extensions.KHR_materials_unlit;
+        console.log('🔧 KHR_materials_unlit entfernt');
       }
 
       // Einheitliches Material setzen
       obj.material = sharedMaterial;
     }
   });
+  
+  console.log('📊 Meshes für Export gefunden:', meshCount);
 
   // Textur zuweisen, falls vorhanden
   if (firstTexture) {
@@ -300,13 +318,25 @@ export function exportModelOnlyForEturnity(
     maxTextureSize: Infinity
   };
 
-  // 4. Exportieren
+  // 4. Exportieren mit Validierung
   exporter.parse(
-    modelGroup,
+    clonedGroup,
     glb => {
-      const blob = new Blob([glb as ArrayBuffer], { type: 'model/gltf-binary' });
+      const arrayBuffer = glb as ArrayBuffer;
+      console.log('📊 Exportierte GLB Größe:', arrayBuffer.byteLength, 'bytes');
+      
+      if (arrayBuffer.byteLength === 0) {
+        console.error('❌ Export ist leer!');
+        throw new Error('Export ist leer - keine Daten exportiert');
+      }
+      
+      const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
       saveAs(blob, fileName);
-      console.log(`✅ Export abgeschlossen: ${fileName}`);
+      console.log(`✅ Export erfolgreich abgeschlossen: ${fileName}`);
+    },
+    error => {
+      console.error('❌ Export Fehler:', error);
+      throw new Error(`Export fehlgeschlagen: ${error}`);
     },
     exportOptions
   );
