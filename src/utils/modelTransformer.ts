@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { saveAs } from 'file-saver';
 import { Measurement, Point } from '@/types/measurements';
 import { triangulate3D, calculate3DTriangleArea } from '@/utils/triangulation';
 import { rotateGLBDirect, getOriginalGLBBlob } from './glbDirectManipulation';
@@ -239,190 +240,77 @@ export const exportModelWithMeasurements = (
   });
 };
 
-// Pure model extraction and export for Eturnity with configurable settings
-export const exportModelOnlyForEturnity = (
-  modelScene: THREE.Scene | THREE.Group,
-  fileName: string = 'eturnity-export.glb',
-  onProgress?: (progress: number) => void,
-  rotateModel: boolean = true,
-  exportSettings: Partial<EturnityExportSettings> = {}
-): Promise<string> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Default Eturnity settings
-      const defaultSettings: EturnityExportSettings = {
-        format: 'glb',
-        applyModifiers: true,
-        includeSelectedObjects: true,
-        compression: 'none',
-        materials: 'combine',
-        embedImages: true,
-        binary: true
-      };
-      
-      const settings = { ...defaultSettings, ...exportSettings };
-      
-      onProgress?.(5);
-      console.log('Eturnity export with settings:', settings);
-      
-      // Try direct GLB manipulation first (preserves original file size)
-      if (!settings.includeSelectedObjects && settings.materials !== 'combine') {
-        console.log('Attempting direct GLB manipulation...');
-        try {
-          const originalBlob = await getOriginalGLBBlob(modelScene);
-          
-          if (originalBlob) {
-            console.log('Original GLB blob found, using direct manipulation');
-            onProgress?.(20);
-            
-            const result = await rotateGLBDirect(
-              originalBlob,
-              fileName,
-              (directProgress) => {
-                // Map direct manipulation progress to 20-90% of total
-                onProgress?.(20 + Math.round(directProgress * 0.7));
-              }
-            );
-            
-            onProgress?.(100);
-            console.log('Direct GLB manipulation successful');
-            resolve(result);
-            return;
-          }
-        } catch (directError) {
-          console.warn('Direct GLB manipulation failed, falling back to traditional export:', directError);
-        }
+/**
+ * Exportiert eine Three.js Szene als Eturnity-kompatibles .glb-Modell
+ * @param modelGroup Die Gruppe oder Szene mit den zu exportierenden Meshes
+ * @param fileName Dateiname für den Download
+ */
+export function exportModelOnlyForEturnity(
+  modelGroup: THREE.Group,
+  fileName: string = 'eturnity-export.glb'
+) {
+  const exporter = new GLTFExporter();
+
+  // 1. Rotation Z-up → Y-up (WebODM → Eturnity)
+  const rotationFix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+  modelGroup.applyMatrix4(rotationFix);
+  modelGroup.updateMatrixWorld(true);
+
+  // 2. Materialien vereinheitlichen und "Unlit" entfernen
+  const sharedMaterial = new THREE.MeshStandardMaterial({
+    metalness: 0.0,
+    roughness: 1.0
+  });
+
+  let firstTexture: THREE.Texture | null = null;
+
+  modelGroup.traverse(obj => {
+    if (obj instanceof THREE.Mesh) {
+      const oldMat = obj.material as THREE.MeshStandardMaterial;
+
+      // Erste verwendbare Textur merken
+      if (!firstTexture && oldMat?.map) {
+        firstTexture = oldMat.map;
       }
-      
-      // Use advanced export method with Eturnity settings
-      console.log('Using advanced export method with Eturnity settings...');
-      onProgress?.(15);
-      
-      // Select relevant objects based on settings
-      const selectedModel = settings.includeSelectedObjects ? 
-        selectRelevantObjects(modelScene) : extractPureModel(modelScene);
-      
-      if (!selectedModel) {
-        console.warn('No relevant model found, using entire scene');
-        const fallbackModel = modelScene.clone(true);
-        if (fallbackModel.children.length === 0) {
-          reject(new Error('Kein gültiges 3D-Modell in der Szene gefunden'));
-          return;
-        }
-        console.log('Using fallback model with', fallbackModel.children.length, 'children');
-      } else {
-        console.log('Selected model extracted successfully:', selectedModel.type, 'with', selectedModel.children.length, 'children');
+
+      // Unlit entfernen, falls vorhanden
+      if ((oldMat as any)?.extensions?.KHR_materials_unlit) {
+        delete (oldMat as any).extensions.KHR_materials_unlit;
       }
-      
-      const modelToExport = selectedModel || modelScene;
-      
-      onProgress?.(30);
-      
-      // Create optimized scene with deep cloning to preserve geometry
-      const exportScene = new THREE.Scene();
-      
-      // Use deep clone to preserve all geometry and textures
-      const modelClone = modelToExport.clone(true);
-      
-      // Apply modifiers if requested
-      if (settings.applyModifiers) {
-        applyModifiersToModel(modelClone);
-      }
-      
-      // Apply rotation for Eturnity format only if requested
-      if (rotateModel) {
-        modelClone.rotation.x = -Math.PI / 2;
-      }
-      modelClone.updateMatrixWorld(true);
-      
-      exportScene.add(modelClone);
-      
-      onProgress?.(40);
-      
-      // Combine materials if requested
-      if (settings.materials === 'combine') {
-        console.log('Combining materials...');
-        await combineMaterials(exportScene);
-        onProgress?.(60);
-      } else {
-        onProgress?.(50);
-      }
-      
-      // Count meshes for validation
-      let meshCount = 0;
-      exportScene.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.geometry) {
-          const hasVertices = child.geometry.attributes.position?.count > 0;
-          if (hasVertices) meshCount++;
-        }
-      });
-      console.log('Export scene contains', meshCount, 'valid meshes');
-      
-      if (meshCount === 0) {
-        reject(new Error('Keine Meshes im Export-Modell gefunden'));
-        return;
-      }
-      
-      onProgress?.(70);
-      
-      // Eturnity-specific export options
-      const exportOptions = {
-        binary: settings.binary,
-        onlyExportVisible: true,
-        embedImages: settings.embedImages,
-        includeCustomExtensions: false,
-        animations: [],
-        forcePowerOfTwoTextures: false,
-        maxTextureSize: Infinity,
-        trs: !settings.applyModifiers  // Disable TRS decomposition when applying modifiers
-      };
-      
-      onProgress?.(80);
-      
-      console.log('Starting Eturnity GLB export...');
-      const exporter = new GLTFExporter();
-      
-      // Ensure no Draco compression - initialize exporter without draco
-      const gltfExporter = settings.compression === 'none' ? 
-        new GLTFExporter() : new GLTFExporter();
-      
-      gltfExporter.parse(
-        exportScene,
-        (result) => {
-          try {
-            const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
-            const fileSizeMB = blob.size / (1024 * 1024);
-            console.log(`Traditional export successful! File size: ${fileSizeMB.toFixed(2)}MB`);
-            
-            const url = URL.createObjectURL(blob);
-            
-            // Trigger download
-            if (fileName) {
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = fileName;
-              link.click();
-            }
-            
-            onProgress?.(100);
-            resolve(url);
-          } catch (exportError) {
-            console.error('Export creation error:', exportError);
-            reject(new Error(`Fehler beim Erstellen der Eturnity-Datei: ${(exportError instanceof Error) ? exportError.message : String(exportError)}`));
-          }
-        },
-        (error) => {
-          console.error('Export parsing error:', error);
-          reject(new Error(`Fehler beim Eturnity-Export: ${(error instanceof Error) ? error.message : String(error)}`));
-        },
-        exportOptions
-      );
-    } catch (error) {
-      console.error('Export setup error:', error);
-      reject(new Error(`Fehler beim Vorbereiten des Eturnity-Exports: ${(error instanceof Error) ? error.message : String(error)}`));
+
+      // Einheitliches Material setzen
+      obj.material = sharedMaterial;
     }
   });
-};
+
+  // Textur zuweisen, falls vorhanden
+  if (firstTexture) {
+    sharedMaterial.map = firstTexture;
+    sharedMaterial.map.needsUpdate = true;
+  }
+
+  // 3. Export-Optionen definieren
+  const exportOptions: THREE.GLTFExporter.Options = {
+    binary: true,
+    embedImages: true,
+    onlyVisible: true,
+    forcePowerOfTwoTextures: false,
+    includeCustomExtensions: false,
+    animations: [],
+    maxTextureSize: Infinity
+  };
+
+  // 4. Exportieren
+  exporter.parse(
+    modelGroup,
+    glb => {
+      const blob = new Blob([glb as ArrayBuffer], { type: 'model/gltf-binary' });
+      saveAs(blob, fileName);
+      console.log(`✅ Export abgeschlossen: ${fileName}`);
+    },
+    exportOptions
+  );
+}
 
 // Extract only the original GLB model (no measurement objects, UI elements, etc.)
 const extractPureModel = (scene: THREE.Scene | THREE.Group): THREE.Object3D | null => {

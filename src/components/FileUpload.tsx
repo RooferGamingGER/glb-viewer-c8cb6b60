@@ -96,35 +96,28 @@ const FileUpload: React.FC = () => {
       setConverting(true);
       smartToast.technical('GLB-Datei wird für Eturnity konvertiert...');
       
-      const fileName = `eturnity_${selectedFile.name}`;
+      // GLB laden und für Eturnity exportieren
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const { exportModelOnlyForEturnity } = await import('../utils/modelTransformer');
       
-      // Use the advanced Eturnity export with proper settings
-      const eturnitySettings: Partial<EturnityExportSettings> = {
-        format: 'glb',
-        applyModifiers: true,
-        includeSelectedObjects: true,
-        compression: 'none',
-        materials: 'combine',
-        embedImages: true,
-        binary: true
-      };
+      const loader = new GLTFLoader();
+      const arrayBuffer = await selectedFile.arrayBuffer();
       
-      console.log('Starting Eturnity conversion with settings:', eturnitySettings);
-      
-      // For now, use the direct manipulation as fallback
-      // In a full implementation, you would load the GLB into a scene first
-      const fileBlob = new Blob([selectedFile], { type: selectedFile.type });
-      await rotateGLBDirect(fileBlob, fileName, (progress) => {
-        console.log(`Conversion progress: ${progress}%`);
+      loader.parse(arrayBuffer, '', (gltf) => {
+        const modelGroup = gltf.scene;
+        const fileName = selectedFile.name.replace(/\.[^/.]+$/, '_eturnity.glb');
+        exportModelOnlyForEturnity(modelGroup, fileName);
+        smartToast.success(`Datei erfolgreich für Eturnity konvertiert: ${fileName}`);
+        setConverting(false);
+      }, (error) => {
+        console.error('Fehler beim Laden der GLB-Datei:', error);
+        smartToast.error('Fehler beim Laden der GLB-Datei');
+        setConverting(false);
       });
-      
-      smartToast.success(`Datei erfolgreich für Eturnity konvertiert: ${fileName}`);
-      
     } catch (error) {
       devError('Error converting GLB for Eturnity:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
       smartToast.error(`Fehler beim Konvertieren: ${errorMessage}`);
-    } finally {
       setConverting(false);
     }
   };
@@ -194,7 +187,7 @@ const FileUpload: React.FC = () => {
             </Button>
 
             {/* Eturnity Button nur für RooferGaming-Uploads anzeigen */}
-            {/* {rotateModel && (
+            {rotateModel && (
               <Button 
                 onClick={handleEturnityConvert}
                 variant="outline" 
@@ -213,7 +206,7 @@ const FileUpload: React.FC = () => {
                   </>
                 )}
               </Button>
-            )} */}
+            )}
           </div>}
         </div>
       </div>
