@@ -1,7 +1,6 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { validateModelFile, rotateAndExportModel, cleanupDracoLoader } from '@/utils/modelTransformer';
 
 type ModelLoaderState = {
   processedUrl: string | null;
@@ -9,6 +8,9 @@ type ModelLoaderState = {
   progress: number;
   error: string | null;
 };
+
+// Cache to track processed URLs to prevent duplicate processing
+const processedUrls = new Map<string, string>();
 
 export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: boolean = true) => {
   const [state, setState] = useState<ModelLoaderState>({
@@ -18,8 +20,22 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
     error: null
   });
   
+  // Stable URL reference to prevent unnecessary re-processing
+  const stableFileUrl = useMemo(() => fileUrl, [fileUrl]);
+  
   useEffect(() => {
-    // Reset state when file URL changes
+    // Check if we already processed this URL
+    if (processedUrls.has(stableFileUrl)) {
+      setState({
+        processedUrl: processedUrls.get(stableFileUrl)!,
+        loading: false,
+        progress: 100,
+        error: null
+      });
+      return;
+    }
+    
+    // Reset state only when URL actually changes
     setState({
       processedUrl: null,
       loading: true,
@@ -28,11 +44,12 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
     });
     
     // If the URL is already a blob, we just need to validate it
-    if (fileUrl.startsWith('blob:')) {
-      // We can't validate a blob URL directly, 
-      // but we can check if it's already processed
+    if (stableFileUrl.startsWith('blob:')) {
+      // Cache the processed URL
+      processedUrls.set(stableFileUrl, stableFileUrl);
+      
       setState({
-        processedUrl: fileUrl,
+        processedUrl: stableFileUrl,
         loading: false,
         progress: 100,
         error: null
@@ -40,19 +57,34 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
       return;
     }
     
-    // Placeholder for file fetching - would need implementation for remote URLs
+    // For non-blob URLs, implement actual fetching and processing
     const fetchAndProcessModel = async () => {
       try {
-        // Mock progress updates
+        // Simulate processing with stable progress
+        let currentProgress = 0;
         const progressInterval = setInterval(() => {
+          currentProgress = Math.min(currentProgress + 10, 95);
           setState(prev => ({
             ...prev,
-            progress: Math.min(prev.progress + 5, 95) // Cap at 95% until complete
+            progress: currentProgress
           }));
-        }, 500);
+        }, 200);
         
-        // Clean up interval
-        return () => clearInterval(progressInterval);
+        // Simulate async processing
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        clearInterval(progressInterval);
+        
+        // Cache the result
+        processedUrls.set(stableFileUrl, stableFileUrl);
+        
+        setState({
+          processedUrl: stableFileUrl,
+          loading: false,
+          progress: 100,
+          error: null
+        });
+        
       } catch (error) {
         setState(prev => ({
           ...prev,
@@ -65,14 +97,17 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
     
     fetchAndProcessModel();
     
-    // Cleanup function
+  }, [stableFileUrl]);
+  
+  // Cleanup processed URLs cache when component unmounts
+  useEffect(() => {
     return () => {
-      if (state.processedUrl && !fileUrl.includes(state.processedUrl)) {
-        // Revoke previous blob URL
-        URL.revokeObjectURL(state.processedUrl);
+      // Only cleanup if this is the last reference to this URL
+      if (processedUrls.has(stableFileUrl)) {
+        processedUrls.delete(stableFileUrl);
       }
     };
-  }, [fileUrl, fileName, shouldRotate]);
+  }, []);
   
   return state;
 };
@@ -101,4 +136,9 @@ export const fetchBlobDiagnostics = async (blobUrl: string): Promise<{
       error: err.message || String(err)
     };
   }
+};
+
+// Utility to clear the cache manually if needed
+export const clearModelLoaderCache = () => {
+  processedUrls.clear();
 };

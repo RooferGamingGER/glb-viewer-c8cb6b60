@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
@@ -135,7 +134,6 @@ const Viewer = () => {
     };
   }, []);
   
-  // Exit fullscreen function
   const exitFullscreen = () => {
     if (document.exitFullscreen) {
       document.exitFullscreen().catch(err => {

@@ -1,15 +1,18 @@
 
-import React, { useRef, useState, useEffect, Suspense } from 'react';
+import React, { useRef, useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
+import { useOriginalFileStorage, fetchAndStoreOriginalFile } from '@/hooks/useOriginalFileStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
 import * as THREE from 'three';
 import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
+import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
+import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -23,8 +26,7 @@ function Loader3D() {
   // Show error if any
   useEffect(() => {
     if (errors.length > 0) {
-      console.error("Loading errors:", errors);
-      toast.error(`Fehler beim Laden: ${errors[0]}`);
+      smartToast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
   
@@ -37,100 +39,149 @@ function Loader3D() {
     </Html>;
 }
 
-function Model({
+// Track loaded models to prevent duplicate loading
+const loadedModels = new Set<string>();
+
+const Model = React.memo(({
   url,
-  rotate = true
+  rotate = true,
+  onLoadComplete
 }: {
   url: string;
   rotate?: boolean;
-  onClick?: (event: THREE.Intersection) => void;
-}) {
-  const { scene } = useGLTF(url, undefined, undefined, (error) => {
-    console.error("Error loading model:", error);
-    
-    // Convert error to more readable format
-    let errorMessage = "Unbekannter Fehler";
-    try {
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // Extract useful info from complex error objects
-        const errorInfo = {
-          message: (error as any).message || "Kein Fehlertext verfügbar",
-          type: error.constructor?.name || typeof error,
-          details: {}
-        };
-        
-        // Try to extract more details from error object
-        for (const key in error) {
-          if (typeof (error as any)[key] !== 'function' && key !== 'manager') {
-            (errorInfo.details as any)[key] = String((error as any)[key]);
-          }
-        }
-        
-        errorMessage = `${errorInfo.message || "Fehler beim Laden des 3D-Modells"}. 
-          Typ: ${errorInfo.type}`;
-          
-        if (Object.keys(errorInfo.details).length > 0) {
-          const detailsStr = JSON.stringify(errorInfo.details).slice(0, 100);
-          console.log("Error details:", errorInfo.details);
-          errorMessage += ` (Details: ${detailsStr}...)`;
-        }
-      } else {
-        errorMessage = String(error);
-      }
-    } catch (e) {
-      errorMessage = "Fehler beim Parsen der Fehlermeldung";
-      console.error("Error parsing error:", e);
-    }
-    
-    toast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
-  });
-  
+  onLoadComplete?: () => void;
+}) => {
   const modelRef = useRef<THREE.Group>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const isMobile = useIsMobile();
-
-  const modelScene = React.useMemo(() => scene.clone(), [scene]);
-
-  useEffect(() => {
-    if (modelRef.current) {
-      modelRef.current.position.set(0, 0, 0);
-      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-
-      const box = new THREE.Box3().setFromObject(modelRef.current);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      
-      // Check if camera is PerspectiveCamera before accessing fov property
-      if (camera instanceof THREE.PerspectiveCamera) {
-        // Use type assertion after the check to make TypeScript happy
-        const perspectiveCamera = camera as THREE.PerspectiveCamera;
-        const fov = perspectiveCamera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.5;
-        cameraZ = Math.max(cameraZ, 1.0);
-        const mobileFactor = isMobile ? 1.2 : 1.0;
-        camera.position.set(center.x, center.y + cameraZ * 0.15 * mobileFactor, center.z + cameraZ * mobileFactor);
-        camera.lookAt(center);
-      } else {
-        // Handle OrthographicCamera or other camera types
-        const distance = maxDim * (isMobile ? 1.2 : 1.0);
-        camera.position.set(center.x, center.y + distance * 0.15, center.z + distance);
-        camera.lookAt(center);
-      }
-      
-      modelRef.current.position.x = -center.x;
-      modelRef.current.position.y = -center.y;
-      modelRef.current.position.z = -center.z;
-      toast.success('Modell erfolgreich geladen');
+  const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  
+  // Stable reference to loaded scene - only load once per URL
+  const { scene } = useGLTF(url, undefined, undefined, (error) => {
+    let errorMessage = "Unbekannter Fehler";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = (error as any).message || "Fehler beim Laden des 3D-Modells";
+    } else {
+      errorMessage = String(error);
     }
-  }, [modelScene, camera, isMobile, rotate]);
+    smartToast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
+  });
+
+  // Stable scene reference - use useMemo with proper dependencies
+  const modelScene = useMemo(() => {
+    if (!scene) return null;
+    return scene;
+  }, [scene]);
+
+  // Store original file for direct GLB manipulation - only once
+  useOriginalFileStorage(modelScene, url);
+
+  // Fetch and store original file when URL changes - with stable reference
+  const stableUrl = useMemo(() => url, [url]);
+  useEffect(() => {
+    if (stableUrl && (stableUrl.endsWith('.glb') || stableUrl.endsWith('.gltf'))) {
+      if (!loadedModels.has(stableUrl)) {
+        loadedModels.add(stableUrl);
+        fetchAndStoreOriginalFile(stableUrl).catch(console.warn);
+      }
+    }
+  }, [stableUrl]);
+
+  // Calculate model transform with stable dependencies
+  const modelTransform = useMemo(() => {
+    if (!modelScene) return null;
+    
+    // Apply rotation first, then calculate bounding box
+    const tempGroup = new THREE.Group();
+    tempGroup.add(modelScene.clone());
+    tempGroup.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+    
+    const box = new THREE.Box3().setFromObject(tempGroup);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    // Clean up temp group
+    tempGroup.clear();
+    
+    return { center, size, maxDim };
+  }, [modelScene, rotate]);
+
+  // Stable camera position calculation with fallback
+  const cameraPosition = useMemo(() => {
+    if (!modelTransform || !camera) {
+      // Fallback position
+      return {
+        position: new THREE.Vector3(0, 2, 5),
+        center: new THREE.Vector3(0, 0, 0)
+      };
+    }
+    
+    const { maxDim } = modelTransform;
+    
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
+      cameraZ = Math.max(cameraZ, 1.5);
+      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
+      return {
+        position: new THREE.Vector3(
+          0, 
+          cameraZ * 0.05 * mobileFactor,
+          cameraZ * mobileFactor
+        ),
+        center: new THREE.Vector3(0, 0, 0)
+      };
+    } else {
+      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
+      return {
+        position: new THREE.Vector3(
+          0, 
+          distance * 0.05,
+          distance
+        ),
+        center: new THREE.Vector3(0, 0, 0)
+      };
+    }
+  }, [modelTransform, camera, qualitySettings]);
+
+  // Apply transformations with stable order - only when necessary
+  useEffect(() => {
+    if (modelRef.current && modelTransform && cameraPosition) {
+      // 1. Set model rotation first
+      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+      
+      // 2. Center the model after rotation
+      const { center } = modelTransform;
+      modelRef.current.position.set(-center.x, -center.y, -center.z);
+      
+      // 3. Set camera position last
+      camera.position.copy(cameraPosition.position);
+      camera.lookAt(cameraPosition.center);
+      camera.updateProjectionMatrix();
+      
+      // 4. Call onLoadComplete only once when model is ready
+      if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
+        loadedModels.add(`${url}_completed`);
+        setTimeout(() => {
+          if (modelRef.current) {
+            const box = new THREE.Box3().setFromObject(modelRef.current);
+            const size = box.getSize(new THREE.Vector3());
+            if (size.length() > 0) {
+              onLoadComplete();
+            }
+          }
+        }, 100);
+      }
+    }
+  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
     </group>;
-}
+});
 
 export interface ThreeContextProps {
   scene: THREE.Scene | null;
@@ -154,9 +205,7 @@ function SceneSetup({
   const { scene, camera, gl } = useThree();
   
   useEffect(() => {
-    // Type casting scene to THREE.Scene to fix the error
     if (scene && camera && gl) {
-      // Fix: Ensure scene is properly typed as THREE.Scene for compatibility with exportModelWithMeasurements
       const threeScene = scene as THREE.Scene;
       
       threeScene.traverse(obj => {
@@ -174,23 +223,27 @@ function SceneSetup({
   return null;
 }
 
-const ModelCanvas = ({
+const ModelCanvas = React.memo(({
   fileUrl,
   onSceneReady,
   canvasRef,
-  rotateModel
+  rotateModel,
+  onModelLoadComplete
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   rotateModel?: boolean;
+  onModelLoadComplete?: () => void;
 }) => {
   const isMobile = useIsMobile();
   
-  // Configure loader options - this helps with the draco loader configuration
+  // Preload only once when fileUrl changes - prevent race conditions
   useEffect(() => {
-    // Pre-configure GLTF loaders
-    useGLTF.preload(fileUrl, undefined, undefined, undefined);
+    if (!loadedModels.has(`${fileUrl}_preloaded`)) {
+      loadedModels.add(`${fileUrl}_preloaded`);
+      useGLTF.preload(fileUrl, undefined, undefined, undefined);
+    }
   }, [fileUrl]);
   
   return <Canvas shadows style={{
@@ -204,22 +257,32 @@ const ModelCanvas = ({
     touchAction: 'none'
   }} className="w-full h-full" ref={canvasRef}
     onCreated={({ gl }) => {
-      // Configure WebGL for better performance with large models
+      // Optimized WebGL settings for stability
       gl.outputColorSpace = THREE.SRGBColorSpace;
       gl.toneMapping = THREE.ACESFilmicToneMapping;
       gl.toneMappingExposure = 1;
       
-      // Add event listener for WebGL context lost
+      gl.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+      gl.setClearColor(0x222222, 1);
+      
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
-        console.error('WebGL context lost');
-        toast.error('WebGL-Kontext verloren. Bitte laden Sie die Seite neu.');
+        if (!document.hidden) {
+          smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
+        }
+      });
+      
+      gl.domElement.addEventListener('webglcontextrestored', () => {
+        if (!document.hidden) {
+          smartToast.success('WebGL-Kontext wiederhergestellt');
+        }
+        gl.setSize(gl.domElement.width, gl.domElement.height);
       });
     }}
   >
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
-        <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
+        <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
         
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -227,7 +290,11 @@ const ModelCanvas = ({
         
         <Environment preset="city" />
         
-        <Model url={fileUrl} rotate={rotateModel !== false} />
+        <Model 
+          url={fileUrl} 
+          rotate={rotateModel !== false} 
+          onLoadComplete={onModelLoadComplete}
+        />
         
         <OrbitControls 
           makeDefault 
@@ -241,6 +308,7 @@ const ModelCanvas = ({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
+          target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -248,7 +316,7 @@ const ModelCanvas = ({
         />
       </Suspense>
     </Canvas>;
-};
+});
 
 const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
@@ -263,26 +331,41 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = useIsMobile();
+  const { clearGLTFCache } = useMemoryOptimization();
   
   const [measurementsEnabled] = useState(true);
   const [measurementToolsEverEnabled] = useState(true);
   
   const { measurements } = useMeasurements();
 
-  const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  // Stable processed URL - only change when fileUrl actually changes
+  const processedUrl = useMemo(() => fileUrl, [fileUrl]);
 
+  // Show success message only once per model
+  const handleModelLoadComplete = useCallback(() => {
+    if (!loadedModels.has(`${processedUrl}_success_shown`)) {
+      loadedModels.add(`${processedUrl}_success_shown`);
+      smartToast.success('Modell erfolgreich geladen');
+    }
+  }, [processedUrl]);
+
+  // Cleanup only on unmount or when URL actually changes
   useEffect(() => {
-    setProcessedUrl(fileUrl);
-    
     return () => {
       if (processedUrl && processedUrl.startsWith('blob:')) {
-        console.log("Revoking blob URL on unmount:", processedUrl);
         URL.revokeObjectURL(processedUrl);
       }
+      // Clear from loaded models cache
+      loadedModels.delete(processedUrl);
+      loadedModels.delete(`${processedUrl}_preloaded`);
+      loadedModels.delete(`${processedUrl}_completed`);
+      loadedModels.delete(`${processedUrl}_success_shown`);
+      clearGLTFCache(processedUrl);
     };
-  }, [fileUrl]);
+  }, [processedUrl, clearGLTFCache]);
 
-  const handleSceneReady = (
+  // Stable scene ready handler
+  const handleSceneReady = useCallback((
     newScene: THREE.Scene, 
     newCamera: THREE.Camera, 
     newRenderer: THREE.WebGLRenderer, 
@@ -298,7 +381,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       renderer: newRenderer,
       canvas: canvas
     });
-  };
+  }, [isMobile]);
 
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
@@ -316,6 +399,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               onSceneReady={handleSceneReady} 
               canvasRef={canvasRef} 
               rotateModel={rotateModel}
+              onModelLoadComplete={handleModelLoadComplete}
             />
           </div>
           
@@ -325,7 +409,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               scene={threeContext.scene} 
               camera={threeContext.camera} 
               autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
-              rotateModel={rotateModel}
             />
           )}
         </div>

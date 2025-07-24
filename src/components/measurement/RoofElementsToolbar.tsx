@@ -16,7 +16,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { toast } from 'sonner';
+import { smartToast } from '@/utils/smartToast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface RoofElementToolbarProps {
@@ -34,19 +34,19 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
     toggleMeasurementTool(mode);
     
     if (activeMode === mode) {
-      toast.info(`Dachelemente-Werkzeug deaktiviert. Zurück zum Navigationsmodus.`);
+      smartToast.guidance(`Dachelemente-Werkzeug deaktiviert. Zurück zum Navigationsmodus.`);
     } else {
       // Show appropriate tool selection messages
       if (mode === 'skylight') {
-        toast.info('Dachfenster ausgewählt - Platzieren Sie 4 Punkte');
+        smartToast.guidance('Dachfenster ausgewählt - Platzieren Sie 4 Punkte');
       } else if (mode === 'chimney') {
-        toast.info('Kamin ausgewählt - Platzieren Sie 4 Punkte');
+        smartToast.guidance('Kamin ausgewählt - Platzieren Sie 4 Punkte');
       } else if (mode === 'vent') {
-        toast.info('Lüfter ausgewählt - Platzieren Sie den Punkt');
+        smartToast.guidance('Lüfter ausgewählt - Platzieren Sie den Punkt');
       } else if (mode === 'hook') {
-        toast.info('Dachhaken ausgewählt - Platzieren Sie den Punkt');
+        smartToast.guidance('Dachhaken ausgewählt - Platzieren Sie den Punkt');
       } else if (mode === 'other') {
-        toast.info('Sonstige Einbauten ausgewählt - Platzieren Sie den Punkt');
+        smartToast.guidance('Sonstige Einbauten ausgewählt - Platzieren Sie den Punkt');
       }
     }
   };

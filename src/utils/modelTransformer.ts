@@ -2,12 +2,25 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { saveAs } from 'file-saver';
 import { Measurement, Point } from '@/types/measurements';
 import { triangulate3D, calculate3DTriangleArea } from '@/utils/triangulation';
+import { rotateGLBDirect, getOriginalGLBBlob } from './glbDirectManipulation';
+
+// Eturnity Export Settings Interface
+export interface EturnityExportSettings {
+  format: 'glb';
+  applyModifiers: boolean;
+  includeSelectedObjects: boolean;
+  compression: 'none' | 'draco';
+  materials: 'keep' | 'combine';
+  embedImages: boolean;
+  binary: boolean;
+}
 
 // Singleton pattern for DRACOLoader - better performance by reusing
 let dracoLoaderInstance: DRACOLoader | null = null;
-const getDracoLoader = () => {
+export const getDracoLoader = () => {
   if (!dracoLoaderInstance) {
     const loader = new DRACOLoader();
     // Use local Draco decoder if available, otherwise fall back to CDN
@@ -227,149 +240,347 @@ export const exportModelWithMeasurements = (
   });
 };
 
-// Pure model extraction and export for Eturnity - maximum file size optimization
-export const exportModelOnlyForEturnity = (
-  modelScene: THREE.Scene | THREE.Group,
-  fileName: string = 'eturnity-export.glb',
-  onProgress?: (progress: number) => void,
-  rotateModel: boolean = true
-): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    try {
-      onProgress?.(5);
-      
-      // Extract ONLY the original model mesh (no measurements, UI objects, etc.)
-      const pureModel = extractPureModel(modelScene);
-      if (!pureModel) {
-        reject(new Error('Kein gültiges 3D-Modell gefunden'));
-        return;
-      }
-      
-      onProgress?.(15);
-      
-      // Create a minimal scene with only the pure model
-      const exportScene = new THREE.Scene();
-      
-      // Clone the pure model to avoid modifying the original
-      const modelClone = pureModel.clone(true);
-      
-      // Apply rotation for Eturnity format only if rotateModel is false
-      // (if rotateModel is true, the model is already rotated in the viewer)
-      if (!rotateModel) {
-        modelClone.rotation.x = -Math.PI / 2;
-      }
-      modelClone.updateMatrixWorld(true);
-      
-      exportScene.add(modelClone);
-      
-      onProgress?.(25);
-      
-      // Export with original quality - only rotate as needed
-      const exporter = new GLTFExporter();
-      
-      // Standard export options - maintain original quality
-      const exportOptions = {
-        binary: true,
-        onlyExportVisible: true,
-        includeCustomExtensions: true,
-        truncateDrawRange: false,
-        embedImages: true  // Keep original image quality
-      };
-      
-      onProgress?.(50);
-      
-      exporter.parse(
-        exportScene,
-        (result) => {
-          try {
-            const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
-            const url = URL.createObjectURL(blob);
-            
-            // Trigger download
-            if (fileName) {
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = fileName;
-              link.click();
-            }
-            
-            onProgress?.(100);
-            
-            // Log file size for debugging
-            console.log(`Eturnity export file size: ${(blob.size / (1024 * 1024)).toFixed(2)}MB`);
-            
-            resolve(url);
-          } catch (exportError) {
-            reject(new Error(`Fehler beim Erstellen der Eturnity-Datei: ${(exportError instanceof Error) ? exportError.message : String(exportError)}`));
+/**
+ * Exportiert eine Three.js Szene als Eturnity-kompatibles .glb-Modell
+ * @param modelGroup Die Gruppe oder Szene mit den zu exportierenden Meshes
+ * @param fileName Dateiname für den Download
+ */
+export function exportModelOnlyForEturnity(
+  modelGroup: THREE.Group,
+  fileName: string = 'eturnity-export.glb'
+) {
+  console.log('🔄 Starte Eturnity Export...');
+  console.log('📊 Original modelGroup children:', modelGroup.children.length);
+  
+  // Model klonen um das Original nicht zu beschädigen
+  const clonedGroup = modelGroup.clone(true);
+  console.log('📊 Geklontes modelGroup children:', clonedGroup.children.length);
+  
+  // Validierung vor Export
+  if (clonedGroup.children.length === 0) {
+    console.error('❌ Keine Geometrie zum Exportieren gefunden!');
+    throw new Error('Keine Geometrie zum Exportieren gefunden');
+  }
+
+  const exporter = new GLTFExporter();
+
+  // 1. Rotation Z-up → Y-up (WebODM → Eturnity) - non-destructive
+  clonedGroup.rotation.x = -Math.PI / 2;
+  clonedGroup.updateMatrixWorld(true);
+
+  // 2. Nur "Unlit" entfernen, alle anderen Materialien beibehalten
+  let meshCount = 0;
+  clonedGroup.traverse(obj => {
+    if (obj instanceof THREE.Mesh) {
+      meshCount++;
+      const material = obj.material;
+
+      // Für jedes Material: Nur KHR_materials_unlit entfernen falls vorhanden
+      if (Array.isArray(material)) {
+        material.forEach(mat => {
+          if ((mat as any)?.extensions?.KHR_materials_unlit) {
+            delete (mat as any).extensions.KHR_materials_unlit;
+            console.log('🔧 KHR_materials_unlit entfernt von Array-Material');
           }
-        },
-        (error) => {
-          reject(new Error(`Fehler beim Eturnity-Export: ${(error instanceof Error) ? error.message : String(error)}`));
-        },
-        exportOptions
-      );
-    } catch (error) {
-      reject(new Error(`Fehler beim Vorbereiten des Eturnity-Exports: ${(error instanceof Error) ? error.message : String(error)}`));
+        });
+      } else if (material) {
+        if ((material as any)?.extensions?.KHR_materials_unlit) {
+          delete (material as any).extensions.KHR_materials_unlit;
+          console.log('🔧 KHR_materials_unlit entfernt von Material');
+        }
+      }
+      
+      // Original Material beibehalten - KEIN sharedMaterial mehr!
     }
   });
-};
+  
+  console.log('📊 Meshes für Export gefunden:', meshCount);
+
+  // 3. Export-Optionen definieren
+  const exportOptions: THREE.GLTFExporter.Options = {
+    binary: true,
+    embedImages: true,
+    onlyVisible: true,
+    forcePowerOfTwoTextures: false,
+    includeCustomExtensions: false,
+    animations: [],
+    maxTextureSize: Infinity
+  };
+
+  // 4. Exportieren mit Validierung
+  exporter.parse(
+    clonedGroup,
+    glb => {
+      const arrayBuffer = glb as ArrayBuffer;
+      console.log('📊 Exportierte GLB Größe:', arrayBuffer.byteLength, 'bytes');
+      
+      if (arrayBuffer.byteLength === 0) {
+        console.error('❌ Export ist leer!');
+        throw new Error('Export ist leer - keine Daten exportiert');
+      }
+      
+      const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
+      saveAs(blob, fileName);
+      console.log(`✅ Export erfolgreich abgeschlossen: ${fileName}`);
+    },
+    error => {
+      console.error('❌ Export Fehler:', error);
+      throw new Error(`Export fehlgeschlagen: ${error}`);
+    },
+    exportOptions
+  );
+}
 
 // Extract only the original GLB model (no measurement objects, UI elements, etc.)
 const extractPureModel = (scene: THREE.Scene | THREE.Group): THREE.Object3D | null => {
-  let pureModel: THREE.Object3D | null = null;
+  console.log('Starting model extraction from scene with', scene.children.length, 'children');
+  
+  let bestCandidate: THREE.Object3D | null = null;
+  let maxVertexCount = 0;
+  let candidates: Array<{obj: THREE.Object3D, vertices: number}> = [];
   
   scene.traverse((child) => {
-    // Skip measurement objects, UI elements, helpers, etc.
-    if (child.name && (
-      child.name.includes('Measurement') ||
-      child.name.includes('measurement') ||
-      child.name.includes('Point_') ||
-      child.name.includes('Line_') ||
-      child.name.includes('Area_') ||
-      child.name.includes('segment') ||
-      child.name.includes('Segment') ||
-      child.name.includes('label') ||
-      child.name.includes('Label') ||
-      child.name.includes('indicator') ||
-      child.name.includes('Indicator') ||
-      child.name.includes('Helper') ||
-      child.name.includes('Guide') ||
-      child.name.includes('Preview')
-    )) {
-      return; // Skip this object
+    // Debug logging
+    if (child.name) {
+      console.log('Found object:', child.name, 'type:', child.type);
     }
     
-    // Skip objects with measurement userData
-    if (child.userData && (
+    // Skip only clearly identified measurement objects
+    const isMeasurementObject = child.name && (
+      child.name.startsWith('Measurement') ||
+      child.name.startsWith('Point_') ||
+      child.name.startsWith('Line_') ||
+      child.name.startsWith('Area_') ||
+      child.name.includes('_measurement') ||
+      child.name.includes('_segment')
+    );
+    
+    const hasMeasurementUserData = child.userData && (
       child.userData.measurementId ||
-      child.userData.isSegment ||
       child.userData.isMeasurement ||
-      child.userData.type === 'measurement' ||
-      child.userData.isHelper ||
-      child.userData.isPreview
-    )) {
-      return; // Skip this object
+      child.userData.isSegment ||
+      child.userData.type === 'measurement'
+    );
+    
+    if (isMeasurementObject || hasMeasurementUserData) {
+      console.log('Skipping measurement object:', child.name);
+      return;
     }
     
-    // Look for the main mesh object (usually has geometry and is a Mesh or Group)
+    // Look for meshes with geometry
     if (child instanceof THREE.Mesh && child.geometry && child.material) {
-      // This looks like the original model mesh
-      if (!pureModel || child.geometry.attributes.position.count > (pureModel as THREE.Mesh).geometry?.attributes?.position?.count) {
-        pureModel = child.parent || child; // Take the parent group if available
+      const vertexCount = child.geometry.attributes.position?.count || 0;
+      console.log('Found mesh:', child.name || 'unnamed', 'vertices:', vertexCount);
+      
+      candidates.push({obj: child, vertices: vertexCount});
+      
+      if (vertexCount > maxVertexCount) {
+        maxVertexCount = vertexCount;
+        bestCandidate = child;
       }
     }
     
-    // Also check for groups that contain the main model
-    if (child instanceof THREE.Group && child.children.length > 0 && !pureModel) {
-      // Check if this group contains mesh objects (likely the original model)
-      const hasMeshes = child.children.some(c => c instanceof THREE.Mesh && c.geometry);
-      if (hasMeshes) {
-        pureModel = child;
+    // Also consider groups that might contain the model
+    if (child instanceof THREE.Group && child.children.length > 0) {
+      let groupVertices = 0;
+      child.traverse((grandchild) => {
+        if (grandchild instanceof THREE.Mesh && grandchild.geometry) {
+          groupVertices += grandchild.geometry.attributes.position?.count || 0;
+        }
+      });
+      
+      if (groupVertices > maxVertexCount) {
+        maxVertexCount = groupVertices;
+        bestCandidate = child;
       }
     }
   });
   
-  return pureModel;
+  console.log('Found', candidates.length, 'mesh candidates');
+  console.log('Best candidate:', bestCandidate?.name || 'unnamed', 'with', maxVertexCount, 'vertices');
+  
+  // If we found a candidate, find its root parent or return it directly
+  if (bestCandidate) {
+    // Try to find the root model container, but be less aggressive
+    let currentCandidate = bestCandidate;
+    let parent = bestCandidate.parent;
+    
+    while (parent && parent !== scene && parent.children.length < 50) {
+      // Only move up if the parent doesn't contain too many objects (likely UI clutter)
+      const hasReasonableChildCount = parent.children.length < 20;
+      const hasMainlyMeshes = parent.children.filter(child => 
+        child instanceof THREE.Mesh || child instanceof THREE.Group
+      ).length > parent.children.length * 0.7;
+      
+      if (hasReasonableChildCount && hasMainlyMeshes) {
+        currentCandidate = parent;
+        parent = parent.parent;
+      } else {
+        break;
+      }
+    }
+    
+    console.log('Selected candidate:', currentCandidate.name || 'unnamed', 'type:', currentCandidate.type);
+    return currentCandidate;
+  }
+  
+  console.warn('No suitable model candidate found');
+  return null;
+};
+
+// Select only relevant objects for Eturnity export (no measurements, UI elements, etc.)
+const selectRelevantObjects = (scene: THREE.Scene | THREE.Group): THREE.Object3D | null => {
+  console.log('Selecting relevant objects for Eturnity export...');
+  
+  const relevantObjects = new THREE.Group();
+  relevantObjects.name = 'EturnityRelevantObjects';
+  
+  scene.traverse((child) => {
+    // Skip measurement objects
+    const isMeasurementObject = child.name && (
+      child.name.includes('Measurement') ||
+      child.name.includes('Point_') ||
+      child.name.includes('Line_') ||
+      child.name.includes('Area_') ||
+      child.name.includes('_measurement') ||
+      child.name.includes('_segment') ||
+      child.name.includes('Label') ||
+      child.name.includes('Gizmo') ||
+      child.name.includes('Helper')
+    );
+    
+    const hasMeasurementUserData = child.userData && (
+      child.userData.measurementId ||
+      child.userData.isMeasurement ||
+      child.userData.isSegment ||
+      child.userData.type === 'measurement' ||
+      child.userData.debug
+    );
+    
+    // Skip debug and UI objects
+    if (isMeasurementObject || hasMeasurementUserData || child.userData?.export === false) {
+      return;
+    }
+    
+    // Include meshes with valid geometry and materials
+    if (child instanceof THREE.Mesh && child.geometry && child.material) {
+      const vertexCount = child.geometry.attributes.position?.count || 0;
+      if (vertexCount > 0) {
+        console.log('Including relevant mesh:', child.name || 'unnamed', 'vertices:', vertexCount);
+        const meshClone = child.clone(true);
+        // Preserve world transformation
+        meshClone.applyMatrix4(child.matrixWorld);
+        relevantObjects.add(meshClone);
+      }
+    }
+    
+    // Include groups that contain relevant meshes
+    if (child instanceof THREE.Group && child.children.length > 0) {
+      let hasRelevantContent = false;
+      child.traverse((grandchild) => {
+        if (grandchild instanceof THREE.Mesh && grandchild.geometry && grandchild.material) {
+          hasRelevantContent = true;
+        }
+      });
+      
+      if (hasRelevantContent && !isMeasurementObject && !hasMeasurementUserData) {
+        console.log('Including relevant group:', child.name || 'unnamed');
+        const groupClone = child.clone(true);
+        relevantObjects.add(groupClone);
+      }
+    }
+  });
+  
+  console.log('Selected', relevantObjects.children.length, 'relevant objects for export');
+  return relevantObjects.children.length > 0 ? relevantObjects : null;
+};
+
+// Apply modifiers to model (transforms, etc.)
+const applyModifiersToModel = (object: THREE.Object3D) => {
+  console.log('Applying modifiers to model...');
+  
+  object.traverse((child) => {
+    // Update all matrix transformations
+    child.updateMatrix();
+    child.updateMatrixWorld(true);
+    
+    // For meshes, apply transformations to geometry
+    if (child instanceof THREE.Mesh && child.geometry) {
+      // Apply the object's transformation matrix to the geometry
+      child.geometry.applyMatrix4(child.matrix);
+      
+      // Reset the object's transformation since it's now baked into geometry
+      child.position.set(0, 0, 0);
+      child.rotation.set(0, 0, 0);
+      child.scale.set(1, 1, 1);
+      child.updateMatrix();
+    }
+  });
+  
+  console.log('Modifiers applied successfully');
+};
+
+// Combine similar materials to reduce complexity
+const combineMaterials = async (scene: THREE.Scene): Promise<void> => {
+  console.log('Combining materials...');
+  
+  const materialMap = new Map<string, THREE.Material>();
+  const materialKey = (material: THREE.Material): string => {
+    // Create a key based on material properties
+    if (material instanceof THREE.MeshStandardMaterial) {
+      return `standard_${material.color.getHexString()}_${material.roughness}_${material.metalness}`;
+    } else if (material instanceof THREE.MeshBasicMaterial) {
+      return `basic_${material.color.getHexString()}`;
+    }
+    return `other_${material.type}`;
+  };
+  
+  // Collect all materials and group similar ones
+  scene.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      
+      materials.forEach((material, index) => {
+        const key = materialKey(material);
+        
+        if (!materialMap.has(key)) {
+          // Create a simplified version of the material
+          let combinedMaterial: THREE.Material;
+          
+          if (material instanceof THREE.MeshStandardMaterial) {
+            combinedMaterial = new THREE.MeshStandardMaterial({
+              color: material.color.clone(),
+              roughness: material.roughness,
+              metalness: material.metalness,
+              transparent: material.transparent,
+              opacity: material.opacity,
+              side: material.side
+            });
+          } else if (material instanceof THREE.MeshBasicMaterial) {
+            combinedMaterial = new THREE.MeshBasicMaterial({
+              color: material.color.clone(),
+              transparent: material.transparent,
+              opacity: material.opacity,
+              side: material.side
+            });
+          } else {
+            combinedMaterial = material.clone();
+          }
+          
+          materialMap.set(key, combinedMaterial);
+        }
+        
+        // Replace the material with the combined version
+        if (Array.isArray(child.material)) {
+          child.material[index] = materialMap.get(key)!;
+        } else {
+          child.material = materialMap.get(key)!;
+        }
+      });
+    }
+  });
+  
+  console.log(`Combined materials from many to ${materialMap.size} unique materials`);
 };
 
 // Aggressive geometry optimization for maximum file size reduction
@@ -399,9 +610,10 @@ const optimizeGeometryForMaximumCompression = (object: THREE.Object3D) => {
   });
 };
 
-// Compress and optimize textures for smaller file size
-const compressTexturesForEturnity = (object: THREE.Object3D) => {
+// Smart texture compression for optimal file size
+const compressTexturesForFileSize = (object: THREE.Object3D) => {
   const processedTextures = new Set<THREE.Texture>();
+  const maxTextureSize = 1024; // Reasonable size for Eturnity
   
   object.traverse((child) => {
     if (child instanceof THREE.Mesh && child.material) {
@@ -409,13 +621,13 @@ const compressTexturesForEturnity = (object: THREE.Object3D) => {
       
       materials.forEach(material => {
         if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial) {
-          // Compress main textures
+          // Optimize main texture if present
           if (material.map && !processedTextures.has(material.map)) {
-            compressTexture(material.map);
+            optimizeTexture(material.map, maxTextureSize);
             processedTextures.add(material.map);
           }
           
-          // Remove unnecessary texture maps to reduce file size
+          // Keep only essential maps, remove detailed maps
           if (material.normalMap) {
             material.normalMap = null;
           }
@@ -428,21 +640,70 @@ const compressTexturesForEturnity = (object: THREE.Object3D) => {
           if (material.aoMap) {
             material.aoMap = null;
           }
+          if (material.lightMap) {
+            material.lightMap = null;
+          }
+          
+          // Simplify material properties
+          if (material instanceof THREE.MeshStandardMaterial) {
+            material.roughness = 0.7;
+            material.metalness = 0.1;
+            material.envMapIntensity = 0.5;
+          }
+          
+          material.needsUpdate = true;
         }
       });
     }
   });
 };
 
-// Compress individual texture
-const compressTexture = (texture: THREE.Texture) => {
-  // Set aggressive compression settings
+// Optimize individual texture for file size
+const optimizeTexture = (texture: THREE.Texture, maxSize: number) => {
+  // Disable mipmaps to reduce file size
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   
+  // Set wrapping to reduce data
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  
   // Force texture update
   texture.needsUpdate = true;
+};
+
+// Smart geometry optimization for file size reduction
+const optimizeGeometryForFileSize = (object: THREE.Object3D) => {
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.geometry) {
+      const geometry = child.geometry;
+      
+      // Remove unnecessary attributes
+      const attributesToRemove = ['color', 'uv2', 'tangent', 'bitangent'];
+      attributesToRemove.forEach(attr => {
+        if (geometry.attributes[attr]) {
+          geometry.deleteAttribute(attr);
+        }
+      });
+      
+      // Merge vertices only if not indexed to avoid breaking geometry
+      if (!geometry.index && geometry.attributes.position) {
+        try {
+          const positionCount = geometry.attributes.position.count;
+          if (positionCount < 50000) { // Only for reasonably sized geometries
+            geometry.mergeVertices();
+          }
+        } catch (e) {
+          console.warn('Could not merge vertices:', e);
+        }
+      }
+      
+      // Compute bounds for optimization
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+    }
+  });
 };
 
 // Simplify material properties for Eturnity compatibility and smaller file size

@@ -1,16 +1,20 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { toast } from 'sonner';
-import { Upload, File, AlertTriangle, RotateCw } from 'lucide-react';
+import { smartToast } from '@/utils/smartToast';
+import { devError } from '@/utils/consoleCleanup';
+import { Upload, File, AlertTriangle, RotateCw, Download } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
-import { rotateAndExportModel } from '@/utils/modelTransformer';
+import { rotateGLBDirect } from '@/utils/glbDirectManipulation';
+import { exportModelOnlyForEturnity, EturnityExportSettings } from '@/utils/modelTransformer';
 
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [rotateModel, setRotateModel] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -21,24 +25,26 @@ const FileUpload: React.FC = () => {
     e.stopPropagation();
     setIsDragging(true);
   }, []);
+
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }, []);
+
   const validateFile = (file: File): boolean => {
     setFileError(null);
     if (!file.name.toLowerCase().endsWith('.glb')) {
       const errorMsg = 'Bitte laden Sie eine gültige GLB-Datei hoch.';
       setFileError(errorMsg);
-      toast.error(errorMsg);
+      smartToast.error(errorMsg);
       return false;
     }
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       const errorMsg = 'Die Datei ist zu groß. Maximale Größe ist 100MB.';
       setFileError(errorMsg);
-      toast.error(errorMsg);
+      smartToast.error(errorMsg);
       return false;
     }
     return true;
@@ -47,7 +53,7 @@ const FileUpload: React.FC = () => {
   const handleFileSelect = useCallback((file: File) => {
     if (validateFile(file)) {
       setSelectedFile(file);
-      toast.success('Datei ausgewählt: ' + file.name);
+      smartToast.success('Datei ausgewählt: ' + file.name);
     }
   }, []);
 
@@ -68,7 +74,7 @@ const FileUpload: React.FC = () => {
 
   const handleUploadClick = useCallback(() => {
     if (!selectedFile) {
-      toast.error('Bitte wählen Sie zuerst eine Datei aus.');
+      smartToast.error('Bitte wählen Sie zuerst eine Datei aus.');
       return;
     }
     setUploading(true);
@@ -79,32 +85,42 @@ const FileUpload: React.FC = () => {
     }, 1000);
   }, [selectedFile, navigate, rotateModel]);
 
-  const handleRotateAndDownload = async () => {
+  const handleEturnityConvert = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!selectedFile) {
-      toast.error('Bitte wählen Sie zuerst eine Datei aus.');
+      smartToast.error('Bitte wählen Sie zuerst eine Datei aus.');
       return;
     }
+
     try {
-      setUploading(true);
-      toast.loading('Modell wird gedreht...');
-      const url = await rotateAndExportModel(selectedFile);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rotated_${selectedFile.name}`;
-      a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 500);
-      toast.dismiss();
-      toast.success('Modell wurde erfolgreich gedreht und heruntergeladen');
+      setConverting(true);
+      smartToast.technical('GLB-Datei wird für Eturnity konvertiert...');
+      
+      // GLB laden und für Eturnity exportieren
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const { exportModelOnlyForEturnity, getDracoLoader } = await import('../utils/modelTransformer');
+      
+      const loader = new GLTFLoader();
+      const dracoLoader = getDracoLoader();
+      loader.setDRACOLoader(dracoLoader);
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      
+      loader.parse(arrayBuffer, '', (gltf) => {
+        const modelGroup = gltf.scene;
+        const fileName = selectedFile.name.replace(/\.[^/.]+$/, '_eturnity.glb');
+        exportModelOnlyForEturnity(modelGroup, fileName);
+        smartToast.success(`Datei erfolgreich für Eturnity konvertiert: ${fileName}`);
+        setConverting(false);
+      }, (error) => {
+        console.error('Fehler beim Laden der GLB-Datei:', error);
+        smartToast.error('Fehler beim Laden der GLB-Datei');
+        setConverting(false);
+      });
     } catch (error) {
-      console.error('Error rotating model:', error);
-      toast.dismiss();
-      // Fixed: Convert error to string to avoid [object Object] display
+      devError('Error converting GLB for Eturnity:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast.error(`Fehler beim Drehen des Modells: ${errorMessage}`);
-    } finally {
-      setUploading(false);
+      smartToast.error(`Fehler beim Konvertieren: ${errorMessage}`);
+      setConverting(false);
     }
   };
 
@@ -115,7 +131,7 @@ const FileUpload: React.FC = () => {
   };
 
   const handleSwitchClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop the click from propagating to the parent
+    e.stopPropagation();
   };
 
   return <div className="w-full animate-fade-in">
@@ -147,19 +163,22 @@ const FileUpload: React.FC = () => {
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
               <span className="text-sm">
-                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®?" : "Fremdanbieter"}
+                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®" : "Fremdanbieter"}
               </span>
             </label>
-            <span className="text-xs text-muted-foreground">Möchten Sie eine GLB-Datei von einem anderen Anbieter verwenden, dann deaktivieren Sie den Button darüber. </span>
+            <span className="text-xs text-muted-foreground">
+              {rotateModel 
+                ? "Für RooferGaming-Modelle ist die Eturnity-Konvertierung verfügbar."
+                : "Für Fremdanbieter-Modelle ist keine Eturnity-Konvertierung verfügbar."
+              }
+            </span>
           </div>
 
-          {selectedFile && <div className="mt-6 flex justify-center gap-2">
-            {rotateModel}
-
+          {selectedFile && <div className="mt-6 flex flex-col sm:flex-row justify-center gap-2">
             <Button onClick={e => {
-            e.stopPropagation(); // Prevent triggering the clickFileInput
-            handleUploadClick();
-          }} className="button-hover px-6 py-2" disabled={uploading}>
+              e.stopPropagation();
+              handleUploadClick();
+            }} className="button-hover px-6 py-2" disabled={uploading || converting}>
               {uploading ? <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                   <span>Wird geladen...</span>
@@ -168,12 +187,39 @@ const FileUpload: React.FC = () => {
                   3D-Modell anzeigen
                 </>}
             </Button>
+
+            {/* Eturnity Button nur für RooferGaming-Uploads anzeigen */}
+            {rotateModel && (
+              <Button 
+                onClick={handleEturnityConvert}
+                variant="outline" 
+                className="button-hover px-6 py-2" 
+                disabled={uploading || converting}
+              >
+                {converting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                    <span>Konvertiert...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Für Eturnity konvertieren
+                  </>
+                )}
+              </Button>
+            )}
           </div>}
         </div>
       </div>
 
       <div className="mt-4 text-center text-xs text-muted-foreground">
         Unterstützte Dateien: .glb (bis zu 100MB)
+        {rotateModel && selectedFile && (
+          <div className="mt-1">
+            Für Eturnity: Datei wird rotiert und als Download bereitgestellt
+          </div>
+        )}
       </div>
     </div>;
 };
