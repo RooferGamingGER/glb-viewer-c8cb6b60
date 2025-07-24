@@ -268,44 +268,33 @@ export function exportModelOnlyForEturnity(
   clonedGroup.rotation.x = -Math.PI / 2;
   clonedGroup.updateMatrixWorld(true);
 
-  // 2. Materialien vereinheitlichen und "Unlit" entfernen
-  const sharedMaterial = new THREE.MeshStandardMaterial({
-    metalness: 0.0,
-    roughness: 1.0
-  });
-
-  let firstTexture: THREE.Texture | null = null;
-
+  // 2. Nur "Unlit" entfernen, alle anderen Materialien beibehalten
   let meshCount = 0;
   clonedGroup.traverse(obj => {
     if (obj instanceof THREE.Mesh) {
       meshCount++;
-      const oldMat = obj.material as THREE.MeshStandardMaterial;
+      const material = obj.material;
 
-      // Erste verwendbare Textur merken
-      if (!firstTexture && oldMat?.map) {
-        firstTexture = oldMat.map;
-        console.log('🖼️ Textur gefunden für Material');
+      // Für jedes Material: Nur KHR_materials_unlit entfernen falls vorhanden
+      if (Array.isArray(material)) {
+        material.forEach(mat => {
+          if ((mat as any)?.extensions?.KHR_materials_unlit) {
+            delete (mat as any).extensions.KHR_materials_unlit;
+            console.log('🔧 KHR_materials_unlit entfernt von Array-Material');
+          }
+        });
+      } else if (material) {
+        if ((material as any)?.extensions?.KHR_materials_unlit) {
+          delete (material as any).extensions.KHR_materials_unlit;
+          console.log('🔧 KHR_materials_unlit entfernt von Material');
+        }
       }
-
-      // Unlit entfernen, falls vorhanden
-      if ((oldMat as any)?.extensions?.KHR_materials_unlit) {
-        delete (oldMat as any).extensions.KHR_materials_unlit;
-        console.log('🔧 KHR_materials_unlit entfernt');
-      }
-
-      // Einheitliches Material setzen
-      obj.material = sharedMaterial;
+      
+      // Original Material beibehalten - KEIN sharedMaterial mehr!
     }
   });
   
   console.log('📊 Meshes für Export gefunden:', meshCount);
-
-  // Textur zuweisen, falls vorhanden
-  if (firstTexture) {
-    sharedMaterial.map = firstTexture;
-    sharedMaterial.map.needsUpdate = true;
-  }
 
   // 3. Export-Optionen definieren
   const exportOptions: THREE.GLTFExporter.Options = {
