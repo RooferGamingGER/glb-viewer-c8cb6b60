@@ -20,7 +20,7 @@ export interface EturnityExportSettings {
 
 // Singleton pattern for DRACOLoader - better performance by reusing
 let dracoLoaderInstance: DRACOLoader | null = null;
-const getDracoLoader = () => {
+export const getDracoLoader = () => {
   if (!dracoLoaderInstance) {
     const loader = new DRACOLoader();
     // Use local Draco decoder if available, otherwise fall back to CDN

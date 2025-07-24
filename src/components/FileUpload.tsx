@@ -98,9 +98,11 @@ const FileUpload: React.FC = () => {
       
       // GLB laden und für Eturnity exportieren
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-      const { exportModelOnlyForEturnity } = await import('../utils/modelTransformer');
+      const { exportModelOnlyForEturnity, getDracoLoader } = await import('../utils/modelTransformer');
       
       const loader = new GLTFLoader();
+      const dracoLoader = getDracoLoader();
+      loader.setDRACOLoader(dracoLoader);
       const arrayBuffer = await selectedFile.arrayBuffer();
       
       loader.parse(arrayBuffer, '', (gltf) => {
