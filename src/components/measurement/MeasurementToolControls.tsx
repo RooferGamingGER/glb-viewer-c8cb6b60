@@ -28,6 +28,7 @@ import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
+import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
