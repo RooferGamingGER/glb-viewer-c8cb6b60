@@ -783,8 +783,8 @@ const createInfoPage = (notes: string, summary: any): HTMLElement => {
     notesContent.style.lineHeight = '1.6';
     notesContent.style.whiteSpace = 'pre-wrap';
     
-    const formattedNotes = notes.split('\n').join('<br>');
-    notesContent.innerHTML = formattedNotes;
+    // Preserve line breaks safely without parsing HTML
+    notesContent.textContent = notes;
     
     notesContainer.appendChild(notesContent);
     container.appendChild(notesContainer);
@@ -818,8 +818,8 @@ const createNotesPage = (notes: string): HTMLElement => {
   notesContent.style.lineHeight = '1.6';
   notesContent.style.whiteSpace = 'pre-wrap';
   
-  const formattedNotes = notes.split('\n').join('<br>');
-  notesContent.innerHTML = formattedNotes;
+  // Preserve line breaks safely without parsing HTML
+  notesContent.textContent = notes;
   
   container.appendChild(notesContent);
   
@@ -1068,7 +1068,14 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     const companyName = document.createElement('div');
     companyName.className = 'company-name';
-    companyName.innerHTML = coverData.companyName || 'DrohnenGLB by RooferGaming<sup>®</sup>';
+    if (coverData.companyName) {
+      companyName.textContent = coverData.companyName;
+    } else {
+      companyName.textContent = 'DrohnenGLB by RooferGaming';
+      const sup = document.createElement('sup');
+      sup.textContent = '®';
+      companyName.appendChild(sup);
+    }
     coverHeader.appendChild(companyName);
     
     coverPage.appendChild(coverHeader);
@@ -1080,7 +1087,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     const subtitle = document.createElement('div');
     subtitle.className = 'cover-subtitle';
-    subtitle.innerHTML = 'Kostenloser GLB Viewer: drohnenglb.de<br>Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
+    subtitle.append(document.createTextNode('Kostenloser GLB Viewer: drohnenglb.de'));
+    subtitle.appendChild(document.createElement('br'));
+    subtitle.append(document.createTextNode('Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de'));
     coverPage.appendChild(subtitle);
     
     const infoSection = document.createElement('div');
@@ -1316,10 +1325,17 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         
         const areaDetails = document.createElement('div');
         areaDetails.style.marginBottom = '10px';
-        areaDetails.innerHTML = `<strong>Fläche:</strong> ${measurement.value.toFixed(2)} m²`;
+        const labelStrong = document.createElement('strong');
+        labelStrong.textContent = 'Fläche:';
+        areaDetails.appendChild(labelStrong);
+        areaDetails.append(document.createTextNode(` ${measurement.value.toFixed(2)} m²`));
         
         if (measurement.inclination !== undefined) {
-          areaDetails.innerHTML += `<br><strong>Neigung:</strong> ${Math.abs(measurement.inclination).toFixed(1)}°`;
+          areaDetails.appendChild(document.createElement('br'));
+          const inclStrong = document.createElement('strong');
+          inclStrong.textContent = 'Neigung:';
+          areaDetails.appendChild(inclStrong);
+          areaDetails.append(document.createTextNode(` ${Math.abs(measurement.inclination).toFixed(1)}°`));
         }
         
         areaContainer.appendChild(areaDetails);

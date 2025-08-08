@@ -62,7 +62,8 @@ const SidebarProvider = React.forwardRef<HTMLDivElement, React.ComponentProps<"d
     }
 
     // This sets the cookie to keep the sidebar state.
-    document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+    const secureAttr = window.location.protocol === 'https:' ? '; secure' : '';
+    document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; samesite=Lax${secureAttr}`;
   }, [setOpenProp, open]);
 
   // Helper to toggle the sidebar.
