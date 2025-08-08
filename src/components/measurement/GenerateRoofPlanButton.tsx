@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Maximize, Download, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Measurement, Segment } from '@/types/measurements';
-import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +23,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
   const [isGenerating, setIsGenerating] = useState(false);
   const [roofPlan, setRoofPlan] = useState<string | null>(null);
   
-  const handleGenerateRoofPlan = () => {
+  const handleGenerateRoofPlan = async () => {
     if (measurements.length === 0) {
       toast.error('Keine Messungen für den Dachplan vorhanden');
       return;
@@ -34,6 +33,7 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
     
     try {
       // Higher resolution for better quality
+      const { createCombinedRoofPlan } = await import('@/utils/roofPlanRenderer');
       const plan = createCombinedRoofPlan(measurements, 3000, 2400, 0.1, true);
       setRoofPlan(plan);
       

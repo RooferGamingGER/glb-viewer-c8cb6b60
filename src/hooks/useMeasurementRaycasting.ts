@@ -1,5 +1,5 @@
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { Point } from '@/hooks/useMeasurements';
 
@@ -98,33 +98,46 @@ export const useMeasurementRaycasting = () => {
   }, [findClosestPointOnLine]);
 
   // Get point from intersection
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const lastTimeRef = useRef<number>(0);
+  const lastPointRef = useRef<Point | null>(null);
+
   const getPointFromIntersection = useCallback((
     event: MouseEvent | TouchEvent, 
     camera: THREE.Camera,
     scene: THREE.Scene,
     canvasElement: HTMLCanvasElement
   ): Point | null => {
+    const now = performance.now();
     const mousePosition = calculateMousePosition(event, canvasElement);
     if (!mousePosition) return null;
     
-    // Create raycaster
-    const raycaster = new THREE.Raycaster();
+    // Simple throttle to ~60Hz
+    if (now - lastTimeRef.current < 16 && lastPointRef.current) {
+      return lastPointRef.current;
+    }
+
+    // Reuse a single raycaster instance
+    const raycaster = raycasterRef.current;
     raycaster.setFromCamera(mousePosition, camera);
     
     // Get intersections
     const intersects = raycaster.intersectObjects(scene.children, true);
     const validIntersects = filterMeasurementObjects(intersects);
     
+    let result: Point | null = null;
     if (validIntersects.length > 0) {
       const intersect = validIntersects[0];
-      return {
+      result = {
         x: intersect.point.x,
         y: intersect.point.y,
         z: intersect.point.z
       };
     }
     
-    return null;
+    lastTimeRef.current = now;
+    lastPointRef.current = result;
+    return result;
   }, [calculateMousePosition, filterMeasurementObjects]);
 
   return {

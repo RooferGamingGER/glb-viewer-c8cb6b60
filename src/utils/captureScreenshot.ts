@@ -1,6 +1,5 @@
 
 import * as THREE from 'three';
-import html2canvas from 'html2canvas';
 import { renderPolygon2D } from './renderPolygon2D';
 import { Measurement } from '../types/measurements';
 

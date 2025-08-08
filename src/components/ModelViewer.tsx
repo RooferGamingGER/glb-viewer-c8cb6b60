@@ -14,6 +14,13 @@ import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 
+// Configure GLTF DRACO decoder path to enable loading compressed models
+try {
+  // @ts-ignore - setDecoderPath is available on useGLTF in drei
+  useGLTF.setDecoderPath('/draco/');
+} catch {}
+
+
 type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
@@ -237,6 +244,14 @@ const ModelCanvas = React.memo(({
   onModelLoadComplete?: () => void;
 }) => {
   const isMobile = useIsMobile();
+  const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
+  const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      optimizeRenderer(rendererRef.current, isLowMemory);
+    }
+  }, [isLowMemory, optimizeRenderer]);
   
   // Preload only once when fileUrl changes - prevent race conditions
   useEffect(() => {
@@ -265,6 +280,9 @@ const ModelCanvas = React.memo(({
       gl.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
       gl.setClearColor(0x222222, 1);
       
+      rendererRef.current = gl;
+      optimizeRenderer(gl, isLowMemory);
+      
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
         if (!document.hidden) {
@@ -288,7 +306,7 @@ const ModelCanvas = React.memo(({
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
         <directionalLight position={[-10, -10, -5]} intensity={0.8} />
         
-        <Environment preset="city" />
+        {!isLowMemory && <Environment preset="city" />}
         
         <Model 
           url={fileUrl} 

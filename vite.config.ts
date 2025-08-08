@@ -19,4 +19,16 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three', '@react-three/fiber', '@react-three/drei'],
+          pdf: ['html2pdf.js'],
+          html2canvas: ['html2canvas'],
+          charts: ['recharts']
+        }
+      }
+    }
+  }
 }));

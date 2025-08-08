@@ -1,4 +1,3 @@
-import html2pdf from 'html2pdf.js';
 import { Measurement } from '@/types/measurements';
 import { 
   getMeasurementTypeDisplayName, 
@@ -1627,6 +1626,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     };
     
+    const html2pdf = (await import('html2pdf.js')).default;
     await html2pdf()
       .from(container)
       .set(options)
