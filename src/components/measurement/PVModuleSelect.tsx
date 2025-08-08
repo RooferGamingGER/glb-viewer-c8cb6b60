@@ -45,6 +45,8 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   onSpacingChange,
   onOptimalRectangleToggle,
   onCalculateMaterials,
+  onModuleSizeChange,
+  onOrientationChange,
   disabled = false
 }) => {
   const [selectedModule, setSelectedModule] = useState<PVModuleSpec>(
