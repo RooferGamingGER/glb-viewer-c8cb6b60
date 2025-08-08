@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Measurement, Point } from '@/types/measurements';
+import { Measurement, Point, Segment } from '@/types/measurements';
 import { getOriginalGLBBlob } from '@/utils/glbDirectManipulation';
+import { generateSegments, calculateArea } from '@/utils/measurementCalculations';
 
 // Minimal GLB structures
 interface GLBHeader { magic: number; version: number; length: number; }
@@ -79,15 +80,29 @@ export async function importMeasurementsFromGLB(
       const id = typeof item.id === 'string' ? item.id : `imp_${idx}`;
       const type = item.type as Measurement['type'];
       const points = toWorldPoints(item.pointsLocal || [], modelRoot);
+
+      // Build segments for area-like measurements so edge labels render
+      let segments: Segment[] | undefined = undefined;
+      if ((type === 'area' || type === 'solar') && points.length >= 2) {
+        segments = generateSegments(points);
+      }
+
+      // Compute value if missing
+      let value: number | undefined = typeof item.value === 'number' ? item.value : undefined;
+      if ((type === 'area' || type === 'solar') && points.length >= 3 && value === undefined) {
+        value = calculateArea(points);
+      }
+
       const measurement: Measurement = {
         id,
         type,
         points,
+        segments,
         label: item.label,
         visible: item.visible !== false,
         labelVisible: item.labelVisible !== false,
         color: item.color,
-        value: typeof item.value === 'number' ? item.value : undefined
+        value
       } as Measurement;
       return measurement;
     });

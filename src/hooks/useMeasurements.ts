@@ -465,10 +465,11 @@ export const useMeasurements = () => {
     calculateSegmentLength,
 
     // Import measurements from external source (e.g., GLB metadata)
-    importMeasurements: (list: Measurement[], append: boolean = false) => {
-      const newMeasurements = append ? [...measurements, ...list] : list;
-      setMeasurements(newMeasurements);
-      updateVisualState(newMeasurements, allLabelsVisible);
+    importMeasurements: (list: Measurement[], append: boolean = false, linkShared: boolean = true) => {
+      const baseList = append ? [...measurements, ...list] : list;
+      const processed = linkShared ? findAndLinkSharedSegments(baseList) : baseList;
+      setMeasurements(processed);
+      updateVisualState(processed, allLabelsVisible);
     }
   };
 };
