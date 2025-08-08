@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { rotateGLBDirect } from '@/utils/glbDirectManipulation';
 import { exportModelOnlyForEturnity, EturnityExportSettings } from '@/utils/modelTransformer';
+import { storeOriginalFile } from '@/hooks/useOriginalFileStorage';
 
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -79,6 +80,8 @@ const FileUpload: React.FC = () => {
     }
     setUploading(true);
     const fileUrl = URL.createObjectURL(selectedFile);
+    // Store original file blob mapped to this blob URL for robust loading
+    try { storeOriginalFile(fileUrl, selectedFile); } catch {}
     setTimeout(() => {
       setUploading(false);
       navigate(`/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`);

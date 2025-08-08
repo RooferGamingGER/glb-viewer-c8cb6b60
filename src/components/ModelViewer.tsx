@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
-import { useOriginalFileStorage, fetchAndStoreOriginalFile } from '@/hooks/useOriginalFileStorage';
+import { useOriginalFileStorage, fetchAndStoreOriginalFile, getOriginalFile } from '@/hooks/useOriginalFileStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { smartToast } from '@/utils/smartToast';
 import * as THREE from 'three';
@@ -338,8 +338,18 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
-  // Stable processed URL - only change when fileUrl actually changes
-  const processedUrl = useMemo(() => fileUrl, [fileUrl]);
+  // Build a robust URL: if we navigated with a blob: URL, regenerate from stored Blob
+  const processedUrl = useMemo(() => {
+    if (fileUrl && fileUrl.startsWith('blob:')) {
+      try {
+        const original = getOriginalFile(fileUrl);
+        if (original) {
+          return URL.createObjectURL(original);
+        }
+      } catch {}
+    }
+    return fileUrl;
+  }, [fileUrl]);
 
   // Show success message only once per model
   const handleModelLoadComplete = useCallback(() => {
