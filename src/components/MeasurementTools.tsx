@@ -25,7 +25,7 @@ import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
 // Bottom sheet and orientation
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
 interface MeasurementToolsProps {
@@ -369,7 +369,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Orientation-aware layout: bottom sheet in portrait on phones/tablets
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
   const useBottomSheet = isPortrait && (isPhone || isTablet);
-  const [drawerOpen, setDrawerOpen] = React.useState(true);
+  
 
   // Shared panel content
   const panelContent = (
@@ -448,12 +448,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </div>
       )}
 
-      {useBottomSheet && (
-        <Drawer open={enabled && drawerOpen} onOpenChange={setDrawerOpen} shouldScaleBackground={false}>
-          <DrawerContent className="pb-[max(env(safe-area-inset-bottom),12px)] h-[38vh] border-t border-border bg-background pointer-events-auto">
-            {panelContent}
-          </DrawerContent>
-        </Drawer>
+      {useBottomSheet && enabled && (
+        <div className="absolute left-0 right-0 bottom-0 h-[33vh] glass-panel border-t border-border/50 bg-background pointer-events-auto flex flex-col pb-[max(env(safe-area-inset-bottom),12px)]">
+          {panelContent}
+        </div>
       )}
     </div>
   );
