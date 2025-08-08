@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
-import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight } from 'lucide-react';
+import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save, Upload, Download } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
@@ -14,8 +14,8 @@ const Index = () => {
   };
   
   useEffect(() => {
-    document.title = "3D GLB Viewer & Messungen | DrohnenGLB RooferGaming";
-    const desc = "Visualisieren Sie GLB-Modelle und messen präzise – optimiert für Hochformat & Mobilgeräte.";
+    document.title = "GLB Viewer – Messungen speichern & exportieren";
+    const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat.";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
     meta.content = desc;
@@ -24,7 +24,7 @@ const Index = () => {
     link.href = window.location.origin + '/';
   }, []);
   
-  return <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
+  return <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
@@ -59,9 +59,12 @@ const Index = () => {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
+          <div className="mt-2 text-xs text-muted-foreground animate-fade-in">
+            Neu: Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.
+          </div>
         </div>
 
-        <div className="flex-grow flex flex-col md:hidden overflow-hidden">
+        <div className="flex-grow flex flex-col md:hidden overflow-y-auto">
           <div className="glass-panel p-4 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 mb-3">
             <div className="w-full mx-auto">
               <h2 className="text-lg font-bold mb-3 text-center">Modell hochladen</h2>
@@ -69,7 +72,7 @@ const Index = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 gap-2 overflow-hidden">
+          <div className="grid grid-cols-1 gap-2">
             <p className="text-xs text-muted-foreground mt-1 mb-1 text-center">
               Hinweis: Bei Fragen kontaktieren Sie uns unter{" "}
               <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
@@ -93,6 +96,26 @@ const Index = () => {
               <h3 className="text-sm font-medium mb-1">Präzise Messungen</h3>
               <p className="text-xs text-muted-foreground">
                 Messen Sie Abstände, Flächen und Winkel direkt im 3D-Raum.
+              </p>
+            </div>
+
+            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Save className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-medium mb-1">Messungen speichern & exportieren</h3>
+              <p className="text-xs text-muted-foreground">
+                Speichern Sie Messungen lokal und exportieren Sie sie mit dem GLB. Später jederzeit wieder einlesen.
+              </p>
+            </div>
+
+            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Smartphone className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-medium mb-1">Hochformat-Unterstützung</h3>
+              <p className="text-xs text-muted-foreground">
+                Komplett optimiert für den Hochkantmodus auf Mobilgeräten.
               </p>
             </div>
           </div>
@@ -161,6 +184,26 @@ const Index = () => {
               <h3 className="text-base font-medium mb-1">Datensicherheit</h3>
               <p className="text-sm text-muted-foreground">
                 Ihre 3D-Modelle werden lokal im Browser verarbeitet und nicht auf externe Server hochgeladen.
+              </p>
+            </div>
+
+            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+                <Save className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="text-base font-medium mb-1">Messungen speichern & exportieren</h3>
+              <p className="text-sm text-muted-foreground">
+                Speichern Sie Messungen lokal und exportieren Sie sie mit dem GLB – später jederzeit wieder einlesen.
+              </p>
+            </div>
+
+            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+                <Smartphone className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="text-base font-medium mb-1">Hochformat-Unterstützung</h3>
+              <p className="text-sm text-muted-foreground">
+                Vollständig optimierte Bedienung und Layout für den Hochkantmodus.
               </p>
             </div>
           </div>
