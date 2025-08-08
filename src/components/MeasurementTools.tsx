@@ -10,6 +10,9 @@ import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
+import { smartToast } from '@/utils/smartToast';
+
 
 // Import visualization utilities
 import { 
@@ -82,7 +85,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateMeasurementPoint,
     allLabelsVisible,
     moveMeasurementUp,
-    moveMeasurementDown
+    moveMeasurementDown,
+    importMeasurements
   } = useMeasurements();
 
   // Three.js object references
@@ -197,6 +201,27 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   React.useEffect(() => {
     updateAllLabelsVisibility(allLabelsVisible);
   }, [allLabelsVisible, updateAllLabelsVisibility]);
+
+  // Auto-import embedded measurements from GLB once per scene if none exist
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!enabled || !scene) return;
+    if ((scene as any)?.userData?._measurementsImported) return;
+    if (measurements.length > 0) return;
+
+    (async () => {
+      try {
+        const imported = await importMeasurementsFromGLB(scene);
+        if (!cancelled && imported && imported.length > 0) {
+          importMeasurements(imported, false);
+          (scene as any).userData._measurementsImported = true;
+          smartToast.success(`${imported.length} Messungen aus GLB geladen`);
+        }
+      } catch {}
+    })();
+
+    return () => { cancelled = true; };
+  }, [enabled, scene, measurements.length, importMeasurements]);
 
   // Handle label visibility based on edit mode
   React.useEffect(() => {

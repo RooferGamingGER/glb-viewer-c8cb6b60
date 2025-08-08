@@ -462,7 +462,14 @@ export const useMeasurements = () => {
     
     // Utilities
     getNearestPointIndex,
-    calculateSegmentLength
+    calculateSegmentLength,
+
+    // Import measurements from external source (e.g., GLB metadata)
+    importMeasurements: (list: Measurement[], append: boolean = false) => {
+      const newMeasurements = append ? [...measurements, ...list] : list;
+      setMeasurements(newMeasurements);
+      updateVisualState(newMeasurements, allLabelsVisible);
+    }
   };
 };
 
