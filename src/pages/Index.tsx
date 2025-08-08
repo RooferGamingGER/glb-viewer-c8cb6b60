@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight } from 'lucide-react';
@@ -13,7 +13,18 @@ const Index = () => {
     navigate('/test');
   };
   
-  return <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
+  useEffect(() => {
+    document.title = "3D GLB Viewer & Messungen | DrohnenGLB RooferGaming";
+    const desc = "Visualisieren Sie GLB-Modelle und messen präzise – optimiert für Hochformat & Mobilgeräte.";
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
+    meta.content = desc;
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
+    link.href = window.location.origin + '/';
+  }, []);
+  
+  return <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">

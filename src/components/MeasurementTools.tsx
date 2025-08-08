@@ -24,6 +24,9 @@ import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
+// Bottom sheet and orientation
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
 interface MeasurementToolsProps {
   enabled: boolean;
@@ -363,81 +366,95 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateAllLabelsVisibility(!allLabelsVisible);
   };
 
+  // Orientation-aware layout: bottom sheet in portrait on phones/tablets
+  const { isPortrait, isTablet, isPhone } = useScreenOrientation();
+  const useBottomSheet = isPortrait && (isPhone || isTablet);
+  const [drawerOpen, setDrawerOpen] = React.useState(true);
+
+  // Shared panel content
+  const panelContent = (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <MeasurementToolControls 
+        activeMode={activeMode}
+        toggleMeasurementTool={toggleMeasurementTool}
+        editMeasurementId={editMeasurementId}
+        measurements={measurements}
+        showTable={showTable}
+        setShowTable={setShowTable}
+        toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+        toggleLabelVisibility={handleToggleLabelVisibility}
+        handleStartPointEdit={handleStartPointEdit}
+        handleDeleteMeasurement={handleDeleteMeasurement}
+        handleDeletePoint={handleDeletePoint}
+        updateMeasurement={updateMeasurement}
+        segmentsOpen={segmentsOpen}
+        toggleSegments={toggleSegments}
+        onEditSegment={setEditingSegmentId}
+        movingPointInfo={movingPointInfo}
+        handleMoveMeasurementUp={handleMoveMeasurementUp}
+        handleMoveMeasurementDown={handleMoveMeasurementDown}
+        handleClearMeasurements={handleClearMeasurements}
+      />
+      {activeMode !== 'none' && ['length', 'height', 'area', 'deductionarea'].includes(activeMode) && (
+        <MeasurementControls
+          activeMode={activeMode}
+          currentPoints={currentPoints}
+          handleFinalizeMeasurement={handleFinalizeMeasurement}
+          handleUndoLastPoint={handleUndoLastPoint}
+          clearCurrentPoints={clearCurrentPoints}
+        />
+      )}
+      {isRoofElementMode && (
+        <RoofElementControls
+          activeMode={activeMode}
+          currentPoints={currentPoints}
+          handleFinalizeMeasurement={handleFinalizeMeasurement}
+          handleUndoLastPoint={handleUndoLastPoint}
+          clearCurrentPoints={clearCurrentPoints}
+        />
+      )}
+      {(editMeasurementId || editingSegmentId || movingPointInfo) && (
+        <div className="p-3 pb-0">
+          <EditingAlert 
+            editMeasurementId={editMeasurementId}
+            editingSegmentId={editingSegmentId}
+            movingPointInfo={movingPointInfo}
+            handleCancelEditing={handleCancelEditingWithCleanup}
+            editingAreaMeasurement={editMeasurementId ? 
+              measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
+              measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
+              : false}
+          />
+        </div>
+      )}
+    </div>
+  );
+
   // Break up the component into logical sections
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
-      <div className="w-full h-full flex flex-col">
-        <div 
-          className={`absolute top-0 right-0 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
-          style={{ 
-            width: '20rem', 
-            maxHeight: 'calc(100vh - 2.75rem)', // Ensure it doesn't overlap with footer
-            bottom: '2.75rem' // Add space above footer
-          }}
-        >
-          {/* Fixed Header - Tools Section */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <MeasurementToolControls 
-              activeMode={activeMode}
-              toggleMeasurementTool={toggleMeasurementTool}
-              editMeasurementId={editMeasurementId}
-              measurements={measurements}
-              showTable={showTable}
-              setShowTable={setShowTable}
-              toggleMeasurementVisibility={handleToggleMeasurementVisibility}
-              toggleLabelVisibility={handleToggleLabelVisibility}
-              handleStartPointEdit={handleStartPointEdit}
-              handleDeleteMeasurement={handleDeleteMeasurement}
-              handleDeletePoint={handleDeletePoint}
-              updateMeasurement={updateMeasurement}
-              segmentsOpen={segmentsOpen}
-              toggleSegments={toggleSegments}
-              onEditSegment={setEditingSegmentId}
-              movingPointInfo={movingPointInfo}
-              handleMoveMeasurementUp={handleMoveMeasurementUp}
-              handleMoveMeasurementDown={handleMoveMeasurementDown}
-              handleClearMeasurements={handleClearMeasurements}
-            />
-            
-            {/* Show MeasurementControls for standard measurements AND deductionarea */}
-            {activeMode !== 'none' && ['length', 'height', 'area', 'deductionarea'].includes(activeMode) && (
-              <MeasurementControls
-                activeMode={activeMode}
-                currentPoints={currentPoints}
-                handleFinalizeMeasurement={handleFinalizeMeasurement}
-                handleUndoLastPoint={handleUndoLastPoint}
-                clearCurrentPoints={clearCurrentPoints}
-              />
-            )}
-            
-            {/* Only render RoofElementControls for roof elements, excluding deductionarea */}
-            {isRoofElementMode && (
-              <RoofElementControls
-                activeMode={activeMode}
-                currentPoints={currentPoints}
-                handleFinalizeMeasurement={handleFinalizeMeasurement}
-                handleUndoLastPoint={handleUndoLastPoint}
-                clearCurrentPoints={clearCurrentPoints}
-              />
-            )}
-            
-            {(editMeasurementId || editingSegmentId || movingPointInfo) && (
-              <div className="p-3 pb-0">
-                <EditingAlert 
-                  editMeasurementId={editMeasurementId}
-                  editingSegmentId={editingSegmentId}
-                  movingPointInfo={movingPointInfo}
-                  handleCancelEditing={handleCancelEditingWithCleanup}
-                  editingAreaMeasurement={editMeasurementId ? 
-                    measurements.find(m => m.id === editMeasurementId)?.type === 'area' || 
-                    measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
-                    : false}
-                />
-              </div>
-            )}
+      {!useBottomSheet && (
+        <div className="w-full h-full flex flex-col">
+          <div 
+            className={`absolute top-0 right-0 glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''}`}
+            style={{ 
+              width: '20rem', 
+              maxHeight: 'calc(100vh - 2.75rem)',
+              bottom: '2.75rem'
+            }}
+          >
+            {panelContent}
           </div>
         </div>
-      </div>
+      )}
+
+      {useBottomSheet && (
+        <Drawer open={enabled && drawerOpen} onOpenChange={setDrawerOpen} shouldScaleBackground={false}>
+          <DrawerContent className="pb-[max(env(safe-area-inset-bottom),12px)] h-[38vh] border-t border-border bg-background pointer-events-auto">
+            {panelContent}
+          </DrawerContent>
+        </Drawer>
+      )}
     </div>
   );
 };
