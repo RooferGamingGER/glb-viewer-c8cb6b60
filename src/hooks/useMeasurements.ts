@@ -462,7 +462,15 @@ export const useMeasurements = () => {
     
     // Utilities
     getNearestPointIndex,
-    calculateSegmentLength
+    calculateSegmentLength,
+
+    // Import measurements from external source (e.g., GLB metadata)
+    importMeasurements: (list: Measurement[], append: boolean = false, linkShared: boolean = true) => {
+      const baseList = append ? [...measurements, ...list] : list;
+      const processed = linkShared ? findAndLinkSharedSegments(baseList) : baseList;
+      setMeasurements(processed);
+      updateVisualState(processed, allLabelsVisible);
+    }
   };
 };
 

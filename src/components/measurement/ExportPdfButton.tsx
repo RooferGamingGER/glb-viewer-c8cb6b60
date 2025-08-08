@@ -7,9 +7,6 @@ import { Measurement } from '@/types/measurements';
 import { exportMeasurementsToPdf, CoverPageData } from '@/utils/pdfExport';
 import { consolidatePenetrations, calculateRoofPlanScaleFactor, getRoofElementsSummary } from '@/utils/exportUtils';
 import { useThreeContext, asPerspectiveCamera, generatePolygon2D } from '@/hooks/useThreeContext';
-import { captureAreaMeasurement } from '@/utils/captureScreenshot';
-import { captureViewScreenshot, captureTopDownView } from '@/utils/captureViewScreenshot';
-import { createCombinedRoofPlan } from '@/utils/roofPlanRenderer';
 import * as THREE from 'three';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -71,14 +68,21 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
 
   useEffect(() => {
     if (scene && camera && renderer) {
-      const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
-      if (screenshot) {
-        setTopDownScreenshot(screenshot);
-      }
+      (async () => {
+        try {
+          const { captureTopDownView } = await import('@/utils/captureViewScreenshot');
+          const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
+          if (screenshot) {
+            setTopDownScreenshot(screenshot);
+          }
+        } catch (e) {
+          console.error('Top-down capture failed', e);
+        }
+      })();
     }
   }, [scene, camera, renderer, measurementGroups]);
 
-  const generateRoofPlan = () => {
+  const generateRoofPlan = async () => {
     if (measurements.length === 0) return;
     try {
       const width = 3000; // Increased from 2480
@@ -86,6 +90,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       
       setOptimizedRoofPlanDimensions({width, height});
       
+      const { createCombinedRoofPlan } = await import('@/utils/roofPlanRenderer');
       const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
       setGeneratedRoofPlan(roofPlan);
     } catch (error) {
@@ -137,6 +142,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       });
       
       if (!topDownScreenshot && scene && camera && renderer) {
+        const { captureTopDownView } = await import('@/utils/captureViewScreenshot');
         const screenshot = captureTopDownView(renderer, scene, camera, measurementGroups);
         if (screenshot) {
           (measurementsWithVisuals as any).topDownScreenshot = screenshot;
@@ -161,6 +167,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
+          const { captureAreaMeasurement } = await import('@/utils/captureScreenshot');
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
@@ -191,6 +198,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
+          const { captureAreaMeasurement } = await import('@/utils/captureScreenshot');
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
@@ -221,6 +229,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             }
           }
         } else if (scene && perspCamera && renderer && canvas) {
+          const { captureAreaMeasurement } = await import('@/utils/captureScreenshot');
           const screenshot = await captureAreaMeasurement(scene, perspCamera, renderer, measurement, canvas, false, true);
           if (screenshot) {
             const index = measurementsWithVisuals.findIndex(m => m.id === measurement.id);
@@ -239,6 +248,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         if (!generatedRoofPlan) {
           const width = 3000; // Increased from 2480
           const height = 2400; // Adjusted for appropriate aspect ratio
+          const { createCombinedRoofPlan } = await import('@/utils/roofPlanRenderer');
           const roofPlan = createCombinedRoofPlan(measurements, width, height, 0.05, true);
           if (roofPlan) {
             (measurementsWithVisuals as any).roofPlan = roofPlan;

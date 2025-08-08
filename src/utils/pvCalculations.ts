@@ -360,7 +360,8 @@ export const calculatePVModulePlacement = (
     isValid?: boolean;
     validationMessage?: string;
   },
-  findOptimalRectangle: boolean = true
+  findOptimalRectangle: boolean = true,
+  forcedOrientation: 'portrait' | 'landscape' | 'auto' = 'auto'
 ): PVModuleInfo => {
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
@@ -629,8 +630,12 @@ export const calculatePVModulePlacement = (
     }
   });
   
-  // Choose the orientation that fits more modules
-  const usePortrait = portraitModuleCount >= landscapeModuleCount;
+  // Choose the orientation – allow user override
+  const usePortrait = forcedOrientation === 'portrait'
+    ? true
+    : forcedOrientation === 'landscape'
+      ? false
+      : portraitModuleCount >= landscapeModuleCount;
   
   // Final module count, rows, and columns
   const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;
@@ -850,7 +855,7 @@ export const generatePVModuleGrid = (
         const p4Projected = projectPointToPlane(p4.clone());
         
         // Kleiner Offset nach oben hinzufügen, um Z-Fighting zu vermeiden (0.5cm)
-        const zFightingOffset = 0.005;
+        const zFightingOffset = 0.01;
         p1Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p2Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p3Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
@@ -904,7 +909,7 @@ export const generatePVModuleGrid = (
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
       // Verwende die berechnete durchschnittliche Y-Koordinate (mit kleinem Offset)
-      const y = avgY + 0.005;  // 5mm über der Dachfläche
+      const y = avgY + 0.01;  // 10mm über der Dachfläche
       
       // Berechne die vier Eckpunkte des Moduls mit Standard-Ausrichtung
       const moduleCorners: Point[] = [

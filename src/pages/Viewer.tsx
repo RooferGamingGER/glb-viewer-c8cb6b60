@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, X, HelpCircle, AlertTriangle } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { useScreenOrientation } from '@/hooks/useScreenOrientation';
-import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
@@ -57,7 +55,7 @@ export const normalizeSegmentType = (type: string): string => {
 
 const Viewer = () => {
   const navigate = useNavigate();
-  const { isPortrait } = useScreenOrientation();
+  
   const [isFullscreen, setIsFullscreen] = useState(true);
   const { showTutorial, setShowTutorial } = useTutorial();
   const [showWebGLWarning, setShowWebGLWarning] = useState(false);
@@ -70,19 +68,24 @@ const Viewer = () => {
   const rotateModelParam = useURLParam('rotateModel');
   const rotateModel = rotateModelParam !== 'false'; // true, unless explicitly "false"
   
-  // Check WebGL compatibility on component mount
+  // Check WebGL compatibility on component mount (no automatic prompts)
   useEffect(() => {
     const compatibility = checkWebGLCompatibility();
     setWebGLInfo(compatibility);
-    
-    if (!compatibility.compatible || compatibility.warnings.length > 0) {
-      setShowWebGLWarning(true);
-    }
   }, []);
 
   useEffect(() => {
-    // Check if the URL is a valid blob URL
-    if (!fileUrl.startsWith('blob:')) {
+    // Validate URL scheme but allow blob, http(s), and relative paths
+    const isValid = typeof fileUrl === 'string' && (
+      fileUrl.startsWith('blob:') ||
+      fileUrl.startsWith('http://') ||
+      fileUrl.startsWith('https://') ||
+      fileUrl.startsWith('/') ||
+      fileUrl.startsWith('./') ||
+      fileUrl.startsWith('../')
+    );
+
+    if (!isValid) {
       toast.error('Ungültige Datei-URL');
       navigate('/');
       return;
@@ -152,7 +155,7 @@ const Viewer = () => {
 
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
-      {isPortrait && <OrientationWarning />}
+      
       
       <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
         <div className="flex items-center">
@@ -184,6 +187,17 @@ const Viewer = () => {
           >
             <HelpCircle className="h-4 w-4 mr-2" />
             Tutorial
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="glass-button"
+            onClick={() => setShowWebGLWarning(true)}
+            title="Information zur 3D-Darstellung"
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            3D-Info
           </Button>
 
           {isFullscreen && (
@@ -256,7 +270,33 @@ const Viewer = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
+            {webGLInfo?.compatible ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    try { localStorage.setItem('webgl_warning_dismissed', '1'); } catch {}
+                    closeWebGLWarning();
+                  }}
+                >
+                  Nicht mehr anzeigen
+                </Button>
+                <AlertDialogAction onClick={closeWebGLWarning}>Schließen</AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    try { localStorage.setItem('webgl_incompat_dismissed', '1'); } catch {}
+                    closeWebGLWarning();
+                  }}
+                >
+                  Nicht mehr anzeigen
+                </Button>
+                <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

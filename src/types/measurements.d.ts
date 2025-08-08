@@ -108,9 +108,33 @@ export interface PVModuleInfo {
   modulePositions?: Point[];  // Position of each module
   moduleCorners?: Point[][];  // Corner points for each module
   moduleVisuals?: {
-    color: string;
-    opacity: number;
-    border: boolean;
-    borderColor: string;
+    // Backward compatible base fields
+    color?: string;
+    opacity?: number;
+    border?: boolean;
+    borderColor?: string;
+
+    // Panel/base fill
+    panelColor?: string | number;
+    panelOpacity?: number;
+
+    // Frame/border
+    frame?: boolean;
+    frameColor?: string | number;
+    frameOpacity?: number;
+    frameLineWidth?: number;
+
+    // Cell grid
+    cellRows?: number;
+    cellCols?: number;
+    cellLineColor?: string | number;
+    cellLineOpacity?: number;
+    cellLineWidth?: number;
+
+    // Mid-gap (half-cut split)
+    midGapEnabled?: boolean;
+    midGapColor?: string | number;
+    midGapOpacity?: number;
+    midGapWidth?: number;
   };
 }

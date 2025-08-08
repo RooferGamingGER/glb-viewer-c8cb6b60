@@ -17,7 +17,7 @@ export enum ToastCategory {
 // Configuration for toast behavior
 const TOAST_CONFIG = {
   [ToastCategory.USER_GUIDANCE]: {
-    enabled: true,
+    enabled: process.env.NODE_ENV !== 'production',
     duration: 4000,
     position: 'top-right' as const
   },
@@ -37,7 +37,7 @@ const TOAST_CONFIG = {
     position: 'top-right' as const
   },
   [ToastCategory.WARNING]: {
-    enabled: true,
+    enabled: process.env.NODE_ENV !== 'production',
     duration: 3000,
     position: 'top-right' as const
   }

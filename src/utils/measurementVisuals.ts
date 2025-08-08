@@ -374,14 +374,14 @@ export function renderEditPoints(
     const isSelected = index === editingPointIndex;
     
     // Create a larger, highlighted sphere for editable points
-    const size = isSelected ? 0.08 : 0.06; // Selected point is bigger
+    const size = isSelected ? 0.1 : 0.08; // Slightly larger for touch
     const sphereGeometry = new THREE.SphereGeometry(size, 16, 16);
     
     // Use a bright color for the selected point, different color for others
     const color = isSelected ? 0xff00ff : 0xffff00;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      opacity: 0.8,
+      opacity: 0.85,
       transparent: true
     });
     
@@ -392,36 +392,37 @@ export function renderEditPoints(
     sphere.renderOrder = 10;
     
     // Add user data to the sphere for identification when clicking
-    sphere.userData = {
+    const userData = {
       isEditPoint: true,
       measurementId: measurement.id,
       pointIndex: index
     };
+    sphere.userData = userData;
+
+    // Add an invisible, larger hit area to make touch selection easier
+    const hitGeometry = new THREE.SphereGeometry(size * 1.8, 16, 16);
+    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 });
+    const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
+    hitSphere.position.copy(sphere.position);
+    hitSphere.userData = { ...userData }; // same identification
+    hitSphere.renderOrder = 9;
     
     editPointsRef.add(sphere);
-    
-    // Create a label for each point in area measurements
+    editPointsRef.add(hitSphere);
+
+    // Create a label for each point in area-like measurements
     if (measurement.type === 'area' || measurement.type === 'solar' || 
         measurement.type === 'skylight' || measurement.type === 'chimney') {
-      // Position the label slightly above the point
       const labelPosition = new THREE.Vector3(point.x, point.y + LABEL_Y_OFFSET, point.z);
-      
-      // Create point label (P1, P2, etc.) - mark as point label
       const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition, true, undefined, true);
-      
-      // Store info in userData
       pointLabel.userData = {
-        isEditPointLabel: true, // Mark as an edit point label
+        isEditPointLabel: true,
         isPointLabel: true,
         measurementId: measurement.id,
         pointIndex: index,
-        isPreview: true // Mark as preview so it isn't removed with permanent labels
+        isPreview: true
       };
-      
-      // Set high render order
       pointLabel.renderOrder = 1000;
-      
-      // Add to edit points group
       editPointsRef.add(pointLabel);
     }
   });
@@ -1542,19 +1543,53 @@ function renderPVModuleGrid(
   // Generate the PV module grid
   const { modulePoints, gridLines } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
   
+  // Visual defaults and materials (can be overridden via pvModuleInfo.moduleVisuals)
+  const vDefaults = {
+    panelColor: 0x0b1f3a, // deep navy
+    panelOpacity: 0.9,
+    frame: true,
+    frameColor: 0xbfc7cf, // silver
+    frameOpacity: 1,
+    frameLineWidth: 2,
+    cellRows: 12,
+    cellCols: 10,
+    cellLineColor: 0xffffff,
+    cellLineOpacity: 0.25,
+    cellLineWidth: 1,
+    midGapEnabled: true,
+    midGapColor: 0xffffff,
+    midGapOpacity: 0.6,
+    midGapWidth: 2
+  } as const;
+  const v = { ...vDefaults, ...(measurement.pvModuleInfo?.moduleVisuals || {}) } as any;
+  
   // Create materials for different elements
   const moduleMaterial = new THREE.MeshBasicMaterial({
-    color: PV_MODULE_COLORS.MODULE,
-    opacity: 0.3,
+    color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
+    opacity: v.panelOpacity ?? 0.9,
     transparent: true,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
+    depthTest: false,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4
+  });
+  
+  const frameMaterial = new THREE.LineBasicMaterial({
+    color: (v.frameColor ?? 0xbfc7cf) as any,
+    linewidth: v.frameLineWidth ?? 2,
+    opacity: v.frameOpacity ?? 1,
+    transparent: (v.frameOpacity ?? 1) < 1,
+    depthTest: false
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
     color: PV_MODULE_COLORS.GRID,
-    linewidth: 2,
+    linewidth: 3,
     opacity: 0.8,
-    transparent: true
+    transparent: true,
+    depthTest: false
   });
   
   const boundaryMaterial = new THREE.LineDashedMaterial({
@@ -1563,7 +1598,8 @@ function renderPVModuleGrid(
     gapSize: 0.1,
     linewidth: 2,
     opacity: 0.8,
-    transparent: true
+    transparent: true,
+    depthTest: false
   });
   
   const availableAreaMaterial = new THREE.LineDashedMaterial({
@@ -1572,7 +1608,17 @@ function renderPVModuleGrid(
     gapSize: 0.1,
     linewidth: 2,
     opacity: 0.8,
-    transparent: true
+    transparent: true,
+    depthTest: false
+  });
+  
+  // Subtle cell grid lines material
+  const cellLineMaterial = new THREE.LineBasicMaterial({
+    color: (v.cellLineColor ?? PV_MODULE_COLORS.GRID) as any,
+    linewidth: v.cellLineWidth ?? 1,
+    opacity: v.cellLineOpacity ?? 0.25,
+    transparent: true,
+    depthTest: false
   });
   
   // Create module meshes - this is where we're fixing the floating issue
@@ -1628,7 +1674,7 @@ function renderPVModuleGrid(
     
     // Create mesh for the module
     const mesh = new THREE.Mesh(geometry, moduleMaterial);
-    mesh.renderOrder = 3;
+    mesh.renderOrder = 1002;
     
     // Store measurement ID in user data
     mesh.userData = {
@@ -1638,6 +1684,42 @@ function renderPVModuleGrid(
     };
     
     measurementsRef.add(mesh);
+    
+    // Draw subtle cell grid to mimic PV cells
+    const p0 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+    const p1 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+    const p2 = new THREE.Vector3(points[2].x, points[2].y, points[2].z);
+    const p3 = new THREE.Vector3(points[3].x, points[3].y, points[3].z);
+
+    const edgeWBottom = new THREE.Vector3().subVectors(p1, p0);
+    const edgeWTop = new THREE.Vector3().subVectors(p3, p2);
+    const edgeHLeft = new THREE.Vector3().subVectors(p2, p0);
+    const edgeHRight = new THREE.Vector3().subVectors(p3, p1);
+
+    const cols = (v.cellCols ?? 10); // vertical divisions
+    const rows = (v.cellRows ?? 6);  // horizontal divisions
+
+    // Vertical cell lines (along height)
+    for (let c = 1; c < cols; c++) {
+      const t = c / cols;
+      const start = new THREE.Vector3().copy(p0).add(edgeWBottom.clone().multiplyScalar(t));
+      const end = new THREE.Vector3().copy(p2).add(edgeWTop.clone().multiplyScalar(t));
+      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
+      const line = new THREE.Line(geom, cellLineMaterial);
+      line.renderOrder = 1004;
+      measurementsRef.add(line);
+    }
+
+    // Horizontal cell lines (along width)
+    for (let r = 1; r < rows; r++) {
+      const t = r / rows;
+      const start = new THREE.Vector3().copy(p0).add(edgeHLeft.clone().multiplyScalar(t));
+      const end = new THREE.Vector3().copy(p1).add(edgeHRight.clone().multiplyScalar(t));
+      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
+      const line = new THREE.Line(geom, cellLineMaterial);
+      line.renderOrder = 1004;
+      measurementsRef.add(line);
+    }
     
     // Add module number label - calculate the actual center of the module
     const centerX = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
@@ -1659,7 +1741,8 @@ function renderPVModuleGrid(
     };
     
     // Make module labels smaller
-    moduleLabel.scale.set(0.5, 0.5, 0.5);
+    moduleLabel.userData.isModuleLabel = true;
+    moduleLabel.scale.set(0.2, 0.2, 0.2);
     
     labelsRef.add(moduleLabel);
   });
@@ -1688,7 +1771,7 @@ function renderPVModuleGrid(
       lineObj.computeLineDistances();
     }
     
-    lineObj.renderOrder = 4;
+    lineObj.renderOrder = 1003;
     
     // Store metadata in user data
     lineObj.userData = {

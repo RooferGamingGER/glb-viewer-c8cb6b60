@@ -1,8 +1,7 @@
-
 import React, { useRef, useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, useGLTF, Environment, Html, useProgress } from '@react-three/drei';
-import { useOriginalFileStorage, fetchAndStoreOriginalFile } from '@/hooks/useOriginalFileStorage';
+import { useOriginalFileStorage, fetchAndStoreOriginalFile, getOriginalFile, storeOriginalFile } from '@/hooks/useOriginalFileStorage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { smartToast } from '@/utils/smartToast';
 import * as THREE from 'three';
@@ -13,6 +12,13 @@ import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
+
+// Configure GLTF DRACO decoder path to enable loading compressed models
+try {
+  // @ts-ignore - setDecoderPath is available on useGLTF in drei
+  useGLTF.setDecoderPath('/draco/');
+} catch {}
+
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -56,7 +62,6 @@ const Model = React.memo(({
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
   
-  // Stable reference to loaded scene - only load once per URL
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
     if (error instanceof Error) {
@@ -69,16 +74,13 @@ const Model = React.memo(({
     smartToast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
   });
 
-  // Stable scene reference - use useMemo with proper dependencies
   const modelScene = useMemo(() => {
     if (!scene) return null;
     return scene;
   }, [scene]);
 
-  // Store original file for direct GLB manipulation - only once
   useOriginalFileStorage(modelScene, url);
 
-  // Fetch and store original file when URL changes - with stable reference
   const stableUrl = useMemo(() => url, [url]);
   useEffect(() => {
     if (stableUrl && (stableUrl.endsWith('.glb') || stableUrl.endsWith('.gltf'))) {
@@ -89,80 +91,53 @@ const Model = React.memo(({
     }
   }, [stableUrl]);
 
-  // Calculate model transform with stable dependencies
   const modelTransform = useMemo(() => {
     if (!modelScene) return null;
-    
-    // Apply rotation first, then calculate bounding box
     const tempGroup = new THREE.Group();
     tempGroup.add(modelScene.clone());
     tempGroup.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-    
     const box = new THREE.Box3().setFromObject(tempGroup);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    
-    // Clean up temp group
     tempGroup.clear();
-    
     return { center, size, maxDim };
   }, [modelScene, rotate]);
 
-  // Stable camera position calculation with fallback
   const cameraPosition = useMemo(() => {
     if (!modelTransform || !camera) {
-      // Fallback position
       return {
         position: new THREE.Vector3(0, 2, 5),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-    
     const { maxDim } = modelTransform;
-    
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
       let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
       cameraZ = Math.max(cameraZ, 1.5);
       const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
       return {
-        position: new THREE.Vector3(
-          0, 
-          cameraZ * 0.05 * mobileFactor,
-          cameraZ * mobileFactor
-        ),
+        position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
         center: new THREE.Vector3(0, 0, 0)
       };
     } else {
       const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
       return {
-        position: new THREE.Vector3(
-          0, 
-          distance * 0.05,
-          distance
-        ),
+        position: new THREE.Vector3(0, distance * 0.05, distance),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
   }, [modelTransform, camera, qualitySettings]);
 
-  // Apply transformations with stable order - only when necessary
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
-      // 1. Set model rotation first
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-      
-      // 2. Center the model after rotation
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-      
-      // 3. Set camera position last
       camera.position.copy(cameraPosition.position);
       camera.lookAt(cameraPosition.center);
       camera.updateProjectionMatrix();
-      
-      // 4. Call onLoadComplete only once when model is ready
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {
@@ -207,7 +182,6 @@ function SceneSetup({
   useEffect(() => {
     if (scene && camera && gl) {
       const threeScene = scene as THREE.Scene;
-      
       threeScene.traverse(obj => {
         if (obj instanceof THREE.Group) {
           if (obj.name === '') {
@@ -215,7 +189,6 @@ function SceneSetup({
           }
         }
       });
-      
       onSceneReady(threeScene, camera, gl, gl.domElement);
     }
   }, [scene, camera, gl, onSceneReady]);
@@ -237,8 +210,15 @@ const ModelCanvas = React.memo(({
   onModelLoadComplete?: () => void;
 }) => {
   const isMobile = useIsMobile();
+  const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
+  const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      optimizeRenderer(rendererRef.current, isLowMemory);
+    }
+  }, [isLowMemory, optimizeRenderer]);
   
-  // Preload only once when fileUrl changes - prevent race conditions
   useEffect(() => {
     if (!loadedModels.has(`${fileUrl}_preloaded`)) {
       loadedModels.add(`${fileUrl}_preloaded`);
@@ -257,21 +237,19 @@ const ModelCanvas = React.memo(({
     touchAction: 'none'
   }} className="w-full h-full" ref={canvasRef}
     onCreated={({ gl }) => {
-      // Optimized WebGL settings for stability
       gl.outputColorSpace = THREE.SRGBColorSpace;
       gl.toneMapping = THREE.ACESFilmicToneMapping;
       gl.toneMappingExposure = 1;
-      
       gl.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
       gl.setClearColor(0x222222, 1);
-      
+      rendererRef.current = gl;
+      optimizeRenderer(gl, isLowMemory);
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault();
         if (!document.hidden) {
           smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
         }
       });
-      
       gl.domElement.addEventListener('webglcontextrestored', () => {
         if (!document.hidden) {
           smartToast.success('WebGL-Kontext wiederhergestellt');
@@ -283,19 +261,15 @@ const ModelCanvas = React.memo(({
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D />}>
         <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
-        
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
         <directionalLight position={[-10, -10, -5]} intensity={0.8} />
-        
-        <Environment preset="city" />
-        
+        {!isLowMemory && <Environment preset="city" />}
         <Model 
           url={fileUrl} 
           rotate={rotateModel !== false} 
           onLoadComplete={onModelLoadComplete}
         />
-        
         <OrbitControls 
           makeDefault 
           enableDamping 
@@ -338,11 +312,68 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
-  // Stable processed URL - only change when fileUrl actually changes
-  const processedUrl = useMemo(() => fileUrl, [fileUrl]);
+  // Resolve the URL robustly:
+  // - If it's a blob:, try to reuse stored original Blob; otherwise fetch, name it, store it, and create a fresh ObjectURL.
+  // - For http/https, use as is.
+  const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveUrl = async () => {
+      if (!fileUrl) {
+        setProcessedUrl(null);
+        return;
+      }
+
+      // blob: URL handling
+      if (fileUrl.startsWith('blob:')) {
+        // Try storage first
+        try {
+          const stored = getOriginalFile(fileUrl);
+          if (stored) {
+            const freshUrl = URL.createObjectURL(stored);
+            // Store also under the fresh URL key so export code can find it
+            try { storeOriginalFile(freshUrl, stored); } catch {}
+            if (!cancelled) setProcessedUrl(freshUrl);
+            return;
+          }
+        } catch {}
+
+        // Try to fetch the blob and reconstruct a File with a name
+        try {
+          const resp = await fetch(fileUrl);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          const namedBlob = new File([blob], fileName || 'model.glb', { type: blob.type || 'model/gltf-binary' });
+          // Store under both the original and the soon-to-be fresh URL
+          try { storeOriginalFile(fileUrl, namedBlob); } catch {}
+          const freshUrl = URL.createObjectURL(namedBlob);
+          try { storeOriginalFile(freshUrl, namedBlob); } catch {}
+          if (!cancelled) setProcessedUrl(freshUrl);
+          return;
+        } catch (e) {
+          console.error('Failed to resolve blob URL for model:', e);
+          smartToast.error('Konnte die Modelldatei nicht laden. Bitte Datei erneut auswählen.');
+          if (!cancelled) setProcessedUrl(null);
+          return;
+        }
+      }
+
+      // Default: http/https or other handled schemes
+      setProcessedUrl(fileUrl);
+    };
+
+    resolveUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fileUrl, fileName]);
 
   // Show success message only once per model
   const handleModelLoadComplete = useCallback(() => {
+    if (!processedUrl) return;
     if (!loadedModels.has(`${processedUrl}_success_shown`)) {
       loadedModels.add(`${processedUrl}_success_shown`);
       smartToast.success('Modell erfolgreich geladen');
@@ -356,11 +387,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         URL.revokeObjectURL(processedUrl);
       }
       // Clear from loaded models cache
-      loadedModels.delete(processedUrl);
+      loadedModels.delete(processedUrl as string);
       loadedModels.delete(`${processedUrl}_preloaded`);
       loadedModels.delete(`${processedUrl}_completed`);
       loadedModels.delete(`${processedUrl}_success_shown`);
-      clearGLTFCache(processedUrl);
+      clearGLTFCache(processedUrl || undefined);
     };
   }, [processedUrl, clearGLTFCache]);
 
@@ -374,6 +405,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     if (newRenderer) {
       newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     }
+
+    // Mark if this is a RooferGaming model (requires rotation for proper view)
+    try {
+      (newScene.userData as any).isRooferGamingModel = !!(rotateModel !== false);
+    } catch {}
     
     setThreeContext({
       scene: newScene,
@@ -381,7 +417,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       renderer: newRenderer,
       canvas: canvas
     });
-  }, [isMobile]);
+  }, [isMobile, rotateModel]);
 
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
