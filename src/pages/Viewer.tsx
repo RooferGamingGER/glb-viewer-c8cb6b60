@@ -74,9 +74,24 @@ const Viewer = () => {
   useEffect(() => {
     const compatibility = checkWebGLCompatibility();
     setWebGLInfo(compatibility);
-    
-    if (!compatibility.compatible || compatibility.warnings.length > 0) {
-      setShowWebGLWarning(true);
+
+    try {
+      const warnedDismissed = localStorage.getItem('webgl_warning_dismissed') === '1';
+      const incompatDismissed = localStorage.getItem('webgl_incompat_dismissed') === '1';
+
+      if (!compatibility.compatible) {
+        if (!incompatDismissed) {
+          setShowWebGLWarning(true);
+        }
+      } else if (compatibility.warnings.length > 0 && !warnedDismissed) {
+        toast.warning('Hinweis zur 3D-Darstellung', {
+          description: 'Einige Rendering-Funktionen sind evtl. eingeschränkt.',
+          action: { label: 'Details', onClick: () => setShowWebGLWarning(true) },
+          cancel: { label: 'Nicht mehr anzeigen', onClick: () => localStorage.setItem('webgl_warning_dismissed', '1') },
+        });
+      }
+    } catch {
+      // Ignore storage errors
     }
   }, []);
 
@@ -265,7 +280,33 @@ const Viewer = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
+            {webGLInfo?.compatible ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    try { localStorage.setItem('webgl_warning_dismissed', '1'); } catch {}
+                    closeWebGLWarning();
+                  }}
+                >
+                  Nicht mehr anzeigen
+                </Button>
+                <AlertDialogAction onClick={closeWebGLWarning}>Schließen</AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    try { localStorage.setItem('webgl_incompat_dismissed', '1'); } catch {}
+                    closeWebGLWarning();
+                  }}
+                >
+                  Nicht mehr anzeigen
+                </Button>
+                <AlertDialogAction onClick={closeWebGLWarning}>Verstanden</AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
