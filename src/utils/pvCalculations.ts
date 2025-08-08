@@ -909,7 +909,7 @@ export const generatePVModuleGrid = (
       const z = startZ + xOffset * directionX.z + zOffset * directionZ.z;
       
       // Verwende die berechnete durchschnittliche Y-Koordinate (mit kleinem Offset)
-      const y = avgY + 0.005;  // 5mm über der Dachfläche
+      const y = avgY + 0.01;  // 10mm über der Dachfläche
       
       // Berechne die vier Eckpunkte des Moduls mit Standard-Ausrichtung
       const moduleCorners: Point[] = [

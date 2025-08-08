@@ -173,90 +173,21 @@ export const useVisibilityManager = (
       if (measurement) {
         mesh.visible = measurement.visible !== false;
         
-        // Enhanced PV module visualization
+        // PV modules: manage visibility only, visuals handled by measurementVisuals
         if ((measurement.type === 'pvmodule' || measurement.type === 'solar') && mesh instanceof THREE.Mesh) {
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
-          
-          // Set enhanced visual properties for PV modules
-          const material = mesh.material as THREE.MeshBasicMaterial;
-          if (material) {
-            // Set base area to transparent blue with higher opacity
-            material.color.set(0x0EA5E9); 
-            material.opacity = 0.85;  
-            material.transparent = true;
-            material.side = THREE.DoubleSide;
-            material.needsUpdate = true;
-            
-            // Apply module visuals if defined, otherwise use defaults
-            const visuals = measurement.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
-            
-            console.log(`Updated PV Module area ${mesh.name || "unnamed"} in useVisibilityManager:`, {
-              visible: mesh.visible,
-              opacity: material.opacity,
-              color: material.color.getHexString(),
-              position: mesh.position.y,
-              hasRoofEdgeData: roofEdgeSegments.length > 0,
-              moduleVisuals: visuals
-            });
-          }
+          // Ensure children follow visibility
+          mesh.children.forEach(child => {
+            child.visible = measurement.visible !== false;
+          });
         }
         
-        // Special handling for individual PV module elements with enhanced visuals
+        // Standalone PV module meshes: visibility only
         if (mesh.userData.isPVModule && mesh instanceof THREE.Mesh) {
           pvModuleCount++;
           if (mesh.visible) pvModulesVisible++;
-          
-          // Apply enhanced visuals to individual module meshes
-          if (mesh.material instanceof THREE.MeshBasicMaterial) {
-            // Get visuals settings from parent measurement or use defaults
-            const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
-            const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
-            
-            // Update module visuals with more realistic appearance
-            mesh.material.color.set(visuals.frameColor || 0x444444); // Frame color
-            mesh.material.opacity = 0.95;
-            mesh.material.transparent = true;
-            mesh.material.needsUpdate = true;
-            
-            console.log(`Enhanced PV Module element updated:`, {
-              visible: mesh.visible,
-              type: mesh.userData.moduleElementType || 'module',
-              color: mesh.material.color.getHexString(),
-            });
-          }
-        }
-        
-        // Special handling for module cell elements
-        if (mesh.userData.isPVModuleCell && mesh instanceof THREE.Mesh) {
-          const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
-          const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
-          
-          if (mesh.material instanceof THREE.MeshBasicMaterial) {
-            mesh.material.color.set(visuals.cellColor || 0x225289); // Cell color
-            mesh.material.opacity = 1.0;
-            mesh.material.transparent = false;
-            mesh.material.needsUpdate = true;
-            
-            // Position just above the module frame
-            
-          }
-        }
-        
-        // Special handling for module panel (background)
-        if (mesh.userData.isPVModulePanel && mesh instanceof THREE.Mesh) {
-          const parentMeasurement = measurements.find(m => m.id === mesh.userData.measurementId);
-          const visuals = parentMeasurement?.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
-          
-          if (mesh.material instanceof THREE.MeshBasicMaterial) {
-            mesh.material.color.set(visuals.panelColor || 0x0a4b8f); // Panel color
-            mesh.material.opacity = 0.9;
-            mesh.material.transparent = true;
-            mesh.material.needsUpdate = true;
-            
-            // Position just above the module frame but below cells
-            
-          }
+          mesh.visible = measurement.visible !== false;
         }
         
         // Handle module label visibility

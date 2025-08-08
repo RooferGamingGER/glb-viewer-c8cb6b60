@@ -1543,10 +1543,30 @@ function renderPVModuleGrid(
   // Generate the PV module grid
   const { modulePoints, gridLines } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
   
+  // Visual defaults and materials (can be overridden via pvModuleInfo.moduleVisuals)
+  const vDefaults = {
+    panelColor: 0x0b1f3a, // deep navy
+    panelOpacity: 0.9,
+    frame: true,
+    frameColor: 0xbfc7cf, // silver
+    frameOpacity: 1,
+    frameLineWidth: 2,
+    cellRows: 12,
+    cellCols: 10,
+    cellLineColor: 0xffffff,
+    cellLineOpacity: 0.25,
+    cellLineWidth: 1,
+    midGapEnabled: true,
+    midGapColor: 0xffffff,
+    midGapOpacity: 0.6,
+    midGapWidth: 2
+  } as const;
+  const v = { ...vDefaults, ...(measurement.pvModuleInfo?.moduleVisuals || {}) } as any;
+  
   // Create materials for different elements
   const moduleMaterial = new THREE.MeshBasicMaterial({
-    color: PV_MODULE_COLORS.MODULE,
-    opacity: 0.85,
+    color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
+    opacity: v.panelOpacity ?? 0.9,
     transparent: true,
     side: THREE.DoubleSide,
     depthTest: false,
@@ -1554,6 +1574,14 @@ function renderPVModuleGrid(
     polygonOffset: true,
     polygonOffsetFactor: -4,
     polygonOffsetUnits: -4
+  });
+  
+  const frameMaterial = new THREE.LineBasicMaterial({
+    color: (v.frameColor ?? 0xbfc7cf) as any,
+    linewidth: v.frameLineWidth ?? 2,
+    opacity: v.frameOpacity ?? 1,
+    transparent: (v.frameOpacity ?? 1) < 1,
+    depthTest: false
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
@@ -1586,9 +1614,9 @@ function renderPVModuleGrid(
   
   // Subtle cell grid lines material
   const cellLineMaterial = new THREE.LineBasicMaterial({
-    color: PV_MODULE_COLORS.GRID,
-    linewidth: 1,
-    opacity: 0.35,
+    color: (v.cellLineColor ?? PV_MODULE_COLORS.GRID) as any,
+    linewidth: v.cellLineWidth ?? 1,
+    opacity: v.cellLineOpacity ?? 0.25,
     transparent: true,
     depthTest: false
   });
@@ -1668,8 +1696,8 @@ function renderPVModuleGrid(
     const edgeHLeft = new THREE.Vector3().subVectors(p2, p0);
     const edgeHRight = new THREE.Vector3().subVectors(p3, p1);
 
-    const cols = 10; // vertical divisions
-    const rows = 6;  // horizontal divisions
+    const cols = (v.cellCols ?? 10); // vertical divisions
+    const rows = (v.cellRows ?? 6);  // horizontal divisions
 
     // Vertical cell lines (along height)
     for (let c = 1; c < cols; c++) {
