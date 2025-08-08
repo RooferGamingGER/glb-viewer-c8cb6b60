@@ -25,7 +25,9 @@ export const useMeasurementEvents = (
     finishPointMovement: (newPoint: Point | null) => boolean,
     startPointMovement: (measurementId: string, pointIndex: number, initialPoint: Point) => Point,
     setPreviewPoint: (point: Point | null) => void,
-    movingPointInfo: { measurementId: string; pointIndex: number } | null
+    movingPointInfo: { measurementId: string; pointIndex: number } | null,
+    startPointEdit: (id: string, index: number) => void,
+    toggleEditMode: (id: string) => void
   },
   refs: {
     editPointsRef: React.RefObject<THREE.Group>,
@@ -47,6 +49,10 @@ export const useMeasurementEvents = (
   const lastTouchPosRef = useRef<{ x: number; y: number } | null>(null);
   const TAP_MAX_DURATION = 300; // ms
   const TAP_MAX_MOVEMENT = 12; // pixels
+
+  // Double-tap detection refs
+  const lastTapTimeRef = useRef<number>(0);
+  const lastTapPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const { 
     calculateMousePosition, 
@@ -376,12 +382,78 @@ export const useMeasurementEvents = (
     }
 
     if (isTap) {
-      const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
-      processInteraction(syntheticEvent as unknown as MouseEvent);
+      const now = Date.now();
+      const lastTapTime = lastTapTimeRef.current;
+      const lastTapPos = lastTapPosRef.current;
+      const doubleTapTimeWindow = 300; // ms
+      const doubleTapMoveTolerance = 16; // px
+
+      // Check for double tap
+      if (
+        lastTapTime && now - lastTapTime < doubleTapTimeWindow &&
+        lastTapPos && Math.hypot(last.x - lastTapPos.x, last.y - lastTapPos.y) <= doubleTapMoveTolerance
+      ) {
+        // Treat as double tap -> activate point editing
+        const syntheticDblEvent = new MouseEvent('dblclick', { clientX: last.x, clientY: last.y });
+        handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
+        // Reset
+        lastTapTimeRef.current = 0;
+        lastTapPosRef.current = null;
+      } else {
+        // Single tap -> normal interaction
+        const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
+        processInteraction(syntheticEvent as unknown as MouseEvent);
+        // Store tap for possible double-tap
+        lastTapTimeRef.current = now;
+        lastTapPosRef.current = { x: last.x, y: last.y };
+      }
     }
 
     touchStartRef.current = null;
   }, [applySnap, clearSnapIndicator, handlers, measurements, processInteraction, snapEnabled]);
+
+  // Setup double-click selection to activate/edit points
+  const handleDoubleSelect = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!enabled || !open || !scene || !camera) return;
+
+    // Do not interfere while placing new points or moving one
+    if (currentPoints.length > 0 || handlers.movingPointInfo) return;
+
+    const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
+    if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
+
+    const mousePosition = calculateMousePosition(event, canvasElement);
+    if (!mousePosition) return;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    for (const intersect of intersects) {
+      const ud = intersect.object.userData;
+      if (!ud) continue;
+      if (ud.isMeasurementPoint || ud.isAreaPoint) {
+        const measurementId = ud.measurementId;
+        const pointIndex = ud.pointIndex;
+        if (!measurementId || pointIndex === undefined) continue;
+
+        // Ensure correct measurement is in edit mode
+        if (editMeasurementId !== measurementId) {
+          handlers.toggleEditMode(measurementId);
+        }
+        handlers.startPointEdit(measurementId, pointIndex);
+        toast.info(`Punkt ${pointIndex + 1} aktiviert`);
+        return;
+      }
+    }
+  }, [enabled, open, scene, camera, currentPoints.length, handlers, calculateMousePosition, editMeasurementId]);
+
+  const handleDoubleClick = useCallback((event: MouseEvent) => {
+    // Prevent default to avoid OrbitControls zooming on dblclick
+    event.preventDefault();
+    event.stopPropagation();
+    handleDoubleSelect(event);
+  }, [handleDoubleSelect]);
 
   // Setup event listeners
   useEffect(() => {
@@ -393,6 +465,7 @@ export const useMeasurementEvents = (
     // Add mouse event listeners - NOT using 'pointerdown' to avoid conflict with touch
     canvasElement.addEventListener('mousedown', handleMouseDown);
     canvasElement.addEventListener('mousemove', handleMouseMove);
+    canvasElement.addEventListener('dblclick', handleDoubleClick);
     
     // Add touch event listeners
     canvasElement.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -403,6 +476,7 @@ export const useMeasurementEvents = (
     return () => {
       canvasElement.removeEventListener('mousedown', handleMouseDown);
       canvasElement.removeEventListener('mousemove', handleMouseMove);
+      canvasElement.removeEventListener('dblclick', handleDoubleClick);
       canvasElement.removeEventListener('touchstart', handleTouchStart);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);

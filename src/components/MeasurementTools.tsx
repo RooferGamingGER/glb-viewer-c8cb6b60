@@ -99,9 +99,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const interactionHandlers = {
     addPoint,
     startPointEdit,
-    updateMeasurementPoint
+    updateMeasurementPoint,
+    toggleEditMode
   };
-
   // Measurement interaction state
   const { 
     movingPointInfo, 

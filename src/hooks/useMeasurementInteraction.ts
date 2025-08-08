@@ -30,7 +30,8 @@ export const useMeasurementInteraction = (
   handlers: {
     addPoint: (point: Point) => void,
     startPointEdit: (id: string, index: number) => void,
-    updateMeasurementPoint: (id: string, index: number, point: Point) => void
+    updateMeasurementPoint: (id: string, index: number, point: Point) => void,
+    toggleEditMode: (id: string) => void
   },
   editMeasurementId: string | null,
   editingPointIndex: number | null
@@ -105,7 +106,9 @@ export const useMeasurementInteraction = (
       finishPointMovement,
       startPointMovement,
       setPreviewPoint,
-      movingPointInfo
+      movingPointInfo,
+      startPointEdit: handlers.startPointEdit,
+      toggleEditMode: handlers.toggleEditMode
     },
     {
       editPointsRef: refs.editPointsRef,
