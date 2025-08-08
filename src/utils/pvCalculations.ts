@@ -855,7 +855,7 @@ export const generatePVModuleGrid = (
         const p4Projected = projectPointToPlane(p4.clone());
         
         // Kleiner Offset nach oben hinzufügen, um Z-Fighting zu vermeiden (0.5cm)
-        const zFightingOffset = 0.005;
+        const zFightingOffset = 0.01;
         p1Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p2Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));
         p3Projected.add(normalVector.clone().multiplyScalar(zFightingOffset));

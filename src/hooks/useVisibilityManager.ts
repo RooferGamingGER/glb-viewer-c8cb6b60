@@ -188,9 +188,6 @@ export const useVisibilityManager = (
             material.side = THREE.DoubleSide;
             material.needsUpdate = true;
             
-            // Raise slightly to avoid z-fighting
-            mesh.position.y += 0.01;
-            
             // Apply module visuals if defined, otherwise use defaults
             const visuals = measurement.pvModuleInfo?.moduleVisuals || defaultModuleVisuals;
             
@@ -222,9 +219,6 @@ export const useVisibilityManager = (
             mesh.material.transparent = true;
             mesh.material.needsUpdate = true;
             
-            // Raise slightly to avoid z-fighting with background area
-            mesh.position.y += 0.02;
-            
             console.log(`Enhanced PV Module element updated:`, {
               visible: mesh.visible,
               type: mesh.userData.moduleElementType || 'module',
@@ -245,7 +239,7 @@ export const useVisibilityManager = (
             mesh.material.needsUpdate = true;
             
             // Position just above the module frame
-            mesh.position.y += 0.022;
+            
           }
         }
         
@@ -261,7 +255,7 @@ export const useVisibilityManager = (
             mesh.material.needsUpdate = true;
             
             // Position just above the module frame but below cells
-            mesh.position.y += 0.021;
+            
           }
         }
         

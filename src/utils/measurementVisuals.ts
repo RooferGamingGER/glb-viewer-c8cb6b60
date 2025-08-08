@@ -1546,16 +1546,22 @@ function renderPVModuleGrid(
   // Create materials for different elements
   const moduleMaterial = new THREE.MeshBasicMaterial({
     color: PV_MODULE_COLORS.MODULE,
-    opacity: 0.5,
+    opacity: 0.85,
     transparent: true,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
+    depthTest: false,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
     color: PV_MODULE_COLORS.GRID,
     linewidth: 3,
     opacity: 0.8,
-    transparent: true
+    transparent: true,
+    depthTest: false
   });
   
   const boundaryMaterial = new THREE.LineDashedMaterial({
@@ -1564,7 +1570,8 @@ function renderPVModuleGrid(
     gapSize: 0.1,
     linewidth: 2,
     opacity: 0.8,
-    transparent: true
+    transparent: true,
+    depthTest: false
   });
   
   const availableAreaMaterial = new THREE.LineDashedMaterial({
@@ -1573,7 +1580,17 @@ function renderPVModuleGrid(
     gapSize: 0.1,
     linewidth: 2,
     opacity: 0.8,
-    transparent: true
+    transparent: true,
+    depthTest: false
+  });
+  
+  // Subtle cell grid lines material
+  const cellLineMaterial = new THREE.LineBasicMaterial({
+    color: PV_MODULE_COLORS.GRID,
+    linewidth: 1,
+    opacity: 0.35,
+    transparent: true,
+    depthTest: false
   });
   
   // Create module meshes - this is where we're fixing the floating issue
@@ -1629,7 +1646,7 @@ function renderPVModuleGrid(
     
     // Create mesh for the module
     const mesh = new THREE.Mesh(geometry, moduleMaterial);
-    mesh.renderOrder = 3;
+    mesh.renderOrder = 1002;
     
     // Store measurement ID in user data
     mesh.userData = {
@@ -1639,6 +1656,42 @@ function renderPVModuleGrid(
     };
     
     measurementsRef.add(mesh);
+    
+    // Draw subtle cell grid to mimic PV cells
+    const p0 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+    const p1 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+    const p2 = new THREE.Vector3(points[2].x, points[2].y, points[2].z);
+    const p3 = new THREE.Vector3(points[3].x, points[3].y, points[3].z);
+
+    const edgeWBottom = new THREE.Vector3().subVectors(p1, p0);
+    const edgeWTop = new THREE.Vector3().subVectors(p3, p2);
+    const edgeHLeft = new THREE.Vector3().subVectors(p2, p0);
+    const edgeHRight = new THREE.Vector3().subVectors(p3, p1);
+
+    const cols = 10; // vertical divisions
+    const rows = 6;  // horizontal divisions
+
+    // Vertical cell lines (along height)
+    for (let c = 1; c < cols; c++) {
+      const t = c / cols;
+      const start = new THREE.Vector3().copy(p0).add(edgeWBottom.clone().multiplyScalar(t));
+      const end = new THREE.Vector3().copy(p2).add(edgeWTop.clone().multiplyScalar(t));
+      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
+      const line = new THREE.Line(geom, cellLineMaterial);
+      line.renderOrder = 1004;
+      measurementsRef.add(line);
+    }
+
+    // Horizontal cell lines (along width)
+    for (let r = 1; r < rows; r++) {
+      const t = r / rows;
+      const start = new THREE.Vector3().copy(p0).add(edgeHLeft.clone().multiplyScalar(t));
+      const end = new THREE.Vector3().copy(p1).add(edgeHRight.clone().multiplyScalar(t));
+      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
+      const line = new THREE.Line(geom, cellLineMaterial);
+      line.renderOrder = 1004;
+      measurementsRef.add(line);
+    }
     
     // Add module number label - calculate the actual center of the module
     const centerX = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
@@ -1690,7 +1743,7 @@ function renderPVModuleGrid(
       lineObj.computeLineDistances();
     }
     
-    lineObj.renderOrder = 4;
+    lineObj.renderOrder = 1003;
     
     // Store metadata in user data
     lineObj.userData = {
