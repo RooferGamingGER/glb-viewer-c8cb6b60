@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
-import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save, Upload, Download } from 'lucide-react';
+import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
@@ -25,7 +25,7 @@ const Index = () => {
   }, []);
   
   return <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
+      <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-3">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
             DrohnenGLB by RooferGaming® - ein kostenloser Service von Drohnenvermessung by RooferGaming®
@@ -64,7 +64,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="flex-grow flex flex-col md:hidden overflow-y-auto">
+        <div className="flex-grow flex flex-col md:hidden">
           <div className="glass-panel p-4 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 mb-3">
             <div className="w-full mx-auto">
               <h2 className="text-lg font-bold mb-3 text-center">Modell hochladen</h2>
@@ -85,7 +85,7 @@ const Index = () => {
               </div>
               <h3 className="text-sm font-medium mb-1">Interaktive Darstellung</h3>
               <p className="text-xs text-muted-foreground">
-                Drehen, zoomen und bewegen Sie Ihre 3D-Modelle.
+                Drehen, zoomen und bewegen Sie Ihre 3D-Modelle, um sie aus jedem Blickwinkel zu betrachten.
               </p>
             </div>
             
@@ -95,7 +95,7 @@ const Index = () => {
               </div>
               <h3 className="text-sm font-medium mb-1">Präzise Messungen</h3>
               <p className="text-xs text-muted-foreground">
-                Messen Sie Abstände, Flächen und Winkel direkt im 3D-Raum.
+                Messen Sie Abstände, Flächen und Neigungen direkt im 3D-Raum.
               </p>
             </div>
 
@@ -118,10 +118,50 @@ const Index = () => {
                 Komplett optimiert für den Hochkantmodus auf Mobilgeräten.
               </p>
             </div>
+
+            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Box className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-medium mb-1">GLB-Format</h3>
+              <p className="text-xs text-muted-foreground">
+                Unterstützung für das gängige GLB-Format, das direkt vom Server als Textured Modell (glTF) zur Verfügung gestellt wird.
+              </p>
+            </div>
+
+            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Smartphone className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-medium mb-1">Responsives Design</h3>
+              <p className="text-xs text-muted-foreground">
+                Funktioniert auf allen Geräten - vom Desktop bis zum Smartphone, mit angepassten Steuerungen.
+              </p>
+            </div>
+
+            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Zap className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-medium mb-1">Schnelle Verarbeitung</h3>
+              <p className="text-xs text-muted-foreground">
+                Optimierte Performance für schnelle Ladezeiten und flüssige Darstellung auch komplexer 3D-Modelle.
+              </p>
+            </div>
+
+            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Shield className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-medium mb-1">Datensicherheit</h3>
+              <p className="text-xs text-muted-foreground">
+                Ihre 3D-Modelle werden lokal im Browser verarbeitet und nicht auf externe Server hochgeladen.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2 flex-grow overflow-hidden">
+        <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2 flex-grow">
           {/* Swapped the order: Upload panel first (left side), features grid second (right side) */}
           <div className="glass-panel p-5 md:p-6 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300 order-1 lg:order-1">
             <div className="w-full max-w-md mx-auto">
@@ -130,7 +170,7 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min overflow-auto pb-2 order-2 lg:order-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min pb-2 order-2 lg:order-2">
             <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                 <MoveHorizontal className="w-5 h-5 text-primary" />
