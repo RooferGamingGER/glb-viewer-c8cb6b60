@@ -374,14 +374,14 @@ export function renderEditPoints(
     const isSelected = index === editingPointIndex;
     
     // Create a larger, highlighted sphere for editable points
-    const size = isSelected ? 0.08 : 0.06; // Selected point is bigger
+    const size = isSelected ? 0.1 : 0.08; // Slightly larger for touch
     const sphereGeometry = new THREE.SphereGeometry(size, 16, 16);
     
     // Use a bright color for the selected point, different color for others
     const color = isSelected ? 0xff00ff : 0xffff00;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      opacity: 0.8,
+      opacity: 0.85,
       transparent: true
     });
     
@@ -392,36 +392,37 @@ export function renderEditPoints(
     sphere.renderOrder = 10;
     
     // Add user data to the sphere for identification when clicking
-    sphere.userData = {
+    const userData = {
       isEditPoint: true,
       measurementId: measurement.id,
       pointIndex: index
     };
+    sphere.userData = userData;
+
+    // Add an invisible, larger hit area to make touch selection easier
+    const hitGeometry = new THREE.SphereGeometry(size * 1.8, 16, 16);
+    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 });
+    const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
+    hitSphere.position.copy(sphere.position);
+    hitSphere.userData = { ...userData }; // same identification
+    hitSphere.renderOrder = 9;
     
     editPointsRef.add(sphere);
-    
-    // Create a label for each point in area measurements
+    editPointsRef.add(hitSphere);
+
+    // Create a label for each point in area-like measurements
     if (measurement.type === 'area' || measurement.type === 'solar' || 
         measurement.type === 'skylight' || measurement.type === 'chimney') {
-      // Position the label slightly above the point
       const labelPosition = new THREE.Vector3(point.x, point.y + LABEL_Y_OFFSET, point.z);
-      
-      // Create point label (P1, P2, etc.) - mark as point label
       const pointLabel = createMeasurementLabel(`P${index + 1}`, labelPosition, true, undefined, true);
-      
-      // Store info in userData
       pointLabel.userData = {
-        isEditPointLabel: true, // Mark as an edit point label
+        isEditPointLabel: true,
         isPointLabel: true,
         measurementId: measurement.id,
         pointIndex: index,
-        isPreview: true // Mark as preview so it isn't removed with permanent labels
+        isPreview: true
       };
-      
-      // Set high render order
       pointLabel.renderOrder = 1000;
-      
-      // Add to edit points group
       editPointsRef.add(pointLabel);
     }
   });

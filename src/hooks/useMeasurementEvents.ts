@@ -42,6 +42,12 @@ export const useMeasurementEvents = (
   const lastMoveTimeRef = useRef<number>(0);
   const MOVE_THROTTLE = 30; // 30ms throttle for mouse move (about 33fps)
 
+  // Touch tap detection refs
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const lastTouchPosRef = useRef<{ x: number; y: number } | null>(null);
+  const TAP_MAX_DURATION = 300; // ms
+  const TAP_MAX_MOVEMENT = 12; // pixels
+
   const { 
     calculateMousePosition, 
     filterMeasurementObjects,
@@ -90,7 +96,7 @@ export const useMeasurementEvents = (
     // Ensure we're enabled and the sidebar is open
     if (!enabled || !open || !scene || !camera) return;
     
-    const canvasElement = event.target as HTMLCanvasElement;
+    const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
     if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
     
     // Handle moving point case - finish the movement
@@ -294,46 +300,88 @@ export const useMeasurementEvents = (
     handlePointerMove(event);
   }, [handlePointerMove]);
 
-  // Specific touch event handlers with debouncing to prevent double-touches
+  // Specific touch event handlers with proper tap detection
   const handleTouchStart = useCallback((event: TouchEvent) => {
-    // Skip handling this touch event if less than TOUCH_COOLDOWN ms have passed since the last one
     const now = Date.now();
+    // Debounce successive touches
     if (now - lastTouchTimeRef.current < TOUCH_COOLDOWN) {
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
-    
-    // Update the touch count
+
     touchCountRef.current = event.touches.length;
-    
-    // Only handle single-touch events for measurements
+
     if (touchCountRef.current === 1) {
-      // Record this touch time
+      const t = event.touches[0];
+      touchStartRef.current = { x: t.clientX, y: t.clientY, time: now };
+      lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
       lastTouchTimeRef.current = now;
-      
-      // Process as a measurement interaction
-      processInteraction(event);
     }
-    
-    // Prevent default to avoid emulated mouse events
+
+    // Prevent default to avoid emulated mouse events and block OrbitControls
     event.preventDefault();
-  }, [processInteraction]);
+    event.stopPropagation();
+  }, []);
   
   const handleTouchMove = useCallback((event: TouchEvent) => {
     touchCountRef.current = event.touches.length;
-    
-    // Skip measurement preview if using multitouch
-    if (touchCountRef.current >= 2) return;
-    
-    handlePointerMove(event);
+
+    if (touchCountRef.current === 1) {
+      const t = event.touches[0];
+      lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
+      handlePointerMove(event);
+    }
+
+    // Skip measurement preview if using multitouch (allow 2-finger navigation)
     event.preventDefault();
+    event.stopPropagation();
   }, [handlePointerMove]);
   
   const handleTouchEnd = useCallback((event: TouchEvent) => {
-    // Update touch count
+    const start = touchStartRef.current;
+    const last = lastTouchPosRef.current;
     touchCountRef.current = event.touches.length;
+
+    // Always prevent to block OrbitControls from single-finger gestures
     event.preventDefault();
-  }, []);
+    event.stopPropagation();
+
+    if (!start || !last) return;
+
+    const duration = Date.now() - start.time;
+    const dx = last.x - start.x;
+    const dy = last.y - start.y;
+    const distance = Math.hypot(dx, dy);
+
+    // Only treat as tap if within thresholds
+    const isTap = duration <= TAP_MAX_DURATION && distance <= TAP_MAX_MOVEMENT;
+
+    const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
+    if (!canvasElement) return;
+
+    // If moving a point, finalize on touchend at last position
+    if (handlers.movingPointInfo) {
+      const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
+      const newPoint = handlers.updateMovingPoint(syntheticEvent as unknown as MouseEvent, canvasElement);
+      let finalPoint = newPoint;
+      if (newPoint && snapEnabled) {
+        finalPoint = applySnap(newPoint, measurements, handlers.movingPointInfo.measurementId);
+      }
+      handlers.finishPointMovement(finalPoint);
+      clearSnapIndicator(true);
+
+      touchStartRef.current = null;
+      return;
+    }
+
+    if (isTap) {
+      const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
+      processInteraction(syntheticEvent as unknown as MouseEvent);
+    }
+
+    touchStartRef.current = null;
+  }, [applySnap, clearSnapIndicator, handlers, measurements, processInteraction, snapEnabled]);
 
   // Setup event listeners
   useEffect(() => {
