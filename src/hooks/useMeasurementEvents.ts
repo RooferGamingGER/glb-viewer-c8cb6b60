@@ -53,6 +53,10 @@ export const useMeasurementEvents = (
   // Double-tap detection refs
   const lastTapTimeRef = useRef<number>(0);
   const lastTapPosRef = useRef<{ x: number; y: number } | null>(null);
+  
+  // Long-press detection for touch to quickly activate point move
+  const longPressTimerRef = useRef<number | null>(null);
+  const LONG_PRESS_DURATION = 500; // ms
 
   const { 
     calculateMousePosition, 
@@ -323,6 +327,16 @@ export const useMeasurementEvents = (
       touchStartRef.current = { x: t.clientX, y: t.clientY, time: now };
       lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
       lastTouchTimeRef.current = now;
+
+      // Start long-press timer to directly activate point move
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      longPressTimerRef.current = window.setTimeout(() => {
+        const pos = lastTouchPosRef.current || { x: t.clientX, y: t.clientY };
+        const syntheticDblEvent = new MouseEvent('dblclick', { clientX: pos.x, clientY: pos.y });
+        handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
+      }, LONG_PRESS_DURATION);
     }
 
     // Prevent default to avoid emulated mouse events and block OrbitControls
@@ -336,7 +350,25 @@ export const useMeasurementEvents = (
     if (touchCountRef.current === 1) {
       const t = event.touches[0];
       lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
+
+      // Cancel long-press if the finger moves too much
+      const start = touchStartRef.current;
+      if (start) {
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        if (Math.hypot(dx, dy) > TAP_MAX_MOVEMENT && longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+
       handlePointerMove(event);
+    } else {
+      // Multi-touch: cancel long-press
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
     }
 
     // Skip measurement preview if using multitouch (allow 2-finger navigation)
@@ -352,6 +384,12 @@ export const useMeasurementEvents = (
     // Always prevent to block OrbitControls from single-finger gestures
     event.preventDefault();
     event.stopPropagation();
+
+    // Clear pending long-press when touch ends
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
 
     if (!start || !last) return;
 
@@ -442,6 +480,14 @@ export const useMeasurementEvents = (
           handlers.toggleEditMode(measurementId);
         }
         handlers.startPointEdit(measurementId, pointIndex);
+
+        // Immediately start moving the selected point
+        const measurement = measurements.find(m => m.id === measurementId);
+        if (measurement) {
+          const point = measurement.points[pointIndex];
+          const initialPoint = handlers.startPointMovement(measurementId, pointIndex, point);
+          handlers.setPreviewPoint(initialPoint);
+        }
         toast.info(`Punkt ${pointIndex + 1} aktiviert`);
         return;
       }
