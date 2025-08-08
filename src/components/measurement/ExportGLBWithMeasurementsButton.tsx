@@ -16,8 +16,32 @@ const ExportGLBWithMeasurementsButton: React.FC<ExportGLBWithMeasurementsButtonP
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const isRooferGaming = !!(scene as any)?.userData?.isRooferGamingModel;
-  const hasOriginalFile = !!(scene as any)?.userData?.originalFile;
+  const isRooferGaming = useMemo(() => {
+    if (!scene) return false;
+    const s: any = scene as any;
+    if (s?.userData?.isRooferGamingModel) return true;
+    let found = false;
+    scene.traverse((obj: THREE.Object3D) => {
+      if (!found && (obj as any)?.userData?.isRooferGamingModel) {
+        found = true;
+      }
+    });
+    return found;
+  }, [scene]);
+
+  const hasOriginalFile = useMemo(() => {
+    if (!scene) return false;
+    const s: any = scene as any;
+    if (s?.userData?.originalFile) return true;
+    let found = false;
+    scene.traverse((obj: THREE.Object3D) => {
+      const of: any = (obj as any)?.userData?.originalFile;
+      if (!found && of) {
+        found = true;
+      }
+    });
+    return found;
+  }, [scene]);
 
   const hasMeasurements = Array.isArray(measurements) && measurements.length > 0;
   const canExport = !!scene && hasMeasurements && isRooferGaming && hasOriginalFile;
