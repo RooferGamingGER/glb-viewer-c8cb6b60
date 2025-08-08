@@ -16,6 +16,14 @@ const ExportGLBWithMeasurementsButton: React.FC<ExportGLBWithMeasurementsButtonP
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const isRooferGaming = !!(scene as any)?.userData?.isRooferGamingModel;
+  const hasOriginalFile = !!(scene as any)?.userData?.originalFile;
+
+  // Only render if this is a RooferGaming model and we have the original GLB
+  if (!isRooferGaming || !hasOriginalFile) {
+    return null;
+  }
+
   const suggestedName = useMemo(() => {
     if (!scene) return 'model_with_measurements.glb';
     let name: string | undefined;

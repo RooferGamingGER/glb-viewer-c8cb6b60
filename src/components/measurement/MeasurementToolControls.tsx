@@ -268,6 +268,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   Exportoptionen:
                 </div>
                 
+                {/* Export GLB with embedded measurements (only for RooferGaming models) */}
+                <ExportGLBWithMeasurementsButton measurements={measurements} />
+                
                 {/* Roof plan generation button */}
                 <GenerateRoofPlanButton measurements={measurements} />
                 

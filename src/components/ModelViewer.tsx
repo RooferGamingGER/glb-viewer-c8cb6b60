@@ -402,6 +402,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     if (newRenderer) {
       newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     }
+
+    // Mark if this is a RooferGaming model (requires rotation for proper view)
+    try {
+      (newScene.userData as any).isRooferGamingModel = !!(rotateModel !== false);
+    } catch {}
     
     setThreeContext({
       scene: newScene,
@@ -409,7 +414,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       renderer: newRenderer,
       canvas: canvas
     });
-  }, [isMobile]);
+  }, [isMobile, rotateModel]);
 
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
