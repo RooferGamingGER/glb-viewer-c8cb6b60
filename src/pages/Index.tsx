@@ -4,37 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { useScreenOrientation } from '@/hooks/useScreenOrientation';
+
 const Index = () => {
   const navigate = useNavigate();
-  const { isPortrait } = useScreenOrientation();
-
-  // Basic SEO tags for the landing page
-  React.useEffect(() => {
-    document.title = "GLB Viewer – 3D-Modelle visualisieren";
-    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.setAttribute('name', 'description');
-      document.head.appendChild(meta);
-    }
-    meta.setAttribute('content', 'GLB Viewer: 3D-Modelle hochladen, interaktiv ansehen und präzise messen. Schnell, sicher, mobil optimiert.');
-
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
-    canonical.setAttribute('href', `${window.location.origin}/`);
-  }, []);
-  
-  const mobileUploadExtra = isPortrait ? 'min-h-[40vh] pb-[env(safe-area-inset-bottom)]' : '';
   
   const handleDemoClick = () => {
     // Navigate directly to the test page without opening file dialog
     navigate('/test');
   };
+  
   return <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-hidden">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col justify-between w-full">
         <div className="text-center mb-2">
@@ -73,7 +51,7 @@ const Index = () => {
         </div>
 
         <div className="flex-grow flex flex-col md:hidden overflow-hidden">
-          <div className={`glass-panel p-4 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 mb-3 ${mobileUploadExtra}`}>
+          <div className="glass-panel p-4 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 mb-3">
             <div className="w-full mx-auto">
               <h2 className="text-lg font-bold mb-3 text-center">Modell hochladen</h2>
               <FileUpload />

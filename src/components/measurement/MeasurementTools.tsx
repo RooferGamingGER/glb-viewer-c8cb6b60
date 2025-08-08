@@ -451,22 +451,12 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  // Positioning for sidebar vs. bottom sheet in portrait
-  const getPanelPositionClasses = () => {
-    // Bottom sheet for phones/tablets in portrait
-    if (isMobile && !isLandscape) {
-      return `absolute left-0 right-0 bottom-0 h-[35vh] w-full border-t border-border/50 ${!enabled ? 'translate-y-full' : ''}`;
-    }
-    // Right sidebar for landscape/desktop
-    return `absolute top-0 right-0 h-full ${!enabled ? 'translate-x-full' : ''} ${getSidebarWidthClass()} border-l border-border/50`;
-  };
-
   // Component rendering with improved sidebar structure
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div className="w-full h-full">
         <div 
-          className={`glass-panel transition-transform duration-300 pointer-events-auto flex flex-col ${getPanelPositionClasses()}`}
+          className={`absolute top-0 right-0 h-full glass-panel border-l border-border/50 transition-transform duration-300 pointer-events-auto flex flex-col ${!enabled ? 'translate-x-full' : ''} ${getSidebarWidthClass()}`}
         >
           {/* Use our tabbed sidebar component */}
           <TabbedMeasurementSidebar
