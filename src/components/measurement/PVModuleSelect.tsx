@@ -32,6 +32,8 @@ interface PVModuleSelectProps {
   onSpacingChange?: (spacing: { edgeDistance: number, moduleSpacing: number }) => void;
   onOptimalRectangleToggle?: (enabled: boolean) => void;
   onCalculateMaterials?: (inverterDistance?: number) => void;
+  onModuleSizeChange?: (size: { moduleWidth: number; moduleHeight: number }) => void;
+  onOrientationChange?: (mode: 'auto' | 'portrait' | 'landscape') => void;
   disabled?: boolean;
 }
 
@@ -70,6 +72,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   );
 
   const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
+  const [moduleWidthInput, setModuleWidthInput] = useState<number>(pvModuleInfo?.moduleWidth || 1.14);
+  const [moduleHeightInput, setModuleHeightInput] = useState<number>(pvModuleInfo?.moduleHeight || 1.77);
+  const [orientationMode, setOrientationMode] = useState<'auto' | 'portrait' | 'landscape'>('auto');
   
   const handleModuleSelect = (value: string) => {
     const selectedModuleSpec = PV_MODULE_TEMPLATES.find(m => m.name === value) || PV_MODULE_TEMPLATES[0];
@@ -78,6 +83,13 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   };
   
   const handleDimensionsSubmit = () => {
+    if (onModuleSizeChange) {
+      onModuleSizeChange({
+        moduleWidth: parseFloat(moduleWidthInput.toString()) || (selectedModule?.width ?? 1.14),
+        moduleHeight: parseFloat(moduleHeightInput.toString()) || (selectedModule?.height ?? 1.77)
+      });
+    }
+
     if (onDimensionsChange && useManualDimensions) {
       onDimensionsChange({ 
         width: parseFloat(manualWidth.toString()) || 0, 
@@ -94,6 +106,10 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
 
     if (onOptimalRectangleToggle) {
       onOptimalRectangleToggle(useOptimalRectangle);
+    }
+
+    if (onOrientationChange) {
+      onOrientationChange(orientationMode);
     }
   };
 
@@ -175,6 +191,34 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
           </div>
 
           <div className="space-y-2">
+            <Label>Modulgröße</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="moduleWidth" className="text-xs">Modulbreite (m)</Label>
+                <Input
+                  id="moduleWidth"
+                  type="number"
+                  value={moduleWidthInput}
+                  onChange={(e) => setModuleWidthInput(parseFloat(e.target.value) || 0)}
+                  min={0.5}
+                  step={0.01}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="moduleHeight" className="text-xs">Modulhöhe (m)</Label>
+                <Input
+                  id="moduleHeight"
+                  type="number"
+                  value={moduleHeightInput}
+                  onChange={(e) => setModuleHeightInput(parseFloat(e.target.value) || 0)}
+                  min={0.5}
+                  step={0.01}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Optimal-Rechteck verwenden</Label>
               <Switch 
@@ -185,6 +229,20 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
             <div className="text-xs text-muted-foreground">
               Berechnet automatisch die optimale rechteckige Fläche bei komplexen Dachformen
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Orientierung</Label>
+            <Select value={orientationMode} onValueChange={(v) => setOrientationMode(v as any)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Orientierung" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto</SelectItem>
+                <SelectItem value="portrait">Hochformat</SelectItem>
+                <SelectItem value="landscape">Querformat</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">

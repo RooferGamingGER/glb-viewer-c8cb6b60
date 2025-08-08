@@ -274,6 +274,56 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           onDimensionsChange={handleDimensionsChange}
           onSpacingChange={handleSpacingChange}
           onCalculateMaterials={handleCalculateMaterials}
+          onModuleSizeChange={({ moduleWidth, moduleHeight }) => {
+            if (!measurement.pvModuleInfo) return;
+            const recalculated = calculatePVModulePlacement(
+              measurement.points,
+              moduleWidth,
+              moduleHeight,
+              measurement.pvModuleInfo.edgeDistance,
+              measurement.pvModuleInfo.moduleSpacing,
+              measurement.pvModuleInfo.manualDimensions ? {
+                width: measurement.pvModuleInfo.userDefinedWidth || 0,
+                length: measurement.pvModuleInfo.userDefinedLength || 0
+              } : undefined
+            );
+            updateMeasurement(measurement.id, { pvModuleInfo: {
+              ...recalculated,
+              pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculated.pvModuleSpec,
+              pvMaterials: measurement.pvModuleInfo.pvMaterials,
+              roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
+              roofDirection: measurement.pvModuleInfo.roofDirection,
+              roofInclination: measurement.pvModuleInfo.roofInclination,
+              yieldFactor: measurement.pvModuleInfo.yieldFactor
+            }});
+          }}
+          onOrientationChange={(mode) => {
+            if (!measurement.pvModuleInfo) return;
+            const forced = mode === 'auto' ? undefined : (mode as 'portrait'|'landscape');
+            const recalculated = calculatePVModulePlacement(
+              measurement.points,
+              measurement.pvModuleInfo.moduleWidth,
+              measurement.pvModuleInfo.moduleHeight,
+              measurement.pvModuleInfo.edgeDistance,
+              measurement.pvModuleInfo.moduleSpacing,
+              measurement.pvModuleInfo.manualDimensions ? {
+                width: measurement.pvModuleInfo.userDefinedWidth || 0,
+                length: measurement.pvModuleInfo.userDefinedLength || 0
+              } : undefined,
+              undefined,
+              true,
+              (forced as any) || 'auto'
+            );
+            updateMeasurement(measurement.id, { pvModuleInfo: {
+              ...recalculated,
+              pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculated.pvModuleSpec,
+              pvMaterials: measurement.pvModuleInfo.pvMaterials,
+              roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
+              roofDirection: measurement.pvModuleInfo.roofDirection,
+              roofInclination: measurement.pvModuleInfo.roofInclination,
+              yieldFactor: measurement.pvModuleInfo.yieldFactor
+            }});
+          }}
           disabled={materialsCalculated}
         />
       </div>

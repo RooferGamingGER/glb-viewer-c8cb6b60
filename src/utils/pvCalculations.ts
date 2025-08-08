@@ -360,7 +360,8 @@ export const calculatePVModulePlacement = (
     isValid?: boolean;
     validationMessage?: string;
   },
-  findOptimalRectangle: boolean = true
+  findOptimalRectangle: boolean = true,
+  forcedOrientation: 'portrait' | 'landscape' | 'auto' = 'auto'
 ): PVModuleInfo => {
   // Calculate the actual area of the polygon
   const area = calculatePolygonArea(points);
@@ -629,8 +630,12 @@ export const calculatePVModulePlacement = (
     }
   });
   
-  // Choose the orientation that fits more modules
-  const usePortrait = portraitModuleCount >= landscapeModuleCount;
+  // Choose the orientation – allow user override
+  const usePortrait = forcedOrientation === 'portrait'
+    ? true
+    : forcedOrientation === 'landscape'
+      ? false
+      : portraitModuleCount >= landscapeModuleCount;
   
   // Final module count, rows, and columns
   const moduleCount = usePortrait ? portraitModuleCount : landscapeModuleCount;

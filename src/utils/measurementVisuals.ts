@@ -1546,14 +1546,14 @@ function renderPVModuleGrid(
   // Create materials for different elements
   const moduleMaterial = new THREE.MeshBasicMaterial({
     color: PV_MODULE_COLORS.MODULE,
-    opacity: 0.3,
+    opacity: 0.5,
     transparent: true,
     side: THREE.DoubleSide
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
     color: PV_MODULE_COLORS.GRID,
-    linewidth: 2,
+    linewidth: 3,
     opacity: 0.8,
     transparent: true
   });
@@ -1660,7 +1660,8 @@ function renderPVModuleGrid(
     };
     
     // Make module labels smaller
-    moduleLabel.scale.set(0.5, 0.5, 0.5);
+    moduleLabel.userData.isModuleLabel = true;
+    moduleLabel.scale.set(0.2, 0.2, 0.2);
     
     labelsRef.add(moduleLabel);
   });

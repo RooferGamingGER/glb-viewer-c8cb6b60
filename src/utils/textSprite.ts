@@ -264,9 +264,13 @@ export function updateLabelScale(
 ): void {
   if (!sprite || !camera) return;
   
-  // Get if this is a point label from user data to adjust scaling
+  // Flags
   const isPointLabel = sprite.userData?.isPointLabel || false;
-  const adjustedBaseScale = isPointLabel ? baseScale * 0.6 : baseScale;
+  const isModuleLabel = sprite.userData?.isModuleLabel || false;
+  
+  // Adjust base scale for special labels
+  let adjustedBaseScale = isPointLabel ? baseScale * 0.6 : baseScale;
+  if (isModuleLabel) adjustedBaseScale *= 0.4; // keep module indices subtle
   
   // Get distance from camera to sprite
   const position = new THREE.Vector3();
@@ -282,8 +286,9 @@ export function updateLabelScale(
   
   // Calculate logarithmic scale factor with min/max bounds
   // This gives better scaling across a wide range of distances
-  const minScaleFactor = isPointLabel ? 0.4 : 0.3;  // Smaller minimum for point labels
-  const maxScaleFactor = isPointLabel ? 1.5 : 2.0;  // Lower maximum for point labels
+  const isModule = isModuleLabel;
+  const minScaleFactor = isPointLabel ? 0.4 : (isModule ? 0.25 : 0.3);
+  const maxScaleFactor = isPointLabel ? 1.5 : (isModule ? 0.9 : 2.0);
   const logBase = 4;           // Higher log base for more aggressive scaling
   const scaleFactor = Math.min(
     maxScaleFactor,
@@ -310,7 +315,7 @@ export function updateLabelScale(
   );
   
   // Apply a minimum size for text to remain readable at far distances
-  const minSize = isPointLabel ? 0.04 : 0.08;
+  const minSize = isPointLabel ? 0.04 : (isModule ? 0.03 : 0.08);
   if (sprite.scale.y < minSize) {
     const adjustedAspectRatio = sprite.scale.x / sprite.scale.y;
     sprite.scale.set(
