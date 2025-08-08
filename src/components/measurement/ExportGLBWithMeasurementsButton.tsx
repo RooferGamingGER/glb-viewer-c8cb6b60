@@ -19,10 +19,16 @@ const ExportGLBWithMeasurementsButton: React.FC<ExportGLBWithMeasurementsButtonP
   const isRooferGaming = !!(scene as any)?.userData?.isRooferGamingModel;
   const hasOriginalFile = !!(scene as any)?.userData?.originalFile;
 
-  // Only render if this is a RooferGaming model and we have the original GLB
-  if (!isRooferGaming || !hasOriginalFile) {
-    return null;
-  }
+  const hasMeasurements = Array.isArray(measurements) && measurements.length > 0;
+  const canExport = !!scene && hasMeasurements && isRooferGaming && hasOriginalFile;
+  const disabledReasons: string[] = [];
+  if (!scene) disabledReasons.push('Szene nicht bereit');
+  if (!hasMeasurements) disabledReasons.push('keine Messungen');
+  if (!isRooferGaming) disabledReasons.push('kein RooferGaming-Modell');
+  if (!hasOriginalFile) disabledReasons.push('Original-GLB fehlt');
+  const buttonTitle = canExport
+    ? 'Original-GLB mit Messungen (nur Metadaten) exportieren'
+    : `Nicht verfügbar: ${disabledReasons.join(', ')}`;
 
   const suggestedName = useMemo(() => {
     if (!scene) return 'model_with_measurements.glb';
@@ -84,8 +90,8 @@ const ExportGLBWithMeasurementsButton: React.FC<ExportGLBWithMeasurementsButtonP
       size="sm" 
       className="w-full"
       onClick={handleExport}
-      disabled={exporting}
-      title="Original-GLB mit Messungen (nur Metadaten) exportieren"
+      disabled={exporting || !canExport}
+      title={buttonTitle}
     >
       <FileDown className="h-4 w-4 mr-2" />
       {exporting ? `Exportiere… ${progress}%` : 'GLB mit Messungen'}

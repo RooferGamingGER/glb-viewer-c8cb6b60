@@ -262,33 +262,33 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             </div>
             
             {/* Export options - Only in Measurements tab */}
-            {measurements && measurements.length > 0 && (
-              <div className="flex flex-col gap-2 mb-4 border-b pb-3">
-                <div className="text-xs text-muted-foreground mb-1">
-                  Exportoptionen:
-                </div>
-                
-                {/* Export GLB with embedded measurements (only for RooferGaming models) */}
-                <ExportGLBWithMeasurementsButton measurements={measurements} />
-                
-                {/* Roof plan generation button */}
-                <GenerateRoofPlanButton measurements={measurements} />
-                
-                {/* CSV Export button */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={exportMeasurementsAsCSV}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  CSV Export
-                </Button>
-                
-                {/* PDF Export button */}
-                <ExportPdfButton measurements={measurements} />
+            <div className="flex flex-col gap-2 mb-4 border-b pb-3">
+              <div className="text-xs text-muted-foreground mb-1">
+                Exportoptionen:
               </div>
-            )}
+              
+              {/* Export GLB with embedded measurements (only for RooferGaming models) */}
+              <ExportGLBWithMeasurementsButton measurements={measurements} />
+              
+              {/* Roof plan generation button */}
+              <GenerateRoofPlanButton measurements={measurements} />
+              
+              {/* CSV Export button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={exportMeasurementsAsCSV}
+                disabled={measurements.length === 0}
+                title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'Messungen als CSV exportieren'}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                CSV Export
+              </Button>
+              
+              {/* PDF Export button */}
+              <ExportPdfButton measurements={measurements} />
+            </div>
             
             {showMeasurementList && (
               <div style={tableContainerStyle}>
