@@ -228,15 +228,13 @@ const ModelCanvas = React.memo(({
   onSceneReady,
   canvasRef,
   rotateModel,
-  onModelLoadComplete,
-  activeMode
+  onModelLoadComplete
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   rotateModel?: boolean;
   onModelLoadComplete?: () => void;
-  activeMode: string;
 }) => {
   const isMobile = useIsMobile();
   
