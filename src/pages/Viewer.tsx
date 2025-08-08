@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, X, HelpCircle, AlertTriangle } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { useScreenOrientation } from '@/hooks/useScreenOrientation';
-import OrientationWarning from '@/components/OrientationWarning';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
@@ -57,7 +55,7 @@ export const normalizeSegmentType = (type: string): string => {
 
 const Viewer = () => {
   const navigate = useNavigate();
-  const { isPortrait } = useScreenOrientation();
+  
   const [isFullscreen, setIsFullscreen] = useState(true);
   const { showTutorial, setShowTutorial } = useTutorial();
   const [showWebGLWarning, setShowWebGLWarning] = useState(false);
@@ -70,29 +68,10 @@ const Viewer = () => {
   const rotateModelParam = useURLParam('rotateModel');
   const rotateModel = rotateModelParam !== 'false'; // true, unless explicitly "false"
   
-  // Check WebGL compatibility on component mount
+  // Check WebGL compatibility on component mount (no automatic prompts)
   useEffect(() => {
     const compatibility = checkWebGLCompatibility();
     setWebGLInfo(compatibility);
-
-    try {
-      const warnedDismissed = localStorage.getItem('webgl_warning_dismissed') === '1';
-      const incompatDismissed = localStorage.getItem('webgl_incompat_dismissed') === '1';
-
-      if (!compatibility.compatible) {
-        if (!incompatDismissed) {
-          setShowWebGLWarning(true);
-        }
-      } else if (compatibility.warnings.length > 0 && !warnedDismissed) {
-        toast.warning('Hinweis zur 3D-Darstellung', {
-          description: 'Einige Rendering-Funktionen sind evtl. eingeschränkt.',
-          action: { label: 'Details', onClick: () => setShowWebGLWarning(true) },
-          cancel: { label: 'Nicht mehr anzeigen', onClick: () => localStorage.setItem('webgl_warning_dismissed', '1') },
-        });
-      }
-    } catch {
-      // Ignore storage errors
-    }
   }, []);
 
   useEffect(() => {
@@ -176,7 +155,7 @@ const Viewer = () => {
 
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
-      {isPortrait && <OrientationWarning />}
+      
       
       <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
         <div className="flex items-center">
@@ -208,6 +187,17 @@ const Viewer = () => {
           >
             <HelpCircle className="h-4 w-4 mr-2" />
             Tutorial
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="glass-button"
+            onClick={() => setShowWebGLWarning(true)}
+            title="Information zur 3D-Darstellung"
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            3D-Info
           </Button>
 
           {isFullscreen && (

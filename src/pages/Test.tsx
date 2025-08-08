@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Upload, Menu, X, HelpCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
-import OrientationWarning from '@/components/OrientationWarning';
+
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Measurement } from '@/types/measurements';
 import { useMeasurementContext } from '@/contexts/MeasurementContext';
@@ -37,7 +37,7 @@ const Test = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-gradient-to-b from-background to-background overflow-hidden">
-      {isPortrait && <OrientationWarning />}
+      
       
       <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
         <div className="flex items-center">
