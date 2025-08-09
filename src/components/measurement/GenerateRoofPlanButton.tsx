@@ -65,23 +65,10 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
   
   const handleOpenInNewTab = () => {
     if (!roofPlan) return;
-    
-    const newTab = window.open();
-    if (newTab) {
-      newTab.document.write(`
-        <html>
-          <head>
-            <title>Dachplan</title>
-            <style>
-              body { margin: 0; display: flex; justify-content: center; align-items: center; background-color: #f5f5f5; }
-              img { max-width: 100%; max-height: 100vh; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-            </style>
-          </head>
-          <body>
-            <img src="${roofPlan}" alt="Dachplan" />
-          </body>
-        </html>
-      `);
+    // Open image in a new tab with proper isolation
+    const opened = window.open(roofPlan, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      toast.error('Das Öffnen in einem neuen Tab wurde vom Browser blockiert. Bitte erlauben Sie Pop-ups.');
     }
   };
   

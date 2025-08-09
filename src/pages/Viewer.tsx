@@ -75,15 +75,18 @@ const Viewer = () => {
   }, []);
 
   useEffect(() => {
-    // Validate URL scheme but allow blob, http(s), and relative paths
-    const isValid = typeof fileUrl === 'string' && (
-      fileUrl.startsWith('blob:') ||
-      fileUrl.startsWith('http://') ||
-      fileUrl.startsWith('https://') ||
-      fileUrl.startsWith('/') ||
-      fileUrl.startsWith('./') ||
-      fileUrl.startsWith('../')
-    );
+    // Validate URL: allow blob:, https:, and relative paths. Allow http: only on http origin (dev).
+    const isString = typeof fileUrl === 'string';
+    let isValid = false;
+    if (isString) {
+      const startsWith = (p: string) => fileUrl.startsWith(p);
+      const isBlob = startsWith('blob:');
+      const isHttps = startsWith('https://');
+      const isHttp = startsWith('http://');
+      const isRelative = startsWith('/') || startsWith('./') || startsWith('../');
+      const onHttpOrigin = window.location.protocol === 'http:';
+      isValid = isBlob || isHttps || isRelative || (isHttp && onHttpOrigin);
+    }
 
     if (!isValid) {
       toast.error('Ungültige Datei-URL');
