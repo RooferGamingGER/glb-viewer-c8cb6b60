@@ -65,6 +65,17 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
+const sanitizeColor = (value?: string) => {
+  if (!value) return undefined
+  const v = String(value).trim()
+  // Allow only safe CSS color formats: hex, rgb/rgba, hsl/hsla, var(--token), or named colors
+  if (/^#([0-9A-Fa-f]{3,8})$/.test(v)) return v
+  if (/^(?:rgb|rgba|hsl|hsla)\([0-9.,%\s]+\)$/.test(v)) return v
+  if (/^var\(--[a-z0-9-]+\)$/.test(v)) return v
+  if (/^[a-zA-Z]+$/.test(v)) return v
+  return undefined
+}
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([_, config]) => config.theme || config.color
@@ -74,27 +85,25 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  const css = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const lines = colorConfig
+        .map(([key, itemConfig]) => {
+          const rawColor =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color
+          const color = sanitizeColor(rawColor)
+          return color ? `  --color-${key}: ${color};` : null
+        })
+        .filter(Boolean)
+        .join("\n")
+
+      return `${prefix} [data-chart=${id}] {\n${lines}\n}`
+    })
+    .join("\n")
+
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
+    <style dangerouslySetInnerHTML={{ __html: css }} />
   )
 }
 

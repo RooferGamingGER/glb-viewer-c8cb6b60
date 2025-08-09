@@ -33,8 +33,10 @@ const FileUpload: React.FC = () => {
     setIsDragging(false);
   }, []);
 
-  const validateFile = (file: File): boolean => {
+  const validateFile = async (file: File): Promise<boolean> => {
     setFileError(null);
+
+    // Basic extension and size checks
     if (!file.name.toLowerCase().endsWith('.glb')) {
       const errorMsg = 'Bitte laden Sie eine gültige GLB-Datei hoch.';
       setFileError(errorMsg);
@@ -48,19 +50,43 @@ const FileUpload: React.FC = () => {
       smartToast.error(errorMsg);
       return false;
     }
+
+    // MIME type hint check (may be empty in some browsers)
+    const allowedTypes = ['model/gltf-binary', 'application/octet-stream', 'application/glb'];
+    if (file.type && !allowedTypes.includes(file.type)) {
+      // continue to magic check below; don't fail yet
+    }
+
+    // Magic number check: GLB starts with ASCII 'glTF'
+    try {
+      const header = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      const isGlbMagic = header[0] === 0x67 && header[1] === 0x6C && header[2] === 0x54 && header[3] === 0x46; // 'g''l''T''F'
+      if (!isGlbMagic) {
+        const errorMsg = 'Ungültiges Dateiformat. Erwartet wurde eine GLB-Datei.';
+        setFileError(errorMsg);
+        smartToast.error(errorMsg);
+        return false;
+      }
+    } catch (_) {
+      const errorMsg = 'Datei konnte nicht geprüft werden.';
+      setFileError(errorMsg);
+      smartToast.error(errorMsg);
+      return false;
+    }
+
     return true;
   };
 
-  const handleFileSelect = useCallback((file: File) => {
-    if (validateFile(file)) {
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (await validateFile(file)) {
       setSelectedFile(file);
       smartToast.success('Datei ausgewählt: ' + file.name);
     }
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      handleFileSelect(e.target.files[0]);
+      await handleFileSelect(e.target.files[0]);
     }
   }, [handleFileSelect]);
 
