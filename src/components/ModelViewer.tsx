@@ -58,6 +58,7 @@ const Model = React.memo(({
   onLoadComplete?: () => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
+  const initialCameraSetRef = useRef(false);
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
@@ -90,6 +91,11 @@ const Model = React.memo(({
       }
     }
   }, [stableUrl]);
+
+  // Reset initial camera setup when model URL changes
+  useEffect(() => {
+    initialCameraSetRef.current = false;
+  }, [url]);
 
   const modelTransform = useMemo(() => {
     if (!modelScene) return null;
@@ -132,12 +138,19 @@ const Model = React.memo(({
 
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
+      // Always apply model transform
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-      camera.position.copy(cameraPosition.position);
-      camera.lookAt(cameraPosition.center);
-      camera.updateProjectionMatrix();
+
+      // Set camera only once per model load to avoid view resets during measurements
+      if (!initialCameraSetRef.current) {
+        camera.position.copy(cameraPosition.position);
+        camera.lookAt(cameraPosition.center);
+        camera.updateProjectionMatrix();
+        initialCameraSetRef.current = true;
+      }
+
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {

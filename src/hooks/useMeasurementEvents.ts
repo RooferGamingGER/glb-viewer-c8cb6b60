@@ -49,7 +49,7 @@ export const useMeasurementEvents = (
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastTouchPosRef = useRef<{ x: number; y: number } | null>(null);
   const TAP_MAX_DURATION = 300; // ms
-  const TAP_MAX_MOVEMENT = 12; // pixels
+  const TAP_MAX_MOVEMENT = 20; // pixels
 
   // Double-tap detection refs
   const lastTapTimeRef = useRef<number>(0);
@@ -363,6 +363,9 @@ export const useMeasurementEvents = (
     // Only process left mouse button clicks (button 0) for measurement
     if (event.button !== 0) return;
     
+    event.preventDefault();
+    event.stopPropagation();
+    (event as any).stopImmediatePropagation?.();
     processInteraction(event);
   }, [processInteraction]);
   
@@ -376,6 +379,7 @@ export const useMeasurementEvents = (
     if (now - lastTouchTimeRef.current < TOUCH_COOLDOWN) {
       event.preventDefault();
       event.stopPropagation();
+      (event as any).stopImmediatePropagation?.();
       return;
     }
 
@@ -414,12 +418,12 @@ export const useMeasurementEvents = (
         if ((camera as any).isPerspectiveCamera) {
           const cam = camera as THREE.PerspectiveCamera;
           if (prevPerspectiveFovRef.current == null) prevPerspectiveFovRef.current = cam.fov;
-          cam.fov = Math.max(15, cam.fov * 0.6);
+          cam.fov = Math.max(15, cam.fov * 0.5);
           cam.updateProjectionMatrix();
         } else if ((camera as any).isOrthographicCamera) {
           const cam = camera as THREE.OrthographicCamera;
           if (prevOrthoZoomRef.current == null) prevOrthoZoomRef.current = cam.zoom;
-          cam.zoom = cam.zoom * 1.3;
+          cam.zoom = cam.zoom * 1.5;
           cam.updateProjectionMatrix();
         }
         
@@ -448,6 +452,8 @@ export const useMeasurementEvents = (
     // Prevent default to avoid emulated mouse events and block OrbitControls
     event.preventDefault();
     event.stopPropagation();
+    (event as any).stopImmediatePropagation?.();
+    (event as any).stopImmediatePropagation?.();
   }, [camera, editMeasurementId, findSnapPoint, getPointFromIntersection, measurements, scene, setSnapDistance, snapDistance, snapEnabled]);
 
   
@@ -522,6 +528,8 @@ export const useMeasurementEvents = (
     // Skip measurement preview if using multitouch (allow 2-finger navigation)
     event.preventDefault();
     event.stopPropagation();
+    (event as any).stopImmediatePropagation?.();
+    (event as any).stopImmediatePropagation?.();
   }, [camera, editMeasurementId, findSnapPoint, getPointFromIntersection, handlePointerMove, hideReticle, measurements, scene, setSnapDistance, showReticleAt, snapEnabled]);
 
   
@@ -533,6 +541,7 @@ export const useMeasurementEvents = (
     // Always prevent to block OrbitControls from single-finger gestures
     event.preventDefault();
     event.stopPropagation();
+    (event as any).stopImmediatePropagation?.();
 
     // Clear pending timers when touch ends
     if (longPressTimerRef.current) {
@@ -610,7 +619,7 @@ export const useMeasurementEvents = (
       const lastTapTime = lastTapTimeRef.current;
       const lastTapPos = lastTapPosRef.current;
       const doubleTapTimeWindow = 300; // ms
-      const doubleTapMoveTolerance = 16; // px
+      const doubleTapMoveTolerance = 22; // px
 
       // Check for double tap
       if (
@@ -641,6 +650,7 @@ export const useMeasurementEvents = (
     // Prevent default to avoid OrbitControls zooming on dblclick
     event.preventDefault();
     event.stopPropagation();
+    (event as any).stopImmediatePropagation?.();
     handleDoubleSelect(event);
   }, [handleDoubleSelect]);
 
