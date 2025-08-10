@@ -106,8 +106,14 @@ const Model = React.memo(({
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
+    const sphere = new THREE.Sphere();
+    box.getBoundingSphere(sphere);
+    const dims = [size.x, size.y, size.z];
+    const upIdx = dims.indexOf(Math.min(...dims));
+    const sideIdx = dims.indexOf(Math.max(...dims));
+    const midIdx = [0, 1, 2].find((i) => i !== upIdx && i !== sideIdx)!;
     tempGroup.clear();
-    return { center, size, maxDim };
+    return { center, size, maxDim, radius: sphere.radius, upIdx, sideIdx, midIdx };
   }, [modelScene, rotate]);
 
   const cameraPosition = useMemo(() => {
@@ -117,24 +123,37 @@ const Model = React.memo(({
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-    const { maxDim } = modelTransform;
+
+    const { radius, upIdx, sideIdx, midIdx } = modelTransform;
+    const axes = [
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, 0, 1)
+    ];
+
+    let position: THREE.Vector3;
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
-      cameraZ = Math.max(cameraZ, 1.5);
-      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
-      return {
-        position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
-        center: new THREE.Vector3(0, 0, 0)
-      };
+      const dist = Math.max((radius * 1.25) / Math.sin(fov / 2), radius * 2.5);
+      const dir = axes[upIdx].clone().multiplyScalar(0.9)
+        .add(axes[sideIdx].clone().multiplyScalar(0.4))
+        .add(axes[midIdx].clone().multiplyScalar(0.25))
+        .normalize();
+      position = dir.multiplyScalar(dist);
     } else {
-      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
-      return {
-        position: new THREE.Vector3(0, distance * 0.05, distance),
-        center: new THREE.Vector3(0, 0, 0)
-      };
+      const dist = radius * 4;
+      const dir = axes[upIdx].clone().multiplyScalar(0.9)
+        .add(axes[sideIdx].clone().multiplyScalar(0.4))
+        .add(axes[midIdx].clone().multiplyScalar(0.25))
+        .normalize();
+      position = dir.multiplyScalar(dist);
     }
-  }, [modelTransform, camera, qualitySettings]);
+
+    return {
+      position,
+      center: new THREE.Vector3(0, 0, 0)
+    };
+  }, [modelTransform, camera]);
 
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
@@ -145,6 +164,11 @@ const Model = React.memo(({
 
       // Set camera only once per model load to avoid view resets during measurements
       if (!initialCameraSetRef.current) {
+        if (camera instanceof THREE.PerspectiveCamera) {
+          const r = modelTransform.radius || 1;
+          camera.near = Math.max(0.01, r * 0.01);
+          camera.far = Math.max(1000, r * 20);
+        }
         camera.position.copy(cameraPosition.position);
         camera.lookAt(cameraPosition.center);
         camera.updateProjectionMatrix();
