@@ -11,7 +11,7 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
-import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
+
 
 // Configure GLTF DRACO decoder path to enable loading compressed models
 try {
@@ -59,9 +59,7 @@ const Model = React.memo(({
   onLoadComplete?: () => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
-  const { camera, gl } = useThree();
-  const isMobile = useIsMobile();
-  const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  const { camera } = useThree();
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
@@ -105,54 +103,47 @@ const Model = React.memo(({
     return { center, size, maxDim };
   }, [modelScene, rotate]);
 
-  const cameraPosition = useMemo(() => {
-    if (!modelTransform || !camera) {
-      return {
-        position: new THREE.Vector3(0, 2, 5),
-        center: new THREE.Vector3(0, 0, 0)
-      };
+  const cameraInitializedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (modelRef.current && modelTransform) {
+      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+      const { center } = modelTransform;
+      modelRef.current.position.set(-center.x, -center.y, -center.z);
     }
+  }, [modelTransform, rotate]);
+
+  useEffect(() => {
+    if (!modelTransform || !camera) return;
+    if (cameraInitializedFor.current === url) return;
+
     const { maxDim } = modelTransform;
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.fov * (Math.PI / 180);
       let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
       cameraZ = Math.max(cameraZ, 1.5);
-      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
-      return {
-        position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
-        center: new THREE.Vector3(0, 0, 0)
-      };
+      camera.position.set(0, cameraZ * 0.05, cameraZ);
     } else {
-      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
-      return {
-        position: new THREE.Vector3(0, distance * 0.05, distance),
-        center: new THREE.Vector3(0, 0, 0)
-      };
+      const distance = maxDim * 1.1;
+      camera.position.set(0, distance * 0.05, distance);
     }
-  }, [modelTransform, camera, qualitySettings]);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    cameraInitializedFor.current = url;
 
-  useEffect(() => {
-    if (modelRef.current && modelTransform && cameraPosition) {
-      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-      const { center } = modelTransform;
-      modelRef.current.position.set(-center.x, -center.y, -center.z);
-      camera.position.copy(cameraPosition.position);
-      camera.lookAt(cameraPosition.center);
-      camera.updateProjectionMatrix();
-      if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
-        loadedModels.add(`${url}_completed`);
-        setTimeout(() => {
-          if (modelRef.current) {
-            const box = new THREE.Box3().setFromObject(modelRef.current);
-            const size = box.getSize(new THREE.Vector3());
-            if (size.length() > 0) {
-              onLoadComplete();
-            }
+    if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
+      loadedModels.add(`${url}_completed`);
+      setTimeout(() => {
+        if (modelRef.current) {
+          const box = new THREE.Box3().setFromObject(modelRef.current);
+          const size = box.getSize(new THREE.Vector3());
+          if (size.length() > 0) {
+            onLoadComplete();
           }
-        }, 100);
-      }
+        }
+      }, 100);
     }
-  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
+  }, [modelTransform, camera, url, onLoadComplete]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -283,7 +274,7 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
-          target={[0, 0, 0]}
+          
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
