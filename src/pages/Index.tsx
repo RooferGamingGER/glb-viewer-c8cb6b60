@@ -15,7 +15,7 @@ const Index = () => {
   
   useEffect(() => {
     document.title = "GLB Viewer – Messungen speichern & exportieren";
-    const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat.";
+    const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
     meta.content = desc;
@@ -28,7 +28,7 @@ const Index = () => {
       <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-3">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
-            DrohnenGLB by RooferGaming® - ein kostenloser Service von Drohnenvermessung by RooferGaming®
+            DrohnenGLB by RooferGaming® - ein kostenloser Service von <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">Drohnenvermessung by RooferGaming®</a>
           </div>
           
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mt-2 mb-2 animate-slide-up">
@@ -62,6 +62,24 @@ const Index = () => {
           <div className="mt-2 text-xs text-muted-foreground animate-fade-in">
             Neu: Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.
           </div>
+        </div>
+
+        <div className="glass-panel p-4 md:p-5 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-white/10">
+          <div>
+            <p className="text-sm md:text-base font-medium">Drohnenvermessung by RooferGaming®</p>
+            <p className="text-xs md:text-sm text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig und professionell.</p>
+          </div>
+          <Button asChild>
+            <a
+              href="https://drohnenvermessung-roofergaming.de"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen"
+              title="Drohnenvermessung by RooferGaming"
+            >
+              Jetzt Drohnenvermessung ansehen
+            </a>
+          </Button>
         </div>
 
         <div className="flex-grow flex flex-col md:hidden">
@@ -251,6 +269,9 @@ const Index = () => {
         
         <footer className="w-full text-center text-xs text-muted-foreground mt-2 mb-0">
           <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming® | Alle Rechte vorbehalten</p>
+          <p className="mt-1">
+            Service: <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">Drohnenvermessung by RooferGaming®</a>
+          </p>
           <p className="text-xs mt-1 hidden md:block">Unterstützt GLB-Dateien bis zu 100MB</p>
         </footer>
       </div>
