@@ -132,25 +132,33 @@ const Model = React.memo(({
   }, [modelTransform, camera, qualitySettings]);
 
   useEffect(() => {
-    if (modelRef.current && modelTransform && cameraPosition) {
-      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-      const { center } = modelTransform;
-      modelRef.current.position.set(-center.x, -center.y, -center.z);
+    if (!modelRef.current || !modelTransform || !cameraPosition) return;
+
+    // Always set model transform once per URL render
+    modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+    const { center } = modelTransform;
+    modelRef.current.position.set(-center.x, -center.y, -center.z);
+
+    // Initialize camera ONLY once per model URL to avoid resets during interaction
+    const cameraInitKey = `${url}_camera_init`;
+    if (!loadedModels.has(cameraInitKey)) {
       camera.position.copy(cameraPosition.position);
       camera.lookAt(cameraPosition.center);
       camera.updateProjectionMatrix();
-      if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
-        loadedModels.add(`${url}_completed`);
-        setTimeout(() => {
-          if (modelRef.current) {
-            const box = new THREE.Box3().setFromObject(modelRef.current);
-            const size = box.getSize(new THREE.Vector3());
-            if (size.length() > 0) {
-              onLoadComplete();
-            }
+      loadedModels.add(cameraInitKey);
+    }
+
+    if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
+      loadedModels.add(`${url}_completed`);
+      setTimeout(() => {
+        if (modelRef.current) {
+          const box = new THREE.Box3().setFromObject(modelRef.current);
+          const size = box.getSize(new THREE.Vector3());
+          if (size.length() > 0) {
+            onLoadComplete();
           }
-        }, 100);
-      }
+        }
+      }, 100);
     }
   }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
 
@@ -283,7 +291,7 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
-          target={[0, 0, 0]}
+          // target removed to prevent resets on re-renders
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -393,6 +401,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       loadedModels.delete(`${processedUrl}_preloaded`);
       loadedModels.delete(`${processedUrl}_completed`);
       loadedModels.delete(`${processedUrl}_success_shown`);
+      loadedModels.delete(`${processedUrl}_camera_init`);
       clearGLTFCache(processedUrl || undefined);
     };
   }, [processedUrl, clearGLTFCache]);
