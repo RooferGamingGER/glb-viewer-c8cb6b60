@@ -285,7 +285,7 @@ const Index = () => {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground text-center mt-2">
-              Nicht nur Darstellung: Für Dachdecker und Solarteure vermessen wir Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
+              Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
             </p>
           </div>
         </div>
