@@ -62,6 +62,8 @@ const Model = React.memo(({
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  const { activeMode } = useMeasurements();
+  const initializedForUrlRef = useRef<string | null>(null);
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
@@ -136,9 +138,17 @@ const Model = React.memo(({
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-      camera.position.copy(cameraPosition.position);
-      camera.lookAt(cameraPosition.center);
-      camera.updateProjectionMatrix();
+
+      const toolsActive = activeMode && activeMode !== 'none';
+      const urlChanged = initializedForUrlRef.current !== url;
+
+      if (!(toolsActive && initializedForUrlRef.current && !urlChanged)) {
+        camera.position.copy(cameraPosition.position);
+        camera.lookAt(cameraPosition.center);
+        camera.updateProjectionMatrix();
+        initializedForUrlRef.current = url;
+      }
+
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {
@@ -152,7 +162,7 @@ const Model = React.memo(({
         }, 100);
       }
     }
-  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
+  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url, activeMode]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -213,12 +223,20 @@ const ModelCanvas = React.memo(({
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
   const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = React.useRef<any>(null);
 
   useEffect(() => {
     if (rendererRef.current) {
       optimizeRenderer(rendererRef.current, isLowMemory);
     }
   }, [isLowMemory, optimizeRenderer]);
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.update();
+    }
+  }, []);
   
   useEffect(() => {
     if (!loadedModels.has(`${fileUrl}_preloaded`)) {
@@ -272,6 +290,7 @@ const ModelCanvas = React.memo(({
           onLoadComplete={onModelLoadComplete}
         />
         <OrbitControls 
+          ref={controlsRef}
           makeDefault 
           enableDamping 
           dampingFactor={0.1} 
@@ -283,7 +302,6 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
-          target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
