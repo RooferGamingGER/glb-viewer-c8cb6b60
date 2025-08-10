@@ -129,8 +129,11 @@ const Test = () => {
         <SidebarProvider defaultOpen={!isMobile} open={!isMobile} className="h-full">
           <main className="flex-1 relative w-full h-full">
             <ModelViewer 
+              key={testModelUrl}
               fileUrl={testModelUrl} 
               fileName={testModelName} 
+              rotateModel={true}
+              showTools={true}
             />
           </main>
         </SidebarProvider>
