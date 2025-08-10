@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
+import ModelViewer from '@/components/ModelViewer';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +16,7 @@ const Index = () => {
   
   useEffect(() => {
     document.title = "GLB Viewer – Messungen speichern & exportieren";
-    const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat.";
+    const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
     meta.content = desc;
@@ -28,7 +29,7 @@ const Index = () => {
       <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-3">
         <div className="text-center mb-2">
           <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
-            DrohnenGLB by RooferGaming® - ein kostenloser Service von Drohnenvermessung by RooferGaming®
+            DrohnenGLB by RooferGaming® - ein kostenloser Service von <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">Drohnenvermessung by RooferGaming®</a>
           </div>
           
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mt-2 mb-2 animate-slide-up">
@@ -46,22 +47,28 @@ const Index = () => {
             <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
               info@drohnenvermessung-roofergaming.de
             </a>
-         </p>
-          
-          <div className="mt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleDemoClick} 
-              className="animate-fade-in"
-            >
-              Demo-Modell ansehen
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+         </p>      
           <div className="mt-2 text-xs text-muted-foreground animate-fade-in">
             Neu: Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.
           </div>
+        <div className="glass-panel p-4 md:p-5 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-white/10">
+          <div>
+            <p className="text-sm md:text-base font-medium">Drohnenvermessung by RooferGaming®</p>
+            <p className="text-xs md:text-sm text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig und professionell.</p>
+          </div>
+          <Button asChild>
+            <a
+              href="https://drohnenvermessung-roofergaming.de"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen"
+              title="Drohnenvermessung by RooferGaming"
+            >
+              Jetzt Drohnenvermessung ansehen
+            </a>
+          </Button>
+        </div>
+
         </div>
 
         <div className="flex-grow flex flex-col md:hidden">
@@ -70,6 +77,23 @@ const Index = () => {
               <h2 className="text-lg font-bold mb-3 text-center">Modell hochladen</h2>
               <FileUpload />
             </div>
+          </div>
+          
+          {/* Demo model viewer (mobile) */}
+          <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
+            <h2 className="text-base font-semibold mb-2 text-center">Demo-Modell</h2>
+            <div className="relative w-full h-64 rounded-md overflow-hidden">
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
+            </div>
+            <div className="mt-3 flex justify-center">
+              <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+                Demo-Modell ansehen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
+            </p>
           </div>
           
           <div className="grid grid-cols-1 gap-2">
@@ -170,7 +194,7 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min pb-2 order-2 lg:order-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min pb-2 lg:col-span-2 lg:row-start-2">
             <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                 <MoveHorizontal className="w-5 h-5 text-primary" />
@@ -247,10 +271,30 @@ const Index = () => {
               </p>
             </div>
           </div>
+
+          {/* Demo model viewer (desktop) */}
+          <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
+            <h2 className="text-xl font-bold mb-3 text-center">Demo-Modell</h2>
+            <div className="relative w-full h-72 lg:h-80 rounded-md overflow-hidden">
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+                Demo-Modell ansehen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground text-center mt-2">
+              Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
+            </p>
+          </div>
         </div>
         
         <footer className="w-full text-center text-xs text-muted-foreground mt-2 mb-0">
           <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming® | Alle Rechte vorbehalten</p>
+          <p className="mt-1">
+            Service: <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">Drohnenvermessung by RooferGaming®</a>
+          </p>
           <p className="text-xs mt-1 hidden md:block">Unterstützt GLB-Dateien bis zu 100MB</p>
         </footer>
       </div>
