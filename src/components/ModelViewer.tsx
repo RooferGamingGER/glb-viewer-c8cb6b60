@@ -11,7 +11,7 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
-import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
+
 
 // Configure GLTF DRACO decoder path to enable loading compressed models
 try {
@@ -59,9 +59,10 @@ const Model = React.memo(({
   onLoadComplete?: () => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
+  const initializedCameraFor = useRef<string | null>(null);
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
-  const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
@@ -117,28 +118,34 @@ const Model = React.memo(({
       const fov = camera.fov * (Math.PI / 180);
       let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
       cameraZ = Math.max(cameraZ, 1.5);
-      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
+      const mobileFactor = isMobile ? 1.3 : 1.1;
       return {
         position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
         center: new THREE.Vector3(0, 0, 0)
       };
     } else {
-      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
+      const distance = maxDim * (isMobile ? 1.3 : 1.1);
       return {
         position: new THREE.Vector3(0, distance * 0.05, distance),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-  }, [modelTransform, camera, qualitySettings]);
+  }, [modelTransform, camera, isMobile]);
 
   useEffect(() => {
-    if (modelRef.current && modelTransform && cameraPosition) {
+    if (modelRef.current && modelTransform) {
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-      camera.position.copy(cameraPosition.position);
-      camera.lookAt(cameraPosition.center);
-      camera.updateProjectionMatrix();
+
+      // Initialize camera only once per model URL
+      if (initializedCameraFor.current !== url && cameraPosition) {
+        camera.position.copy(cameraPosition.position);
+        camera.lookAt(cameraPosition.center);
+        camera.updateProjectionMatrix();
+        initializedCameraFor.current = url;
+      }
+
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {
@@ -283,7 +290,7 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
-          target={[0, 0, 0]}
+          
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
