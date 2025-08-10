@@ -60,6 +60,7 @@ const Model = React.memo(({
 }) => {
   const modelRef = useRef<THREE.Group>(null);
   const { camera, gl } = useThree();
+  const controls = useThree((state) => (state as any).controls);
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
   
@@ -112,24 +113,33 @@ const Model = React.memo(({
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-    const { maxDim } = modelTransform;
+
+    const { size } = modelTransform;
+    // Use bounding sphere radius for robust framing
+    const radius = size.length() / 2 || 1;
+
     if (camera instanceof THREE.PerspectiveCamera) {
-      const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
-      cameraZ = Math.max(cameraZ, 1.5);
-      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
+      const aspect = camera.aspect || 1.7778; // fallback ~16:9
+      const fovV = (camera.fov * Math.PI) / 180; // vertical fov in radians
+      const fovH = 2 * Math.atan(Math.tan(fovV / 2) * aspect);
+
+      const dV = radius / Math.tan(fovV / 2);
+      const dH = radius / Math.tan(fovH / 2);
+      const distance = Math.max(dV, dH) * 1.2; // margin
+
+      const mobileFactor = 1; // keep true distance, adjust via OrbitControls limits instead
       return {
-        position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
+        position: new THREE.Vector3(0, distance * 0.15 * mobileFactor, distance * mobileFactor),
         center: new THREE.Vector3(0, 0, 0)
       };
     } else {
-      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
+      const distance = radius * 3;
       return {
-        position: new THREE.Vector3(0, distance * 0.05, distance),
+        position: new THREE.Vector3(0, distance * 0.15, distance),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-  }, [modelTransform, camera, qualitySettings]);
+  }, [modelTransform, camera]);
 
   useEffect(() => {
     if (!modelRef.current || !modelTransform || !cameraPosition) return;
@@ -145,6 +155,22 @@ const Model = React.memo(({
       camera.position.copy(cameraPosition.position);
       camera.lookAt(cameraPosition.center);
       camera.updateProjectionMatrix();
+
+      // Initialize OrbitControls target and sensible zoom limits once
+      const ctrls = (controls as any);
+      try {
+        if (ctrls) {
+          if (ctrls.target) {
+            ctrls.target.set(0, 0, 0);
+          }
+          const radius = (modelTransform.size.length() / 2) || 1;
+          const startDist = (camera as THREE.PerspectiveCamera).position.length();
+          if ('minDistance' in ctrls) ctrls.minDistance = Math.max(radius * 0.2, 0.1);
+          if ('maxDistance' in ctrls) ctrls.maxDistance = Math.max(startDist * 10, (ctrls.minDistance || 0.1) + 1);
+          if (typeof ctrls.update === 'function') ctrls.update();
+        }
+      } catch {}
+
       loadedModels.add(cameraInitKey);
     }
 
@@ -286,8 +312,6 @@ const ModelCanvas = React.memo(({
           rotateSpeed={isMobile ? 0.7 : 1} 
           zoomSpeed={isMobile ? 0.7 : 1} 
           panSpeed={isMobile ? 0.7 : 1} 
-          minDistance={0.5} 
-          maxDistance={100}
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
