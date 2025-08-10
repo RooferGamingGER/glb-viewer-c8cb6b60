@@ -47,24 +47,10 @@ const Index = () => {
             <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
               info@drohnenvermessung-roofergaming.de
             </a>
-         </p>
-          
-          <div className="mt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleDemoClick} 
-              className="animate-fade-in"
-            >
-              Demo-Modell ansehen
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+         </p>      
           <div className="mt-2 text-xs text-muted-foreground animate-fade-in">
             Neu: Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.
           </div>
-        </div>
-
         <div className="glass-panel p-4 md:p-5 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-white/10">
           <div>
             <p className="text-sm md:text-base font-medium">Drohnenvermessung by RooferGaming®</p>
@@ -104,7 +90,7 @@ const Index = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground text-center mt-2">
-              Nicht nur Darstellung: Für Dachdecker und Solarteure vermessen wir Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
+              Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
             </p>
           </div>
           
