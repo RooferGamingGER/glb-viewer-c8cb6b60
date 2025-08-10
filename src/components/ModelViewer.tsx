@@ -60,7 +60,6 @@ const Model = React.memo(({
 }) => {
   const modelRef = useRef<THREE.Group>(null);
   const { camera, gl } = useThree();
-  const controls = useThree((state) => (state as any).controls);
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
   
@@ -113,78 +112,45 @@ const Model = React.memo(({
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-
-    const { size } = modelTransform;
-    // Use bounding sphere radius for robust framing
-    const radius = size.length() / 2 || 1;
-
+    const { maxDim } = modelTransform;
     if (camera instanceof THREE.PerspectiveCamera) {
-      const aspect = camera.aspect || 1.7778; // fallback ~16:9
-      const fovV = (camera.fov * Math.PI) / 180; // vertical fov in radians
-      const fovH = 2 * Math.atan(Math.tan(fovV / 2) * aspect);
-
-      const dV = radius / Math.tan(fovV / 2);
-      const dH = radius / Math.tan(fovH / 2);
-      const distance = Math.max(dV, dH) * 1.2; // margin
-
-      const mobileFactor = 1; // keep true distance, adjust via OrbitControls limits instead
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
+      cameraZ = Math.max(cameraZ, 1.5);
+      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
       return {
-        position: new THREE.Vector3(0, distance * 0.15 * mobileFactor, distance * mobileFactor),
+        position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
         center: new THREE.Vector3(0, 0, 0)
       };
     } else {
-      const distance = radius * 3;
+      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
       return {
-        position: new THREE.Vector3(0, distance * 0.15, distance),
+        position: new THREE.Vector3(0, distance * 0.05, distance),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-  }, [modelTransform, camera]);
+  }, [modelTransform, camera, qualitySettings]);
 
   useEffect(() => {
-    if (!modelRef.current || !modelTransform || !cameraPosition) return;
-
-    // Always set model transform once per URL render
-    modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
-    const { center } = modelTransform;
-    modelRef.current.position.set(-center.x, -center.y, -center.z);
-
-    // Initialize camera ONLY once per model URL to avoid resets during interaction
-    const cameraInitKey = `${url}_camera_init`;
-    if (!loadedModels.has(cameraInitKey)) {
+    if (modelRef.current && modelTransform && cameraPosition) {
+      modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+      const { center } = modelTransform;
+      modelRef.current.position.set(-center.x, -center.y, -center.z);
       camera.position.copy(cameraPosition.position);
       camera.lookAt(cameraPosition.center);
       camera.updateProjectionMatrix();
-
-      // Initialize OrbitControls target and sensible zoom limits once
-      const ctrls = (controls as any);
-      try {
-        if (ctrls) {
-          if (ctrls.target) {
-            ctrls.target.set(0, 0, 0);
+      if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
+        loadedModels.add(`${url}_completed`);
+        setTimeout(() => {
+          if (modelRef.current) {
+            const box = new THREE.Box3().setFromObject(modelRef.current);
+            const size = box.getSize(new THREE.Vector3());
+            if (size.length() > 0) {
+              onLoadComplete();
+            }
           }
-          const radius = (modelTransform.size.length() / 2) || 1;
-          const startDist = (camera as THREE.PerspectiveCamera).position.length();
-          if ('minDistance' in ctrls) ctrls.minDistance = Math.max(radius * 0.2, 0.1);
-          if ('maxDistance' in ctrls) ctrls.maxDistance = Math.max(startDist * 10, (ctrls.minDistance || 0.1) + 1);
-          if (typeof ctrls.update === 'function') ctrls.update();
-        }
-      } catch {}
-
-      loadedModels.add(cameraInitKey);
-    }
-
-    if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
-      loadedModels.add(`${url}_completed`);
-      setTimeout(() => {
-        if (modelRef.current) {
-          const box = new THREE.Box3().setFromObject(modelRef.current);
-          const size = box.getSize(new THREE.Vector3());
-          if (size.length() > 0) {
-            onLoadComplete();
-          }
-        }
-      }, 100);
+        }, 100);
+      }
     }
   }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
 
@@ -312,10 +278,12 @@ const ModelCanvas = React.memo(({
           rotateSpeed={isMobile ? 0.7 : 1} 
           zoomSpeed={isMobile ? 0.7 : 1} 
           panSpeed={isMobile ? 0.7 : 1} 
+          minDistance={0.5} 
+          maxDistance={100}
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
-          // target removed to prevent resets on re-renders
+          target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -425,7 +393,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       loadedModels.delete(`${processedUrl}_preloaded`);
       loadedModels.delete(`${processedUrl}_completed`);
       loadedModels.delete(`${processedUrl}_success_shown`);
-      loadedModels.delete(`${processedUrl}_camera_init`);
       clearGLTFCache(processedUrl || undefined);
     };
   }, [processedUrl, clearGLTFCache]);
