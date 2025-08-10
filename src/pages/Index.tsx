@@ -96,9 +96,6 @@ const Index = () => {
         Demo-Modell ansehen
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
-      <Button asChild variant="secondary" aria-label="Vermessungsbericht (PDF) anzeigen">
-        <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">Vermessungsbericht (PDF)</a>
-      </Button>
     </div>
   </div>
 )}
@@ -292,9 +289,6 @@ const Index = () => {
       <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
         Demo-Modell ansehen
         <ArrowRight className="ml-2 h-4 w-4" />
-      </Button>
-      <Button asChild variant="secondary" aria-label="Vermessungsbericht (PDF) anzeigen">
-        <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">Vermessungsbericht (PDF)</a>
       </Button>
     </div>
   </div>
