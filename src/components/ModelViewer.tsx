@@ -333,44 +333,56 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const { measurements } = useMeasurements();
 
   // Resolve the URL robustly:
-  // - If it's a blob:, try to reuse stored original Blob; otherwise fetch, name it, store it, and create a fresh ObjectURL.
-  // - For http/https, use as is.
+  // - If it's a blob:, create a single canonical ObjectURL once and reuse it
+  // - For http/https, use as is
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  const canonicalUrlRef = useRef<string | null>(null);
+  const sourceUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const resolveUrl = async () => {
       if (!fileUrl) {
+        canonicalUrlRef.current = null;
+        sourceUrlRef.current = null;
         setProcessedUrl(null);
         return;
       }
 
+      // If the source URL hasn't changed and we already have a canonical URL, reuse it
+      if (sourceUrlRef.current === fileUrl && canonicalUrlRef.current) {
+        setProcessedUrl(canonicalUrlRef.current);
+        return;
+      }
+
+      // New source URL – reset canonical; previous cleanup handled in separate effect
+      sourceUrlRef.current = fileUrl;
+      canonicalUrlRef.current = null;
+
       // blob: URL handling
       if (fileUrl.startsWith('blob:')) {
-        // Try storage first
         try {
-          const stored = getOriginalFile(fileUrl);
-          if (stored) {
-            const freshUrl = URL.createObjectURL(stored);
-            // Store also under the fresh URL key so export code can find it
-            try { storeOriginalFile(freshUrl, stored); } catch {}
-            if (!cancelled) setProcessedUrl(freshUrl);
-            return;
-          }
-        } catch {}
+          let blob: Blob | null = null;
+          try {
+            blob = getOriginalFile(fileUrl);
+          } catch {}
 
-        // Try to fetch the blob and reconstruct a File with a name
-        try {
-          const resp = await fetch(fileUrl);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const blob = await resp.blob();
+          if (!blob) {
+            const resp = await fetch(fileUrl);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            blob = await resp.blob();
+          }
+
           const namedBlob = new File([blob], fileName || 'model.glb', { type: blob.type || 'model/gltf-binary' });
-          // Store under both the original and the soon-to-be fresh URL
           try { storeOriginalFile(fileUrl, namedBlob); } catch {}
           const freshUrl = URL.createObjectURL(namedBlob);
           try { storeOriginalFile(freshUrl, namedBlob); } catch {}
-          if (!cancelled) setProcessedUrl(freshUrl);
+
+          if (!cancelled) {
+            canonicalUrlRef.current = freshUrl;
+            setProcessedUrl(freshUrl);
+          }
           return;
         } catch (e) {
           console.error('Failed to resolve blob URL for model:', e);
@@ -381,6 +393,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       }
 
       // Default: http/https or other handled schemes
+      canonicalUrlRef.current = fileUrl;
       setProcessedUrl(fileUrl);
     };
 
@@ -389,7 +402,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [fileUrl, fileName]);
+  }, [fileUrl]);
 
   // Show success message only once per model
   const handleModelLoadComplete = useCallback(() => {
@@ -400,20 +413,25 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     }
   }, [processedUrl]);
 
-  // Cleanup only on unmount or when URL actually changes
+  // Cleanup only on unmount or when source URL actually changes
   useEffect(() => {
     return () => {
-      if (processedUrl && processedUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(processedUrl);
+      const urlToCleanup = canonicalUrlRef.current;
+      if (urlToCleanup) {
+        if (urlToCleanup.startsWith('blob:')) {
+          try { URL.revokeObjectURL(urlToCleanup); } catch {}
+        }
+        // Clear from loaded models cache and GLTF cache
+        loadedModels.delete(urlToCleanup);
+        loadedModels.delete(`${urlToCleanup}_preloaded`);
+        loadedModels.delete(`${urlToCleanup}_completed`);
+        loadedModels.delete(`${urlToCleanup}_success_shown`);
+        clearGLTFCache(urlToCleanup);
       }
-      // Clear from loaded models cache
-      loadedModels.delete(processedUrl as string);
-      loadedModels.delete(`${processedUrl}_preloaded`);
-      loadedModels.delete(`${processedUrl}_completed`);
-      loadedModels.delete(`${processedUrl}_success_shown`);
-      clearGLTFCache(processedUrl || undefined);
+      canonicalUrlRef.current = null;
+      sourceUrlRef.current = null;
     };
-  }, [processedUrl, clearGLTFCache]);
+  }, [fileUrl, clearGLTFCache]);
 
   // Stable scene ready handler
   const handleSceneReady = useCallback((
