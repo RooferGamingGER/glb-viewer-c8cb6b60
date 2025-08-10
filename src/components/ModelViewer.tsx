@@ -119,7 +119,7 @@ const Model = React.memo(({
   const cameraPosition = useMemo(() => {
     if (!modelTransform || !camera) {
       return {
-        position: new THREE.Vector3(0, 2, 5),
+        position: new THREE.Vector3(0, 2, 8),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
@@ -131,29 +131,31 @@ const Model = React.memo(({
       new THREE.Vector3(0, 0, 1)
     ];
 
-    let position: THREE.Vector3;
+    // Build a diagonal ground-plane forward vector and a strong up component (roof-focused)
+    const up = axes[upIdx].clone();
+    const forwardGround = axes[sideIdx].clone().add(axes[midIdx]).normalize();
+    const elevationDeg = 60; // 60° above horizon to see roof + facade well
+    const elevRad = (elevationDeg * Math.PI) / 180;
+    const dir = forwardGround.multiplyScalar(Math.cos(elevRad)).add(up.multiplyScalar(Math.sin(elevRad))).normalize();
+
+    let dist = radius * 8; // fallback
     if (camera instanceof THREE.PerspectiveCamera) {
-      const fov = camera.fov * (Math.PI / 180);
-      const dist = Math.max((radius * 1.25) / Math.sin(fov / 2), radius * 2.5);
-      const dir = axes[upIdx].clone().multiplyScalar(0.9)
-        .add(axes[sideIdx].clone().multiplyScalar(0.4))
-        .add(axes[midIdx].clone().multiplyScalar(0.25))
-        .normalize();
-      position = dir.multiplyScalar(dist);
+      const vFOV = (camera.fov * Math.PI) / 180;
+      const aspect = (gl?.domElement?.clientWidth || 1) / (gl?.domElement?.clientHeight || 1);
+      const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspect);
+      const margin = 3.0; // stronger margin for rotated/tilted models
+      const distV = (radius * margin) / Math.sin(vFOV / 2);
+      const distH = (radius * margin) / Math.sin(hFOV / 2);
+      dist = Math.max(distV, distH, radius * 6);
     } else {
-      const dist = radius * 4;
-      const dir = axes[upIdx].clone().multiplyScalar(0.9)
-        .add(axes[sideIdx].clone().multiplyScalar(0.4))
-        .add(axes[midIdx].clone().multiplyScalar(0.25))
-        .normalize();
-      position = dir.multiplyScalar(dist);
+      dist = radius * 10;
     }
 
     return {
-      position,
+      position: dir.multiplyScalar(dist),
       center: new THREE.Vector3(0, 0, 0)
     };
-  }, [modelTransform, camera]);
+  }, [modelTransform, camera, gl]);
 
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
