@@ -95,7 +95,7 @@ const Index = () => {
           <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
             <h2 className="text-base font-semibold mb-2 text-center">Demo-Modell</h2>
             <div className="relative w-full h-64 rounded-md overflow-hidden">
-              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} />
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
             </div>
           </div>
           
@@ -279,7 +279,7 @@ const Index = () => {
           <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
             <h2 className="text-xl font-bold mb-3 text-center">Demo-Modell</h2>
             <div className="relative w-full h-72 lg:h-80 rounded-md overflow-hidden">
-              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} />
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
             </div>
           </div>
         </div>

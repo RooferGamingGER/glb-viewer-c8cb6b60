@@ -24,6 +24,7 @@ type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
   rotateModel?: boolean;
+  showTools?: boolean;
 };
 
 function Loader3D() {
@@ -295,7 +296,8 @@ const ModelCanvas = React.memo(({
 const ModelViewer: React.FC<ModelViewerProps> = ({
   fileUrl,
   fileName,
-  rotateModel = true
+  rotateModel = true,
+  showTools = true
 }) => {
   const [threeContext, setThreeContext] = useState<ThreeContextProps>({
     scene: null,
@@ -439,7 +441,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
             />
           </div>
           
-          {threeContext.scene && threeContext.camera && (
+          {showTools && threeContext.scene && threeContext.camera && (
             <MeasurementTools 
               enabled={measurementsEnabled} 
               scene={threeContext.scene} 
