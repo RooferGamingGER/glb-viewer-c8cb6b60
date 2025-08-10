@@ -6,7 +6,7 @@ import ModelViewer from '@/components/ModelViewer';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { SidebarProvider } from '@/components/ui/sidebar';
+
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -86,24 +86,11 @@ const Index = () => {
           
 {isMobile && (
   <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
-    <h2 className="text-base font-semibold mb-2 text-center">Demo-Modell</h2>
+    
     <div className="relative w-full h-80 rounded-md overflow-hidden">
-      <SidebarProvider defaultOpen={false} open={false} className="h-full">
-        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={true} />
-      </SidebarProvider>
+      
+        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
     </div>
-    <div className="mt-3 flex flex-wrap justify-center gap-2">
-      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
-        Demo-Modell ansehen
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </Button>
-      <Button asChild variant="secondary" aria-label="Vermessungsbericht (PDF) anzeigen">
-        <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">Vermessungsbericht (PDF)</a>
-      </Button>
-    </div>
-    <p className="text-xs text-muted-foreground text-center mt-2">
-      Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
-    </p>
   </div>
 )}
           
@@ -286,24 +273,12 @@ const Index = () => {
 {/* Demo model viewer (desktop) */}
 {!isMobile && (
   <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
-    <h2 className="text-xl font-bold mb-3 text-center">Demo-Modell</h2>
+    
     <div className="relative w-full h-96 rounded-md overflow-hidden">
-      <SidebarProvider defaultOpen={true} open={true} className="h-full">
-        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={true} />
-      </SidebarProvider>
+      
+        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
+      
     </div>
-    <div className="mt-4 flex flex-wrap justify-center gap-2">
-      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
-        Demo-Modell ansehen
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </Button>
-      <Button asChild variant="secondary" aria-label="Vermessungsbericht (PDF) anzeigen">
-        <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">Vermessungsbericht (PDF)</a>
-      </Button>
-    </div>
-    <p className="text-sm text-muted-foreground text-center mt-2">
-      Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
-    </p>
   </div>
 )}
         </div>
