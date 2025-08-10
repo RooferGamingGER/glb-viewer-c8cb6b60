@@ -83,17 +83,12 @@ const Index = () => {
           <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
             <h2 className="text-base font-semibold mb-2 text-center">Demo-Modell</h2>
             <div className="relative w-full h-64 rounded-md overflow-hidden">
-              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={true} />
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
             </div>
-            <div className="mt-3 flex justify-center gap-2 flex-wrap">
+            <div className="mt-3 flex justify-center">
               <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
                 Demo-Modell ansehen
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button variant="outline" asChild aria-label="Vermessungsbericht (PDF) anzeigen">
-                <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">
-                  Vermessungsbericht (PDF) anzeigen
-                </a>
               </Button>
             </div>
             <p className="text-xs text-muted-foreground text-center mt-2">
@@ -281,17 +276,12 @@ const Index = () => {
           <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
             <h2 className="text-xl font-bold mb-3 text-center">Demo-Modell</h2>
             <div className="relative w-full h-72 lg:h-80 rounded-md overflow-hidden">
-              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={true} />
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
             </div>
-            <div className="mt-4 flex justify-center gap-2 flex-wrap">
+            <div className="mt-4 flex justify-center">
               <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
                 Demo-Modell ansehen
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button variant="outline" asChild aria-label="Vermessungsbericht (PDF) anzeigen">
-                <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">
-                  Vermessungsbericht (PDF) anzeigen
-                </a>
               </Button>
             </div>
             <p className="text-sm text-muted-foreground text-center mt-2">
