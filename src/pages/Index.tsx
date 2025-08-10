@@ -69,6 +69,8 @@ const Index = () => {
           </Button>
         </div>
 
+        </div>
+
         <div className="flex-grow flex flex-col md:hidden">
           <div className="glass-panel p-4 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 mb-3">
             <div className="w-full mx-auto">
