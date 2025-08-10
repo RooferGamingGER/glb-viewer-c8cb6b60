@@ -12,6 +12,8 @@ import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
+import { detectOptimalOrientation } from '@/utils/orientationHeuristics';
+import { detectVendorFromMetadata, combineVendorHints } from '@/utils/vendorDetection';
 
 // Configure GLTF DRACO decoder path to enable loading compressed models
 try {
@@ -23,7 +25,7 @@ try {
 type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
-  rotateModel?: boolean;
+  rotateModel?: boolean | 'auto';
 };
 
 function Loader3D() {
@@ -54,7 +56,7 @@ const Model = React.memo(({
   onLoadComplete
 }: {
   url: string;
-  rotate?: boolean;
+  rotate?: boolean | 'auto';
   onLoadComplete?: () => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
@@ -81,21 +83,43 @@ const Model = React.memo(({
 
   useOriginalFileStorage(modelScene, url);
 
-  const stableUrl = useMemo(() => url, [url]);
+  // Orientation handling
+  const [appliedEuler, setAppliedEuler] = useState<THREE.Euler>(new THREE.Euler(0, 0, 0));
+  const [orientationLabel, setOrientationLabel] = useState<string>('identity');
+
   useEffect(() => {
-    if (stableUrl && (stableUrl.endsWith('.glb') || stableUrl.endsWith('.gltf'))) {
-      if (!loadedModels.has(stableUrl)) {
-        loadedModels.add(stableUrl);
-        fetchAndStoreOriginalFile(stableUrl).catch(console.warn);
-      }
+    if (!modelScene) return;
+
+    // Determine rotation based on prop
+    if (rotate === 'auto') {
+      const result = detectOptimalOrientation(modelScene);
+      setAppliedEuler(result.best.euler.clone());
+      setOrientationLabel(result.best.label);
+      try {
+        const meta = detectVendorFromMetadata(modelScene);
+        const combined = combineVendorHints(meta, result.vendorHint);
+        (modelScene.userData as any).vendor = combined;
+        (modelScene.userData as any).orientationApplied = result.best.label;
+        const toastKey = `${url}_orientation_toast_shown`;
+        if (!loadedModels.has(toastKey)) {
+          loadedModels.add(toastKey);
+          smartToast.info(`Automatische Ausrichtung: ${result.best.label}${combined.vendor === 'roofergaming' ? ' • RooferGaming-verdächtig' : ''}`);
+        }
+      } catch {}
+    } else if (rotate) {
+      setAppliedEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+      setOrientationLabel('rx-90');
+    } else {
+      setAppliedEuler(new THREE.Euler(0, 0, 0));
+      setOrientationLabel('identity');
     }
-  }, [stableUrl]);
+  }, [modelScene, rotate, url]);
 
   const modelTransform = useMemo(() => {
     if (!modelScene) return null;
     const tempGroup = new THREE.Group();
     tempGroup.add(modelScene.clone());
-    tempGroup.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
+    tempGroup.rotation.copy(appliedEuler);
     const box = new THREE.Box3().setFromObject(tempGroup);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -206,7 +230,7 @@ const ModelCanvas = React.memo(({
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
-  rotateModel?: boolean;
+  rotateModel?: boolean | 'auto';
   onModelLoadComplete?: () => void;
 }) => {
   const isMobile = useIsMobile();
@@ -267,7 +291,7 @@ const ModelCanvas = React.memo(({
         {!isLowMemory && <Environment preset="city" />}
         <Model 
           url={fileUrl} 
-          rotate={rotateModel !== false} 
+          rotate={rotateModel}
           onLoadComplete={onModelLoadComplete}
         />
         <OrbitControls 
