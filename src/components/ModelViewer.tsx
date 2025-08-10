@@ -103,7 +103,7 @@ const Model = React.memo(({
         const toastKey = `${url}_orientation_toast_shown`;
         if (!loadedModels.has(toastKey)) {
           loadedModels.add(toastKey);
-          smartToast.info(`Automatische Ausrichtung: ${result.best.label}${combined.vendor === 'roofergaming' ? ' • RooferGaming-verdächtig' : ''}`);
+          smartToast.guidance(`Automatische Ausrichtung: ${result.best.label}${combined.vendor === 'roofergaming' ? ' • RooferGaming-verdächtig' : ''}`);
         }
       } catch {}
     } else if (rotate) {
