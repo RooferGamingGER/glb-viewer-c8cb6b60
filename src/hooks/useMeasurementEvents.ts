@@ -65,6 +65,8 @@ export const useMeasurementEvents = (
   const PRECISION_SNAP_MULTIPLIER = 2; // temporarily increase snap radius
   const precisionModeRef = useRef<boolean>(false);
   const originalSnapDistanceRef = useRef<number | null>(null);
+  const prevPerspectiveFovRef = useRef<number | null>(null);
+  const prevOrthoZoomRef = useRef<number | null>(null);
 
   const { 
     calculateMousePosition, 
@@ -206,31 +208,32 @@ export const useMeasurementEvents = (
       }
     }
     
-    // Check for clicks on measurement points but only if we're in edit mode
-    if (editMeasurementId) {
+    // Check for clicks on measurement points - allow direct activation when not placing points
+    if (currentPoints.length === 0) {
       const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
       for (const intersect of allSceneIntersects) {
-        if (
-          intersect.object.userData && 
-          (intersect.object.userData.isAreaPoint || 
-          intersect.object.userData.isMeasurementPoint)
-        ) {
-          const userData = intersect.object.userData;
-          
-          // Only allow moving points of the measurement being edited
-          if (userData.measurementId === editMeasurementId) {
-            const measurement = measurements.find(m => m.id === userData.measurementId);
-            if (measurement) {
-              const point = measurement.points[userData.pointIndex];
-              const initialPoint = handlers.startPointMovement(
-                userData.measurementId,
-                userData.pointIndex,
-                point
-              );
-              handlers.setPreviewPoint(initialPoint);
-              return;
-            }
+        const ud = intersect.object.userData;
+        if (!ud) continue;
+        if (ud.isAreaPoint || ud.isMeasurementPoint) {
+          const measurementId = ud.measurementId;
+          const pointIndex = ud.pointIndex;
+          if (measurementId == null || pointIndex == null) continue;
+
+          // Ensure correct measurement is in edit mode
+          if (editMeasurementId !== measurementId) {
+            handlers.toggleEditMode(measurementId);
           }
+          handlers.startPointEdit(measurementId, pointIndex);
+
+          // Immediately start moving the selected point
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement) {
+            const point = measurement.points[pointIndex];
+            const initialPoint = handlers.startPointMovement(measurementId, pointIndex, point);
+            handlers.setPreviewPoint(initialPoint);
+          }
+          toast.info(`Punkt ${pointIndex + 1} aktiviert`);
+          return;
         }
       }
     }
@@ -406,6 +409,19 @@ export const useMeasurementEvents = (
           originalSnapDistanceRef.current = snapDistance;
         }
         setSnapDistance(Math.max(snapDistance * PRECISION_SNAP_MULTIPLIER, snapDistance + 0.3));
+
+        // Zoom in for precision mode
+        if ((camera as any).isPerspectiveCamera) {
+          const cam = camera as THREE.PerspectiveCamera;
+          if (prevPerspectiveFovRef.current == null) prevPerspectiveFovRef.current = cam.fov;
+          cam.fov = Math.max(15, cam.fov * 0.6);
+          cam.updateProjectionMatrix();
+        } else if ((camera as any).isOrthographicCamera) {
+          const cam = camera as THREE.OrthographicCamera;
+          if (prevOrthoZoomRef.current == null) prevOrthoZoomRef.current = cam.zoom;
+          cam.zoom = cam.zoom * 1.3;
+          cam.updateProjectionMatrix();
+        }
         
         // Show reticle at current intersection
         const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
@@ -488,6 +504,18 @@ export const useMeasurementEvents = (
           setSnapDistance(originalSnapDistanceRef.current);
           originalSnapDistanceRef.current = null;
         }
+        // Restore camera zoom/FOV
+        if ((camera as any).isPerspectiveCamera && prevPerspectiveFovRef.current != null) {
+          const cam = camera as THREE.PerspectiveCamera;
+          cam.fov = prevPerspectiveFovRef.current;
+          cam.updateProjectionMatrix();
+          prevPerspectiveFovRef.current = null;
+        } else if ((camera as any).isOrthographicCamera && prevOrthoZoomRef.current != null) {
+          const cam = camera as THREE.OrthographicCamera;
+          cam.zoom = prevOrthoZoomRef.current;
+          cam.updateProjectionMatrix();
+          prevOrthoZoomRef.current = null;
+        }
       }
     }
 
@@ -531,6 +559,18 @@ export const useMeasurementEvents = (
       if (originalSnapDistanceRef.current !== null) {
         setSnapDistance(originalSnapDistanceRef.current);
         originalSnapDistanceRef.current = null;
+      }
+      // Restore camera zoom/FOV
+      if ((camera as any).isPerspectiveCamera && prevPerspectiveFovRef.current != null) {
+        const cam = camera as THREE.PerspectiveCamera;
+        cam.fov = prevPerspectiveFovRef.current;
+        cam.updateProjectionMatrix();
+        prevPerspectiveFovRef.current = null;
+      } else if ((camera as any).isOrthographicCamera && prevOrthoZoomRef.current != null) {
+        const cam = camera as THREE.OrthographicCamera;
+        cam.zoom = prevOrthoZoomRef.current;
+        cam.updateProjectionMatrix();
+        prevOrthoZoomRef.current = null;
       }
 
       touchStartRef.current = null;
