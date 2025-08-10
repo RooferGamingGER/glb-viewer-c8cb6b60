@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Point } from '@/types/measurements';
 import { useMeasurementRaycasting } from './useMeasurementRaycasting';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
+import { usePlacementReticle } from './usePlacementReticle';
 
 /**
  * Hook für Ereignisbehandlung bei Messinteraktionen
@@ -58,6 +59,13 @@ export const useMeasurementEvents = (
   const longPressTimerRef = useRef<number | null>(null);
   const LONG_PRESS_DURATION = 500; // ms
 
+  // Precision-mode (press-and-hold) for improved placement on touch
+  const precisionTimerRef = useRef<number | null>(null);
+  const PRECISION_HOLD_DURATION = 250; // ms
+  const PRECISION_SNAP_MULTIPLIER = 2; // temporarily increase snap radius
+  const precisionModeRef = useRef<boolean>(false);
+  const originalSnapDistanceRef = useRef<number | null>(null);
+
   const { 
     calculateMousePosition, 
     filterMeasurementObjects,
@@ -69,8 +77,13 @@ export const useMeasurementEvents = (
     applySnap,
     findSnapPoint,
     clearSnapIndicator,
-    snapEnabled
+    snapEnabled,
+    setSnapDistance,
+    snapDistance
   } = usePointSnapping();
+
+  // Reticle management for precision mode
+  const { showReticleAt, hideReticle } = usePlacementReticle(scene);
 
   // Process mouse movement for point snapping preview with throttling
   const handlePointerMoveForSnapping = useCallback((event: MouseEvent | TouchEvent) => {
@@ -310,7 +323,7 @@ export const useMeasurementEvents = (
     handlePointerMove(event);
   }, [handlePointerMove]);
 
-  // Specific touch event handlers with proper tap detection
+  // Specific touch event handlers with proper tap detection + precision mode
   const handleTouchStart = useCallback((event: TouchEvent) => {
     const now = Date.now();
     // Debounce successive touches
@@ -328,21 +341,56 @@ export const useMeasurementEvents = (
       lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
       lastTouchTimeRef.current = now;
 
-      // Start long-press timer to directly activate point move
+      // Start long-press timer to directly activate point move (only if precision mode doesn't take over)
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
       }
       longPressTimerRef.current = window.setTimeout(() => {
+        if (precisionModeRef.current) return; // suppressed by precision mode
         const pos = lastTouchPosRef.current || { x: t.clientX, y: t.clientY };
         const syntheticDblEvent = new MouseEvent('dblclick', { clientX: pos.x, clientY: pos.y });
         handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
       }, LONG_PRESS_DURATION);
+
+      // Start precision hold timer (press-and-hold crosshair)
+      if (precisionTimerRef.current) {
+        clearTimeout(precisionTimerRef.current);
+      }
+      precisionTimerRef.current = window.setTimeout(() => {
+        precisionModeRef.current = true;
+        // Temporarily increase snap radius
+        if (originalSnapDistanceRef.current === null) {
+          originalSnapDistanceRef.current = snapDistance;
+        }
+        setSnapDistance(Math.max(snapDistance * PRECISION_SNAP_MULTIPLIER, snapDistance + 0.3));
+        
+        // Show reticle at current intersection
+        const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
+        if (canvasElement && scene && camera) {
+          const syntheticEvent = new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY });
+          const point = getPointFromIntersection(syntheticEvent as unknown as MouseEvent, camera, scene, canvasElement);
+          if (point) {
+            showReticleAt(point);
+            // Also preview snapping to make area larger/more obvious
+            if (snapEnabled) {
+              findSnapPoint(point, measurements, editMeasurementId, point);
+            }
+          }
+        }
+
+        // Cancel the long-press-to-edit when precision mode is active
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }, PRECISION_HOLD_DURATION);
     }
 
     // Prevent default to avoid emulated mouse events and block OrbitControls
     event.preventDefault();
     event.stopPropagation();
-  }, []);
+  }, [camera, editMeasurementId, findSnapPoint, getPointFromIntersection, measurements, scene, setSnapDistance, snapDistance, snapEnabled]);
+
   
   const handleTouchMove = useCallback((event: TouchEvent) => {
     touchCountRef.current = event.touches.length;
@@ -362,19 +410,49 @@ export const useMeasurementEvents = (
         }
       }
 
+      // Update reticle in precision mode
+      if (precisionModeRef.current && scene && camera) {
+        const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
+        if (canvasElement) {
+          const syntheticEvent = new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY });
+          const point = handlers.updateMovingPoint ? handlers.updateMovingPoint(syntheticEvent as unknown as MouseEvent, canvasElement) : null;
+          // If not moving a point, compute directly
+          const p = point || getPointFromIntersection(syntheticEvent as unknown as MouseEvent, camera, scene, canvasElement);
+          if (p) {
+            showReticleAt(p);
+            if (snapEnabled) {
+              findSnapPoint(p, measurements, editMeasurementId, p);
+            }
+          }
+        }
+      }
+
       handlePointerMove(event);
     } else {
-      // Multi-touch: cancel long-press
+      // Multi-touch: cancel long-press and precision
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
+      }
+      if (precisionTimerRef.current) {
+        clearTimeout(precisionTimerRef.current);
+        precisionTimerRef.current = null;
+      }
+      if (precisionModeRef.current) {
+        precisionModeRef.current = false;
+        hideReticle();
+        if (originalSnapDistanceRef.current !== null) {
+          setSnapDistance(originalSnapDistanceRef.current);
+          originalSnapDistanceRef.current = null;
+        }
       }
     }
 
     // Skip measurement preview if using multitouch (allow 2-finger navigation)
     event.preventDefault();
     event.stopPropagation();
-  }, [handlePointerMove]);
+  }, [camera, editMeasurementId, findSnapPoint, getPointFromIntersection, handlePointerMove, hideReticle, measurements, scene, setSnapDistance, showReticleAt, snapEnabled]);
+
   
   const handleTouchEnd = useCallback((event: TouchEvent) => {
     const start = touchStartRef.current;
@@ -385,10 +463,35 @@ export const useMeasurementEvents = (
     event.preventDefault();
     event.stopPropagation();
 
-    // Clear pending long-press when touch ends
+    // Clear pending timers when touch ends
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
+    }
+    if (precisionTimerRef.current) {
+      clearTimeout(precisionTimerRef.current);
+      precisionTimerRef.current = null;
+    }
+
+    // If precision mode was active, place at last position and exit
+    if (precisionModeRef.current) {
+      precisionModeRef.current = false;
+
+      const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
+      if (canvasElement && last && scene && camera) {
+        const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
+        // Use standard processing to honor snapping etc.
+        processInteraction(syntheticEvent as unknown as MouseEvent);
+      }
+
+      hideReticle();
+      if (originalSnapDistanceRef.current !== null) {
+        setSnapDistance(originalSnapDistanceRef.current);
+        originalSnapDistanceRef.current = null;
+      }
+
+      touchStartRef.current = null;
+      return;
     }
 
     if (!start || !last) return;
@@ -448,7 +551,8 @@ export const useMeasurementEvents = (
     }
 
     touchStartRef.current = null;
-  }, [applySnap, clearSnapIndicator, handlers, measurements, processInteraction, snapEnabled]);
+  }, [applySnap, clearSnapIndicator, handleDoubleSelect, hideReticle, handlers, measurements, processInteraction, scene, camera, setSnapDistance, snapEnabled]);
+
 
   // Setup double-click selection to activate/edit points
   const handleDoubleSelect = useCallback((event: MouseEvent | TouchEvent) => {

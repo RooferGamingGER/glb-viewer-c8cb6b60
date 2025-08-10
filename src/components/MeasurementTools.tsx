@@ -12,6 +12,7 @@ import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
 import { smartToast } from '@/utils/smartToast';
+import { toast } from 'sonner';
 
 
 // Import visualization utilities
@@ -201,6 +202,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   React.useEffect(() => {
     updateAllLabelsVisibility(allLabelsVisible);
   }, [allLabelsVisible, updateAllLabelsVisibility]);
+
+  // One-time touch hint for precision placement
+  React.useEffect(() => {
+    if (!enabled) return;
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (!isTouch) return;
+    try {
+      if (!localStorage.getItem('precision_hint_shown')) {
+        toast.info('Tipp: Für präzises Setzen eines Punkts kurz gedrückt halten – ein Fadenkreuz zeigt die genaue Position.');
+        localStorage.setItem('precision_hint_shown', '1');
+      }
+    } catch {}
+  }, [enabled]);
+
 
   // Auto-import embedded measurements from GLB once per scene if none exist
   React.useEffect(() => {

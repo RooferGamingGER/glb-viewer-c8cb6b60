@@ -186,6 +186,23 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ showButton = true }) 
       icon: SunMedium
     },
     {
+      title: "Präzise Touch-Platzierung",
+      description: (
+        <div className="space-y-3">
+          <p>
+            Auf Touch-Geräten können Sie Messpunkte besonders präzise setzen:
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Finger ca. 0,25 Sekunden gedrückt halten, um den Präzisionsmodus zu aktivieren</li>
+            <li>Ein kleines Fadenkreuz zeigt die exakte Position an</li>
+            <li>Die Fangzone wird dabei vorübergehend vergrößert</li>
+            <li>Loslassen, um den Punkt an der Position zu platzieren</li>
+          </ul>
+        </div>
+      ),
+      icon: PenTool
+    },
+    {
       title: "Dokumentation & Export",
       description: (
         <div className="space-y-3">

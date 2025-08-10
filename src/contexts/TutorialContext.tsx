@@ -18,7 +18,7 @@ interface TutorialProviderProps {
 export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const totalSteps = 8; // Update this if steps change
+  const totalSteps = 9; // Update this if steps change
 
   return (
     <TutorialContext.Provider 
