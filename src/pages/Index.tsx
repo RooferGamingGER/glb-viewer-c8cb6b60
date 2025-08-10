@@ -97,6 +97,15 @@ const Index = () => {
             <div className="relative w-full h-64 rounded-md overflow-hidden">
               <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
             </div>
+            <div className="mt-3 flex justify-center">
+              <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+                Demo-Modell ansehen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Nicht nur Darstellung: Für Dachdecker und Solarteure vermessen wir Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
+            </p>
           </div>
           
           <div className="grid grid-cols-1 gap-2">
@@ -281,6 +290,15 @@ const Index = () => {
             <div className="relative w-full h-72 lg:h-80 rounded-md overflow-hidden">
               <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
             </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+                Demo-Modell ansehen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground text-center mt-2">
+              Nicht nur Darstellung: Für Dachdecker und Solarteure vermessen wir Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
+            </p>
           </div>
         </div>
         
