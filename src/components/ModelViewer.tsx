@@ -51,14 +51,17 @@ const loadedModels = new Set<string>();
 const Model = React.memo(({
   url,
   rotate = true,
-  onLoadComplete
+  onLoadComplete,
+  onBoundsComputed
 }: {
   url: string;
   rotate?: boolean;
   onLoadComplete?: () => void;
+  onBoundsComputed?: (bounds: { radius: number; size: THREE.Vector3; maxDim: number }) => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
   const initialCameraSetRef = useRef(false);
+  const boundsSentRef = useRef(false);
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
@@ -95,6 +98,7 @@ const Model = React.memo(({
   // Reset initial camera setup when model URL changes
   useEffect(() => {
     initialCameraSetRef.current = false;
+    boundsSentRef.current = false;
   }, [url]);
 
   const modelTransform = useMemo(() => {
@@ -163,6 +167,15 @@ const Model = React.memo(({
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
+
+      // Report bounds once for OrbitControls/camera limits
+      if (onBoundsComputed && !boundsSentRef.current) {
+        try {
+          onBoundsComputed({ radius: modelTransform.radius, size: modelTransform.size, maxDim: modelTransform.maxDim });
+        } finally {
+          boundsSentRef.current = true;
+        }
+      }
 
       // Set camera only once per model load to avoid view resets during measurements
       if (!initialCameraSetRef.current) {
@@ -251,7 +264,15 @@ const ModelCanvas = React.memo(({
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
   const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
-
+  
+  // Dynamic OrbitControls limits based on model bounds
+  const [orbitLimits, setOrbitLimits] = React.useState<{ min: number; max: number }>({ min: 0.5, max: 100 });
+  const handleBoundsComputed = React.useCallback((bounds: { radius: number; size: THREE.Vector3; maxDim: number }) => {
+    const r = Math.max(bounds.radius, 0.001);
+    const min = Math.max(0.1, r * 0.25);
+    const max = Math.max(100, r * 40);
+    setOrbitLimits({ min, max });
+  }, []);
   useEffect(() => {
     if (rendererRef.current) {
       optimizeRenderer(rendererRef.current, isLowMemory);
@@ -308,6 +329,7 @@ const ModelCanvas = React.memo(({
           url={fileUrl} 
           rotate={rotateModel !== false} 
           onLoadComplete={onModelLoadComplete}
+          onBoundsComputed={handleBoundsComputed}
         />
         <OrbitControls 
           makeDefault 
@@ -316,8 +338,8 @@ const ModelCanvas = React.memo(({
           rotateSpeed={isMobile ? 0.7 : 1} 
           zoomSpeed={isMobile ? 0.7 : 1} 
           panSpeed={isMobile ? 0.7 : 1} 
-          minDistance={0.5} 
-          maxDistance={100}
+          minDistance={orbitLimits.min}
+          maxDistance={orbitLimits.max}
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
