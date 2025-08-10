@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
+import ModelViewer from '@/components/ModelViewer';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
@@ -87,6 +88,14 @@ const Index = () => {
             <div className="w-full mx-auto">
               <h2 className="text-lg font-bold mb-3 text-center">Modell hochladen</h2>
               <FileUpload />
+            </div>
+          </div>
+          
+          {/* Demo model viewer (mobile) */}
+          <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
+            <h2 className="text-base font-semibold mb-2 text-center">Demo-Modell</h2>
+            <div className="relative w-full h-64 rounded-md overflow-hidden">
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} />
             </div>
           </div>
           
@@ -263,6 +272,14 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">
                 Vollständig optimierte Bedienung und Layout für den Hochkantmodus.
               </p>
+            </div>
+          </div>
+
+          {/* Demo model viewer (desktop) */}
+          <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
+            <h2 className="text-xl font-bold mb-3 text-center">Demo-Modell</h2>
+            <div className="relative w-full h-72 lg:h-80 rounded-md overflow-hidden">
+              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} />
             </div>
           </div>
         </div>
