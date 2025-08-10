@@ -194,7 +194,7 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min pb-2 order-2 lg:order-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min pb-2 lg:col-span-2 lg:row-start-2">
             <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                 <MoveHorizontal className="w-5 h-5 text-primary" />
