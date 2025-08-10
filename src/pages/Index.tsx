@@ -91,6 +91,15 @@ const Index = () => {
       
         <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
     </div>
+    <div className="mt-3 flex flex-wrap justify-center gap-2">
+      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+        Demo-Modell ansehen
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+      <Button asChild variant="secondary" aria-label="Vermessungsbericht (PDF) anzeigen">
+        <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">Vermessungsbericht (PDF)</a>
+      </Button>
+    </div>
   </div>
 )}
           
@@ -278,6 +287,15 @@ const Index = () => {
       
         <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
       
+    </div>
+    <div className="mt-4 flex flex-wrap justify-center gap-2">
+      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+        Demo-Modell ansehen
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+      <Button asChild variant="secondary" aria-label="Vermessungsbericht (PDF) anzeigen">
+        <a href="/reports/demo-vermessungsbericht.pdf" target="_blank" rel="noopener noreferrer">Vermessungsbericht (PDF)</a>
+      </Button>
     </div>
   </div>
 )}
