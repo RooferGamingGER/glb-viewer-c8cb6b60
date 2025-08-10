@@ -829,7 +829,7 @@ const createNotesPage = (notes: string): HTMLElement => {
 /**
  * Export measurements to PDF with cover page
  */
-export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData): Promise<boolean> => {
+export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save'): Promise<boolean | Blob> => {
   try {
     const sortedMeasurements = measurements.sort((a, b) => {
       const typeOrder: Record<string, number> = {
@@ -1643,12 +1643,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     };
     
     const html2pdf = (await import('html2pdf.js')).default;
-    await html2pdf()
-      .from(container)
-      .set(options)
-      .save();
-    
-    return true;
+    if (outputMode === 'blob') {
+      const worker = html2pdf().from(container).set(options).toPdf();
+      const pdf = await worker.get('pdf');
+      const blob = pdf.output('blob');
+      return blob;
+    } else {
+      await html2pdf()
+        .from(container)
+        .set(options)
+        .save();
+      
+      return true;
+    }
   } catch (error) {
     console.error('Export error:', error);
     return false;
