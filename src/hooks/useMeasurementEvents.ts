@@ -311,6 +311,50 @@ export const useMeasurementEvents = (
     }
   }, [handlers, scene, camera, handlePointerMoveForSnapping, findSnapPoint, measurements, snapEnabled]);
 
+  // Setup double-click selection to activate/edit points
+  const handleDoubleSelect = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!enabled || !open || !scene || !camera) return;
+
+    // Do not interfere while placing new points or moving one
+    if (currentPoints.length > 0 || handlers.movingPointInfo) return;
+
+    const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
+    if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
+
+    const mousePosition = calculateMousePosition(event, canvasElement);
+    if (!mousePosition) return;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    for (const intersect of intersects) {
+      const ud = intersect.object.userData;
+      if (!ud) continue;
+      if (ud.isMeasurementPoint || ud.isAreaPoint) {
+        const measurementId = ud.measurementId;
+        const pointIndex = ud.pointIndex;
+        if (!measurementId || pointIndex === undefined) continue;
+
+        // Ensure correct measurement is in edit mode
+        if (editMeasurementId !== measurementId) {
+          handlers.toggleEditMode(measurementId);
+        }
+        handlers.startPointEdit(measurementId, pointIndex);
+
+        // Immediately start moving the selected point
+        const measurement = measurements.find(m => m.id === measurementId);
+        if (measurement) {
+          const point = measurement.points[pointIndex];
+          const initialPoint = handlers.startPointMovement(measurementId, pointIndex, point);
+          handlers.setPreviewPoint(initialPoint);
+        }
+        toast.info(`Punkt ${pointIndex + 1} aktiviert`);
+        return;
+      }
+    }
+  }, [enabled, open, scene, camera, currentPoints.length, handlers, calculateMousePosition, editMeasurementId]);
+
   // Separate mouse event handler
   const handleMouseDown = useCallback((event: MouseEvent) => {
     // Only process left mouse button clicks (button 0) for measurement
@@ -322,7 +366,6 @@ export const useMeasurementEvents = (
   const handleMouseMove = useCallback((event: MouseEvent) => {
     handlePointerMove(event);
   }, [handlePointerMove]);
-
   // Specific touch event handlers with proper tap detection + precision mode
   const handleTouchStart = useCallback((event: TouchEvent) => {
     const now = Date.now();
@@ -553,50 +596,6 @@ export const useMeasurementEvents = (
     touchStartRef.current = null;
   }, [applySnap, clearSnapIndicator, handleDoubleSelect, hideReticle, handlers, measurements, processInteraction, scene, camera, setSnapDistance, snapEnabled]);
 
-
-  // Setup double-click selection to activate/edit points
-  const handleDoubleSelect = useCallback((event: MouseEvent | TouchEvent) => {
-    if (!enabled || !open || !scene || !camera) return;
-
-    // Do not interfere while placing new points or moving one
-    if (currentPoints.length > 0 || handlers.movingPointInfo) return;
-
-    const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
-    if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
-
-    const mousePosition = calculateMousePosition(event, canvasElement);
-    if (!mousePosition) return;
-
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mousePosition, camera);
-
-    const intersects = raycaster.intersectObjects(scene.children, true);
-    for (const intersect of intersects) {
-      const ud = intersect.object.userData;
-      if (!ud) continue;
-      if (ud.isMeasurementPoint || ud.isAreaPoint) {
-        const measurementId = ud.measurementId;
-        const pointIndex = ud.pointIndex;
-        if (!measurementId || pointIndex === undefined) continue;
-
-        // Ensure correct measurement is in edit mode
-        if (editMeasurementId !== measurementId) {
-          handlers.toggleEditMode(measurementId);
-        }
-        handlers.startPointEdit(measurementId, pointIndex);
-
-        // Immediately start moving the selected point
-        const measurement = measurements.find(m => m.id === measurementId);
-        if (measurement) {
-          const point = measurement.points[pointIndex];
-          const initialPoint = handlers.startPointMovement(measurementId, pointIndex, point);
-          handlers.setPreviewPoint(initialPoint);
-        }
-        toast.info(`Punkt ${pointIndex + 1} aktiviert`);
-        return;
-      }
-    }
-  }, [enabled, open, scene, camera, currentPoints.length, handlers, calculateMousePosition, editMeasurementId]);
 
   const handleDoubleClick = useCallback((event: MouseEvent) => {
     // Prevent default to avoid OrbitControls zooming on dblclick
