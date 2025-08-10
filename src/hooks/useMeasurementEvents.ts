@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { Point } from '@/types/measurements';
 import { useMeasurementRaycasting } from './useMeasurementRaycasting';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
-import { usePlacementReticle } from './usePlacementReticle';
 
 /**
  * Hook für Ereignisbehandlung bei Messinteraktionen
@@ -49,7 +48,7 @@ export const useMeasurementEvents = (
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastTouchPosRef = useRef<{ x: number; y: number } | null>(null);
   const TAP_MAX_DURATION = 300; // ms
-  const TAP_MAX_MOVEMENT = 20; // pixels
+  const TAP_MAX_MOVEMENT = 12; // pixels
 
   // Double-tap detection refs
   const lastTapTimeRef = useRef<number>(0);
@@ -58,15 +57,6 @@ export const useMeasurementEvents = (
   // Long-press detection for touch to quickly activate point move
   const longPressTimerRef = useRef<number | null>(null);
   const LONG_PRESS_DURATION = 500; // ms
-
-  // Precision-mode (press-and-hold) for improved placement on touch
-  const precisionTimerRef = useRef<number | null>(null);
-  const PRECISION_HOLD_DURATION = 250; // ms
-  const PRECISION_SNAP_MULTIPLIER = 2; // temporarily increase snap radius
-  const precisionModeRef = useRef<boolean>(false);
-  const originalSnapDistanceRef = useRef<number | null>(null);
-  const prevPerspectiveFovRef = useRef<number | null>(null);
-  const prevOrthoZoomRef = useRef<number | null>(null);
 
   const { 
     calculateMousePosition, 
@@ -79,13 +69,8 @@ export const useMeasurementEvents = (
     applySnap,
     findSnapPoint,
     clearSnapIndicator,
-    snapEnabled,
-    setSnapDistance,
-    snapDistance
+    snapEnabled
   } = usePointSnapping();
-
-  // Reticle management for precision mode
-  const { showReticleAt, hideReticle } = usePlacementReticle(scene);
 
   // Process mouse movement for point snapping preview with throttling
   const handlePointerMoveForSnapping = useCallback((event: MouseEvent | TouchEvent) => {
@@ -208,32 +193,31 @@ export const useMeasurementEvents = (
       }
     }
     
-    // Check for clicks on measurement points - allow direct activation when not placing points
-    if (currentPoints.length === 0) {
+    // Check for clicks on measurement points but only if we're in edit mode
+    if (editMeasurementId) {
       const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
       for (const intersect of allSceneIntersects) {
-        const ud = intersect.object.userData;
-        if (!ud) continue;
-        if (ud.isAreaPoint || ud.isMeasurementPoint) {
-          const measurementId = ud.measurementId;
-          const pointIndex = ud.pointIndex;
-          if (measurementId == null || pointIndex == null) continue;
-
-          // Ensure correct measurement is in edit mode
-          if (editMeasurementId !== measurementId) {
-            handlers.toggleEditMode(measurementId);
+        if (
+          intersect.object.userData && 
+          (intersect.object.userData.isAreaPoint || 
+          intersect.object.userData.isMeasurementPoint)
+        ) {
+          const userData = intersect.object.userData;
+          
+          // Only allow moving points of the measurement being edited
+          if (userData.measurementId === editMeasurementId) {
+            const measurement = measurements.find(m => m.id === userData.measurementId);
+            if (measurement) {
+              const point = measurement.points[userData.pointIndex];
+              const initialPoint = handlers.startPointMovement(
+                userData.measurementId,
+                userData.pointIndex,
+                point
+              );
+              handlers.setPreviewPoint(initialPoint);
+              return;
+            }
           }
-          handlers.startPointEdit(measurementId, pointIndex);
-
-          // Immediately start moving the selected point
-          const measurement = measurements.find(m => m.id === measurementId);
-          if (measurement) {
-            const point = measurement.points[pointIndex];
-            const initialPoint = handlers.startPointMovement(measurementId, pointIndex, point);
-            handlers.setPreviewPoint(initialPoint);
-          }
-          toast.info(`Punkt ${pointIndex + 1} aktiviert`);
-          return;
         }
       }
     }
@@ -314,6 +298,158 @@ export const useMeasurementEvents = (
     }
   }, [handlers, scene, camera, handlePointerMoveForSnapping, findSnapPoint, measurements, snapEnabled]);
 
+  // Separate mouse event handler
+  const handleMouseDown = useCallback((event: MouseEvent) => {
+    // Only process left mouse button clicks (button 0) for measurement
+    if (event.button !== 0) return;
+    
+    processInteraction(event);
+  }, [processInteraction]);
+  
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    handlePointerMove(event);
+  }, [handlePointerMove]);
+
+  // Specific touch event handlers with proper tap detection
+  const handleTouchStart = useCallback((event: TouchEvent) => {
+    const now = Date.now();
+    // Debounce successive touches
+    if (now - lastTouchTimeRef.current < TOUCH_COOLDOWN) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    touchCountRef.current = event.touches.length;
+
+    if (touchCountRef.current === 1) {
+      const t = event.touches[0];
+      touchStartRef.current = { x: t.clientX, y: t.clientY, time: now };
+      lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
+      lastTouchTimeRef.current = now;
+
+      // Start long-press timer to directly activate point move
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      longPressTimerRef.current = window.setTimeout(() => {
+        const pos = lastTouchPosRef.current || { x: t.clientX, y: t.clientY };
+        const syntheticDblEvent = new MouseEvent('dblclick', { clientX: pos.x, clientY: pos.y });
+        handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
+      }, LONG_PRESS_DURATION);
+    }
+
+    // Prevent default to avoid emulated mouse events and block OrbitControls
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+  
+  const handleTouchMove = useCallback((event: TouchEvent) => {
+    touchCountRef.current = event.touches.length;
+
+    if (touchCountRef.current === 1) {
+      const t = event.touches[0];
+      lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
+
+      // Cancel long-press if the finger moves too much
+      const start = touchStartRef.current;
+      if (start) {
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        if (Math.hypot(dx, dy) > TAP_MAX_MOVEMENT && longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+
+      handlePointerMove(event);
+    } else {
+      // Multi-touch: cancel long-press
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+
+    // Skip measurement preview if using multitouch (allow 2-finger navigation)
+    event.preventDefault();
+    event.stopPropagation();
+  }, [handlePointerMove]);
+  
+  const handleTouchEnd = useCallback((event: TouchEvent) => {
+    const start = touchStartRef.current;
+    const last = lastTouchPosRef.current;
+    touchCountRef.current = event.touches.length;
+
+    // Always prevent to block OrbitControls from single-finger gestures
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Clear pending long-press when touch ends
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (!start || !last) return;
+
+    const duration = Date.now() - start.time;
+    const dx = last.x - start.x;
+    const dy = last.y - start.y;
+    const distance = Math.hypot(dx, dy);
+
+    // Only treat as tap if within thresholds
+    const isTap = duration <= TAP_MAX_DURATION && distance <= TAP_MAX_MOVEMENT;
+
+    const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
+    if (!canvasElement) return;
+
+    // If moving a point, finalize on touchend at last position
+    if (handlers.movingPointInfo) {
+      const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
+      const newPoint = handlers.updateMovingPoint(syntheticEvent as unknown as MouseEvent, canvasElement);
+      let finalPoint = newPoint;
+      if (newPoint && snapEnabled) {
+        finalPoint = applySnap(newPoint, measurements, handlers.movingPointInfo.measurementId);
+      }
+      handlers.finishPointMovement(finalPoint);
+      clearSnapIndicator(true);
+
+      touchStartRef.current = null;
+      return;
+    }
+
+    if (isTap) {
+      const now = Date.now();
+      const lastTapTime = lastTapTimeRef.current;
+      const lastTapPos = lastTapPosRef.current;
+      const doubleTapTimeWindow = 300; // ms
+      const doubleTapMoveTolerance = 16; // px
+
+      // Check for double tap
+      if (
+        lastTapTime && now - lastTapTime < doubleTapTimeWindow &&
+        lastTapPos && Math.hypot(last.x - lastTapPos.x, last.y - lastTapPos.y) <= doubleTapMoveTolerance
+      ) {
+        // Treat as double tap -> activate point editing
+        const syntheticDblEvent = new MouseEvent('dblclick', { clientX: last.x, clientY: last.y });
+        handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
+        // Reset
+        lastTapTimeRef.current = 0;
+        lastTapPosRef.current = null;
+      } else {
+        // Single tap -> normal interaction
+        const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
+        processInteraction(syntheticEvent as unknown as MouseEvent);
+        // Store tap for possible double-tap
+        lastTapTimeRef.current = now;
+        lastTapPosRef.current = { x: last.x, y: last.y };
+      }
+    }
+
+    touchStartRef.current = null;
+  }, [applySnap, clearSnapIndicator, handlers, measurements, processInteraction, snapEnabled]);
+
   // Setup double-click selection to activate/edit points
   const handleDoubleSelect = useCallback((event: MouseEvent | TouchEvent) => {
     if (!enabled || !open || !scene || !camera) return;
@@ -358,299 +494,10 @@ export const useMeasurementEvents = (
     }
   }, [enabled, open, scene, camera, currentPoints.length, handlers, calculateMousePosition, editMeasurementId]);
 
-  // Separate mouse event handler
-  const handleMouseDown = useCallback((event: MouseEvent) => {
-    // Only process left mouse button clicks (button 0) for measurement
-    if (event.button !== 0) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    (event as any).stopImmediatePropagation?.();
-    processInteraction(event);
-  }, [processInteraction]);
-  
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    handlePointerMove(event);
-  }, [handlePointerMove]);
-  // Specific touch event handlers with proper tap detection + precision mode
-  const handleTouchStart = useCallback((event: TouchEvent) => {
-    const now = Date.now();
-    // Debounce successive touches
-    if (now - lastTouchTimeRef.current < TOUCH_COOLDOWN) {
-      event.preventDefault();
-      event.stopPropagation();
-      (event as any).stopImmediatePropagation?.();
-      return;
-    }
-
-    touchCountRef.current = event.touches.length;
-
-    if (touchCountRef.current === 1) {
-      const t = event.touches[0];
-      touchStartRef.current = { x: t.clientX, y: t.clientY, time: now };
-      lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
-      lastTouchTimeRef.current = now;
-
-      // Start long-press timer to directly activate point move (only if precision mode doesn't take over)
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-      }
-      longPressTimerRef.current = window.setTimeout(() => {
-        if (precisionModeRef.current) return; // suppressed by precision mode
-        const pos = lastTouchPosRef.current || { x: t.clientX, y: t.clientY };
-        const syntheticDblEvent = new MouseEvent('dblclick', { clientX: pos.x, clientY: pos.y });
-        handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
-      }, LONG_PRESS_DURATION);
-
-      // Start precision hold timer (press-and-hold crosshair)
-      if (precisionTimerRef.current) {
-        clearTimeout(precisionTimerRef.current);
-      }
-      precisionTimerRef.current = window.setTimeout(() => {
-        precisionModeRef.current = true;
-        // Temporarily increase snap radius
-        if (originalSnapDistanceRef.current === null) {
-          originalSnapDistanceRef.current = snapDistance;
-        }
-        setSnapDistance(Math.max(snapDistance * PRECISION_SNAP_MULTIPLIER, snapDistance + 0.3));
-
-        // Zoom in for precision mode
-        if ((camera as any).isPerspectiveCamera) {
-          const cam = camera as THREE.PerspectiveCamera;
-          if (prevPerspectiveFovRef.current == null) prevPerspectiveFovRef.current = cam.fov;
-          cam.fov = Math.max(15, cam.fov * 0.5);
-          cam.updateProjectionMatrix();
-        } else if ((camera as any).isOrthographicCamera) {
-          const cam = camera as THREE.OrthographicCamera;
-          if (prevOrthoZoomRef.current == null) prevOrthoZoomRef.current = cam.zoom;
-          cam.zoom = cam.zoom * 1.5;
-          cam.updateProjectionMatrix();
-        }
-        
-        // Show reticle at current intersection
-        const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
-        if (canvasElement && scene && camera) {
-          const syntheticEvent = new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY });
-          const point = getPointFromIntersection(syntheticEvent as unknown as MouseEvent, camera, scene, canvasElement);
-          if (point) {
-            showReticleAt(point);
-            // Also preview snapping to make area larger/more obvious
-            if (snapEnabled) {
-              findSnapPoint(point, measurements, editMeasurementId, point);
-            }
-          }
-        }
-
-        // Cancel the long-press-to-edit when precision mode is active
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-      }, PRECISION_HOLD_DURATION);
-    }
-
-    // Prevent default to avoid emulated mouse events and block OrbitControls
-    event.preventDefault();
-    event.stopPropagation();
-    (event as any).stopImmediatePropagation?.();
-    (event as any).stopImmediatePropagation?.();
-  }, [camera, editMeasurementId, findSnapPoint, getPointFromIntersection, measurements, scene, setSnapDistance, snapDistance, snapEnabled]);
-
-  
-  const handleTouchMove = useCallback((event: TouchEvent) => {
-    touchCountRef.current = event.touches.length;
-
-    if (touchCountRef.current === 1) {
-      const t = event.touches[0];
-      lastTouchPosRef.current = { x: t.clientX, y: t.clientY };
-
-      // Cancel long-press if the finger moves too much
-      const start = touchStartRef.current;
-      if (start) {
-        const dx = t.clientX - start.x;
-        const dy = t.clientY - start.y;
-        if (Math.hypot(dx, dy) > TAP_MAX_MOVEMENT && longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-      }
-
-      // Update reticle in precision mode
-      if (precisionModeRef.current && scene && camera) {
-        const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
-        if (canvasElement) {
-          const syntheticEvent = new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY });
-          const point = handlers.updateMovingPoint ? handlers.updateMovingPoint(syntheticEvent as unknown as MouseEvent, canvasElement) : null;
-          // If not moving a point, compute directly
-          const p = point || getPointFromIntersection(syntheticEvent as unknown as MouseEvent, camera, scene, canvasElement);
-          if (p) {
-            showReticleAt(p);
-            if (snapEnabled) {
-              findSnapPoint(p, measurements, editMeasurementId, p);
-            }
-          }
-        }
-      }
-
-      handlePointerMove(event);
-    } else {
-      // Multi-touch: cancel long-press and precision
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      if (precisionTimerRef.current) {
-        clearTimeout(precisionTimerRef.current);
-        precisionTimerRef.current = null;
-      }
-      if (precisionModeRef.current) {
-        precisionModeRef.current = false;
-        hideReticle();
-        if (originalSnapDistanceRef.current !== null) {
-          setSnapDistance(originalSnapDistanceRef.current);
-          originalSnapDistanceRef.current = null;
-        }
-        // Restore camera zoom/FOV
-        if ((camera as any).isPerspectiveCamera && prevPerspectiveFovRef.current != null) {
-          const cam = camera as THREE.PerspectiveCamera;
-          cam.fov = prevPerspectiveFovRef.current;
-          cam.updateProjectionMatrix();
-          prevPerspectiveFovRef.current = null;
-        } else if ((camera as any).isOrthographicCamera && prevOrthoZoomRef.current != null) {
-          const cam = camera as THREE.OrthographicCamera;
-          cam.zoom = prevOrthoZoomRef.current;
-          cam.updateProjectionMatrix();
-          prevOrthoZoomRef.current = null;
-        }
-      }
-    }
-
-    // Skip measurement preview if using multitouch (allow 2-finger navigation)
-    event.preventDefault();
-    event.stopPropagation();
-    (event as any).stopImmediatePropagation?.();
-    (event as any).stopImmediatePropagation?.();
-  }, [camera, editMeasurementId, findSnapPoint, getPointFromIntersection, handlePointerMove, hideReticle, measurements, scene, setSnapDistance, showReticleAt, snapEnabled]);
-
-  
-  const handleTouchEnd = useCallback((event: TouchEvent) => {
-    const start = touchStartRef.current;
-    const last = lastTouchPosRef.current;
-    touchCountRef.current = event.touches.length;
-
-    // Always prevent to block OrbitControls from single-finger gestures
-    event.preventDefault();
-    event.stopPropagation();
-    (event as any).stopImmediatePropagation?.();
-
-    // Clear pending timers when touch ends
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-    if (precisionTimerRef.current) {
-      clearTimeout(precisionTimerRef.current);
-      precisionTimerRef.current = null;
-    }
-
-    // If precision mode was active, place at last position and exit
-    if (precisionModeRef.current) {
-      precisionModeRef.current = false;
-
-      const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
-      if (canvasElement && last && scene && camera) {
-        const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
-        // Use standard processing to honor snapping etc.
-        processInteraction(syntheticEvent as unknown as MouseEvent);
-      }
-
-      hideReticle();
-      if (originalSnapDistanceRef.current !== null) {
-        setSnapDistance(originalSnapDistanceRef.current);
-        originalSnapDistanceRef.current = null;
-      }
-      // Restore camera zoom/FOV
-      if ((camera as any).isPerspectiveCamera && prevPerspectiveFovRef.current != null) {
-        const cam = camera as THREE.PerspectiveCamera;
-        cam.fov = prevPerspectiveFovRef.current;
-        cam.updateProjectionMatrix();
-        prevPerspectiveFovRef.current = null;
-      } else if ((camera as any).isOrthographicCamera && prevOrthoZoomRef.current != null) {
-        const cam = camera as THREE.OrthographicCamera;
-        cam.zoom = prevOrthoZoomRef.current;
-        cam.updateProjectionMatrix();
-        prevOrthoZoomRef.current = null;
-      }
-
-      touchStartRef.current = null;
-      return;
-    }
-
-    if (!start || !last) return;
-
-    const duration = Date.now() - start.time;
-    const dx = last.x - start.x;
-    const dy = last.y - start.y;
-    const distance = Math.hypot(dx, dy);
-
-    // Only treat as tap if within thresholds
-    const isTap = duration <= TAP_MAX_DURATION && distance <= TAP_MAX_MOVEMENT;
-
-    const canvasElement = document.querySelector('canvas') as HTMLCanvasElement | null;
-    if (!canvasElement) return;
-
-    // If moving a point, finalize on touchend at last position
-    if (handlers.movingPointInfo) {
-      const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
-      const newPoint = handlers.updateMovingPoint(syntheticEvent as unknown as MouseEvent, canvasElement);
-      let finalPoint = newPoint;
-      if (newPoint && snapEnabled) {
-        finalPoint = applySnap(newPoint, measurements, handlers.movingPointInfo.measurementId);
-      }
-      handlers.finishPointMovement(finalPoint);
-      clearSnapIndicator(true);
-
-      touchStartRef.current = null;
-      return;
-    }
-
-    if (isTap) {
-      const now = Date.now();
-      const lastTapTime = lastTapTimeRef.current;
-      const lastTapPos = lastTapPosRef.current;
-      const doubleTapTimeWindow = 300; // ms
-      const doubleTapMoveTolerance = 22; // px
-
-      // Check for double tap
-      if (
-        lastTapTime && now - lastTapTime < doubleTapTimeWindow &&
-        lastTapPos && Math.hypot(last.x - lastTapPos.x, last.y - lastTapPos.y) <= doubleTapMoveTolerance
-      ) {
-        // Treat as double tap -> activate point editing
-        const syntheticDblEvent = new MouseEvent('dblclick', { clientX: last.x, clientY: last.y });
-        handleDoubleSelect(syntheticDblEvent as unknown as MouseEvent);
-        // Reset
-        lastTapTimeRef.current = 0;
-        lastTapPosRef.current = null;
-      } else {
-        // Single tap -> normal interaction
-        const syntheticEvent = new MouseEvent('click', { clientX: last.x, clientY: last.y });
-        processInteraction(syntheticEvent as unknown as MouseEvent);
-        // Store tap for possible double-tap
-        lastTapTimeRef.current = now;
-        lastTapPosRef.current = { x: last.x, y: last.y };
-      }
-    }
-
-    touchStartRef.current = null;
-  }, [applySnap, clearSnapIndicator, handleDoubleSelect, hideReticle, handlers, measurements, processInteraction, scene, camera, setSnapDistance, snapEnabled]);
-
-
   const handleDoubleClick = useCallback((event: MouseEvent) => {
     // Prevent default to avoid OrbitControls zooming on dblclick
     event.preventDefault();
     event.stopPropagation();
-    (event as any).stopImmediatePropagation?.();
     handleDoubleSelect(event);
   }, [handleDoubleSelect]);
 

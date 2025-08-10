@@ -51,17 +51,13 @@ const loadedModels = new Set<string>();
 const Model = React.memo(({
   url,
   rotate = true,
-  onLoadComplete,
-  onBoundsComputed
+  onLoadComplete
 }: {
   url: string;
   rotate?: boolean;
   onLoadComplete?: () => void;
-  onBoundsComputed?: (bounds: { radius: number; size: THREE.Vector3; maxDim: number }) => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
-  const initialCameraSetRef = useRef(false);
-  const boundsSentRef = useRef(false);
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
@@ -95,12 +91,6 @@ const Model = React.memo(({
     }
   }, [stableUrl]);
 
-  // Reset initial camera setup when model URL changes
-  useEffect(() => {
-    initialCameraSetRef.current = false;
-    boundsSentRef.current = false;
-  }, [url]);
-
   const modelTransform = useMemo(() => {
     if (!modelScene) return null;
     const tempGroup = new THREE.Group();
@@ -110,86 +100,44 @@ const Model = React.memo(({
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    const sphere = new THREE.Sphere();
-    box.getBoundingSphere(sphere);
-    const dims = [size.x, size.y, size.z];
-    const upIdx = dims.indexOf(Math.min(...dims));
-    const sideIdx = dims.indexOf(Math.max(...dims));
-    const midIdx = [0, 1, 2].find((i) => i !== upIdx && i !== sideIdx)!;
     tempGroup.clear();
-    return { center, size, maxDim, radius: sphere.radius, upIdx, sideIdx, midIdx };
+    return { center, size, maxDim };
   }, [modelScene, rotate]);
 
   const cameraPosition = useMemo(() => {
     if (!modelTransform || !camera) {
       return {
-        position: new THREE.Vector3(0, 2, 8),
+        position: new THREE.Vector3(0, 2, 5),
         center: new THREE.Vector3(0, 0, 0)
       };
     }
-
-    const { radius, upIdx, sideIdx, midIdx } = modelTransform;
-    const axes = [
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(0, 1, 0),
-      new THREE.Vector3(0, 0, 1)
-    ];
-
-    // Build a diagonal ground-plane forward vector and a strong up component (roof-focused)
-    const up = axes[upIdx].clone();
-    const forwardGround = axes[sideIdx].clone().add(axes[midIdx]).normalize();
-    const elevationDeg = 60; // 60° above horizon to see roof + facade well
-    const elevRad = (elevationDeg * Math.PI) / 180;
-    const dir = forwardGround.multiplyScalar(Math.cos(elevRad)).add(up.multiplyScalar(Math.sin(elevRad))).normalize();
-
-    let dist = radius * 8; // fallback
+    const { maxDim } = modelTransform;
     if (camera instanceof THREE.PerspectiveCamera) {
-      const vFOV = (camera.fov * Math.PI) / 180;
-      const aspect = (gl?.domElement?.clientWidth || 1) / (gl?.domElement?.clientHeight || 1);
-      const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspect);
-      const margin = 3.0; // stronger margin for rotated/tilted models
-      const distV = (radius * margin) / Math.sin(vFOV / 2);
-      const distH = (radius * margin) / Math.sin(hFOV / 2);
-      dist = Math.max(distV, distH, radius * 6);
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * 0.42;
+      cameraZ = Math.max(cameraZ, 1.5);
+      const mobileFactor = qualitySettings.pixelRatio < 2 ? 1.3 : 1.1;
+      return {
+        position: new THREE.Vector3(0, cameraZ * 0.05 * mobileFactor, cameraZ * mobileFactor),
+        center: new THREE.Vector3(0, 0, 0)
+      };
     } else {
-      dist = radius * 10;
+      const distance = maxDim * (qualitySettings.pixelRatio < 2 ? 1.3 : 1.1);
+      return {
+        position: new THREE.Vector3(0, distance * 0.05, distance),
+        center: new THREE.Vector3(0, 0, 0)
+      };
     }
-
-    return {
-      position: dir.multiplyScalar(dist),
-      center: new THREE.Vector3(0, 0, 0)
-    };
-  }, [modelTransform, camera, gl]);
+  }, [modelTransform, camera, qualitySettings]);
 
   useEffect(() => {
     if (modelRef.current && modelTransform && cameraPosition) {
-      // Always apply model transform
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-
-      // Report bounds once for OrbitControls/camera limits
-      if (onBoundsComputed && !boundsSentRef.current) {
-        try {
-          onBoundsComputed({ radius: modelTransform.radius, size: modelTransform.size, maxDim: modelTransform.maxDim });
-        } finally {
-          boundsSentRef.current = true;
-        }
-      }
-
-      // Set camera only once per model load to avoid view resets during measurements
-      if (!initialCameraSetRef.current) {
-        if (camera instanceof THREE.PerspectiveCamera) {
-          const r = modelTransform.radius || 1;
-          camera.near = Math.max(0.01, r * 0.01);
-          camera.far = Math.max(1000, r * 20);
-        }
-        camera.position.copy(cameraPosition.position);
-        camera.lookAt(cameraPosition.center);
-        camera.updateProjectionMatrix();
-        initialCameraSetRef.current = true;
-      }
-
+      camera.position.copy(cameraPosition.position);
+      camera.lookAt(cameraPosition.center);
+      camera.updateProjectionMatrix();
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {
@@ -264,15 +212,7 @@ const ModelCanvas = React.memo(({
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
   const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
-  
-  // Dynamic OrbitControls limits based on model bounds
-  const [orbitLimits, setOrbitLimits] = React.useState<{ min: number; max: number }>({ min: 0.5, max: 100 });
-  const handleBoundsComputed = React.useCallback((bounds: { radius: number; size: THREE.Vector3; maxDim: number }) => {
-    const r = Math.max(bounds.radius, 0.001);
-    const min = Math.max(0.1, r * 0.25);
-    const max = Math.max(100, r * 40);
-    setOrbitLimits({ min, max });
-  }, []);
+
   useEffect(() => {
     if (rendererRef.current) {
       optimizeRenderer(rendererRef.current, isLowMemory);
@@ -329,7 +269,6 @@ const ModelCanvas = React.memo(({
           url={fileUrl} 
           rotate={rotateModel !== false} 
           onLoadComplete={onModelLoadComplete}
-          onBoundsComputed={handleBoundsComputed}
         />
         <OrbitControls 
           makeDefault 
@@ -338,8 +277,8 @@ const ModelCanvas = React.memo(({
           rotateSpeed={isMobile ? 0.7 : 1} 
           zoomSpeed={isMobile ? 0.7 : 1} 
           panSpeed={isMobile ? 0.7 : 1} 
-          minDistance={orbitLimits.min}
-          maxDistance={orbitLimits.max}
+          minDistance={0.5} 
+          maxDistance={100}
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}

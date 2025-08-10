@@ -928,23 +928,13 @@ function renderLengthMeasurement(
     sphere.renderOrder = 3; // Higher than line
     
     // Add userData for interactive selection
-    const userData = {
+    sphere.userData = {
       isMeasurementPoint: true,
       measurementId: measurement.id,
       pointIndex: index
     };
-    sphere.userData = userData;
     
     measurementsRef.add(sphere);
-
-    // Add an invisible larger hit area for easier touch selection
-    const hitGeometry = new THREE.SphereGeometry(0.08, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 });
-    const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
-    hitSphere.position.copy(sphere.position);
-    hitSphere.userData = { ...userData };
-    hitSphere.renderOrder = 2; // Below visible sphere
-    measurementsRef.add(hitSphere);
   });
   
   // Only create a new label if needed
@@ -1043,23 +1033,13 @@ function renderHeightMeasurement(
     sphere.renderOrder = 3;
     
     // Add userData for interactive selection
-    const userData = {
+    sphere.userData = {
       isMeasurementPoint: true,
       measurementId: measurement.id,
       pointIndex: index
     };
-    sphere.userData = userData;
     
     measurementsRef.add(sphere);
-
-    // Invisible larger hit area
-    const hitGeometry = new THREE.SphereGeometry(0.08, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 });
-    const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
-    hitSphere.position.copy(sphere.position);
-    hitSphere.userData = { ...userData };
-    hitSphere.renderOrder = 2;
-    measurementsRef.add(hitSphere);
   });
   
   // Only create a new label if needed
@@ -1437,23 +1417,13 @@ function renderRoofElementMeasurement(
     sphere.renderOrder = 3;
     
     // Add userData for interactive selection
-    const userData = {
+    sphere.userData = {
       isMeasurementPoint: true,
       measurementId: measurement.id,
       pointIndex: 0
     };
-    sphere.userData = userData;
     
     measurementsRef.add(sphere);
-
-    // Invisible larger hit area
-    const hitGeometry = new THREE.SphereGeometry(0.08, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 });
-    const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
-    hitSphere.position.copy(sphere.position);
-    hitSphere.userData = { ...userData };
-    hitSphere.renderOrder = 2;
-    measurementsRef.add(hitSphere);
     
     // Create label if needed
     if (shouldCreateLabel) {
