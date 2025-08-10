@@ -132,21 +132,13 @@ const Model = React.memo(({
   }, [modelTransform, camera, qualitySettings]);
 
   useEffect(() => {
-    if (modelRef.current && modelTransform) {
-      // Always keep model orientation/centering in sync
+    if (modelRef.current && modelTransform && cameraPosition) {
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-
-      // Initialize camera only once per model URL
-      if (!loadedModels.has(`${url}_camera_init`) && cameraPosition) {
-        camera.position.copy(cameraPosition.position);
-        camera.lookAt(cameraPosition.center);
-        camera.updateProjectionMatrix();
-        loadedModels.add(`${url}_camera_init`);
-      }
-
-      // onLoadComplete only once
+      camera.position.copy(cameraPosition.position);
+      camera.lookAt(cameraPosition.center);
+      camera.updateProjectionMatrix();
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {
@@ -291,6 +283,7 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
+          target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -400,7 +393,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       loadedModels.delete(`${processedUrl}_preloaded`);
       loadedModels.delete(`${processedUrl}_completed`);
       loadedModels.delete(`${processedUrl}_success_shown`);
-      loadedModels.delete(`${processedUrl}_camera_init`);
       clearGLTFCache(processedUrl || undefined);
     };
   }, [processedUrl, clearGLTFCache]);
