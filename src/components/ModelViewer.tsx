@@ -88,11 +88,13 @@ const loadedModels = new Set<string>();
 const Model = React.memo(({
   url,
   rotate = true,
-  onLoadComplete
+  onLoadComplete,
+  onRetryNeeded
 }: {
   url: string;
   rotate?: boolean;
   onLoadComplete?: () => void;
+  onRetryNeeded?: (originalUrl: string) => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
   const { camera, gl } = useThree();
@@ -100,17 +102,41 @@ const Model = React.memo(({
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
   const { activeMode } = useMeasurements();
   const initializedForUrlRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 2;
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
+    let shouldRetry = false;
+    
     if (error instanceof Error) {
       errorMessage = error.message;
+      // Check if this is a blob URL loading error that we can retry
+      if (url.startsWith('blob:') && (
+        error.message.includes('404') || 
+        error.message.includes('NetworkError') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('not found')
+      )) {
+        shouldRetry = retryCountRef.current < maxRetries;
+      }
     } else if (typeof error === 'object' && error !== null) {
       errorMessage = (error as any).message || "Fehler beim Laden des 3D-Modells";
     } else {
       errorMessage = String(error);
     }
-    smartToast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
+    
+    if (shouldRetry && onRetryNeeded) {
+      retryCountRef.current++;
+      console.warn(`Model loading failed, attempting retry ${retryCountRef.current}/${maxRetries}:`, errorMessage);
+      onRetryNeeded(url);
+    } else {
+      // Final error after retries or non-retryable error
+      const finalMessage = retryCountRef.current > 0 
+        ? `Fehler beim Laden des Modells nach ${retryCountRef.current} Versuchen: ${errorMessage}`
+        : `Fehler beim Laden des Modells: ${errorMessage}`;
+      smartToast.error(finalMessage);
+    }
   });
 
   const modelScene = useMemo(() => {
@@ -248,13 +274,15 @@ const ModelCanvas = React.memo(({
   onSceneReady,
   canvasRef,
   rotateModel,
-  onModelLoadComplete
+  onModelLoadComplete,
+  onRetryNeeded
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   rotateModel?: boolean;
   onModelLoadComplete?: () => void;
+  onRetryNeeded?: (url: string) => void;
 }) => {
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
@@ -312,6 +340,7 @@ const ModelCanvas = React.memo(({
           url={fileUrl} 
           rotate={rotateModel !== false} 
           onLoadComplete={onModelLoadComplete}
+          onRetryNeeded={onRetryNeeded}
         />
         <OrbitControls 
           ref={controlsRef}
@@ -356,12 +385,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
-  // Resolve the URL robustly:
-  // - If it's a blob:, create a single canonical ObjectURL once and reuse it
-  // - For http/https, use as is
+  // Enhanced URL resolution with retry capability
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   const canonicalUrlRef = useRef<string | null>(null);
   const sourceUrlRef = useRef<string | null>(null);
+  const originalBlobRef = useRef<Blob | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -384,33 +414,63 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       sourceUrlRef.current = fileUrl;
       canonicalUrlRef.current = null;
 
-      // blob: URL handling
+      // Enhanced blob: URL handling with stability improvements
       if (fileUrl.startsWith('blob:')) {
         try {
           let blob: Blob | null = null;
+          
+          // Try to get cached blob first
           try {
             blob = getOriginalFile(fileUrl);
           } catch {}
 
+          // Fetch blob if not cached, with better error handling
           if (!blob) {
             const resp = await fetch(fileUrl);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            if (!resp.ok) {
+              throw new Error(`Failed to fetch blob: HTTP ${resp.status} ${resp.statusText}`);
+            }
             blob = await resp.blob();
+            
+            // Validate blob content
+            if (!blob || blob.size === 0) {
+              throw new Error('Received empty or invalid blob');
+            }
           }
 
-          const namedBlob = new File([blob], fileName || 'model.glb', { type: blob.type || 'model/gltf-binary' });
-          try { storeOriginalFile(fileUrl, namedBlob); } catch {}
+          // Store reference to original blob for retries
+          originalBlobRef.current = blob;
+          
+          const namedBlob = new File([blob], fileName || 'model.glb', { 
+            type: blob.type || 'model/gltf-binary' 
+          });
+          
+          // Store both original and processed blobs
+          try { 
+            storeOriginalFile(fileUrl, namedBlob); 
+            storeOriginalFile(`original_${fileUrl}`, blob);
+          } catch {}
+          
+          // Create fresh URL with longer validity
           const freshUrl = URL.createObjectURL(namedBlob);
           try { storeOriginalFile(freshUrl, namedBlob); } catch {}
 
           if (!cancelled) {
             canonicalUrlRef.current = freshUrl;
             setProcessedUrl(freshUrl);
+            setIsRetrying(false);
           }
           return;
         } catch (e) {
           console.error('Failed to resolve blob URL for model:', e);
-          smartToast.error('Konnte die Modelldatei nicht laden. Bitte Datei erneut auswählen.');
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          
+          if (errorMsg.includes('NetworkError') || errorMsg.includes('Failed to fetch')) {
+            smartToast.error('Netzwerkfehler beim Laden der Datei. Bitte Internetverbindung prüfen.');
+          } else {
+            smartToast.error('Konnte die Modelldatei nicht laden. Bitte Datei erneut auswählen.');
+          }
+          
           if (!cancelled) setProcessedUrl(null);
           return;
         }
@@ -428,18 +488,66 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     };
   }, [fileUrl]);
 
+  // Enhanced retry mechanism for failed blob URLs
+  const handleRetryNeeded = useCallback(async (failedUrl: string) => {
+    if (!originalBlobRef.current || isRetrying) return;
+    
+    setIsRetrying(true);
+    
+    // Clear any existing retry timeout
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+    }
+    
+    // Delay retry to avoid immediate re-failure
+    retryTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Create fresh URL from original blob
+        const freshUrl = URL.createObjectURL(originalBlobRef.current!);
+        
+        // Clean up the failed URL
+        if (canonicalUrlRef.current && canonicalUrlRef.current.startsWith('blob:')) {
+          try { URL.revokeObjectURL(canonicalUrlRef.current); } catch {}
+        }
+        
+        // Update references
+        canonicalUrlRef.current = freshUrl;
+        
+        // Store the new URL
+        try { 
+          storeOriginalFile(freshUrl, originalBlobRef.current!); 
+        } catch {}
+        
+        setProcessedUrl(freshUrl);
+        console.log('Model URL refreshed for retry');
+        
+      } catch (error) {
+        console.error('Failed to create retry URL:', error);
+        smartToast.error('Wiederholung fehlgeschlagen. Bitte Datei erneut laden.');
+        setIsRetrying(false);
+      }
+    }, 1000);
+  }, [isRetrying]);
+
   // Show success message only once per model
   const handleModelLoadComplete = useCallback(() => {
     if (!processedUrl) return;
     if (!loadedModels.has(`${processedUrl}_success_shown`)) {
       loadedModels.add(`${processedUrl}_success_shown`);
       smartToast.success('Modell erfolgreich geladen');
+      setIsRetrying(false);
     }
   }, [processedUrl]);
 
-  // Cleanup only on unmount or when source URL actually changes
+  // Enhanced cleanup with retry timeout handling
   useEffect(() => {
     return () => {
+      // Clear retry timeout
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      
       const urlToCleanup = canonicalUrlRef.current;
       if (urlToCleanup) {
         if (urlToCleanup.startsWith('blob:')) {
@@ -452,8 +560,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         loadedModels.delete(`${urlToCleanup}_success_shown`);
         clearGLTFCache(urlToCleanup);
       }
+      
+      // Clear references
       canonicalUrlRef.current = null;
       sourceUrlRef.current = null;
+      originalBlobRef.current = null;
     };
   }, [fileUrl, clearGLTFCache]);
 
@@ -483,7 +594,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
-      <Loader2 className="animate-spin mr-2" /> Bereite Modell vor...
+      <Loader2 className="animate-spin mr-2" /> 
+      {isRetrying ? 'Lade Modell erneut...' : 'Bereite Modell vor...'}
     </div>;
   }
 
@@ -498,6 +610,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               canvasRef={canvasRef} 
               rotateModel={rotateModel}
               onModelLoadComplete={handleModelLoadComplete}
+              onRetryNeeded={handleRetryNeeded}
             />
           </div>
           
