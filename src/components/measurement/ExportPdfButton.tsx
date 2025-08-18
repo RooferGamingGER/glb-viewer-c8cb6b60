@@ -20,6 +20,8 @@ import { Toggle } from "@/components/ui/toggle";
 import MeasurementTable from './MeasurementTable';
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { saveAs } from 'file-saver';
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
@@ -37,6 +39,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [generatedRoofPlan, setGeneratedRoofPlan] = useState<string | null>(null);
   const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
   const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
+  const [pdfOpenMode, setPdfOpenMode] = useState<'open' | 'download'>('open');
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const {
     scene,
@@ -275,13 +278,34 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       (measurementsWithVisuals as any).includeCoverImage = true;
       
       const coverData = form.getValues();
-      const success = await exportMeasurementsToPdf(measurementsWithVisuals, coverData);
+      const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
+      const provisionalTab = pdfOpenMode === 'open' ? window.open('', '_blank') : null;
+
+      const result = await exportMeasurementsToPdf(measurementsWithVisuals, coverData, 'blob');
       setExportProgress(100);
-      if (success) {
-        toast.success('PDF wurde erfolgreich erstellt');
+
+      if (result instanceof Blob) {
+        if (provisionalTab) {
+          try {
+            const url = URL.createObjectURL(result);
+            provisionalTab.location.href = url;
+            toast.success('PDF in neuem Tab geöffnet');
+            setTimeout(() => URL.revokeObjectURL(url), 60_000);
+          } catch (e) {
+            saveAs(result, filename);
+            toast.success('PDF heruntergeladen');
+          }
+        } else if (pdfOpenMode === 'open') {
+          // Popup wurde blockiert – Fallback Download
+          saveAs(result, filename);
+          toast.success('PDF heruntergeladen (Popup blockiert)');
+        } else {
+          saveAs(result, filename);
+          toast.success('PDF heruntergeladen');
+        }
         setTimeout(() => {
           dialogCloseRef.current?.click();
-        }, 1000);
+        }, 800);
       } else {
         toast.error('Fehler beim Erstellen des PDFs');
       }
@@ -434,6 +458,25 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                     <label htmlFor="include-roof-plan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       Dachplan auf eigener Seite darstellen
                     </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">PDF-Ausgabe</div>
+                    <RadioGroup 
+                      value={pdfOpenMode}
+                      onValueChange={(v) => setPdfOpenMode(v as 'open' | 'download')}
+                      className="grid grid-cols-2 gap-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="open" id="pdf-open" />
+                        <label htmlFor="pdf-open" className="text-sm">In neuem Tab öffnen</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="download" id="pdf-download" />
+                        <label htmlFor="pdf-download" className="text-sm">Direkt herunterladen</label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground">Falls der Browser das Öffnen blockiert, erfolgt automatisch ein Download.</p>
                   </div>
                 </div>
               </div>

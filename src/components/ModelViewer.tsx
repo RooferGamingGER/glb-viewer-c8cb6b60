@@ -27,8 +27,19 @@ type ModelViewerProps = {
   showTools?: boolean;
 };
 
-function Loader3D() {
-  const { progress, errors } = useProgress();
+function Loader3D({ fileUrl }: { fileUrl?: string }) {
+  const { progress, errors, item, loaded, total } = useProgress();
+  const [smoothProgress, setSmoothProgress] = useState(0);
+  
+  // Smooth progress to prevent backwards jumps
+  useEffect(() => {
+    setSmoothProgress(prev => Math.max(prev, progress));
+  }, [progress]);
+  
+  // Reset smooth progress when starting new load
+  useEffect(() => {
+    setSmoothProgress(0);
+  }, [fileUrl]);
   
   // Show error if any
   useEffect(() => {
@@ -36,12 +47,37 @@ function Loader3D() {
       smartToast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
+
+  // Detect if this is a blob URL (local file) vs external URL
+  const isBlobUrl = fileUrl?.startsWith('blob:') ?? false;
+  
+  // For blob URLs, don't show MB info if it's 0/0, show processing message instead
+  const shouldShowMBInfo = !isBlobUrl && total > 0 && !(loaded === 0 && total === 0);
+  
+  // Determine if this is a large file
+  const isLargeFile = total > 20 * 1024 * 1024 || (isBlobUrl && smoothProgress > 90);
+  const loadedMB = loaded ? (loaded / (1024 * 1024)).toFixed(1) : '0';
+  const totalMB = total ? (total / (1024 * 1024)).toFixed(1) : '?';
   
   return <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
         <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
-        <div className="text-sm font-medium mb-2">{progress.toFixed(0)}% geladen</div>
-        <Progress value={progress} className="w-48" />
+        <div className="text-sm font-medium mb-2">
+          {smoothProgress.toFixed(0)}% geladen
+          {shouldShowMBInfo && ` (${loadedMB}/${totalMB} MB)`}
+        </div>
+        {isBlobUrl && smoothProgress > 50 && (
+          <div className="text-xs text-muted-foreground mb-2">
+            {smoothProgress > 95 ? 'Große Datei wird verarbeitet...' : 'Lokale Datei wird geladen...'}
+          </div>
+        )}
+        {!isBlobUrl && isLargeFile && smoothProgress > 95 && (
+          <div className="text-xs text-muted-foreground mb-2">
+            Große Datei wird verarbeitet...
+          </div>
+        )}
+        <Progress value={smoothProgress} className="w-48" />
+        {/* URL display hidden during loading for cleaner UX */}
       </div>
     </Html>;
 }
@@ -52,27 +88,55 @@ const loadedModels = new Set<string>();
 const Model = React.memo(({
   url,
   rotate = true,
-  onLoadComplete
+  onLoadComplete,
+  onRetryNeeded
 }: {
   url: string;
   rotate?: boolean;
   onLoadComplete?: () => void;
+  onRetryNeeded?: (originalUrl: string) => void;
 }) => {
   const modelRef = useRef<THREE.Group>(null);
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  const { activeMode } = useMeasurements();
+  const initializedForUrlRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 2;
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
+    let shouldRetry = false;
+    
     if (error instanceof Error) {
       errorMessage = error.message;
+      // Check if this is a blob URL loading error that we can retry
+      if (url.startsWith('blob:') && (
+        error.message.includes('404') || 
+        error.message.includes('NetworkError') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('not found')
+      )) {
+        shouldRetry = retryCountRef.current < maxRetries;
+      }
     } else if (typeof error === 'object' && error !== null) {
       errorMessage = (error as any).message || "Fehler beim Laden des 3D-Modells";
     } else {
       errorMessage = String(error);
     }
-    smartToast.error(`Fehler beim Laden des Modells: ${errorMessage}`);
+    
+    if (shouldRetry && onRetryNeeded) {
+      retryCountRef.current++;
+      console.warn(`Model loading failed, attempting retry ${retryCountRef.current}/${maxRetries}:`, errorMessage);
+      onRetryNeeded(url);
+    } else {
+      // Final error after retries or non-retryable error
+      const finalMessage = retryCountRef.current > 0 
+        ? `Fehler beim Laden des Modells nach ${retryCountRef.current} Versuchen: ${errorMessage}`
+        : `Fehler beim Laden des Modells: ${errorMessage}`;
+      smartToast.error(finalMessage);
+    }
   });
 
   const modelScene = useMemo(() => {
@@ -136,9 +200,17 @@ const Model = React.memo(({
       modelRef.current.rotation.set(rotate ? -Math.PI / 2 : 0, 0, 0);
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
-      camera.position.copy(cameraPosition.position);
-      camera.lookAt(cameraPosition.center);
-      camera.updateProjectionMatrix();
+
+      const toolsActive = activeMode && activeMode !== 'none';
+      const urlChanged = initializedForUrlRef.current !== url;
+
+      if (!(toolsActive && initializedForUrlRef.current && !urlChanged)) {
+        camera.position.copy(cameraPosition.position);
+        camera.lookAt(cameraPosition.center);
+        camera.updateProjectionMatrix();
+        initializedForUrlRef.current = url;
+      }
+
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
         loadedModels.add(`${url}_completed`);
         setTimeout(() => {
@@ -152,7 +224,7 @@ const Model = React.memo(({
         }, 100);
       }
     }
-  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
+  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url, activeMode]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -202,23 +274,33 @@ const ModelCanvas = React.memo(({
   onSceneReady,
   canvasRef,
   rotateModel,
-  onModelLoadComplete
+  onModelLoadComplete,
+  onRetryNeeded
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   rotateModel?: boolean;
   onModelLoadComplete?: () => void;
+  onRetryNeeded?: (url: string) => void;
 }) => {
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
   const rendererRef = React.useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = React.useRef<any>(null);
 
   useEffect(() => {
     if (rendererRef.current) {
       optimizeRenderer(rendererRef.current, isLowMemory);
     }
   }, [isLowMemory, optimizeRenderer]);
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.update();
+    }
+  }, []);
   
   useEffect(() => {
     if (!loadedModels.has(`${fileUrl}_preloaded`)) {
@@ -245,22 +327,10 @@ const ModelCanvas = React.memo(({
       gl.setClearColor(0x222222, 1);
       rendererRef.current = gl;
       optimizeRenderer(gl, isLowMemory);
-      gl.domElement.addEventListener('webglcontextlost', (event) => {
-        event.preventDefault();
-        if (!document.hidden) {
-          smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
-        }
-      });
-      gl.domElement.addEventListener('webglcontextrestored', () => {
-        if (!document.hidden) {
-          smartToast.success('WebGL-Kontext wiederhergestellt');
-        }
-        gl.setSize(gl.domElement.width, gl.domElement.height);
-      });
     }}
   >
       <SceneSetup onSceneReady={onSceneReady} />
-      <Suspense fallback={<Loader3D />}>
+      <Suspense fallback={<Loader3D fileUrl={fileUrl} />}>
         <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -270,8 +340,10 @@ const ModelCanvas = React.memo(({
           url={fileUrl} 
           rotate={rotateModel !== false} 
           onLoadComplete={onModelLoadComplete}
+          onRetryNeeded={onRetryNeeded}
         />
         <OrbitControls 
+          ref={controlsRef}
           makeDefault 
           enableDamping 
           dampingFactor={0.1} 
@@ -283,7 +355,6 @@ const ModelCanvas = React.memo(({
           enableZoom={true}
           enablePan={true}
           screenSpacePanning={true}
-          target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -314,55 +385,99 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   
   const { measurements } = useMeasurements();
 
-  // Resolve the URL robustly:
-  // - If it's a blob:, try to reuse stored original Blob; otherwise fetch, name it, store it, and create a fresh ObjectURL.
-  // - For http/https, use as is.
+  // Enhanced URL resolution with retry capability
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const canonicalUrlRef = useRef<string | null>(null);
+  const sourceUrlRef = useRef<string | null>(null);
+  const originalBlobRef = useRef<Blob | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const resolveUrl = async () => {
       if (!fileUrl) {
+        canonicalUrlRef.current = null;
+        sourceUrlRef.current = null;
         setProcessedUrl(null);
         return;
       }
 
-      // blob: URL handling
-      if (fileUrl.startsWith('blob:')) {
-        // Try storage first
-        try {
-          const stored = getOriginalFile(fileUrl);
-          if (stored) {
-            const freshUrl = URL.createObjectURL(stored);
-            // Store also under the fresh URL key so export code can find it
-            try { storeOriginalFile(freshUrl, stored); } catch {}
-            if (!cancelled) setProcessedUrl(freshUrl);
-            return;
-          }
-        } catch {}
+      // If the source URL hasn't changed and we already have a canonical URL, reuse it
+      if (sourceUrlRef.current === fileUrl && canonicalUrlRef.current) {
+        setProcessedUrl(canonicalUrlRef.current);
+        return;
+      }
 
-        // Try to fetch the blob and reconstruct a File with a name
+      // New source URL – reset canonical; previous cleanup handled in separate effect
+      sourceUrlRef.current = fileUrl;
+      canonicalUrlRef.current = null;
+
+      // Enhanced blob: URL handling with stability improvements
+      if (fileUrl.startsWith('blob:')) {
         try {
-          const resp = await fetch(fileUrl);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const blob = await resp.blob();
-          const namedBlob = new File([blob], fileName || 'model.glb', { type: blob.type || 'model/gltf-binary' });
-          // Store under both the original and the soon-to-be fresh URL
-          try { storeOriginalFile(fileUrl, namedBlob); } catch {}
+          let blob: Blob | null = null;
+          
+          // Try to get cached blob first
+          try {
+            blob = getOriginalFile(fileUrl);
+          } catch {}
+
+          // Fetch blob if not cached, with better error handling
+          if (!blob) {
+            const resp = await fetch(fileUrl);
+            if (!resp.ok) {
+              throw new Error(`Failed to fetch blob: HTTP ${resp.status} ${resp.statusText}`);
+            }
+            blob = await resp.blob();
+            
+            // Validate blob content
+            if (!blob || blob.size === 0) {
+              throw new Error('Received empty or invalid blob');
+            }
+          }
+
+          // Store reference to original blob for retries
+          originalBlobRef.current = blob;
+          
+          const namedBlob = new File([blob], fileName || 'model.glb', { 
+            type: blob.type || 'model/gltf-binary' 
+          });
+          
+          // Store both original and processed blobs
+          try { 
+            storeOriginalFile(fileUrl, namedBlob); 
+            storeOriginalFile(`original_${fileUrl}`, blob);
+          } catch {}
+          
+          // Create fresh URL with longer validity
           const freshUrl = URL.createObjectURL(namedBlob);
           try { storeOriginalFile(freshUrl, namedBlob); } catch {}
-          if (!cancelled) setProcessedUrl(freshUrl);
+
+          if (!cancelled) {
+            canonicalUrlRef.current = freshUrl;
+            setProcessedUrl(freshUrl);
+            setIsRetrying(false);
+          }
           return;
         } catch (e) {
           console.error('Failed to resolve blob URL for model:', e);
-          smartToast.error('Konnte die Modelldatei nicht laden. Bitte Datei erneut auswählen.');
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          
+          if (errorMsg.includes('NetworkError') || errorMsg.includes('Failed to fetch')) {
+            smartToast.error('Netzwerkfehler beim Laden der Datei. Bitte Internetverbindung prüfen.');
+          } else {
+            smartToast.error('Konnte die Modelldatei nicht laden. Bitte Datei erneut auswählen.');
+          }
+          
           if (!cancelled) setProcessedUrl(null);
           return;
         }
       }
 
       // Default: http/https or other handled schemes
+      canonicalUrlRef.current = fileUrl;
       setProcessedUrl(fileUrl);
     };
 
@@ -371,7 +486,48 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [fileUrl, fileName]);
+  }, [fileUrl]);
+
+  // Enhanced retry mechanism for failed blob URLs
+  const handleRetryNeeded = useCallback(async (failedUrl: string) => {
+    if (!originalBlobRef.current || isRetrying) return;
+    
+    setIsRetrying(true);
+    
+    // Clear any existing retry timeout
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+    }
+    
+    // Delay retry to avoid immediate re-failure
+    retryTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Create fresh URL from original blob
+        const freshUrl = URL.createObjectURL(originalBlobRef.current!);
+        
+        // Clean up the failed URL
+        if (canonicalUrlRef.current && canonicalUrlRef.current.startsWith('blob:')) {
+          try { URL.revokeObjectURL(canonicalUrlRef.current); } catch {}
+        }
+        
+        // Update references
+        canonicalUrlRef.current = freshUrl;
+        
+        // Store the new URL
+        try { 
+          storeOriginalFile(freshUrl, originalBlobRef.current!); 
+        } catch {}
+        
+        setProcessedUrl(freshUrl);
+        console.log('Model URL refreshed for retry');
+        
+      } catch (error) {
+        console.error('Failed to create retry URL:', error);
+        smartToast.error('Wiederholung fehlgeschlagen. Bitte Datei erneut laden.');
+        setIsRetrying(false);
+      }
+    }, 1000);
+  }, [isRetrying]);
 
   // Show success message only once per model
   const handleModelLoadComplete = useCallback(() => {
@@ -379,23 +535,38 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     if (!loadedModels.has(`${processedUrl}_success_shown`)) {
       loadedModels.add(`${processedUrl}_success_shown`);
       smartToast.success('Modell erfolgreich geladen');
+      setIsRetrying(false);
     }
   }, [processedUrl]);
 
-  // Cleanup only on unmount or when URL actually changes
+  // Enhanced cleanup with retry timeout handling
   useEffect(() => {
     return () => {
-      if (processedUrl && processedUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(processedUrl);
+      // Clear retry timeout
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
       }
-      // Clear from loaded models cache
-      loadedModels.delete(processedUrl as string);
-      loadedModels.delete(`${processedUrl}_preloaded`);
-      loadedModels.delete(`${processedUrl}_completed`);
-      loadedModels.delete(`${processedUrl}_success_shown`);
-      clearGLTFCache(processedUrl || undefined);
+      
+      const urlToCleanup = canonicalUrlRef.current;
+      if (urlToCleanup) {
+        if (urlToCleanup.startsWith('blob:')) {
+          try { URL.revokeObjectURL(urlToCleanup); } catch {}
+        }
+        // Clear from loaded models cache and GLTF cache
+        loadedModels.delete(urlToCleanup);
+        loadedModels.delete(`${urlToCleanup}_preloaded`);
+        loadedModels.delete(`${urlToCleanup}_completed`);
+        loadedModels.delete(`${urlToCleanup}_success_shown`);
+        clearGLTFCache(urlToCleanup);
+      }
+      
+      // Clear references
+      canonicalUrlRef.current = null;
+      sourceUrlRef.current = null;
+      originalBlobRef.current = null;
     };
-  }, [processedUrl, clearGLTFCache]);
+  }, [fileUrl, clearGLTFCache]);
 
   // Stable scene ready handler
   const handleSceneReady = useCallback((
@@ -423,7 +594,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 
   if (!processedUrl) {
     return <div className="flex items-center justify-center h-full">
-      <Loader2 className="animate-spin mr-2" /> Bereite Modell vor...
+      <Loader2 className="animate-spin mr-2" /> 
+      {isRetrying ? 'Lade Modell erneut...' : 'Bereite Modell vor...'}
     </div>;
   }
 
@@ -438,6 +610,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               canvasRef={canvasRef} 
               rotateModel={rotateModel}
               onModelLoadComplete={handleModelLoadComplete}
+              onRetryNeeded={handleRetryNeeded}
             />
           </div>
           

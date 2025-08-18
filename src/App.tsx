@@ -10,6 +10,8 @@ import { Toaster as SonnerToaster } from 'sonner';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { MeasurementProvider } from '@/contexts/MeasurementContext';
 import { TutorialProvider } from '@/contexts/TutorialContext';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
+import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
               </Routes>
               <Toaster />
               <SonnerToaster richColors position="top-center" />
+              <PWAInstallPrompt />
+              <PWAUpdatePrompt />
             </Router>
           </TutorialProvider>
         </PointSnappingProvider>

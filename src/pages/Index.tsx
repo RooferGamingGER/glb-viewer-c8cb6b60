@@ -5,13 +5,18 @@ import FileUpload from '@/components/FileUpload';
 import ModelViewer from '@/components/ModelViewer';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 const Index = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   const handleDemoClick = () => {
-    // Navigate directly to the test page without opening file dialog
-    navigate('/test');
+    const url = `/viewer?fileUrl=${encodeURIComponent('/models/test-model.glb')}&fileName=${encodeURIComponent('Demo Modell')}&rotateModel=true`;
+    navigate(url);
   };
   
   useEffect(() => {
@@ -79,22 +84,21 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Demo model viewer (mobile) */}
-          <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
-            <h2 className="text-base font-semibold mb-2 text-center">Demo-Modell</h2>
-            <div className="relative w-full h-64 rounded-md overflow-hidden">
-              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
-            </div>
-            <div className="mt-3 flex justify-center">
-              <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
-                Demo-Modell ansehen
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
-            </p>
-          </div>
+{isMobile && (
+  <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
+    
+    <div className="relative w-full h-80 rounded-md overflow-hidden">
+      
+        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
+    </div>
+    <div className="mt-3 flex flex-wrap justify-center gap-2">
+      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+        Demo-Modell ansehen
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+)}
           
           <div className="grid grid-cols-1 gap-2">
             <p className="text-xs text-muted-foreground mt-1 mb-1 text-center">
@@ -272,22 +276,23 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Demo model viewer (desktop) */}
-          <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
-            <h2 className="text-xl font-bold mb-3 text-center">Demo-Modell</h2>
-            <div className="relative w-full h-72 lg:h-80 rounded-md overflow-hidden">
-              <ModelViewer fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
-            </div>
-            <div className="mt-4 flex justify-center">
-              <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
-                Demo-Modell ansehen
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground text-center mt-2">
-              Nicht nur Darstellung: Dachdecker und Solarteure vermessen Ihre Dächer und exportieren Zeichnungen (z. B. PDF/Plan).
-            </p>
-          </div>
+{/* Demo model viewer (desktop) */}
+{!isMobile && (
+  <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
+    
+    <div className="relative w-full h-96 rounded-md overflow-hidden">
+      
+        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
+      
+    </div>
+    <div className="mt-4 flex flex-wrap justify-center gap-2">
+      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
+        Demo-Modell ansehen
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+)}
         </div>
         
         <footer className="w-full text-center text-xs text-muted-foreground mt-2 mb-0">
