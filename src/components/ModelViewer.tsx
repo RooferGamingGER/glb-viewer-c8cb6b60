@@ -139,16 +139,14 @@ const Model = React.memo(({
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
 
-      // Only reset camera position on initial load or URL change
+      const toolsActive = activeMode && activeMode !== 'none';
       const urlChanged = initializedForUrlRef.current !== url;
-      const needsCameraReset = !initializedForUrlRef.current || urlChanged;
 
-      if (needsCameraReset) {
+      if (!(toolsActive && initializedForUrlRef.current && !urlChanged)) {
         camera.position.copy(cameraPosition.position);
         camera.lookAt(cameraPosition.center);
         camera.updateProjectionMatrix();
         initializedForUrlRef.current = url;
-        console.log('Camera position reset for model:', url);
       }
 
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
