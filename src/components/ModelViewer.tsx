@@ -28,7 +28,7 @@ type ModelViewerProps = {
 };
 
 function Loader3D() {
-  const { progress, errors } = useProgress();
+  const { progress, errors, item, loaded, total } = useProgress();
   
   // Show error if any
   useEffect(() => {
@@ -36,12 +36,30 @@ function Loader3D() {
       smartToast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
+
+  // Determine if this is a large file (>20MB estimate based on progress)
+  const isLargeFile = total > 20 * 1024 * 1024 || (progress > 90 && progress < 99);
+  const loadedMB = loaded ? (loaded / (1024 * 1024)).toFixed(1) : '0';
+  const totalMB = total ? (total / (1024 * 1024)).toFixed(1) : '?';
   
   return <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
         <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
-        <div className="text-sm font-medium mb-2">{progress.toFixed(0)}% geladen</div>
+        <div className="text-sm font-medium mb-2">
+          {progress.toFixed(0)}% geladen
+          {total > 0 && ` (${loadedMB}/${totalMB} MB)`}
+        </div>
+        {isLargeFile && progress > 95 && (
+          <div className="text-xs text-muted-foreground mb-2">
+            Große Datei wird verarbeitet...
+          </div>
+        )}
         <Progress value={progress} className="w-48" />
+        {item && (
+          <div className="text-xs text-muted-foreground mt-2 max-w-48 truncate">
+            {item}
+          </div>
+        )}
       </div>
     </Html>;
 }
@@ -263,18 +281,6 @@ const ModelCanvas = React.memo(({
       gl.setClearColor(0x222222, 1);
       rendererRef.current = gl;
       optimizeRenderer(gl, isLowMemory);
-      gl.domElement.addEventListener('webglcontextlost', (event) => {
-        event.preventDefault();
-        if (!document.hidden) {
-          smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
-        }
-      });
-      gl.domElement.addEventListener('webglcontextrestored', () => {
-        if (!document.hidden) {
-          smartToast.success('WebGL-Kontext wiederhergestellt');
-        }
-        gl.setSize(gl.domElement.width, gl.domElement.height);
-      });
     }}
   >
       <SceneSetup onSceneReady={onSceneReady} />
