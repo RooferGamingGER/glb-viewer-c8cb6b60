@@ -29,6 +29,17 @@ type ModelViewerProps = {
 
 function Loader3D({ fileUrl }: { fileUrl?: string }) {
   const { progress, errors, item, loaded, total } = useProgress();
+  const [smoothProgress, setSmoothProgress] = useState(0);
+  
+  // Smooth progress to prevent backwards jumps
+  useEffect(() => {
+    setSmoothProgress(prev => Math.max(prev, progress));
+  }, [progress]);
+  
+  // Reset smooth progress when starting new load
+  useEffect(() => {
+    setSmoothProgress(0);
+  }, [fileUrl]);
   
   // Show error if any
   useEffect(() => {
@@ -44,7 +55,7 @@ function Loader3D({ fileUrl }: { fileUrl?: string }) {
   const shouldShowMBInfo = !isBlobUrl && total > 0 && !(loaded === 0 && total === 0);
   
   // Determine if this is a large file
-  const isLargeFile = total > 20 * 1024 * 1024 || (isBlobUrl && progress > 90);
+  const isLargeFile = total > 20 * 1024 * 1024 || (isBlobUrl && smoothProgress > 90);
   const loadedMB = loaded ? (loaded / (1024 * 1024)).toFixed(1) : '0';
   const totalMB = total ? (total / (1024 * 1024)).toFixed(1) : '?';
   
@@ -52,20 +63,20 @@ function Loader3D({ fileUrl }: { fileUrl?: string }) {
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
         <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
         <div className="text-sm font-medium mb-2">
-          {progress.toFixed(0)}% geladen
+          {smoothProgress.toFixed(0)}% geladen
           {shouldShowMBInfo && ` (${loadedMB}/${totalMB} MB)`}
         </div>
-        {isBlobUrl && progress > 50 && (
+        {isBlobUrl && smoothProgress > 50 && (
           <div className="text-xs text-muted-foreground mb-2">
-            {progress > 95 ? 'Große Datei wird verarbeitet...' : 'Lokale Datei wird geladen...'}
+            {smoothProgress > 95 ? 'Große Datei wird verarbeitet...' : 'Lokale Datei wird geladen...'}
           </div>
         )}
-        {!isBlobUrl && isLargeFile && progress > 95 && (
+        {!isBlobUrl && isLargeFile && smoothProgress > 95 && (
           <div className="text-xs text-muted-foreground mb-2">
             Große Datei wird verarbeitet...
           </div>
         )}
-        <Progress value={progress} className="w-48" />
+        <Progress value={smoothProgress} className="w-48" />
         {/* URL display hidden during loading for cleaner UX */}
       </div>
     </Html>;
