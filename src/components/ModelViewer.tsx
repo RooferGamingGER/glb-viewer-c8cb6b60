@@ -27,7 +27,7 @@ type ModelViewerProps = {
   showTools?: boolean;
 };
 
-function Loader3D() {
+function Loader3D({ fileUrl }: { fileUrl?: string }) {
   const { progress, errors, item, loaded, total } = useProgress();
   
   // Show error if any
@@ -37,8 +37,14 @@ function Loader3D() {
     }
   }, [errors]);
 
-  // Determine if this is a large file (>20MB estimate based on progress)
-  const isLargeFile = total > 20 * 1024 * 1024 || (progress > 90 && progress < 99);
+  // Detect if this is a blob URL (local file) vs external URL
+  const isBlobUrl = fileUrl?.startsWith('blob:') ?? false;
+  
+  // For blob URLs, don't show MB info if it's 0/0, show processing message instead
+  const shouldShowMBInfo = !isBlobUrl && total > 0 && !(loaded === 0 && total === 0);
+  
+  // Determine if this is a large file
+  const isLargeFile = total > 20 * 1024 * 1024 || (isBlobUrl && progress > 90);
   const loadedMB = loaded ? (loaded / (1024 * 1024)).toFixed(1) : '0';
   const totalMB = total ? (total / (1024 * 1024)).toFixed(1) : '?';
   
@@ -47,9 +53,14 @@ function Loader3D() {
         <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
         <div className="text-sm font-medium mb-2">
           {progress.toFixed(0)}% geladen
-          {total > 0 && ` (${loadedMB}/${totalMB} MB)`}
+          {shouldShowMBInfo && ` (${loadedMB}/${totalMB} MB)`}
         </div>
-        {isLargeFile && progress > 95 && (
+        {isBlobUrl && progress > 50 && (
+          <div className="text-xs text-muted-foreground mb-2">
+            {progress > 95 ? 'Große Datei wird verarbeitet...' : 'Lokale Datei wird geladen...'}
+          </div>
+        )}
+        {!isBlobUrl && isLargeFile && progress > 95 && (
           <div className="text-xs text-muted-foreground mb-2">
             Große Datei wird verarbeitet...
           </div>
@@ -284,7 +295,7 @@ const ModelCanvas = React.memo(({
     }}
   >
       <SceneSetup onSceneReady={onSceneReady} />
-      <Suspense fallback={<Loader3D />}>
+      <Suspense fallback={<Loader3D fileUrl={fileUrl} />}>
         <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
