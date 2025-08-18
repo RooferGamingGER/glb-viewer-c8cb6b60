@@ -62,8 +62,7 @@ const Model = React.memo(({
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
-  const { activeMode } = useMeasurements();
-  const initializedForUrlRef = useRef<string | null>(null);
+  const cameraInitializedRef = useRef<string | null>(null);
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
     let errorMessage = "Unbekannter Fehler";
@@ -139,14 +138,13 @@ const Model = React.memo(({
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
 
-      const toolsActive = activeMode && activeMode !== 'none';
-      const urlChanged = initializedForUrlRef.current !== url;
+      const cameraNotInitialized = cameraInitializedRef.current !== url;
 
-      if (!(toolsActive && initializedForUrlRef.current && !urlChanged)) {
+      if (cameraNotInitialized) {
         camera.position.copy(cameraPosition.position);
         camera.lookAt(cameraPosition.center);
         camera.updateProjectionMatrix();
-        initializedForUrlRef.current = url;
+        cameraInitializedRef.current = url;
       }
 
       if (onLoadComplete && !loadedModels.has(`${url}_completed`)) {
@@ -162,7 +160,7 @@ const Model = React.memo(({
         }, 100);
       }
     }
-  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url, activeMode]);
+  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
@@ -263,18 +261,6 @@ const ModelCanvas = React.memo(({
       gl.setClearColor(0x222222, 1);
       rendererRef.current = gl;
       optimizeRenderer(gl, isLowMemory);
-      gl.domElement.addEventListener('webglcontextlost', (event) => {
-        event.preventDefault();
-        if (!document.hidden) {
-          smartToast.warning('WebGL-Kontext verloren. Wird automatisch wiederhergestellt...');
-        }
-      });
-      gl.domElement.addEventListener('webglcontextrestored', () => {
-        if (!document.hidden) {
-          smartToast.success('WebGL-Kontext wiederhergestellt');
-        }
-        gl.setSize(gl.domElement.width, gl.domElement.height);
-      });
     }}
   >
       <SceneSetup onSceneReady={onSceneReady} />
