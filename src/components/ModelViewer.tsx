@@ -66,11 +66,7 @@ function Loader3D({ fileUrl }: { fileUrl?: string }) {
           </div>
         )}
         <Progress value={progress} className="w-48" />
-        {item && !item.startsWith('blob:') && (
-          <div className="text-xs text-muted-foreground mt-2 max-w-48 truncate">
-            {item}
-          </div>
-        )}
+        {/* URL display hidden during loading for cleaner UX */}
       </div>
     </Html>;
 }
