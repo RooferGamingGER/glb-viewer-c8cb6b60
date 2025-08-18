@@ -3,18 +3,39 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+const APP_VERSION = '1.0.0'; // Version should match package.json
+
 export function PWAUpdatePrompt() {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
+    // Only show update prompts in production
+    if (import.meta.env.MODE !== 'production') {
+      return;
+    }
+
+    // Check if user has dismissed this version's update
+    const dismissedVersion = localStorage.getItem('pwa-update-dismissed-version');
+    if (dismissedVersion === APP_VERSION) {
+      return;
+    }
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then((reg) => {
         setRegistration(reg);
         
+        // Check if there's a new version available
+        const checkForUpdate = () => {
+          const currentVersion = localStorage.getItem('pwa-current-version') || '0.0.0';
+          if (currentVersion !== APP_VERSION && reg.waiting) {
+            setShowUpdatePrompt(true);
+          }
+        };
+
         // Listen for waiting service worker
         if (reg.waiting) {
-          setShowUpdatePrompt(true);
+          checkForUpdate();
         }
 
         // Listen for service worker updates
@@ -23,7 +44,7 @@ export function PWAUpdatePrompt() {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setShowUpdatePrompt(true);
+                checkForUpdate();
               }
             });
           }
@@ -32,8 +53,15 @@ export function PWAUpdatePrompt() {
 
       // Listen for controller change (new service worker activated)
       navigator.serviceWorker.addEventListener('controllerchange', () => {
+        localStorage.setItem('pwa-current-version', APP_VERSION);
         window.location.reload();
       });
+    }
+
+    // Set current version on first load
+    const currentVersion = localStorage.getItem('pwa-current-version');
+    if (!currentVersion) {
+      localStorage.setItem('pwa-current-version', APP_VERSION);
     }
   }, []);
 
@@ -47,6 +75,8 @@ export function PWAUpdatePrompt() {
 
   const handleDismiss = () => {
     setShowUpdatePrompt(false);
+    // Remember that user dismissed this version's update
+    localStorage.setItem('pwa-update-dismissed-version', APP_VERSION);
   };
 
   if (!showUpdatePrompt) return null;

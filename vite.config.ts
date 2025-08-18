@@ -79,7 +79,9 @@ export default defineConfig(({ mode }) => ({
       },
       devOptions: {
         enabled: false
-      }
+      },
+      // Disable in development to prevent constant update prompts
+      disable: mode === 'development'
     })
   ].filter(Boolean),
   resolve: {
