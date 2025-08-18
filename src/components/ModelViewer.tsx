@@ -142,7 +142,7 @@ const Model = React.memo(({
       const toolsActive = activeMode && activeMode !== 'none';
       const urlChanged = initializedForUrlRef.current !== url;
 
-      if (!(initializedForUrlRef.current && !urlChanged)) {
+      if (!(toolsActive && initializedForUrlRef.current && !urlChanged)) {
         camera.position.copy(cameraPosition.position);
         camera.lookAt(cameraPosition.center);
         camera.updateProjectionMatrix();
