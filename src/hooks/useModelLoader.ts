@@ -60,64 +60,20 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
     // For non-blob URLs, implement actual fetching and processing
     const fetchAndProcessModel = async () => {
       try {
-        // Real progress tracking with fetch
-        const response = await fetch(stableFileUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        // Simulate processing with stable progress
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+          currentProgress = Math.min(currentProgress + 10, 95);
+          setState(prev => ({
+            ...prev,
+            progress: currentProgress
+          }));
+        }, 200);
         
-        const contentLength = response.headers.get('Content-Length');
-        const total = contentLength ? parseInt(contentLength, 10) : 0;
+        // Simulate async processing
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        if (total > 0) {
-          const reader = response.body?.getReader();
-          if (reader) {
-            let loaded = 0;
-            const chunks: Uint8Array[] = [];
-            
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              
-              chunks.push(value);
-              loaded += value.length;
-              
-              const progress = Math.min((loaded / total) * 100, 99);
-              setState(prev => ({
-                ...prev,
-                progress: progress
-              }));
-            }
-            
-            // Reassemble the data
-            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-            const result = new Uint8Array(totalLength);
-            let offset = 0;
-            for (const chunk of chunks) {
-              result.set(chunk, offset);
-              offset += chunk.length;
-            }
-            
-            // Create blob and object URL for GLB loading
-            const blob = new Blob([result], { type: 'model/gltf-binary' });
-            const processedBlobUrl = URL.createObjectURL(blob);
-            
-            // Cache the result
-            processedUrls.set(stableFileUrl, processedBlobUrl);
-            
-            setState({
-              processedUrl: processedBlobUrl,
-              loading: false,
-              progress: 100,
-              error: null
-            });
-            return;
-          }
-        }
-        
-        // Fallback for streams without content-length
-        setState(prev => ({ ...prev, progress: 50 }));
-        await new Promise(resolve => setTimeout(resolve, 100));
+        clearInterval(progressInterval);
         
         // Cache the result
         processedUrls.set(stableFileUrl, stableFileUrl);
