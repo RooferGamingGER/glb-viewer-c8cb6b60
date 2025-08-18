@@ -62,6 +62,7 @@ const Model = React.memo(({
   const { camera, gl } = useThree();
   const isMobile = useIsMobile();
   const { qualitySettings } = usePerformanceOptimization(null, camera, gl);
+  const { activeMode } = useMeasurements();
   const initializedForUrlRef = useRef<string | null>(null);
   
   const { scene } = useGLTF(url, undefined, undefined, (error) => {
@@ -138,10 +139,10 @@ const Model = React.memo(({
       const { center } = modelTransform;
       modelRef.current.position.set(-center.x, -center.y, -center.z);
 
-      const cameraInitialized = initializedForUrlRef.current === url;
+      const toolsActive = activeMode && activeMode !== 'none';
       const urlChanged = initializedForUrlRef.current !== url;
 
-      if (!cameraInitialized || urlChanged) {
+      if (!(toolsActive && initializedForUrlRef.current && !urlChanged)) {
         camera.position.copy(cameraPosition.position);
         camera.lookAt(cameraPosition.center);
         camera.updateProjectionMatrix();
@@ -161,7 +162,7 @@ const Model = React.memo(({
         }, 100);
       }
     }
-  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url]);
+  }, [modelTransform, cameraPosition, camera, rotate, onLoadComplete, url, activeMode]);
 
   return <group ref={modelRef}>
       <primitive object={modelScene} />
