@@ -120,7 +120,7 @@ function parseGLBChunks(dataView: DataView, header: GLBHeader): GLBChunk[] {
   while (offset < header.length) {
     const chunkLength = dataView.getUint32(offset, true);
     const chunkType = dataView.getUint32(offset + 4, true);
-    const chunkData = dataView.buffer.slice(offset + 8, offset + 8 + chunkLength);
+    const chunkData = dataView.buffer.slice(offset + 8, offset + 8 + chunkLength) as ArrayBuffer;
     
     chunks.push({
       length: chunkLength,

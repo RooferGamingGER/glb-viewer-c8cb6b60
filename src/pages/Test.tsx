@@ -22,8 +22,8 @@ const Test = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const { showTutorial, setShowTutorial } = useTutorial();
   
-  // Use a permanent GLB model path - this should be placed in public/models/
-  const testModelUrl = '/models/test-model.glb';
+  // Use a reliable demo model from a CDN
+  const testModelUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb';
   const testModelName = 'Demo Modell';
 
   // Close mobile menu when orientation changes
