@@ -15,7 +15,7 @@ const Index = () => {
   const isMobile = useIsMobile();
   
   const handleDemoClick = () => {
-    const url = `/viewer?fileUrl=${encodeURIComponent('/models/test-model.glb')}&fileName=${encodeURIComponent('Demo Modell')}&rotateModel=true`;
+    const url = `/viewer?fileUrl=${encodeURIComponent('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb')}&fileName=${encodeURIComponent('Demo Modell')}&rotateModel=true`;
     navigate(url);
   };
   
