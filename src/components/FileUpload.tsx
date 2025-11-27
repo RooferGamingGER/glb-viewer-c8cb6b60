@@ -8,7 +8,6 @@ import { Upload, File, AlertTriangle, RotateCw, Download } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { rotateGLBDirect } from '@/utils/glbDirectManipulation';
-import { exportModelOnlyForEturnity, EturnityExportSettings } from '@/utils/modelTransformer';
 import { storeOriginalFile } from '@/hooks/useOriginalFileStorage';
 
 const FileUpload: React.FC = () => {
@@ -125,26 +124,20 @@ const FileUpload: React.FC = () => {
       setConverting(true);
       smartToast.technical('GLB-Datei wird für Eturnity konvertiert...');
       
-      // GLB laden und für Eturnity exportieren
-      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-      const { exportModelOnlyForEturnity, getDracoLoader } = await import('../utils/modelTransformer');
+      const fileName = selectedFile.name.replace(/\.[^/.]+$/, '_eturnity.glb');
       
-      const loader = new GLTFLoader();
-      const dracoLoader = getDracoLoader();
-      loader.setDRACOLoader(dracoLoader);
-      const arrayBuffer = await selectedFile.arrayBuffer();
+      // Direkte GLB-Manipulation: behält Draco-Komprimierung und Texturen
+      await rotateGLBDirect(
+        selectedFile, 
+        fileName,
+        (progress) => {
+          // Optional: Progress-Anzeige könnte hier erweitert werden
+          console.log(`Konvertierung: ${progress}%`);
+        }
+      );
       
-      loader.parse(arrayBuffer, '', (gltf) => {
-        const modelGroup = gltf.scene;
-        const fileName = selectedFile.name.replace(/\.[^/.]+$/, '_eturnity.glb');
-        exportModelOnlyForEturnity(modelGroup, fileName);
-        smartToast.success(`Datei erfolgreich für Eturnity konvertiert: ${fileName}`);
-        setConverting(false);
-      }, (error) => {
-        console.error('Fehler beim Laden der GLB-Datei:', error);
-        smartToast.error('Fehler beim Laden der GLB-Datei');
-        setConverting(false);
-      });
+      smartToast.success(`Datei erfolgreich für Eturnity konvertiert: ${fileName}`);
+      setConverting(false);
     } catch (error) {
       devError('Error converting GLB for Eturnity:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
