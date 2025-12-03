@@ -2,11 +2,13 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
-import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save } from 'lucide-react';
+import ModelViewer from '@/components/ModelViewer';
+import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save, Eye } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 import { useIsMobile } from '@/hooks/use-mobile';
+
+const DEMO_MODEL_URL = '/models/test-model.glb';
 
 
 const Index = () => {
@@ -84,16 +86,23 @@ const Index = () => {
           
 {isMobile && (
   <div className="glass-panel p-4 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
-    <div className="relative w-full h-48 rounded-md overflow-hidden bg-gradient-to-br from-primary/20 via-secondary/30 to-primary/10 flex flex-col items-center justify-center">
-      <Box className="w-16 h-16 text-primary/60 mb-3" />
-      <p className="text-sm text-muted-foreground text-center px-4">
-        Laden Sie Ihr GLB-Modell hoch, um es zu visualisieren und zu vermessen
-      </p>
+    <h3 className="text-sm font-medium mb-2 text-center">Demo-Modell Vorschau</h3>
+    <div className="relative w-full h-48 rounded-md overflow-hidden">
+      <ModelViewer 
+        fileUrl={DEMO_MODEL_URL}
+        fileName="Demo Modell"
+        rotateModel={true}
+        showTools={false}
+      />
     </div>
     <div className="mt-3 flex flex-wrap justify-center gap-2">
+      <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo ansehen">
+        <Eye className="mr-2 h-4 w-4" />
+        Demo ansehen
+      </Button>
       <Button onClick={handleStartClick} aria-label="Viewer öffnen">
         <Upload className="mr-2 h-4 w-4" />
-        Viewer starten
+        Eigenes Modell
       </Button>
     </div>
   </div>
@@ -275,20 +284,26 @@ const Index = () => {
             </div>
           </div>
 
-{/* Preview section (desktop) */}
+{/* Preview section with Demo Model (desktop) */}
 {!isMobile && (
   <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
-    <div className="relative w-full h-80 rounded-md overflow-hidden bg-gradient-to-br from-primary/20 via-secondary/30 to-primary/10 flex flex-col items-center justify-center">
-      <Box className="w-24 h-24 text-primary/60 mb-4" />
-      <h3 className="text-lg font-medium mb-2">3D-Viewer</h3>
-      <p className="text-sm text-muted-foreground text-center px-6 max-w-md">
-        Laden Sie Ihr GLB-Modell hoch, um es interaktiv zu visualisieren, präzise Messungen durchzuführen und professionelle Berichte zu erstellen.
-      </p>
+    <h3 className="text-lg font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
+    <div className="relative w-full h-80 rounded-md overflow-hidden">
+      <ModelViewer 
+        fileUrl={DEMO_MODEL_URL}
+        fileName="Demo Modell"
+        rotateModel={true}
+        showTools={false}
+      />
     </div>
-    <div className="mt-4 flex flex-wrap justify-center gap-2">
+    <div className="mt-4 flex flex-wrap justify-center gap-3">
+      <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo mit Tools ansehen">
+        <Eye className="mr-2 h-4 w-4" />
+        Demo mit Messwerkzeugen
+      </Button>
       <Button onClick={handleStartClick} aria-label="Viewer öffnen">
         <Upload className="mr-2 h-4 w-4" />
-        Viewer starten
+        Eigenes Modell hochladen
       </Button>
     </div>
   </div>
