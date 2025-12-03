@@ -1,35 +1,35 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import ModelViewer from '@/components/ModelViewer';
 import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save, Eye } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-
 import { useIsMobile } from '@/hooks/use-mobile';
-
 const DEMO_MODEL_URL = '/models/test-model.glb';
-
-
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  
   const handleStartClick = () => {
     navigate('/viewer');
   };
-  
   useEffect(() => {
     document.title = "GLB Viewer – Messungen speichern & exportieren";
     const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-    if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'description';
+      document.head.appendChild(meta);
+    }
     meta.content = desc;
     let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
     link.href = window.location.origin + '/';
   }, []);
-  
   return <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-3">
         <div className="text-center mb-2">
@@ -62,13 +62,7 @@ const Index = () => {
             <p className="text-xs md:text-sm text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig und professionell.</p>
           </div>
           <Button asChild>
-            <a
-              href="https://drohnenvermessung-roofergaming.de"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen"
-              title="Drohnenvermessung by RooferGaming"
-            >
+            <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">
               Jetzt Drohnenvermessung ansehen
             </a>
           </Button>
@@ -84,16 +78,10 @@ const Index = () => {
             </div>
           </div>
           
-{isMobile && (
-  <div className="glass-panel p-4 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
+        {isMobile && <div className="glass-panel p-4 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
     <h3 className="text-sm font-medium mb-2 text-center">Demo-Modell Vorschau</h3>
     <div className="relative w-full h-48 rounded-md overflow-hidden">
-      <ModelViewer 
-        fileUrl={DEMO_MODEL_URL}
-        fileName="Demo Modell"
-        rotateModel={true}
-        showTools={false}
-      />
+      <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
     </div>
     <div className="mt-3 flex flex-wrap justify-center gap-2">
       <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo ansehen">
@@ -105,8 +93,7 @@ const Index = () => {
         Eigenes Modell
       </Button>
     </div>
-  </div>
-)}
+  </div>}
           
           <div className="grid grid-cols-1 gap-2">
             <p className="text-xs text-muted-foreground mt-1 mb-1 text-center">
@@ -284,30 +271,20 @@ const Index = () => {
             </div>
           </div>
 
-{/* Preview section with Demo Model (desktop) */}
-{!isMobile && (
-  <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
+        {/* Preview section with Demo Model (desktop) */}
+        {!isMobile && <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
     <h3 className="text-lg font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
     <div className="relative w-full h-80 rounded-md overflow-hidden">
-      <ModelViewer 
-        fileUrl={DEMO_MODEL_URL}
-        fileName="Demo Modell"
-        rotateModel={true}
-        showTools={false}
-      />
+      <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
     </div>
     <div className="mt-4 flex flex-wrap justify-center gap-3">
       <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo mit Tools ansehen">
         <Eye className="mr-2 h-4 w-4" />
         Demo mit Messwerkzeugen
       </Button>
-      <Button onClick={handleStartClick} aria-label="Viewer öffnen">
-        <Upload className="mr-2 h-4 w-4" />
-        Eigenes Modell hochladen
-      </Button>
+      
     </div>
-  </div>
-)}
+  </div>}
         </div>
         
         <footer className="w-full text-center text-xs text-muted-foreground mt-2 mb-0">
@@ -320,5 +297,4 @@ const Index = () => {
       </div>
     </div>;
 };
-
 export default Index;
