@@ -2,8 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
-import ModelViewer from '@/components/ModelViewer';
-import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, ArrowRight, Save } from 'lucide-react';
+import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -14,9 +13,8 @@ const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  const handleDemoClick = () => {
-    const url = `/viewer?fileUrl=${encodeURIComponent('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb')}&fileName=${encodeURIComponent('Demo Modell')}&rotateModel=true`;
-    navigate(url);
+  const handleStartClick = () => {
+    navigate('/viewer');
   };
   
   useEffect(() => {
@@ -85,16 +83,17 @@ const Index = () => {
           </div>
           
 {isMobile && (
-  <div className="glass-panel p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
-    
-    <div className="relative w-full h-80 rounded-md overflow-hidden">
-      
-        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
+  <div className="glass-panel p-4 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
+    <div className="relative w-full h-48 rounded-md overflow-hidden bg-gradient-to-br from-primary/20 via-secondary/30 to-primary/10 flex flex-col items-center justify-center">
+      <Box className="w-16 h-16 text-primary/60 mb-3" />
+      <p className="text-sm text-muted-foreground text-center px-4">
+        Laden Sie Ihr GLB-Modell hoch, um es zu visualisieren und zu vermessen
+      </p>
     </div>
     <div className="mt-3 flex flex-wrap justify-center gap-2">
-      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
-        Demo-Modell ansehen
-        <ArrowRight className="ml-2 h-4 w-4" />
+      <Button onClick={handleStartClick} aria-label="Viewer öffnen">
+        <Upload className="mr-2 h-4 w-4" />
+        Viewer starten
       </Button>
     </div>
   </div>
@@ -276,19 +275,20 @@ const Index = () => {
             </div>
           </div>
 
-{/* Demo model viewer (desktop) */}
+{/* Preview section (desktop) */}
 {!isMobile && (
   <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
-    
-    <div className="relative w-full h-96 rounded-md overflow-hidden">
-      
-        <ModelViewer key="/models/test-model.glb" fileUrl="/models/test-model.glb" fileName="test-model.glb" rotateModel={true} showTools={false} />
-      
+    <div className="relative w-full h-80 rounded-md overflow-hidden bg-gradient-to-br from-primary/20 via-secondary/30 to-primary/10 flex flex-col items-center justify-center">
+      <Box className="w-24 h-24 text-primary/60 mb-4" />
+      <h3 className="text-lg font-medium mb-2">3D-Viewer</h3>
+      <p className="text-sm text-muted-foreground text-center px-6 max-w-md">
+        Laden Sie Ihr GLB-Modell hoch, um es interaktiv zu visualisieren, präzise Messungen durchzuführen und professionelle Berichte zu erstellen.
+      </p>
     </div>
     <div className="mt-4 flex flex-wrap justify-center gap-2">
-      <Button onClick={handleDemoClick} aria-label="Demo-Modell ansehen">
-        Demo-Modell ansehen
-        <ArrowRight className="ml-2 h-4 w-4" />
+      <Button onClick={handleStartClick} aria-label="Viewer öffnen">
+        <Upload className="mr-2 h-4 w-4" />
+        Viewer starten
       </Button>
     </div>
   </div>
