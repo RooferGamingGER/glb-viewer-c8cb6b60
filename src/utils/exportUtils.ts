@@ -255,3 +255,161 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
   
   return summary;
 };
+
+/**
+ * Formats a number for German Excel (comma as decimal separator) with optional unit
+ */
+const formatNumberDE = (value: number, decimals: number = 2, unit?: string): string => {
+  const formatted = value.toFixed(decimals).replace('.', ',');
+  return unit ? `${formatted} ${unit}` : formatted;
+};
+
+/**
+ * Generates a detailed CSV export with sequential numbering and edge lengths
+ */
+export const generateDetailedCSV = (measurements: Measurement[]): string => {
+  // Sort measurements by type priority: area, deductionarea, solar, length, height, others
+  const typePriority: Record<string, number> = {
+    'area': 1,
+    'deductionarea': 2,
+    'solar': 3,
+    'skylight': 4,
+    'chimney': 5,
+    'length': 6,
+    'height': 7,
+    'ridge': 8,
+    'valley': 9,
+    'hip': 10,
+    'eave': 11,
+    'verge': 12,
+    'vent': 13,
+    'hook': 14,
+    'other': 15
+  };
+
+  const sortedMeasurements = [...measurements].sort((a, b) => {
+    const priorityA = typePriority[a.type] || 99;
+    const priorityB = typePriority[b.type] || 99;
+    return priorityA - priorityB;
+  });
+
+  // Group by type for sequential numbering
+  const typeCounters: Record<string, number> = {};
+  
+  // CSV header
+  const lines: string[] = [
+    'Typ;Nr;Fläche;Neigung;Kanten-Nr;Kantentyp;Kantenlänge'
+  ];
+
+  // Totals for summary
+  let totalArea = 0;
+  let totalDeductionArea = 0;
+  let totalEdgeLength = 0;
+  let areaCount = 0;
+  let deductionCount = 0;
+
+  sortedMeasurements.forEach(measurement => {
+    const typeName = getMeasurementTypeDisplayName(measurement.type);
+    
+    // Get sequential number for this type
+    if (!typeCounters[measurement.type]) {
+      typeCounters[measurement.type] = 0;
+    }
+    typeCounters[measurement.type]++;
+    const sequentialNumber = typeCounters[measurement.type];
+
+    // Handle area-type measurements (area, deductionarea, solar, skylight, chimney)
+    if (['area', 'deductionarea', 'solar', 'skylight', 'chimney'].includes(measurement.type)) {
+      const areaValue = formatNumberDE(measurement.value || 0, 2, 'm²');
+      const inclination = measurement.inclination !== undefined 
+        ? formatNumberDE(measurement.inclination, 1, '°') 
+        : '-';
+      
+      // Track totals
+      if (measurement.type === 'area') {
+        totalArea += measurement.value || 0;
+        areaCount++;
+      } else if (measurement.type === 'deductionarea') {
+        totalDeductionArea += measurement.value || 0;
+        deductionCount++;
+      }
+
+      // If there are segments, output each edge
+      if (measurement.segments && measurement.segments.length > 0) {
+        measurement.segments.forEach((segment, index) => {
+          const edgeNumber = index + 1;
+          const edgeType = getSegmentTypeDisplayName(segment.type || 'edge');
+          const edgeLength = formatNumberDE(segment.length || 0, 2, 'm');
+          totalEdgeLength += segment.length || 0;
+          
+          // First line includes area info, subsequent lines only edge info
+          if (index === 0) {
+            lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${edgeNumber};${edgeType};${edgeLength}`);
+          } else {
+            lines.push(`;;;;${edgeNumber};${edgeType};${edgeLength}`);
+          }
+        });
+      } else {
+        // No segments - calculate edge lengths from points
+        const points = measurement.points || [];
+        if (points.length >= 3) {
+          for (let i = 0; i < points.length; i++) {
+            const p1 = points[i];
+            const p2 = points[(i + 1) % points.length];
+            const edgeLength = Math.sqrt(
+              Math.pow(p2.x - p1.x, 2) + 
+              Math.pow(p2.y - p1.y, 2) + 
+              Math.pow(p2.z - p1.z, 2)
+            );
+            totalEdgeLength += edgeLength;
+            
+            if (i === 0) {
+              lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
+            } else {
+              lines.push(`;;;;${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
+            }
+          }
+        } else {
+          lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};-;-;-`);
+        }
+      }
+    }
+    // Handle length-type measurements (length, ridge, valley, hip, eave, verge)
+    else if (['length', 'ridge', 'valley', 'hip', 'eave', 'verge'].includes(measurement.type)) {
+      const lengthValue = formatNumberDE(measurement.value || 0, 2, 'm');
+      totalEdgeLength += measurement.value || 0;
+      lines.push(`${typeName};${sequentialNumber};-;-;-;-;${lengthValue}`);
+    }
+    // Handle height measurements
+    else if (measurement.type === 'height') {
+      const heightValue = formatNumberDE(measurement.value || 0, 2, 'm');
+      lines.push(`${typeName};${sequentialNumber};-;-;-;-;${heightValue}`);
+    }
+    // Handle point-based elements (vent, hook, other)
+    else if (['vent', 'hook', 'other'].includes(measurement.type)) {
+      const position = measurement.position || measurement.points?.[0];
+      const posStr = position 
+        ? `(${formatNumberDE(position.x, 2, 'm')}, ${formatNumberDE(position.y, 2, 'm')}, ${formatNumberDE(position.z, 2, 'm')})` 
+        : '-';
+      lines.push(`${typeName};${sequentialNumber};-;-;-;Position;${posStr}`);
+    }
+  });
+
+  // Add empty line and summary
+  lines.push('');
+  lines.push('--- ZUSAMMENFASSUNG ---;;;;;;');
+  
+  if (areaCount > 0) {
+    lines.push(`Flächen gesamt;${areaCount};${formatNumberDE(totalArea, 2, 'm²')};;;;`);
+  }
+  if (deductionCount > 0) {
+    lines.push(`Abzugsflächen gesamt;${deductionCount};${formatNumberDE(totalDeductionArea, 2, 'm²')};;;;`);
+  }
+  if (areaCount > 0 || deductionCount > 0) {
+    const netArea = totalArea - totalDeductionArea;
+    lines.push(`Netto-Fläche;;${formatNumberDE(netArea, 2, 'm²')};;;;`);
+  }
+  lines.push(`Kanten gesamt;;;;;;${formatNumberDE(totalEdgeLength, 2, 'm')}`);
+
+  return lines.join('\n');
+};
