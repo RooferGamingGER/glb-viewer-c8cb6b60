@@ -346,7 +346,7 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
           if (index === 0) {
             lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${edgeNumber};${edgeType};${edgeLength}`);
           } else {
-            lines.push(`;;;${edgeNumber};${edgeType};${edgeLength}`);
+            lines.push(`;;;;${edgeNumber};${edgeType};${edgeLength}`);
           }
         });
       } else {
@@ -366,7 +366,7 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
             if (i === 0) {
               lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
             } else {
-              lines.push(`;;;${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
+              lines.push(`;;;;${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
             }
           }
         } else {
