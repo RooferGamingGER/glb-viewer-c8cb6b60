@@ -93,25 +93,10 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Core Three.js - separate for better caching
-          'vendor-three': ['three'],
-          // React Three ecosystem
-          'vendor-r3f': ['@react-three/fiber', '@react-three/drei'],
-          // PDF export functionality
-          'vendor-pdf': ['html2pdf.js'],
-          // Canvas utilities
-          'vendor-canvas': ['html2canvas'],
-          // Charts
-          'vendor-charts': ['recharts'],
-          // UI components (radix)
-          'vendor-ui': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-select',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-dropdown-menu'
-          ]
+          three: ['three', '@react-three/fiber', '@react-three/drei'],
+          pdf: ['html2pdf.js'],
+          html2canvas: ['html2canvas'],
+          charts: ['recharts']
         }
       }
     }

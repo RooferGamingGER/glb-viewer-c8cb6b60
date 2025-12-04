@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useDeviceCapabilities } from '@/hooks/useDeviceCapabilities';
-import { useNetworkQuality } from '@/hooks/useNetworkQuality';
 
 /**
  * Performance optimization hook that provides LOD, frustum culling, and adaptive quality
@@ -14,40 +12,22 @@ export const usePerformanceOptimization = (
   renderer: THREE.WebGLRenderer | null
 ) => {
   const isMobile = useIsMobile();
-  const { renderSettings, capabilities, prefersReducedMotion } = useDeviceCapabilities();
-  const { quality: networkQuality, isOnline } = useNetworkQuality();
   const [fps, setFps] = useState(60);
   const [isLowPerformance, setIsLowPerformance] = useState(false);
   const fpsHistory = useRef<number[]>([]);
   const lastTime = useRef(performance.now());
   const frameCount = useRef(0);
-  const isTabVisible = useRef(true);
   
-  // Track tab visibility for render-on-demand
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      isTabVisible.current = document.visibilityState === 'visible';
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-  
-  // Quality settings based on performance, device capabilities, and network
+  // Quality settings based on performance
   const qualitySettings = useMemo(() => {
-    const isLowNetwork = networkQuality === 'low' || networkQuality === 'offline';
-    const isLowDevice = capabilities?.tier === 'low';
-    const shouldOptimize = isLowPerformance || isMobile || isLowDevice || isLowNetwork;
-
-    if (shouldOptimize) {
+    if (isLowPerformance || isMobile) {
       return {
-        pixelRatio: renderSettings.pixelRatio,
-        shadowMapSize: renderSettings.shadowMapSize,
-        antialias: renderSettings.antialias,
+        pixelRatio: Math.min(window.devicePixelRatio, 1),
+        shadowMapSize: 512,
+        antialias: false,
         renderDistance: 50,
         lodLevels: 3,
-        maxLights: renderSettings.maxLights,
-        useEnvironmentMap: renderSettings.useEnvironmentMap,
-        enableAnimations: !prefersReducedMotion,
+        maxLights: 2
       };
     } else {
       return {
@@ -56,12 +36,10 @@ export const usePerformanceOptimization = (
         antialias: true,
         renderDistance: 100,
         lodLevels: 5,
-        maxLights: 4,
-        useEnvironmentMap: true,
-        enableAnimations: !prefersReducedMotion,
+        maxLights: 4
       };
     }
-  }, [isLowPerformance, isMobile, renderSettings, capabilities, networkQuality, prefersReducedMotion]);
+  }, [isLowPerformance, isMobile]);
 
   // FPS monitoring
   useFrame(() => {
@@ -226,11 +204,7 @@ export const usePerformanceOptimization = (
     updateFrustumCulling,
     optimizeScene,
     batchGeometryUpdates,
-    debouncedRender,
-    isTabVisible: isTabVisible.current,
-    prefersReducedMotion,
-    networkQuality,
-    isOnline,
+    debouncedRender
   };
 };
 

@@ -3,40 +3,25 @@ import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import { toast } from 'sonner';
 
-interface MemoryUsage {
-  usedJSHeapSize: number;
-  totalJSHeapSize: number;
-  jsHeapSizeLimit: number;
-}
-
 /**
  * Memory optimization hook that provides memory monitoring and cleanup utilities
- * Enhanced with device memory detection and aggressive cleanup for low-memory devices
  */
 export const useMemoryOptimization = () => {
-  const [memoryUsage, setMemoryUsage] = useState<MemoryUsage | null>(null);
+  const [memoryUsage, setMemoryUsage] = useState<{
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  } | null>(null);
+  
   const [isLowMemory, setIsLowMemory] = useState(false);
-  const [deviceMemoryGB, setDeviceMemoryGB] = useState<number | null>(null);
   const memoryCheckInterval = useRef<NodeJS.Timeout | null>(null);
   const disposedObjects = useRef<Set<THREE.Object3D>>(new Set());
-  const warningShown = useRef(false);
 
-  // Detect device memory on mount
-  useEffect(() => {
-    if ('deviceMemory' in navigator) {
-      setDeviceMemoryGB(navigator.deviceMemory || null);
-      // Pre-emptively set low memory mode for devices with < 4GB RAM
-      if (navigator.deviceMemory && navigator.deviceMemory < 4) {
-        setIsLowMemory(true);
-      }
-    }
-  }, []);
-
-  // Monitor memory usage with adaptive threshold
+  // Monitor memory usage
   const checkMemoryUsage = useCallback(() => {
     if ('memory' in performance) {
       const memory = (performance as any).memory;
-      const usage: MemoryUsage = {
+      const usage = {
         usedJSHeapSize: memory.usedJSHeapSize,
         totalJSHeapSize: memory.totalJSHeapSize,
         jsHeapSizeLimit: memory.jsHeapSizeLimit
@@ -44,35 +29,30 @@ export const useMemoryOptimization = () => {
       
       setMemoryUsage(usage);
       
-      // Adaptive threshold based on device memory
-      const threshold = deviceMemoryGB && deviceMemoryGB < 4 ? 0.7 : 0.8;
+      // Check if memory usage is above 80%
       const memoryRatio = usage.usedJSHeapSize / usage.jsHeapSizeLimit;
-      const newIsLowMemory = memoryRatio > threshold;
+      const newIsLowMemory = memoryRatio > 0.8;
       
-      if (newIsLowMemory && !warningShown.current) {
+      if (newIsLowMemory && !isLowMemory) {
         toast.warning('Hoher Speicherverbrauch erkannt. Optimierungen werden angewendet.');
-        warningShown.current = true;
-      } else if (!newIsLowMemory) {
-        warningShown.current = false;
       }
       
       setIsLowMemory(newIsLowMemory);
     }
-  }, [deviceMemoryGB]);
+  }, [isLowMemory]);
 
-  // Start memory monitoring with adaptive frequency
+  // Start memory monitoring with debounced checks
   useEffect(() => {
     checkMemoryUsage();
-    // Check more frequently on low-memory devices
-    const interval = deviceMemoryGB && deviceMemoryGB < 4 ? 3000 : 5000;
-    memoryCheckInterval.current = setInterval(checkMemoryUsage, interval);
+    // Reduce frequency to prevent performance issues
+    memoryCheckInterval.current = setInterval(checkMemoryUsage, 5000);
     
     return () => {
       if (memoryCheckInterval.current) {
         clearInterval(memoryCheckInterval.current);
       }
     };
-  }, [deviceMemoryGB]); // Re-create interval if device memory detection changes
+  }, []); // Remove checkMemoryUsage dependency to prevent re-creation
 
   // Comprehensive dispose function for Three.js objects
   const disposeObject = useCallback((obj: THREE.Object3D) => {
@@ -178,7 +158,6 @@ export const useMemoryOptimization = () => {
   return {
     memoryUsage,
     isLowMemory,
-    deviceMemoryGB,
     disposeObject,
     disposeMaterial,
     clearGLTFCache,
