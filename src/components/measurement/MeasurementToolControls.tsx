@@ -29,6 +29,7 @@ import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
+import { generateDetailedCSV } from '@/utils/exportUtils';
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -107,22 +108,12 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
       return;
     }
     
-    // CSV headers
-    let csvContent = 'ID,Typ,Wert,Punkte\n';
+    // Generate detailed CSV content
+    const csvContent = generateDetailedCSV(measurements);
     
-    // Add each measurement
-    measurements.forEach(m => {
-      const type = m.type;
-      const value = m.value || 0;
-      const pointsStr = m.points ? m.points.map((p: any) => 
-        `(${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)})`
-      ).join(' ') : '';
-      
-      csvContent += `${m.id},"${type}",${value.toFixed(2)},"${pointsStr}"\n`;
-    });
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Create download link with BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
