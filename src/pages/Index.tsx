@@ -1,17 +1,42 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import ModelViewer from '@/components/ModelViewer';
-import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save, Eye } from 'lucide-react';
+import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save, Eye, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from '@/hooks/use-mobile';
+
 const DEMO_MODEL_URL = '/models/test-model.glb';
+
+// Fallback when demo isn't available
+const DemoFallback = ({ loading }: { loading?: boolean }) => (
+  <div className="flex flex-col items-center justify-center h-full bg-muted/30 rounded-lg">
+    {loading ? (
+      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+    ) : (
+      <>
+        <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
+        <p className="text-xs text-muted-foreground">Demo nicht verfügbar</p>
+      </>
+    )}
+  </div>
+);
+
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [demoAvailable, setDemoAvailable] = useState<boolean | null>(null);
+  
   const handleStartClick = () => {
     navigate('/viewer');
   };
+  
+  // Check if demo model exists before trying to load it
+  useEffect(() => {
+    fetch(DEMO_MODEL_URL, { method: 'HEAD' })
+      .then(res => setDemoAvailable(res.ok))
+      .catch(() => setDemoAvailable(false));
+  }, []);
   useEffect(() => {
     document.title = "GLB Viewer – Messungen speichern & exportieren";
     const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
@@ -81,7 +106,11 @@ const Index = () => {
         {isMobile && <div className="glass-panel p-4 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
     <h3 className="text-sm font-medium mb-2 text-center">Demo-Modell Vorschau</h3>
     <div className="relative w-full h-48 rounded-md overflow-hidden">
-      <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+      {demoAvailable === true ? (
+        <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+      ) : (
+        <DemoFallback loading={demoAvailable === null} />
+      )}
     </div>
     <div className="mt-3 flex flex-wrap justify-center gap-2">
       <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo ansehen">
@@ -275,7 +304,11 @@ const Index = () => {
         {!isMobile && <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
     <h3 className="text-lg font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
     <div className="relative w-full h-80 rounded-md overflow-hidden">
-      <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+      {demoAvailable === true ? (
+        <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+      ) : (
+        <DemoFallback loading={demoAvailable === null} />
+      )}
     </div>
     <div className="mt-4 flex flex-wrap justify-center gap-3">
       <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo mit Tools ansehen">
