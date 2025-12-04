@@ -57,23 +57,19 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
       return;
     }
     
-    // For non-blob URLs, implement actual fetching and processing
+    // For non-blob URLs, validate and process
     const fetchAndProcessModel = async () => {
       try {
-        // Simulate processing with stable progress
-        let currentProgress = 0;
-        const progressInterval = setInterval(() => {
-          currentProgress = Math.min(currentProgress + 10, 95);
-          setState(prev => ({
-            ...prev,
-            progress: currentProgress
-          }));
-        }, 200);
+        setState(prev => ({ ...prev, progress: 20 }));
         
-        // Simulate async processing
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Validate URL is reachable before passing to Three.js
+        const response = await fetch(stableFileUrl, { method: 'HEAD' });
         
-        clearInterval(progressInterval);
+        if (!response.ok) {
+          throw new Error(`Model not found (${response.status})`);
+        }
+        
+        setState(prev => ({ ...prev, progress: 80 }));
         
         // Cache the result
         processedUrls.set(stableFileUrl, stableFileUrl);
@@ -85,13 +81,14 @@ export const useModelLoader = (fileUrl: string, fileName: string, shouldRotate: 
           error: null
         });
         
-      } catch (error) {
-        setState(prev => ({
-          ...prev,
+      } catch (error: any) {
+        console.warn('Model loading failed:', error.message);
+        setState({
+          processedUrl: null,
           loading: false,
-          error: `Failed to load model: ${error.message || error}`
-        }));
-        toast.error(`Fehler beim Laden des Modells: ${error.message || error}`);
+          progress: 0,
+          error: `Model nicht verfügbar: ${error.message || error}`
+        });
       }
     };
     
