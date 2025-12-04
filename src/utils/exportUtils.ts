@@ -257,6 +257,14 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
 };
 
 /**
+ * Formats a number for German Excel (comma as decimal separator) with optional unit
+ */
+const formatNumberDE = (value: number, decimals: number = 2, unit?: string): string => {
+  const formatted = value.toFixed(decimals).replace('.', ',');
+  return unit ? `${formatted} ${unit}` : formatted;
+};
+
+/**
  * Generates a detailed CSV export with sequential numbering and edge lengths
  */
 export const generateDetailedCSV = (measurements: Measurement[]): string => {
@@ -290,7 +298,7 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
   
   // CSV header
   const lines: string[] = [
-    'Typ;Nr;Fläche (m²);Neigung (°);Kanten-Nr;Kantentyp;Kantenlänge (m)'
+    'Typ;Nr;Fläche;Neigung;Kanten-Nr;Kantentyp;Kantenlänge'
   ];
 
   // Totals for summary
@@ -312,8 +320,10 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
 
     // Handle area-type measurements (area, deductionarea, solar, skylight, chimney)
     if (['area', 'deductionarea', 'solar', 'skylight', 'chimney'].includes(measurement.type)) {
-      const areaValue = measurement.value?.toFixed(2) || '0.00';
-      const inclination = measurement.inclination !== undefined ? measurement.inclination.toFixed(1) : '-';
+      const areaValue = formatNumberDE(measurement.value || 0, 2, 'm²');
+      const inclination = measurement.inclination !== undefined 
+        ? formatNumberDE(measurement.inclination, 1, '°') 
+        : '-';
       
       // Track totals
       if (measurement.type === 'area') {
@@ -329,14 +339,14 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
         measurement.segments.forEach((segment, index) => {
           const edgeNumber = index + 1;
           const edgeType = getSegmentTypeDisplayName(segment.type || 'edge');
-          const edgeLength = segment.length?.toFixed(2) || '0.00';
+          const edgeLength = formatNumberDE(segment.length || 0, 2, 'm');
           totalEdgeLength += segment.length || 0;
           
           // First line includes area info, subsequent lines only edge info
           if (index === 0) {
             lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${edgeNumber};${edgeType};${edgeLength}`);
           } else {
-            lines.push(`;;;;;;${edgeNumber};${edgeType};${edgeLength}`);
+            lines.push(`;;;${edgeNumber};${edgeType};${edgeLength}`);
           }
         });
       } else {
@@ -354,9 +364,9 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
             totalEdgeLength += edgeLength;
             
             if (i === 0) {
-              lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${i + 1};Kante;${edgeLength.toFixed(2)}`);
+              lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
             } else {
-              lines.push(`;;;;;;${i + 1};Kante;${edgeLength.toFixed(2)}`);
+              lines.push(`;;;${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
             }
           }
         } else {
@@ -366,38 +376,40 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
     }
     // Handle length-type measurements (length, ridge, valley, hip, eave, verge)
     else if (['length', 'ridge', 'valley', 'hip', 'eave', 'verge'].includes(measurement.type)) {
-      const lengthValue = measurement.value?.toFixed(2) || '0.00';
+      const lengthValue = formatNumberDE(measurement.value || 0, 2, 'm');
       totalEdgeLength += measurement.value || 0;
       lines.push(`${typeName};${sequentialNumber};-;-;-;-;${lengthValue}`);
     }
     // Handle height measurements
     else if (measurement.type === 'height') {
-      const heightValue = measurement.value?.toFixed(2) || '0.00';
+      const heightValue = formatNumberDE(measurement.value || 0, 2, 'm');
       lines.push(`${typeName};${sequentialNumber};-;-;-;-;${heightValue}`);
     }
     // Handle point-based elements (vent, hook, other)
     else if (['vent', 'hook', 'other'].includes(measurement.type)) {
       const position = measurement.position || measurement.points?.[0];
-      const posStr = position ? `(${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})` : '-';
+      const posStr = position 
+        ? `(${formatNumberDE(position.x, 2, 'm')}, ${formatNumberDE(position.y, 2, 'm')}, ${formatNumberDE(position.z, 2, 'm')})` 
+        : '-';
       lines.push(`${typeName};${sequentialNumber};-;-;-;Position;${posStr}`);
     }
   });
 
   // Add empty line and summary
   lines.push('');
-  lines.push('--- ZUSAMMENFASSUNG ---;;;;');
+  lines.push('--- ZUSAMMENFASSUNG ---;;;;;;');
   
   if (areaCount > 0) {
-    lines.push(`Flächen gesamt;${areaCount};${totalArea.toFixed(2)};;;;`);
+    lines.push(`Flächen gesamt;${areaCount};${formatNumberDE(totalArea, 2, 'm²')};;;;`);
   }
   if (deductionCount > 0) {
-    lines.push(`Abzugsflächen gesamt;${deductionCount};${totalDeductionArea.toFixed(2)};;;;`);
+    lines.push(`Abzugsflächen gesamt;${deductionCount};${formatNumberDE(totalDeductionArea, 2, 'm²')};;;;`);
   }
   if (areaCount > 0 || deductionCount > 0) {
     const netArea = totalArea - totalDeductionArea;
-    lines.push(`Netto-Fläche;;${netArea.toFixed(2)};;;;`);
+    lines.push(`Netto-Fläche;;${formatNumberDE(netArea, 2, 'm²')};;;;`);
   }
-  lines.push(`Kanten gesamt;;;;;;${totalEdgeLength.toFixed(2)}`);
+  lines.push(`Kanten gesamt;;;;;;${formatNumberDE(totalEdgeLength, 2, 'm')}`);
 
   return lines.join('\n');
 };
