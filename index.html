@@ -39,6 +39,12 @@
     <!-- Microsoft -->
     <meta name="msapplication-config" content="/browserconfig.xml" />
     <meta name="msapplication-TileColor" content="#3b82f6" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossorigin="anonymous" />
+    <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="script" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
   </head>
 
   <body>
