@@ -411,5 +411,65 @@ export const generateDetailedCSV = (measurements: Measurement[]): string => {
   }
   lines.push(`Kanten gesamt;;;;;;${formatNumberDE(totalEdgeLength, 2, 'm')}`);
 
+  // Append calculation methods explanation
+  lines.push(...getCalculationMethodsExplanation());
+
   return lines.join('\n');
+};
+
+/**
+ * Returns explanation text for calculation methods used in area measurements
+ */
+export const getCalculationMethodsExplanation = (): string[] => {
+  return [
+    '',
+    '',
+    '=== ANHANG: BERECHNUNGSMETHODEN ===',
+    '',
+    '** Flächenberechnung bei Dreiecken (3 Eckpunkte) **',
+    'Verwendet wird die Heronsche Formel, benannt nach dem griechischen Mathematiker Heron von Alexandria.',
+    'Diese Formel ermöglicht die Berechnung der Fläche eines Dreiecks allein aus den drei Seitenlängen.',
+    '',
+    'Schritt 1: Alle drei Seitenlängen messen (a, b, c)',
+    'Schritt 2: Den halben Umfang berechnen: s = (a + b + c) / 2',
+    'Schritt 3: Die Fläche berechnen: A = Wurzel(s × (s-a) × (s-b) × (s-c))',
+    '',
+    'Beispiel:',
+    '  Seiten: a = 3,00 m, b = 4,00 m, c = 5,00 m',
+    '  Halbumfang: s = (3 + 4 + 5) / 2 = 6 m',
+    '  Fläche: A = Wurzel(6 × 3 × 2 × 1) = Wurzel(36) = 6,00 m²',
+    '',
+    '',
+    '** Flächenberechnung bei Vierecken (4 Eckpunkte) **',
+    'Die Fläche wird durch Aufteilung in zwei Dreiecke berechnet.',
+    '',
+    'Schritt 1: Das Viereck wird diagonal in zwei Dreiecke geteilt',
+    'Schritt 2: Jedes Dreieck wird mit der Heronschen Formel berechnet',
+    'Schritt 3: Beide Dreiecksflächen werden addiert',
+    '',
+    'Formel: Fläche = Dreieck 1 + Dreieck 2',
+    '',
+    '',
+    '** Flächenberechnung bei Polygonen (5+ Eckpunkte) **',
+    'Komplexe Formen werden durch "Triangulation" berechnet - die Zerlegung in mehrere Dreiecke.',
+    '',
+    'Schritt 1: Das Polygon wird automatisch in einzelne Dreiecke zerlegt',
+    'Schritt 2: Jedes Dreieck wird mit der Heronschen Formel berechnet',
+    'Schritt 3: Alle Dreiecksflächen werden summiert',
+    '',
+    'Beispiel: Ein Fünfeck wird in 3 Dreiecke zerlegt',
+    '          Fläche = Dreieck 1 + Dreieck 2 + Dreieck 3',
+    '',
+    'Hinweis: Die Anzahl der Dreiecke bei einem Polygon mit n Ecken beträgt n-2.',
+    '',
+    '',
+    '** Neigungsberechnung **',
+    'Die Dachneigung wird aus dem Winkel zwischen der Flächennormale',
+    'und der vertikalen Achse (Y-Achse) berechnet.',
+    '',
+    '0° = waagerechte Fläche (Flachdach)',
+    '45° = geneigte Fläche (typisches Satteldach)',
+    '90° = senkrechte Fläche (Wand)',
+    ''
+  ];
 };
