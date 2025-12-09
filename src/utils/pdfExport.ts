@@ -79,6 +79,194 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
 };
 
 /**
+ * Creates the calculation methods explanation section for the PDF appendix
+ */
+const createCalculationMethodsSection = (): HTMLElement => {
+  const container = document.createElement('div');
+  container.style.pageBreakBefore = 'always';
+  container.style.marginTop = '20px';
+  
+  const title = document.createElement('h2');
+  title.textContent = 'Anhang: Berechnungsmethoden';
+  title.style.marginBottom = '20px';
+  title.style.color = '#333';
+  container.appendChild(title);
+  
+  const intro = document.createElement('p');
+  intro.textContent = 'Die folgenden Formeln und Methoden werden zur Berechnung der Dachflächen verwendet:';
+  intro.style.marginBottom = '20px';
+  intro.style.color = '#666';
+  container.appendChild(intro);
+  
+  // Triangle section
+  const triangleSection = document.createElement('div');
+  triangleSection.style.marginBottom = '25px';
+  triangleSection.style.padding = '15px';
+  triangleSection.style.backgroundColor = '#f8f9fa';
+  triangleSection.style.borderRadius = '8px';
+  triangleSection.style.border = '1px solid #e9ecef';
+  
+  const triangleTitle = document.createElement('h3');
+  triangleTitle.textContent = 'Dreiecke (3 Eckpunkte) – Heronsche Formel';
+  triangleTitle.style.marginBottom = '10px';
+  triangleTitle.style.color = '#2563eb';
+  triangleSection.appendChild(triangleTitle);
+  
+  const triangleDesc = document.createElement('p');
+  triangleDesc.textContent = 'Benannt nach dem griechischen Mathematiker Heron von Alexandria. Diese Formel ermöglicht die Berechnung der Fläche eines Dreiecks allein aus den drei Seitenlängen (a, b, c).';
+  triangleDesc.style.marginBottom = '10px';
+  triangleSection.appendChild(triangleDesc);
+  
+  const triangleSteps = document.createElement('div');
+  triangleSteps.style.fontFamily = 'monospace';
+  triangleSteps.style.backgroundColor = '#fff';
+  triangleSteps.style.padding = '10px';
+  triangleSteps.style.borderRadius = '4px';
+  triangleSteps.style.marginBottom = '10px';
+  triangleSteps.innerHTML = `
+    <strong>Schritt 1:</strong> Halbumfang berechnen<br/>
+    <span style="margin-left: 20px;">s = (a + b + c) ÷ 2</span><br/><br/>
+    <strong>Schritt 2:</strong> Fläche berechnen<br/>
+    <span style="margin-left: 20px;">A = √(s × (s-a) × (s-b) × (s-c))</span>
+  `;
+  triangleSection.appendChild(triangleSteps);
+  
+  const triangleExample = document.createElement('div');
+  triangleExample.style.backgroundColor = '#e7f3ff';
+  triangleExample.style.padding = '10px';
+  triangleExample.style.borderRadius = '4px';
+  triangleExample.innerHTML = `
+    <strong>Beispiel:</strong><br/>
+    Seiten: a = 3,00 m, b = 4,00 m, c = 5,00 m<br/>
+    Halbumfang: s = (3 + 4 + 5) ÷ 2 = 6 m<br/>
+    Fläche: A = √(6 × 3 × 2 × 1) = √36 = <strong>6,00 m²</strong>
+  `;
+  triangleSection.appendChild(triangleExample);
+  
+  container.appendChild(triangleSection);
+  
+  // Quadrilateral section
+  const quadSection = document.createElement('div');
+  quadSection.style.marginBottom = '25px';
+  quadSection.style.padding = '15px';
+  quadSection.style.backgroundColor = '#f8f9fa';
+  quadSection.style.borderRadius = '8px';
+  quadSection.style.border = '1px solid #e9ecef';
+  
+  const quadTitle = document.createElement('h3');
+  quadTitle.textContent = 'Vierecke (4 Eckpunkte) – Dreieckszerlegung';
+  quadTitle.style.marginBottom = '10px';
+  quadTitle.style.color = '#16a34a';
+  quadSection.appendChild(quadTitle);
+  
+  const quadDesc = document.createElement('p');
+  quadDesc.textContent = 'Die Fläche eines Vierecks wird durch Aufteilung in zwei Dreiecke berechnet. Eine Diagonale teilt das Viereck, und beide Teilflächen werden separat berechnet.';
+  quadDesc.style.marginBottom = '10px';
+  quadSection.appendChild(quadDesc);
+  
+  const quadSteps = document.createElement('div');
+  quadSteps.style.fontFamily = 'monospace';
+  quadSteps.style.backgroundColor = '#fff';
+  quadSteps.style.padding = '10px';
+  quadSteps.style.borderRadius = '4px';
+  quadSteps.innerHTML = `
+    <strong>Schritt 1:</strong> Viereck diagonal teilen<br/>
+    <strong>Schritt 2:</strong> Beide Dreiecke mit Heronscher Formel berechnen<br/>
+    <strong>Schritt 3:</strong> Flächen addieren<br/><br/>
+    <span style="margin-left: 20px;">Gesamtfläche = Dreieck₁ + Dreieck₂</span>
+  `;
+  quadSection.appendChild(quadSteps);
+  
+  container.appendChild(quadSection);
+  
+  // Polygon section
+  const polySection = document.createElement('div');
+  polySection.style.marginBottom = '25px';
+  polySection.style.padding = '15px';
+  polySection.style.backgroundColor = '#f8f9fa';
+  polySection.style.borderRadius = '8px';
+  polySection.style.border = '1px solid #e9ecef';
+  
+  const polyTitle = document.createElement('h3');
+  polyTitle.textContent = 'Polygone (5+ Eckpunkte) – Triangulation';
+  polyTitle.style.marginBottom = '10px';
+  polyTitle.style.color = '#9333ea';
+  polySection.appendChild(polyTitle);
+  
+  const polyDesc = document.createElement('p');
+  polyDesc.textContent = 'Komplexe Formen werden durch "Triangulation" berechnet – die automatische Zerlegung in mehrere Dreiecke.';
+  polyDesc.style.marginBottom = '10px';
+  polySection.appendChild(polyDesc);
+  
+  const polySteps = document.createElement('div');
+  polySteps.style.fontFamily = 'monospace';
+  polySteps.style.backgroundColor = '#fff';
+  polySteps.style.padding = '10px';
+  polySteps.style.borderRadius = '4px';
+  polySteps.innerHTML = `
+    <strong>Schritt 1:</strong> Polygon automatisch in Dreiecke zerlegen<br/>
+    <strong>Schritt 2:</strong> Jedes Dreieck mit Heronscher Formel berechnen<br/>
+    <strong>Schritt 3:</strong> Alle Dreiecksflächen summieren<br/><br/>
+    <span style="margin-left: 20px;">Gesamtfläche = Σ aller Dreiecksflächen</span>
+  `;
+  polySection.appendChild(polySteps);
+  
+  const polyNote = document.createElement('div');
+  polyNote.style.backgroundColor = '#fef3c7';
+  polyNote.style.padding = '10px';
+  polyNote.style.borderRadius = '4px';
+  polyNote.style.marginTop = '10px';
+  polyNote.innerHTML = `
+    <strong>Hinweis:</strong> Ein Polygon mit n Ecken wird in (n-2) Dreiecke zerlegt.<br/>
+    Beispiel: Fünfeck → 3 Dreiecke, Sechseck → 4 Dreiecke
+  `;
+  polySection.appendChild(polyNote);
+  
+  container.appendChild(polySection);
+  
+  // Inclination section
+  const inclinationSection = document.createElement('div');
+  inclinationSection.style.padding = '15px';
+  inclinationSection.style.backgroundColor = '#f8f9fa';
+  inclinationSection.style.borderRadius = '8px';
+  inclinationSection.style.border = '1px solid #e9ecef';
+  
+  const inclinationTitle = document.createElement('h3');
+  inclinationTitle.textContent = 'Neigungsberechnung';
+  inclinationTitle.style.marginBottom = '10px';
+  inclinationTitle.style.color = '#ea580c';
+  inclinationSection.appendChild(inclinationTitle);
+  
+  const inclinationDesc = document.createElement('p');
+  inclinationDesc.textContent = 'Die Dachneigung wird aus dem Winkel zwischen der Flächennormale und der vertikalen Achse (Y-Achse) berechnet.';
+  inclinationDesc.style.marginBottom = '10px';
+  inclinationSection.appendChild(inclinationDesc);
+  
+  const inclinationTable = document.createElement('table');
+  inclinationTable.style.width = '100%';
+  inclinationTable.style.borderCollapse = 'collapse';
+  inclinationTable.innerHTML = `
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #e9ecef;"><strong>0°</strong></td>
+      <td style="padding: 8px; border: 1px solid #e9ecef;">Waagerechte Fläche (Flachdach)</td>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #e9ecef;"><strong>30° – 45°</strong></td>
+      <td style="padding: 8px; border: 1px solid #e9ecef;">Typisches geneigtes Dach</td>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #e9ecef;"><strong>90°</strong></td>
+      <td style="padding: 8px; border: 1px solid #e9ecef;">Senkrechte Fläche (Wand)</td>
+    </tr>
+  `;
+  inclinationSection.appendChild(inclinationTable);
+  
+  container.appendChild(inclinationSection);
+  
+  return container;
+};
+
+/**
  * Creates a total area summary section for the PDF
  */
 const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
@@ -1625,6 +1813,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         container.appendChild(segmentSummary);
       }
     }
+    
+    // Add calculation methods appendix
+    const calculationMethodsSection = createCalculationMethodsSection();
+    container.appendChild(calculationMethodsSection);
     
     const options = {
       margin: 10,
