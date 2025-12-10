@@ -22,8 +22,8 @@ const Test = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const { showTutorial, setShowTutorial } = useTutorial();
   
-  // Use a publicly available demo model (DamagedHelmet from glTF-Sample-Models)
-  const testModelUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb';
+  // Use local demo model
+  const testModelUrl = '/models/test-model.glb';
   const testModelName = 'Demo Modell';
 
   // Close mobile menu when orientation changes
