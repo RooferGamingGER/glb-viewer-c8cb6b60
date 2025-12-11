@@ -13,10 +13,10 @@ import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 
-// Configure GLTF DRACO decoder path to enable loading compressed models
+// Configure GLTF DRACO decoder path using Google's CDN for reliable loading
 try {
   // @ts-ignore - setDecoderPath is available on useGLTF in drei
-  useGLTF.setDecoderPath('/draco/');
+  useGLTF.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 } catch {}
 
 
