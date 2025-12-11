@@ -30,20 +30,11 @@ type ModelViewerProps = {
   showTools?: boolean;
 };
 
-// Enhanced Loader3D with progressive loading integration
+// Enhanced Loader3D with progressive loading integration - unified single loader
 function Loader3D({ fileUrl }: { fileUrl?: string }) {
-  const { progress: dreiProgress, errors } = useProgress();
+  const { progress: dreiProgress, errors, active: dreiActive } = useProgress();
   const progressiveLoader = useProgressiveModelLoader(fileUrl || null);
-  
-  // Combine drei progress with our progressive loader for best UX
-  const combinedProgress = useMemo(() => {
-    // If progressive loader is active and has better data, use it
-    if (progressiveLoader.isLoading) {
-      return progressiveLoader.progress;
-    }
-    // Fallback to drei progress
-    return dreiProgress;
-  }, [progressiveLoader.isLoading, progressiveLoader.progress, dreiProgress]);
+  const hasShownProgressiveRef = useRef(false);
   
   // Show error if any
   useEffect(() => {
@@ -51,38 +42,53 @@ function Loader3D({ fileUrl }: { fileUrl?: string }) {
       smartToast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
+  
+  // Track if progressive loader was shown
+  useEffect(() => {
+    if (progressiveLoader.isLoading) {
+      hasShownProgressiveRef.current = true;
+    }
+  }, [progressiveLoader.isLoading]);
 
-  // Use ProgressiveLoader3D for rich loading UI
-  if (progressiveLoader.isLoading || progressiveLoader.hasError) {
-    return (
-      <>
-        <ProgressiveLoader3D
-          phase={progressiveLoader.phase}
-          progress={progressiveLoader.progress}
-          phaseProgress={progressiveLoader.phaseProgress}
-          downloadedBytes={progressiveLoader.downloadedBytes}
-          totalBytes={progressiveLoader.totalBytes}
-          downloadSpeed={progressiveLoader.downloadSpeed}
-          estimatedTimeRemaining={progressiveLoader.estimatedTimeRemaining}
-          error={progressiveLoader.error}
-          onCancel={progressiveLoader.cancel}
-        />
-        <BoundingBoxPlaceholder visible={true} estimatedSize={5} />
-      </>
-    );
+  // Calculate effective progress - always use progressive loader style
+  const effectiveProgress = useMemo(() => {
+    if (progressiveLoader.isLoading) {
+      return progressiveLoader.progress;
+    }
+    // Progressive finished but drei still loading - show 95-99%
+    if (hasShownProgressiveRef.current && dreiActive) {
+      return Math.max(95, Math.min(99, dreiProgress));
+    }
+    return dreiProgress;
+  }, [progressiveLoader.isLoading, progressiveLoader.progress, dreiProgress, dreiActive]);
+
+  // Show loader while progressive is active OR while drei still loading after progressive finished
+  const showLoader = progressiveLoader.isLoading || 
+    progressiveLoader.hasError || 
+    (hasShownProgressiveRef.current && dreiActive);
+
+  if (!showLoader) {
+    return null;
   }
 
-  // Fallback to simple loader if progressive loader completed but model still loading
+  // Always use ProgressiveLoader3D - never show the old fallback
   return (
-    <Html center>
-      <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
-        <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
-        <div className="text-sm font-medium mb-2">
-          {combinedProgress.toFixed(0)}% geladen
-        </div>
-        <Progress value={combinedProgress} className="w-48" />
-      </div>
-    </Html>
+    <>
+      <ProgressiveLoader3D
+        phase={progressiveLoader.isLoading ? progressiveLoader.phase : 'finalizing'}
+        progress={effectiveProgress}
+        phaseProgress={progressiveLoader.isLoading ? progressiveLoader.phaseProgress : 95}
+        downloadedBytes={progressiveLoader.downloadedBytes}
+        totalBytes={progressiveLoader.totalBytes}
+        downloadSpeed={progressiveLoader.downloadSpeed}
+        estimatedTimeRemaining={null}
+        error={progressiveLoader.error}
+        onCancel={progressiveLoader.cancel}
+      />
+      {progressiveLoader.isLoading && (
+        <BoundingBoxPlaceholder visible={true} estimatedSize={5} />
+      )}
+    </>
   );
 }
 
