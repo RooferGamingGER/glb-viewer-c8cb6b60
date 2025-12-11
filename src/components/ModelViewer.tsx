@@ -12,11 +12,14 @@ import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
+import { ProgressiveLoader3D } from '@/components/ProgressiveLoader3D';
+import { BoundingBoxPlaceholder } from '@/components/BoundingBoxPlaceholder';
+import { useProgressiveModelLoader, formatBytes } from '@/hooks/useProgressiveModelLoader';
 
-// Configure GLTF DRACO decoder path to enable loading compressed models
+// Configure GLTF DRACO decoder path using Google's CDN for reliable loading
 try {
   // @ts-ignore - setDecoderPath is available on useGLTF in drei
-  useGLTF.setDecoderPath('/draco/');
+  useGLTF.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 } catch {}
 
 
@@ -27,19 +30,11 @@ type ModelViewerProps = {
   showTools?: boolean;
 };
 
+// Enhanced Loader3D with progressive loading integration - unified single loader
 function Loader3D({ fileUrl }: { fileUrl?: string }) {
-  const { progress, errors, item, loaded, total } = useProgress();
-  const [smoothProgress, setSmoothProgress] = useState(0);
-  
-  // Smooth progress to prevent backwards jumps
-  useEffect(() => {
-    setSmoothProgress(prev => Math.max(prev, progress));
-  }, [progress]);
-  
-  // Reset smooth progress when starting new load
-  useEffect(() => {
-    setSmoothProgress(0);
-  }, [fileUrl]);
+  const { progress: dreiProgress, errors, active: dreiActive } = useProgress();
+  const progressiveLoader = useProgressiveModelLoader(fileUrl || null);
+  const hasShownProgressiveRef = useRef(false);
   
   // Show error if any
   useEffect(() => {
@@ -47,39 +42,54 @@ function Loader3D({ fileUrl }: { fileUrl?: string }) {
       smartToast.error(`Fehler beim Laden: ${errors[0]}`);
     }
   }, [errors]);
+  
+  // Track if progressive loader was shown
+  useEffect(() => {
+    if (progressiveLoader.isLoading) {
+      hasShownProgressiveRef.current = true;
+    }
+  }, [progressiveLoader.isLoading]);
 
-  // Detect if this is a blob URL (local file) vs external URL
-  const isBlobUrl = fileUrl?.startsWith('blob:') ?? false;
-  
-  // For blob URLs, don't show MB info if it's 0/0, show processing message instead
-  const shouldShowMBInfo = !isBlobUrl && total > 0 && !(loaded === 0 && total === 0);
-  
-  // Determine if this is a large file
-  const isLargeFile = total > 20 * 1024 * 1024 || (isBlobUrl && smoothProgress > 90);
-  const loadedMB = loaded ? (loaded / (1024 * 1024)).toFixed(1) : '0';
-  const totalMB = total ? (total / (1024 * 1024)).toFixed(1) : '?';
-  
-  return <Html center>
-      <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
-        <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
-        <div className="text-sm font-medium mb-2">
-          {smoothProgress.toFixed(0)}% geladen
-          {shouldShowMBInfo && ` (${loadedMB}/${totalMB} MB)`}
-        </div>
-        {isBlobUrl && smoothProgress > 50 && (
-          <div className="text-xs text-muted-foreground mb-2">
-            {smoothProgress > 95 ? 'Große Datei wird verarbeitet...' : 'Lokale Datei wird geladen...'}
-          </div>
-        )}
-        {!isBlobUrl && isLargeFile && smoothProgress > 95 && (
-          <div className="text-xs text-muted-foreground mb-2">
-            Große Datei wird verarbeitet...
-          </div>
-        )}
-        <Progress value={smoothProgress} className="w-48" />
-        {/* URL display hidden during loading for cleaner UX */}
-      </div>
-    </Html>;
+  // Calculate effective progress - always use progressive loader style
+  const effectiveProgress = useMemo(() => {
+    if (progressiveLoader.isLoading) {
+      return progressiveLoader.progress;
+    }
+    // Progressive finished but drei still loading - show 95-99%
+    if (hasShownProgressiveRef.current && dreiActive) {
+      return Math.max(95, Math.min(99, dreiProgress));
+    }
+    return dreiProgress;
+  }, [progressiveLoader.isLoading, progressiveLoader.progress, dreiProgress, dreiActive]);
+
+  // Show loader while progressive is active OR while drei still loading after progressive finished
+  const showLoader = progressiveLoader.isLoading || 
+    progressiveLoader.hasError || 
+    (hasShownProgressiveRef.current && dreiActive);
+
+  if (!showLoader) {
+    return null;
+  }
+
+  // Always use ProgressiveLoader3D - never show the old fallback
+  return (
+    <>
+      <ProgressiveLoader3D
+        phase={progressiveLoader.isLoading ? progressiveLoader.phase : 'finalizing'}
+        progress={effectiveProgress}
+        phaseProgress={progressiveLoader.isLoading ? progressiveLoader.phaseProgress : 95}
+        downloadedBytes={progressiveLoader.downloadedBytes}
+        totalBytes={progressiveLoader.totalBytes}
+        downloadSpeed={progressiveLoader.downloadSpeed}
+        estimatedTimeRemaining={null}
+        error={progressiveLoader.error}
+        onCancel={progressiveLoader.cancel}
+      />
+      {progressiveLoader.isLoading && (
+        <BoundingBoxPlaceholder visible={true} estimatedSize={5} />
+      )}
+    </>
+  );
 }
 
 // Track loaded models to prevent duplicate loading
