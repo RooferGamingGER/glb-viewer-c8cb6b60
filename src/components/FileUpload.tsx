@@ -1,14 +1,20 @@
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { smartToast } from '@/utils/smartToast';
 import { devError } from '@/utils/consoleCleanup';
-import { Upload, File, AlertTriangle, RotateCw, Download } from 'lucide-react';
+import { Upload, File, AlertTriangle, Download } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { rotateGLBDirect } from '@/utils/glbDirectManipulation';
 import { storeOriginalFile } from '@/hooks/useOriginalFileStorage';
+import { useGLTF } from '@react-three/drei';
+
+// Model size cache for progressive loader estimation
+const modelSizeCache = new Map<string, number>();
+export const getModelSize = (url: string) => modelSizeCache.get(url);
+export const setModelSize = (url: string, size: number) => modelSizeCache.set(url, size);
 
 const FileUpload: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -17,8 +23,18 @@ const FileUpload: React.FC = () => {
   const [converting, setConverting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [rotateModel, setRotateModel] = useState(true);
+  const [preloadedUrl, setPreloadedUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // Cleanup preloaded URL on unmount
+  useEffect(() => {
+    return () => {
+      if (preloadedUrl) {
+        URL.revokeObjectURL(preloadedUrl);
+      }
+    };
+  }, [preloadedUrl]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -80,6 +96,26 @@ const FileUpload: React.FC = () => {
     if (await validateFile(file)) {
       setSelectedFile(file);
       smartToast.success('Datei ausgewählt: ' + file.name);
+      
+      // Intelligent preload strategy: create blob URL and start preloading
+      const blobUrl = URL.createObjectURL(file);
+      setPreloadedUrl(blobUrl);
+      
+      // Store file size for progressive loader estimation
+      setModelSize(blobUrl, file.size);
+      
+      // Store original file for robust loading
+      try { 
+        storeOriginalFile(blobUrl, file); 
+      } catch {}
+      
+      // Start background preload (non-blocking)
+      try {
+        useGLTF.preload(blobUrl);
+        console.log(`Preloading started for ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MB)`);
+      } catch {
+        // Preload failure is non-critical
+      }
     }
   }, []);
 
@@ -104,14 +140,19 @@ const FileUpload: React.FC = () => {
       return;
     }
     setUploading(true);
-    const fileUrl = URL.createObjectURL(selectedFile);
+    
+    // Use preloaded URL if available, otherwise create new one
+    const fileUrl = preloadedUrl || URL.createObjectURL(selectedFile);
+    
     // Store original file blob mapped to this blob URL for robust loading
     try { storeOriginalFile(fileUrl, selectedFile); } catch {}
+    
+    // Navigate immediately since preload already started
     setTimeout(() => {
       setUploading(false);
       navigate(`/viewer?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(selectedFile.name)}&rotateModel=${rotateModel ? 'true' : 'false'}`);
-    }, 1000);
-  }, [selectedFile, navigate, rotateModel]);
+    }, 300); // Reduced delay since model is preloading
+  }, [selectedFile, navigate, rotateModel, preloadedUrl]);
 
   const handleEturnityConvert = async (e: React.MouseEvent) => {
     e.stopPropagation();

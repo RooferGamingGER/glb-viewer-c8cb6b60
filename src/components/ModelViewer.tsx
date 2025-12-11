@@ -12,6 +12,9 @@ import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
+import { ProgressiveLoader3D } from '@/components/ProgressiveLoader3D';
+import { BoundingBoxPlaceholder } from '@/components/BoundingBoxPlaceholder';
+import { useProgressiveModelLoader, formatBytes } from '@/hooks/useProgressiveModelLoader';
 
 // Configure GLTF DRACO decoder path using Google's CDN for reliable loading
 try {
@@ -27,19 +30,20 @@ type ModelViewerProps = {
   showTools?: boolean;
 };
 
+// Enhanced Loader3D with progressive loading integration
 function Loader3D({ fileUrl }: { fileUrl?: string }) {
-  const { progress, errors, item, loaded, total } = useProgress();
-  const [smoothProgress, setSmoothProgress] = useState(0);
+  const { progress: dreiProgress, errors } = useProgress();
+  const progressiveLoader = useProgressiveModelLoader(fileUrl || null);
   
-  // Smooth progress to prevent backwards jumps
-  useEffect(() => {
-    setSmoothProgress(prev => Math.max(prev, progress));
-  }, [progress]);
-  
-  // Reset smooth progress when starting new load
-  useEffect(() => {
-    setSmoothProgress(0);
-  }, [fileUrl]);
+  // Combine drei progress with our progressive loader for best UX
+  const combinedProgress = useMemo(() => {
+    // If progressive loader is active and has better data, use it
+    if (progressiveLoader.isLoading) {
+      return progressiveLoader.progress;
+    }
+    // Fallback to drei progress
+    return dreiProgress;
+  }, [progressiveLoader.isLoading, progressiveLoader.progress, dreiProgress]);
   
   // Show error if any
   useEffect(() => {
@@ -48,38 +52,38 @@ function Loader3D({ fileUrl }: { fileUrl?: string }) {
     }
   }, [errors]);
 
-  // Detect if this is a blob URL (local file) vs external URL
-  const isBlobUrl = fileUrl?.startsWith('blob:') ?? false;
-  
-  // For blob URLs, don't show MB info if it's 0/0, show processing message instead
-  const shouldShowMBInfo = !isBlobUrl && total > 0 && !(loaded === 0 && total === 0);
-  
-  // Determine if this is a large file
-  const isLargeFile = total > 20 * 1024 * 1024 || (isBlobUrl && smoothProgress > 90);
-  const loadedMB = loaded ? (loaded / (1024 * 1024)).toFixed(1) : '0';
-  const totalMB = total ? (total / (1024 * 1024)).toFixed(1) : '?';
-  
-  return <Html center>
+  // Use ProgressiveLoader3D for rich loading UI
+  if (progressiveLoader.isLoading || progressiveLoader.hasError) {
+    return (
+      <>
+        <ProgressiveLoader3D
+          phase={progressiveLoader.phase}
+          progress={progressiveLoader.progress}
+          phaseProgress={progressiveLoader.phaseProgress}
+          downloadedBytes={progressiveLoader.downloadedBytes}
+          totalBytes={progressiveLoader.totalBytes}
+          downloadSpeed={progressiveLoader.downloadSpeed}
+          estimatedTimeRemaining={progressiveLoader.estimatedTimeRemaining}
+          error={progressiveLoader.error}
+          onCancel={progressiveLoader.cancel}
+        />
+        <BoundingBoxPlaceholder visible={true} estimatedSize={5} />
+      </>
+    );
+  }
+
+  // Fallback to simple loader if progressive loader completed but model still loading
+  return (
+    <Html center>
       <div className="flex flex-col items-center glass-panel px-8 py-6 rounded-lg">
         <Loader2 className="animate-spin mb-4 h-8 w-8 text-primary" />
         <div className="text-sm font-medium mb-2">
-          {smoothProgress.toFixed(0)}% geladen
-          {shouldShowMBInfo && ` (${loadedMB}/${totalMB} MB)`}
+          {combinedProgress.toFixed(0)}% geladen
         </div>
-        {isBlobUrl && smoothProgress > 50 && (
-          <div className="text-xs text-muted-foreground mb-2">
-            {smoothProgress > 95 ? 'Große Datei wird verarbeitet...' : 'Lokale Datei wird geladen...'}
-          </div>
-        )}
-        {!isBlobUrl && isLargeFile && smoothProgress > 95 && (
-          <div className="text-xs text-muted-foreground mb-2">
-            Große Datei wird verarbeitet...
-          </div>
-        )}
-        <Progress value={smoothProgress} className="w-48" />
-        {/* URL display hidden during loading for cleaner UX */}
+        <Progress value={combinedProgress} className="w-48" />
       </div>
-    </Html>;
+    </Html>
+  );
 }
 
 // Track loaded models to prevent duplicate loading
