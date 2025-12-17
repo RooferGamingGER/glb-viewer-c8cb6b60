@@ -21,8 +21,9 @@ const Test = () => {
   const { isPortrait } = useScreenOrientation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { showTutorial, setShowTutorial } = useTutorial();
+  const [modelError, setModelError] = useState(false);
   
-  // Use local demo model
+  // Use local demo model - fallback to null if not available
   const testModelUrl = '/models/test-model.glb';
   const testModelName = 'Demo Modell';
 
@@ -30,6 +31,15 @@ const Test = () => {
   useEffect(() => {
     setMenuOpen(false);
   }, [isPortrait]);
+
+  // Check if demo model exists
+  useEffect(() => {
+    fetch(testModelUrl, { method: 'HEAD' })
+      .then(res => {
+        if (!res.ok) setModelError(true);
+      })
+      .catch(() => setModelError(true));
+  }, []);
   
   const handleOpenTutorial = () => {
     setShowTutorial(true);
@@ -128,13 +138,23 @@ const Test = () => {
         {/* SidebarProvider with full height */}
         <SidebarProvider defaultOpen={!isMobile} open={!isMobile} className="h-full">
           <main className="flex-1 relative w-full h-full">
-            <ModelViewer 
-              key={testModelUrl}
-              fileUrl={testModelUrl} 
-              fileName={testModelName} 
-              rotateModel={true}
-              showTools={true}
-            />
+            {modelError ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+                <p className="text-muted-foreground">Demo-Modell nicht verfügbar.</p>
+                <Button onClick={() => navigate('/')}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Eigenes Modell hochladen
+                </Button>
+              </div>
+            ) : (
+              <ModelViewer 
+                key={testModelUrl}
+                fileUrl={testModelUrl} 
+                fileName={testModelName} 
+                rotateModel={true}
+                showTools={true}
+              />
+            )}
           </main>
         </SidebarProvider>
       </div>
