@@ -21,39 +21,54 @@ const Test = () => {
   const { isPortrait } = useScreenOrientation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { showTutorial, setShowTutorial } = useTutorial();
-  const [modelError, setModelError] = useState(false);
-  
+
   // Use local demo model - fallback to null if not available
   const testModelUrl = '/models/test-model.glb';
   const testModelName = 'Demo Modell';
+
+  // null = checking, true = available, false = not available
+  const [demoAvailable, setDemoAvailable] = useState<boolean | null>(null);
 
   // Close mobile menu when orientation changes
   useEffect(() => {
     setMenuOpen(false);
   }, [isPortrait]);
 
-  // Check if demo model exists
+  // Check if demo model exists (HEAD first; if server blocks HEAD, fall back to GET)
   useEffect(() => {
-    fetch(testModelUrl, { method: 'HEAD' })
-      .then(res => {
-        if (!res.ok) setModelError(true);
-      })
-      .catch(() => setModelError(true));
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const head = await fetch(testModelUrl, { method: 'HEAD' });
+        if (!cancelled) setDemoAvailable(head.ok);
+      } catch {
+        try {
+          const get = await fetch(testModelUrl, { method: 'GET' });
+          if (!cancelled) setDemoAvailable(get.ok);
+        } catch {
+          if (!cancelled) setDemoAvailable(false);
+        }
+      }
+    };
+
+    check();
+    return () => {
+      cancelled = true;
+    };
   }, []);
-  
+
   const handleOpenTutorial = () => {
     setShowTutorial(true);
   };
 
   return (
     <div className="flex flex-col h-screen w-full bg-gradient-to-b from-background to-background overflow-hidden">
-      
-      
       <header className="glass-panel w-full py-3 px-4 border-b border-border/50 z-10 flex items-center justify-between">
         <div className="flex items-center">
           {isMobile ? (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               className="glass-button mr-2 h-8 w-8"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -61,33 +76,33 @@ const Test = () => {
               {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
           ) : null}
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             className="glass-button"
             onClick={() => navigate('/')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             <span className={isMobile ? "sr-only" : ""}>Zurück</span>
           </Button>
-          
+
           <h1 className={`font-medium ml-4 ${isMobile ? "text-sm" : "text-lg"}`}>
             {isMobile ? "Demo DrohnenGLB" : "Demo DrohnenGLB by RooferGaming®"}
           </h1>
         </div>
-        
+
         <div className="flex gap-2">
           <Button
-            variant="outline" 
-            size="sm" 
+            variant="outline"
+            size="sm"
             className="glass-button"
             onClick={handleOpenTutorial}
           >
             <HelpCircle className="h-4 w-4 mr-2" />
             <span className={isMobile ? "sr-only" : ""}>Tutorial</span>
           </Button>
-          
+
           <Button
             variant="default"
             size="sm"
@@ -99,31 +114,31 @@ const Test = () => {
           </Button>
         </div>
       </header>
-      
+
       {/* Main content area - takes full remaining height */}
       <div className="flex-1 flex overflow-hidden">
         {/* Mobile menu overlay */}
         {isMobile && menuOpen && (
-          <div 
+          <div
             className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20"
             onClick={() => setMenuOpen(false)}
           >
-            <div 
+            <div
               className="w-64 h-full bg-background border-r border-border/50 p-4"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-medium mb-4">Menü</h3>
               <div className="flex flex-col space-y-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="justify-start"
                   onClick={() => navigate('/')}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Zurück zur Startseite
                 </Button>
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   className="justify-start"
                   onClick={() => navigate('/')}
                 >
@@ -134,26 +149,29 @@ const Test = () => {
             </div>
           </div>
         )}
-        
+
         {/* SidebarProvider with full height */}
         <SidebarProvider defaultOpen={!isMobile} open={!isMobile} className="h-full">
           <main className="flex-1 relative w-full h-full">
-            {modelError ? (
+            {demoAvailable === true ? (
+              <ModelViewer
+                key={testModelUrl}
+                fileUrl={testModelUrl}
+                fileName={testModelName}
+                rotateModel={true}
+                showTools={true}
+              />
+            ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-                <p className="text-muted-foreground">Demo-Modell nicht verfügbar.</p>
-                <Button onClick={() => navigate('/')}>
+                <p className="text-muted-foreground">
+                  {demoAvailable === null ? 'Prüfe Demo-Modell…' : 'Demo-Modell nicht verfügbar.'}
+                </p>
+                <Button onClick={() => navigate('/')}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Eigenes Modell hochladen
                 </Button>
               </div>
-            ) : (
-              <ModelViewer 
-                key={testModelUrl}
-                fileUrl={testModelUrl} 
-                fileName={testModelName} 
-                rotateModel={true}
-                showTools={true}
-              />
             )}
           </main>
         </SidebarProvider>
