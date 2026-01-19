@@ -22,6 +22,39 @@ try {
   useGLTF.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 } catch {}
 
+class R3FErrorBoundary extends React.Component<
+  {
+    children: React.ReactNode;
+    message?: string;
+    onError?: (error: unknown) => void;
+  },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    this.props.onError?.(error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Html center>
+          <div className="rounded-lg border border-border bg-background/95 backdrop-blur p-4 text-center max-w-sm">
+            <p className="text-sm font-medium">{this.props.message ?? 'Modell konnte nicht geladen werden.'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Bitte Seite neu laden oder ein anderes Modell wählen.</p>
+          </div>
+        </Html>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 type ModelViewerProps = {
   fileUrl: string;
@@ -29,6 +62,7 @@ type ModelViewerProps = {
   rotateModel?: boolean;
   showTools?: boolean;
 };
+
 
 // Enhanced Loader3D with progressive loading integration - unified single loader
 function Loader3D({ fileUrl }: { fileUrl?: string }) {
