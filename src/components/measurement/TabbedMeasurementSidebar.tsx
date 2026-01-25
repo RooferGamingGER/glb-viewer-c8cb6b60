@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MeasurementMode, Measurement } from '@/types/measurements';
 import MeasurementToolControls from './MeasurementToolControls';
 import EditingAlert from './EditingAlert';
+import LayerControls, { LayerVisibility } from './LayerControls';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TabbedMeasurementSidebarProps {
@@ -34,6 +35,9 @@ interface TabbedMeasurementSidebarProps {
   isEditing: boolean;
   editingAreaMeasurement?: boolean;
   handleClearMeasurements: () => void;
+  // Layer visibility props
+  layerVisibility?: LayerVisibility;
+  onLayerChange?: (layer: keyof LayerVisibility, value: boolean) => void;
 }
 
 /**
@@ -62,7 +66,9 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
   handleMoveMeasurementDown,
   isEditing,
   editingAreaMeasurement,
-  handleClearMeasurements
+  handleClearMeasurements,
+  layerVisibility,
+  onLayerChange
 }) => {
   const [activeTab, setActiveTab] = useState(isEditing ? "measurements" : "tools");
   const isMobile = useIsMobile();
@@ -93,6 +99,14 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
           </TabsList>
         </Tabs>
       </div>
+      
+      {/* Layer visibility controls */}
+      {layerVisibility && onLayerChange && (
+        <LayerControls 
+          layerVisibility={layerVisibility}
+          onLayerChange={onLayerChange}
+        />
+      )}
       
       {/* Show editing alerts at the top when in editing mode */}
       {isEditing && (
