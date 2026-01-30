@@ -1829,21 +1829,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     container.style.top = '0';
+    container.style.width = '794px'; // A4 width in pixels at 96 DPI
     document.body.appendChild(container);
     
     try {
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Remove container from DOM after rendering
-      document.body.removeChild(container);
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const pdf = new jsPDF({
         unit: 'mm',
         format: 'a4',
@@ -1854,43 +1843,122 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
       const contentWidth = pdfWidth - (margin * 2);
-      
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = contentWidth / imgWidth;
-      const scaledHeight = imgHeight * ratio;
-      
-      // Calculate how many pages we need
       const pageContentHeight = pdfHeight - (margin * 2);
-      const totalPages = Math.ceil(scaledHeight / pageContentHeight);
       
-      for (let page = 0; page < totalPages; page++) {
-        if (page > 0) {
+      // Find all page-break elements to create separate pages
+      const pageBreakElements = container.querySelectorAll('.page-break');
+      const sections: HTMLElement[] = [];
+      
+      // If there are page break elements, split content by them
+      if (pageBreakElements.length > 0) {
+        // Get all direct children and group them by page breaks
+        const allChildren = Array.from(container.children) as HTMLElement[];
+        let currentSection: HTMLElement[] = [];
+        
+        allChildren.forEach((child) => {
+          if (child.classList.contains('page-break') && currentSection.length > 0) {
+            // Create a section from accumulated children
+            const sectionDiv = document.createElement('div');
+            sectionDiv.style.background = '#ffffff';
+            sectionDiv.style.padding = '20px';
+            currentSection.forEach(c => sectionDiv.appendChild(c.cloneNode(true)));
+            sections.push(sectionDiv);
+            currentSection = [child];
+          } else {
+            currentSection.push(child);
+          }
+        });
+        
+        // Add the last section
+        if (currentSection.length > 0) {
+          const sectionDiv = document.createElement('div');
+          sectionDiv.style.background = '#ffffff';
+          sectionDiv.style.padding = '20px';
+          currentSection.forEach(c => sectionDiv.appendChild(c.cloneNode(true)));
+          sections.push(sectionDiv);
+        }
+      }
+      
+      // If no page breaks found or sections are empty, render the entire container
+      if (sections.length === 0) {
+        sections.push(container);
+      }
+      
+      // Render each section to its own page
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        
+        // Add section to DOM temporarily if it's not the container
+        if (section !== container) {
+          section.style.position = 'absolute';
+          section.style.left = '-9999px';
+          section.style.top = '0';
+          section.style.width = '794px';
+          document.body.appendChild(section);
+        }
+        
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        });
+        
+        // Remove temporary section from DOM
+        if (section !== container && section.parentNode) {
+          document.body.removeChild(section);
+        }
+        
+        if (i > 0) {
           pdf.addPage();
         }
         
-        // Calculate the y position for this page's slice
-        const sourceY = (page * pageContentHeight) / ratio;
-        const sourceHeight = Math.min(pageContentHeight / ratio, imgHeight - sourceY);
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = contentWidth / imgWidth;
+        const scaledHeight = imgHeight * ratio;
         
-        // Create a temporary canvas for this page slice
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = imgWidth;
-        pageCanvas.height = sourceHeight;
-        const ctx = pageCanvas.getContext('2d');
-        
-        if (ctx) {
-          ctx.drawImage(
-            canvas,
-            0, sourceY, imgWidth, sourceHeight,
-            0, 0, imgWidth, sourceHeight
-          );
+        // If section is taller than one page, split it intelligently
+        if (scaledHeight > pageContentHeight) {
+          const pagesNeeded = Math.ceil(scaledHeight / pageContentHeight);
           
-          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
-          const destHeight = sourceHeight * ratio;
-          pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, destHeight);
+          for (let page = 0; page < pagesNeeded; page++) {
+            if (page > 0) {
+              pdf.addPage();
+            }
+            
+            const sourceY = (page * pageContentHeight) / ratio;
+            const sourceHeight = Math.min(pageContentHeight / ratio, imgHeight - sourceY);
+            
+            const pageCanvas = document.createElement('canvas');
+            pageCanvas.width = imgWidth;
+            pageCanvas.height = sourceHeight;
+            const ctx = pageCanvas.getContext('2d');
+            
+            if (ctx) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, imgWidth, sourceHeight);
+              ctx.drawImage(
+                canvas,
+                0, sourceY, imgWidth, sourceHeight,
+                0, 0, imgWidth, sourceHeight
+              );
+              
+              const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
+              const destHeight = sourceHeight * ratio;
+              pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, destHeight);
+            }
+          }
+        } else {
+          // Section fits on one page
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, scaledHeight);
         }
       }
+      
+      // Remove container from DOM after rendering
+      document.body.removeChild(container);
       
       if (outputMode === 'blob') {
         const blob = pdf.output('blob');
