@@ -2186,6 +2186,17 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         }
       }
       
+      // Add page numbers to all pages
+      const totalPages = pdf.getNumberOfPages();
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        pdf.setPage(pageNum);
+        pdf.setFontSize(10);
+        pdf.setTextColor(128, 128, 128);
+        const pageText = `Seite ${pageNum} von ${totalPages}`;
+        const textWidth = pdf.getTextWidth(pageText);
+        pdf.text(pageText, (pdfWidth - textWidth) / 2, pdfHeight - 5);
+      }
+      
       // Remove container from DOM after rendering
       document.body.removeChild(container);
       
