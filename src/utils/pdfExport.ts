@@ -1253,34 +1253,18 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     // ============ PAGE 1: DECKBLATT (Title Page with TOC and Footer) ============
     const coverPage = document.createElement('div');
-    coverPage.className = 'cover-page page-break';
-    coverPage.style.pageBreakAfter = 'always';
+    coverPage.className = 'cover-page'; // Remove page-break class to avoid empty first page
     coverPage.style.position = 'relative';
-    coverPage.style.minHeight = '270mm';
+    coverPage.style.height = '277mm'; // Full A4 height minus margins
     coverPage.style.display = 'flex';
     coverPage.style.flexDirection = 'column';
+    coverPage.style.boxSizing = 'border-box';
     
-    // Header with company name
-    const coverHeader = document.createElement('div');
-    coverHeader.className = 'cover-header';
-    
-    const companyName = document.createElement('div');
-    companyName.className = 'company-name';
-    if (coverData.companyName) {
-      companyName.textContent = coverData.companyName;
-    } else {
-      companyName.textContent = 'DrohnenGLB by RooferGaming';
-      const sup = document.createElement('sup');
-      sup.textContent = '®';
-      companyName.appendChild(sup);
-    }
-    coverHeader.appendChild(companyName);
-    coverPage.appendChild(coverHeader);
-    
-    // Title
+    // Title (directly, without company header)
     const title = document.createElement('h1');
     title.className = 'cover-title';
     title.textContent = coverData.title;
+    title.style.marginTop = '0';
     coverPage.appendChild(title);
     
     // Info section (Projektdaten + Kundendaten)
@@ -1463,17 +1447,16 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     tocSection.appendChild(tocList);
     coverPage.appendChild(tocSection);
     
-    // Spacer to push footer to bottom
-    const spacer = document.createElement('div');
-    spacer.style.flex = '1';
-    coverPage.appendChild(spacer);
-    
-    // Footer
+    // Footer - positioned at bottom
     const coverFooter = document.createElement('div');
+    coverFooter.style.position = 'absolute';
+    coverFooter.style.bottom = '0';
+    coverFooter.style.left = '0';
+    coverFooter.style.right = '0';
     coverFooter.style.borderTop = '2px solid #1e40af';
     coverFooter.style.paddingTop = '15px';
-    coverFooter.style.marginTop = '20px';
     coverFooter.style.textAlign = 'center';
+    coverFooter.style.backgroundColor = '#ffffff';
     
     const footerBrand = document.createElement('div');
     footerBrand.style.fontSize = '14px';
