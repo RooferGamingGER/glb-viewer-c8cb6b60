@@ -84,8 +84,11 @@ const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLE
  */
 const createCalculationMethodsSection = (): HTMLElement => {
   const container = document.createElement('div');
+  container.className = 'page-break';
   container.style.pageBreakBefore = 'always';
-  container.style.marginTop = '20px';
+  container.style.pageBreakAfter = 'always';
+  container.style.marginTop = '0';
+  container.style.padding = '20px';
   
   const title = document.createElement('h2');
   title.textContent = 'Anhang: Berechnungsmethoden';
@@ -1491,34 +1494,45 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     overviewPage.style.pageBreakBefore = 'always';
     overviewPage.style.pageBreakAfter = 'always';
     overviewPage.style.padding = '20px';
+    overviewPage.style.height = '267mm'; // A4 Höhe minus Ränder für optimale Nutzung
+    overviewPage.style.display = 'flex';
+    overviewPage.style.flexDirection = 'column';
     
     const overviewTitle = document.createElement('h2');
     overviewTitle.textContent = 'Übersicht & Zusammenfassung';
     overviewTitle.style.marginTop = '0';
-    overviewTitle.style.marginBottom = '20px';
+    overviewTitle.style.marginBottom = '15px';
+    overviewTitle.style.flexShrink = '0';
     overviewPage.appendChild(overviewTitle);
     
-    // Luftbild (Top Down Screenshot)
+    // Luftbild (Top Down Screenshot) - Maximale Größe für volle Seitennutzung
     if ((measurements as any).topDownScreenshot) {
       const imageContainer = document.createElement('div');
       imageContainer.style.textAlign = 'center';
-      imageContainer.style.marginBottom = '25px';
+      imageContainer.style.marginBottom = '20px';
+      imageContainer.style.flex = '1';
+      imageContainer.style.display = 'flex';
+      imageContainer.style.flexDirection = 'column';
+      imageContainer.style.justifyContent = 'center';
       
       const modelImage = document.createElement('img');
       modelImage.src = (measurements as any).topDownScreenshot;
       modelImage.alt = 'Dachdraufsicht';
       modelImage.style.maxWidth = '100%';
-      modelImage.style.maxHeight = '280px';
+      modelImage.style.maxHeight = '450px'; // Größere Höhe für bessere Seitennutzung
+      modelImage.style.width = 'auto';
+      modelImage.style.height = 'auto';
       modelImage.style.objectFit = 'contain';
       modelImage.style.border = '1px solid #e5e7eb';
       modelImage.style.borderRadius = '8px';
+      modelImage.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
       
       imageContainer.appendChild(modelImage);
       
       const imageCaption = document.createElement('div');
       imageCaption.style.fontSize = '10px';
       imageCaption.style.color = '#6b7280';
-      imageCaption.style.marginTop = '8px';
+      imageCaption.style.marginTop = '10px';
       imageCaption.textContent = 'Luftbild / Draufsicht des Objekts';
       imageContainer.appendChild(imageCaption);
       
