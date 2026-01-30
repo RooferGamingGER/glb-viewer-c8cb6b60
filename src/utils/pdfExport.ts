@@ -276,11 +276,15 @@ const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
   const deductionMeasurements = measurements.filter(m => m.type === 'deductionarea'); // Get deduction areas
   
   const container = document.createElement('div');
-  container.style.marginTop = '40px';
+  container.className = 'page-break'; // Ensure page break detection works
+  container.style.marginTop = '0';
   container.style.pageBreakBefore = 'always';
+  container.style.pageBreakAfter = 'always';
+  container.style.padding = '20px';
   
   const summaryTitle = document.createElement('h2');
   summaryTitle.textContent = 'Gesamtübersicht';
+  summaryTitle.style.marginTop = '0';
   container.appendChild(summaryTitle);
   
   const areaSummary = document.createElement('div');
@@ -1249,7 +1253,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     // Create the cover page
     const coverPage = document.createElement('div');
-    coverPage.className = 'cover-page';
+    coverPage.className = 'cover-page page-break';
+    coverPage.style.pageBreakAfter = 'always';
     
     const coverHeader = document.createElement('div');
     coverHeader.className = 'cover-header';
