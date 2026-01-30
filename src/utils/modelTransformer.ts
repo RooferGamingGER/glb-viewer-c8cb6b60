@@ -297,7 +297,7 @@ export function exportModelOnlyForEturnity(
   console.log('📊 Meshes für Export gefunden:', meshCount);
 
   // 3. Export-Optionen definieren
-  const exportOptions: THREE.GLTFExporter.Options = {
+  const exportOptions = {
     binary: true,
     embedImages: true,
     onlyVisible: true,
@@ -620,14 +620,14 @@ const compressTexturesForFileSize = (object: THREE.Object3D) => {
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       
       materials.forEach(material => {
-        if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial) {
-          // Optimize main texture if present
-          if (material.map && !processedTextures.has(material.map)) {
-            optimizeTexture(material.map, maxTextureSize);
-            processedTextures.add(material.map);
-          }
-          
-          // Keep only essential maps, remove detailed maps
+        // Optimize main texture if present
+        if ('map' in material && material.map && !processedTextures.has(material.map as THREE.Texture)) {
+          optimizeTexture(material.map as THREE.Texture, maxTextureSize);
+          processedTextures.add(material.map as THREE.Texture);
+        }
+        
+        // Keep only essential maps, remove detailed maps (only for MeshStandardMaterial)
+        if (material instanceof THREE.MeshStandardMaterial) {
           if (material.normalMap) {
             material.normalMap = null;
           }
@@ -645,14 +645,12 @@ const compressTexturesForFileSize = (object: THREE.Object3D) => {
           }
           
           // Simplify material properties
-          if (material instanceof THREE.MeshStandardMaterial) {
-            material.roughness = 0.7;
-            material.metalness = 0.1;
-            material.envMapIntensity = 0.5;
-          }
-          
-          material.needsUpdate = true;
+          material.roughness = 0.7;
+          material.metalness = 0.1;
+          material.envMapIntensity = 0.5;
         }
+        
+        material.needsUpdate = true;
       });
     }
   });
@@ -717,10 +715,11 @@ const simplifyMaterialForEturnity = (material: THREE.Material | THREE.Material[]
       mat.metalness = 0.0;
       mat.envMapIntensity = 0.0;
       
-      // Remove complex material features
-      mat.clearcoat = 0;
-      mat.clearcoatRoughness = 0;
-      mat.transmission = 0;
+      // Remove complex material features (use type assertion for physical material properties)
+      const physicalMat = mat as THREE.MeshStandardMaterial & { clearcoat?: number; clearcoatRoughness?: number; transmission?: number };
+      if ('clearcoat' in physicalMat) physicalMat.clearcoat = 0;
+      if ('clearcoatRoughness' in physicalMat) physicalMat.clearcoatRoughness = 0;
+      if ('transmission' in physicalMat) physicalMat.transmission = 0;
     }
   });
 };
@@ -1035,8 +1034,11 @@ const optimizeGeometryForExport = (scene: THREE.Scene) => {
           }
         });
         
-        // Optimize the geometry
-        child.geometry.computeBoundsTree?.();
+        // Optimize the geometry if method exists
+        const geom = child.geometry as THREE.BufferGeometry & { computeBoundsTree?: () => void };
+        if (geom.computeBoundsTree) {
+          geom.computeBoundsTree();
+        }
       }
       
       // Simplify materials to reduce export size
@@ -1053,20 +1055,20 @@ const optimizeGeometryForExport = (scene: THREE.Scene) => {
 
 // Helper function to simplify materials for smaller export size
 const simplifyMaterial = (material: THREE.Material) => {
-  if (material instanceof THREE.MeshStandardMaterial || 
-      material instanceof THREE.MeshPhongMaterial ||
-      material instanceof THREE.MeshLambertMaterial) {
-    
+  if (material instanceof THREE.MeshStandardMaterial) {
     // Remove or simplify maps that aren't essential for Eturnity
-    if (material.normalMap && material.normalMap.image?.width > 512) {
+    const normalMapImage = material.normalMap?.image as { width?: number } | undefined;
+    if (material.normalMap && normalMapImage?.width && normalMapImage.width > 512) {
       material.normalMap = null; // Remove high-res normal maps
     }
     
-    if (material.roughnessMap && material.roughnessMap.image?.width > 512) {
+    const roughnessMapImage = material.roughnessMap?.image as { width?: number } | undefined;
+    if (material.roughnessMap && roughnessMapImage?.width && roughnessMapImage.width > 512) {
       material.roughnessMap = null; // Remove high-res roughness maps
     }
     
-    if (material.metalnessMap && material.metalnessMap.image?.width > 512) {
+    const metalnessMapImage = material.metalnessMap?.image as { width?: number } | undefined;
+    if (material.metalnessMap && metalnessMapImage?.width && metalnessMapImage.width > 512) {
       material.metalnessMap = null; // Remove high-res metalness maps
     }
     

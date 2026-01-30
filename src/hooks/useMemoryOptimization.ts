@@ -135,11 +135,10 @@ export const useMemoryOptimization = () => {
     if (isLowMemory) {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
       renderer.shadowMap.enabled = false;
-      renderer.antialias = false;
+      // Note: antialias is a constructor option and cannot be changed at runtime
     } else {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
-      renderer.antialias = true;
     }
   }, []);
 
