@@ -48,6 +48,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
     canvas
   } = useThreeContext();
   
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  
   const form = useForm<CoverPageData>({
     defaultValues: {
       title: 'Vermessungsbericht',
@@ -59,9 +62,33 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       contactEmail: '',
       contactPhone: '',
       creationDate: new Date().toISOString().split('T')[0],
-      notes: ''
+      notes: '',
+      companyLogo: undefined
     }
   });
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Logo darf maximal 2MB groß sein');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setCompanyLogo(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setCompanyLogo(null);
+    if (logoInputRef.current) {
+      logoInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     if (measurements.length > 0 && includeRoofPlan) {
@@ -278,10 +305,15 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       (measurementsWithVisuals as any).includeCoverImage = true;
       
       const coverData = form.getValues();
+      // Add company logo to cover data
+      const coverDataWithLogo = {
+        ...coverData,
+        companyLogo: companyLogo || undefined
+      };
       const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
       const provisionalTab = pdfOpenMode === 'open' ? window.open('', '_blank') : null;
 
-      const result = await exportMeasurementsToPdf(measurementsWithVisuals, coverData, 'blob');
+      const result = await exportMeasurementsToPdf(measurementsWithVisuals, coverDataWithLogo, 'blob');
       setExportProgress(100);
 
       if (result instanceof Blob) {
@@ -349,6 +381,51 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
           <TabsContent value="info">
             <Form {...form}>
               <div className="grid gap-4 py-2">
+                {/* Logo Upload Section */}
+                <div className="border border-dashed border-muted-foreground/30 rounded-lg p-4">
+                  <label className="text-sm font-medium mb-2 block">Firmenlogo (optional)</label>
+                  <div className="flex items-center gap-4">
+                    {companyLogo ? (
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={companyLogo} 
+                          alt="Logo Vorschau" 
+                          className="max-h-12 max-w-[120px] object-contain border rounded"
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={removeLogo}
+                        >
+                          Entfernen
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          id="logo-upload"
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => logoInputRef.current?.click()}
+                        >
+                          <Image className="h-4 w-4 mr-2" />
+                          Logo hochladen
+                        </Button>
+                        <span className="text-xs text-muted-foreground">Max. 2MB</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <FormField control={form.control} name="title" render={({
                 field
               }) => <FormItem>
