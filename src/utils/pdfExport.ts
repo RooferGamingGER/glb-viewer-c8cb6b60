@@ -1376,16 +1376,138 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       coverPage.appendChild(modelView);
     }
     
-    // Add the cover page to the container first
+    // Add the cover page to the container first (PAGE 1 - with summary integrated)
+    // Integrate summary directly into cover page instead of separate info page
+    const summarySection = document.createElement('div');
+    summarySection.style.marginTop = '20px';
+    summarySection.style.padding = '15px';
+    summarySection.style.backgroundColor = '#f8fafc';
+    summarySection.style.borderRadius = '8px';
+    summarySection.style.border = '1px solid #e2e8f0';
+    
+    const summaryTitle = document.createElement('h3');
+    summaryTitle.textContent = 'Zusammenfassung';
+    summaryTitle.style.margin = '0 0 15px 0';
+    summaryTitle.style.color = '#1e40af';
+    summaryTitle.style.fontSize = '14px';
+    summarySection.appendChild(summaryTitle);
+    
+    // Total area highlight
+    const totalAreaBox = document.createElement('div');
+    totalAreaBox.style.display = 'flex';
+    totalAreaBox.style.gap = '20px';
+    totalAreaBox.style.flexWrap = 'wrap';
+    
+    // Dachfläche gesamt
+    const areaBox = document.createElement('div');
+    areaBox.style.flex = '1';
+    areaBox.style.minWidth = '150px';
+    areaBox.style.backgroundColor = '#eff6ff';
+    areaBox.style.border = '2px solid #3b82f6';
+    areaBox.style.borderRadius = '8px';
+    areaBox.style.padding = '15px';
+    areaBox.style.textAlign = 'center';
+    
+    const areaLabel = document.createElement('div');
+    areaLabel.style.fontSize = '11px';
+    areaLabel.style.color = '#6b7280';
+    areaLabel.style.marginBottom = '5px';
+    areaLabel.textContent = 'Dachfläche gesamt';
+    areaBox.appendChild(areaLabel);
+    
+    const areaValue = document.createElement('div');
+    areaValue.style.fontSize = '24px';
+    areaValue.style.fontWeight = 'bold';
+    areaValue.style.color = '#1e40af';
+    const totalArea = summaryData.totalArea || calculateTotalArea(sortedMeasurements);
+    areaValue.textContent = `${totalArea.toFixed(2)} m²`;
+    areaBox.appendChild(areaValue);
+    
+    totalAreaBox.appendChild(areaBox);
+    
+    // Anzahl Flächen
+    const countBox = document.createElement('div');
+    countBox.style.flex = '1';
+    countBox.style.minWidth = '150px';
+    countBox.style.backgroundColor = '#f0fdf4';
+    countBox.style.border = '2px solid #22c55e';
+    countBox.style.borderRadius = '8px';
+    countBox.style.padding = '15px';
+    countBox.style.textAlign = 'center';
+    
+    const countLabel = document.createElement('div');
+    countLabel.style.fontSize = '11px';
+    countLabel.style.color = '#6b7280';
+    countLabel.style.marginBottom = '5px';
+    countLabel.textContent = 'Anzahl Teilflächen';
+    countBox.appendChild(countLabel);
+    
+    const areaMeasurementsForCount = sortedMeasurements.filter(m => m.type === 'area');
+    const countValue = document.createElement('div');
+    countValue.style.fontSize = '24px';
+    countValue.style.fontWeight = 'bold';
+    countValue.style.color = '#166534';
+    countValue.textContent = `${areaMeasurementsForCount.length}`;
+    countBox.appendChild(countValue);
+    
+    totalAreaBox.appendChild(countBox);
+    
+    // Messungen gesamt
+    const measurementsBox = document.createElement('div');
+    measurementsBox.style.flex = '1';
+    measurementsBox.style.minWidth = '150px';
+    measurementsBox.style.backgroundColor = '#fef3c7';
+    measurementsBox.style.border = '2px solid #f59e0b';
+    measurementsBox.style.borderRadius = '8px';
+    measurementsBox.style.padding = '15px';
+    measurementsBox.style.textAlign = 'center';
+    
+    const measurementsLabel = document.createElement('div');
+    measurementsLabel.style.fontSize = '11px';
+    measurementsLabel.style.color = '#6b7280';
+    measurementsLabel.style.marginBottom = '5px';
+    measurementsLabel.textContent = 'Messungen gesamt';
+    measurementsBox.appendChild(measurementsLabel);
+    
+    const measurementsValue = document.createElement('div');
+    measurementsValue.style.fontSize = '24px';
+    measurementsValue.style.fontWeight = 'bold';
+    measurementsValue.style.color = '#b45309';
+    measurementsValue.textContent = `${sortedMeasurements.length}`;
+    measurementsBox.appendChild(measurementsValue);
+    
+    totalAreaBox.appendChild(measurementsBox);
+    summarySection.appendChild(totalAreaBox);
+    
+    // Add notes if present (compact)
+    if (coverData.notes && coverData.notes.trim().length > 0) {
+      const notesDiv = document.createElement('div');
+      notesDiv.style.marginTop = '15px';
+      notesDiv.style.padding = '10px';
+      notesDiv.style.backgroundColor = '#ffffff';
+      notesDiv.style.border = '1px solid #e5e7eb';
+      notesDiv.style.borderRadius = '4px';
+      notesDiv.style.fontSize = '11px';
+      notesDiv.style.lineHeight = '1.4';
+      
+      const notesLabel = document.createElement('strong');
+      notesLabel.textContent = 'Bemerkungen: ';
+      notesDiv.appendChild(notesLabel);
+      
+      const notesText = document.createTextNode(coverData.notes.substring(0, 300) + (coverData.notes.length > 300 ? '...' : ''));
+      notesDiv.appendChild(notesText);
+      
+      summarySection.appendChild(notesDiv);
+    }
+    
+    coverPage.appendChild(summarySection);
     container.appendChild(coverPage);
     
-    // Create and add the info page with summary and notes
-    const infoPage = createInfoPage(coverData.notes, summaryData);
-    container.appendChild(infoPage);
-    
-    // Continue with the roof plan (now on page 3)
+    // PAGE 2: Roof plan (if available)
     if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
       const roofPlanPage = document.createElement('div');
+      roofPlanPage.className = 'page-break';
+      roofPlanPage.style.pageBreakBefore = 'always';
       roofPlanPage.style.pageBreakAfter = 'always';
       roofPlanPage.style.padding = '20px';
       roofPlanPage.style.height = '270mm';
@@ -1393,7 +1515,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       
       if (!(measurements as any).showRoofPlanWithoutHeader) {
         const roofPlanTitle = document.createElement('h2');
-        roofPlanTitle.textContent = 'Dachplan';
+        roofPlanTitle.textContent = 'Dachplan Übersicht';
+        roofPlanTitle.style.marginTop = '0';
         roofPlanPage.appendChild(roofPlanTitle);
       }
       
@@ -1406,20 +1529,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       const roofPlanImage = document.createElement('img');
       roofPlanImage.src = (measurements as any).roofPlan;
       roofPlanImage.className = 'roof-plan';
-      
-      if ((measurements as any).roofPlanDimensions) {
-        const dims = (measurements as any).roofPlanDimensions;
-        const pageWidth = 210 - 40;
-        const pageHeight = 297 - 40;
-        const scaleFactor = Math.min(
-          pageWidth / dims.width * 25.4,
-          pageHeight / dims.height * 25.4
-        );
-        
-        roofPlanImage.style.maxWidth = '100%';
-        roofPlanImage.style.maxHeight = '100%';
-        roofPlanImage.style.objectFit = 'contain';
-      }
+      roofPlanImage.style.maxWidth = '100%';
+      roofPlanImage.style.maxHeight = '100%';
+      roofPlanImage.style.objectFit = 'contain';
       
       roofPlanContainer.appendChild(roofPlanImage);
       roofPlanPage.appendChild(roofPlanContainer);
@@ -1436,11 +1548,16 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       container.appendChild(roofPlanPage);
     }
     
+    // PAGE 3: Measurements overview table
     const measurementSection = document.createElement('div');
-    measurementSection.className = 'measurement-section';
+    measurementSection.className = 'page-break measurement-section';
+    measurementSection.style.pageBreakBefore = 'always';
+    measurementSection.style.pageBreakAfter = 'always';
+    measurementSection.style.padding = '20px';
     
     const measurementTitle = document.createElement('h2');
     measurementTitle.textContent = 'Messungen - Übersicht';
+    measurementTitle.style.marginTop = '0';
     measurementSection.appendChild(measurementTitle);
     
     const summaryTable = document.createElement('table');
@@ -1489,6 +1606,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     container.appendChild(measurementSection);
     
+    // PAGE 4+: Individual areas (each on its own page)
     const areaMeasurements = sortedMeasurements.filter(m => m.type === 'area');
     const lengthMeasurements = sortedMeasurements.filter(m => m.type === 'length');
     const heightMeasurements = sortedMeasurements.filter(m => m.type === 'height');
