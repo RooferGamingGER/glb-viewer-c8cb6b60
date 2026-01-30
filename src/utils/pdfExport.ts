@@ -1495,57 +1495,166 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const otherMeasurements = sortedMeasurements.filter(m => !['area', 'length', 'height'].includes(m.type));
     
     if (areaMeasurements.length > 0) {
-      const areaSection = document.createElement('div');
-      areaSection.className = 'page-break';
-      
-      const areaTitle = document.createElement('h2');
-      areaTitle.textContent = 'Flächenmessungen';
-      areaSection.appendChild(areaTitle);
-      
+      // Each area gets its own page for better visibility
       areaMeasurements.forEach((measurement, index) => {
-        const areaContainer = document.createElement('div');
-        areaContainer.className = 'area-detail';
-        areaContainer.style.marginBottom = '30px';
+        const areaPage = document.createElement('div');
+        areaPage.className = 'page-break';
+        areaPage.style.pageBreakBefore = 'always';
+        areaPage.style.pageBreakAfter = 'always';
+        areaPage.style.pageBreakInside = 'avoid';
         
-        const areaHeading = document.createElement('h3');
-        areaHeading.textContent = `Fläche ${index + 1}${measurement.description ? ` (${measurement.description})` : ''}`;
-        areaContainer.appendChild(areaHeading);
+        // Page header with area title
+        const areaHeader = document.createElement('div');
+        areaHeader.style.borderBottom = '2px solid #3b82f6';
+        areaHeader.style.paddingBottom = '10px';
+        areaHeader.style.marginBottom = '20px';
         
-        const areaDetails = document.createElement('div');
-        areaDetails.style.marginBottom = '10px';
-        const labelStrong = document.createElement('strong');
-        labelStrong.textContent = 'Fläche:';
-        areaDetails.appendChild(labelStrong);
-        areaDetails.append(document.createTextNode(` ${measurement.value.toFixed(2)} m²`));
+        const areaTitle = document.createElement('h2');
+        areaTitle.style.margin = '0';
+        areaTitle.style.color = '#1e40af';
+        areaTitle.textContent = `Fläche ${index + 1}${measurement.description ? `: ${measurement.description}` : ''}`;
+        areaHeader.appendChild(areaTitle);
         
-        if (measurement.inclination !== undefined) {
-          areaDetails.appendChild(document.createElement('br'));
-          const inclStrong = document.createElement('strong');
-          inclStrong.textContent = 'Neigung:';
-          areaDetails.appendChild(inclStrong);
-          areaDetails.append(document.createTextNode(` ${Math.abs(measurement.inclination).toFixed(1)}°`));
-        }
+        areaPage.appendChild(areaHeader);
         
-        areaContainer.appendChild(areaDetails);
+        // Two-column layout: Image left, details right
+        const contentRow = document.createElement('div');
+        contentRow.style.display = 'flex';
+        contentRow.style.gap = '20px';
+        contentRow.style.marginBottom = '20px';
+        
+        // Left column: Large area visualization
+        const imageColumn = document.createElement('div');
+        imageColumn.style.flex = '1';
+        imageColumn.style.minWidth = '0';
         
         if (measurement.screenshot || measurement.polygon2D) {
           const visual = document.createElement('img');
           visual.src = measurement.screenshot || measurement.polygon2D || '';
-          visual.className = 'area-visual';
-          areaContainer.appendChild(visual);
+          visual.style.width = '100%';
+          visual.style.height = 'auto';
+          visual.style.maxHeight = '350px';
+          visual.style.objectFit = 'contain';
+          visual.style.border = '1px solid #e5e7eb';
+          visual.style.borderRadius = '8px';
+          visual.style.backgroundColor = '#f9fafb';
+          imageColumn.appendChild(visual);
         }
         
+        contentRow.appendChild(imageColumn);
+        
+        // Right column: Key metrics
+        const detailsColumn = document.createElement('div');
+        detailsColumn.style.width = '200px';
+        detailsColumn.style.flexShrink = '0';
+        
+        // Area value box
+        const areaBox = document.createElement('div');
+        areaBox.style.backgroundColor = '#eff6ff';
+        areaBox.style.border = '1px solid #3b82f6';
+        areaBox.style.borderRadius = '8px';
+        areaBox.style.padding = '15px';
+        areaBox.style.marginBottom = '15px';
+        areaBox.style.textAlign = 'center';
+        
+        const areaLabel = document.createElement('div');
+        areaLabel.style.fontSize = '12px';
+        areaLabel.style.color = '#6b7280';
+        areaLabel.style.marginBottom = '5px';
+        areaLabel.textContent = 'Fläche';
+        areaBox.appendChild(areaLabel);
+        
+        const areaValue = document.createElement('div');
+        areaValue.style.fontSize = '24px';
+        areaValue.style.fontWeight = 'bold';
+        areaValue.style.color = '#1e40af';
+        areaValue.textContent = `${measurement.value.toFixed(2)} m²`;
+        areaBox.appendChild(areaValue);
+        
+        detailsColumn.appendChild(areaBox);
+        
+        // Inclination box if available
+        if (measurement.inclination !== undefined) {
+          const inclBox = document.createElement('div');
+          inclBox.style.backgroundColor = '#f0fdf4';
+          inclBox.style.border = '1px solid #22c55e';
+          inclBox.style.borderRadius = '8px';
+          inclBox.style.padding = '15px';
+          inclBox.style.marginBottom = '15px';
+          inclBox.style.textAlign = 'center';
+          
+          const inclLabel = document.createElement('div');
+          inclLabel.style.fontSize = '12px';
+          inclLabel.style.color = '#6b7280';
+          inclLabel.style.marginBottom = '5px';
+          inclLabel.textContent = 'Neigung';
+          inclBox.appendChild(inclLabel);
+          
+          const inclValue = document.createElement('div');
+          inclValue.style.fontSize = '24px';
+          inclValue.style.fontWeight = 'bold';
+          inclValue.style.color = '#166534';
+          inclValue.textContent = `${Math.abs(measurement.inclination).toFixed(1)}°`;
+          inclBox.appendChild(inclValue);
+          
+          detailsColumn.appendChild(inclBox);
+        }
+        
+        // Point count if available
+        if (measurement.points && measurement.points.length > 0) {
+          const pointsBox = document.createElement('div');
+          pointsBox.style.backgroundColor = '#fef3c7';
+          pointsBox.style.border = '1px solid #f59e0b';
+          pointsBox.style.borderRadius = '8px';
+          pointsBox.style.padding = '15px';
+          pointsBox.style.textAlign = 'center';
+          
+          const pointsLabel = document.createElement('div');
+          pointsLabel.style.fontSize = '12px';
+          pointsLabel.style.color = '#6b7280';
+          pointsLabel.style.marginBottom = '5px';
+          pointsLabel.textContent = 'Eckpunkte';
+          pointsBox.appendChild(pointsLabel);
+          
+          const pointsValue = document.createElement('div');
+          pointsValue.style.fontSize = '24px';
+          pointsValue.style.fontWeight = 'bold';
+          pointsValue.style.color = '#b45309';
+          pointsValue.textContent = `${measurement.points.length}`;
+          pointsBox.appendChild(pointsValue);
+          
+          detailsColumn.appendChild(pointsBox);
+        }
+        
+        contentRow.appendChild(detailsColumn);
+        areaPage.appendChild(contentRow);
+        
+        // Segments table below the image
         if (measurement.segments && measurement.segments.length > 0) {
+          const segmentsSection = document.createElement('div');
+          segmentsSection.style.marginTop = '10px';
+          
+          const segmentsTitle = document.createElement('h4');
+          segmentsTitle.style.margin = '0 0 10px 0';
+          segmentsTitle.style.color = '#374151';
+          segmentsTitle.textContent = 'Kantenlängen';
+          segmentsSection.appendChild(segmentsTitle);
+          
           const segmentsTable = createAreaSegmentsTable(measurement, index);
-          areaContainer.appendChild(segmentsTable);
+          segmentsTable.style.marginTop = '0';
+          segmentsSection.appendChild(segmentsTable);
+          
+          areaPage.appendChild(segmentsSection);
         }
         
+        // Custom screenshots on the same page if space allows
         if (measurement.customScreenshots && measurement.customScreenshots.length > 0) {
           const screenshotsContainer = document.createElement('div');
           screenshotsContainer.style.marginTop = '20px';
-          screenshotsContainer.style.pageBreakInside = 'avoid';
           
           const screenshotsTitle = document.createElement('h4');
+          screenshotsTitle.style.margin = '0 0 10px 0';
+          screenshotsTitle.style.color = '#374151';
           screenshotsTitle.textContent = 'Zusätzliche Ansichten';
           screenshotsContainer.appendChild(screenshotsTitle);
           
@@ -1557,19 +1666,21 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           measurement.customScreenshots.forEach(screenshot => {
             const screenshotImg = document.createElement('img');
             screenshotImg.src = screenshot;
-            screenshotImg.style.maxWidth = '48%';
+            screenshotImg.style.width = 'calc(50% - 5px)';
             screenshotImg.style.height = 'auto';
+            screenshotImg.style.maxHeight = '150px';
+            screenshotImg.style.objectFit = 'contain';
+            screenshotImg.style.border = '1px solid #e5e7eb';
+            screenshotImg.style.borderRadius = '4px';
             screenshotsGrid.appendChild(screenshotImg);
           });
           
           screenshotsContainer.appendChild(screenshotsGrid);
-          areaContainer.appendChild(screenshotsContainer);
+          areaPage.appendChild(screenshotsContainer);
         }
         
-        areaSection.appendChild(areaContainer);
+        container.appendChild(areaPage);
       });
-      
-      container.appendChild(areaSection);
     }
     
     if (lengthMeasurements.length > 0) {
