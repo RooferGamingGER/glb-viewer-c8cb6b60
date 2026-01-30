@@ -10,6 +10,7 @@ import { useMeasurementInteractionManager } from '@/hooks/useMeasurementInteract
 import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
+import { useLayerVisibility, LayerVisibility } from '@/hooks/useLayerVisibility';
 
 // Import visualization utilities
 import { 
@@ -65,6 +66,13 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const { isTablet, isLandscape } = useScreenOrientation();
+  
+  // Layer visibility state for model view modes
+  const { 
+    layerVisibility, 
+    updateLayerVisibility, 
+    applyLayerVisibility 
+  } = useLayerVisibility();
   
   // Get measurement state and actions from context
   const { 
@@ -429,6 +437,36 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     toggleAllLabelsVisibility();
   };
 
+  // Handle layer visibility changes
+  const handleLayerChange = useCallback((layer: keyof LayerVisibility, value: boolean) => {
+    updateLayerVisibility(layer, value);
+    
+    // Handle measurements visibility toggle
+    if (layer === 'showMeasurements') {
+      toggleAllMeasurementsVisibility();
+    }
+    
+    // Apply material changes to the model
+    if (layer === 'showMesh' || layer === 'showTexture') {
+      // Find the model in the scene
+      scene.traverse((object) => {
+        if (object instanceof THREE.Group && object.children.length > 0) {
+          // Check if this is a model group (not measurement groups)
+          const isModelGroup = !object.userData?.isMeasurement && 
+                              !object.name?.includes('measurement') &&
+                              !object.name?.includes('points') &&
+                              !object.name?.includes('lines') &&
+                              !object.name?.includes('labels');
+          
+          if (isModelGroup) {
+            const newVisibility = { ...layerVisibility, [layer]: value };
+            applyLayerVisibility(object, newVisibility);
+          }
+        }
+      });
+    }
+  }, [updateLayerVisibility, toggleAllMeasurementsVisibility, scene, layerVisibility, applyLayerVisibility]);
+
   // Calculate if we need to show notifications in the footer
   const isEditing = editMeasurementId !== null || editingSegmentId !== null || movingPointInfo !== null;
   const showNotifications = isEditing || 
@@ -483,6 +521,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
             isEditing={showNotifications}
             editingAreaMeasurement={editingAreaMeasurement}
             handleClearMeasurements={handleClearMeasurements}
+            layerVisibility={layerVisibility}
+            onLayerChange={handleLayerChange}
           />
           
           {/* Active measurement controls (when creating new measurements) */}
