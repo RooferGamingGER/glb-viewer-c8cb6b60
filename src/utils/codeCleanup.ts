@@ -22,7 +22,7 @@ export const POTENTIALLY_UNUSED_FILES = [
 // List of large dependencies that might not be needed
 export const HEAVY_DEPENDENCIES = [
   'html2canvas',
-  'html2pdf.js',
+  'jspdf',
   'recharts',
   'react-day-picker',
   'embla-carousel-react',

@@ -105,7 +105,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           three: ['three', '@react-three/fiber', '@react-three/drei'],
-          pdf: ['html2pdf.js'],
+          pdf: ['jspdf'],
           html2canvas: ['html2canvas'],
           charts: ['recharts']
         }
