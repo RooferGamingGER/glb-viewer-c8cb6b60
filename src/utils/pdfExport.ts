@@ -2347,7 +2347,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         
         // Right: Service link
         pdf.setFontSize(8);
-        const rightText = 'Drohnenaufmaß ab 90€ im Monat | drohnenvermessung-roofergaming.de';
+        const rightText = 'Drohnenaufmaß ab 90€ im Monat';
         const rightTextWidth = pdf.getTextWidth(rightText);
         pdf.textWithLink(rightText, pdfWidth - margin - rightTextWidth, footerY, { url: 'https://drohnenvermessung-roofergaming.de' });
       }
