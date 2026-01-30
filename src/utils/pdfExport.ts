@@ -1824,67 +1824,87 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const html2canvas = (await import('html2canvas')).default;
     const { jsPDF } = await import('jspdf');
     
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
+    // html2canvas requires the element to be in the DOM
+    // Temporarily append container to body with hidden visibility
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    document.body.appendChild(container);
     
-    const imgData = canvas.toDataURL('image/jpeg', 0.98);
-    const pdf = new jsPDF({
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait'
-    });
-    
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-    const contentWidth = pdfWidth - (margin * 2);
-    
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = contentWidth / imgWidth;
-    const scaledHeight = imgHeight * ratio;
-    
-    // Calculate how many pages we need
-    const pageContentHeight = pdfHeight - (margin * 2);
-    const totalPages = Math.ceil(scaledHeight / pageContentHeight);
-    
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) {
-        pdf.addPage();
-      }
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
       
-      // Calculate the y position for this page's slice
-      const sourceY = (page * pageContentHeight) / ratio;
-      const sourceHeight = Math.min(pageContentHeight / ratio, imgHeight - sourceY);
+      // Remove container from DOM after rendering
+      document.body.removeChild(container);
       
-      // Create a temporary canvas for this page slice
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = imgWidth;
-      pageCanvas.height = sourceHeight;
-      const ctx = pageCanvas.getContext('2d');
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      });
       
-      if (ctx) {
-        ctx.drawImage(
-          canvas,
-          0, sourceY, imgWidth, sourceHeight,
-          0, 0, imgWidth, sourceHeight
-        );
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentWidth = pdfWidth - (margin * 2);
+      
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = contentWidth / imgWidth;
+      const scaledHeight = imgHeight * ratio;
+      
+      // Calculate how many pages we need
+      const pageContentHeight = pdfHeight - (margin * 2);
+      const totalPages = Math.ceil(scaledHeight / pageContentHeight);
+      
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) {
+          pdf.addPage();
+        }
         
-        const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
-        const destHeight = sourceHeight * ratio;
-        pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, destHeight);
+        // Calculate the y position for this page's slice
+        const sourceY = (page * pageContentHeight) / ratio;
+        const sourceHeight = Math.min(pageContentHeight / ratio, imgHeight - sourceY);
+        
+        // Create a temporary canvas for this page slice
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = imgWidth;
+        pageCanvas.height = sourceHeight;
+        const ctx = pageCanvas.getContext('2d');
+        
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            0, sourceY, imgWidth, sourceHeight,
+            0, 0, imgWidth, sourceHeight
+          );
+          
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
+          const destHeight = sourceHeight * ratio;
+          pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, destHeight);
+        }
       }
-    }
-    
-    if (outputMode === 'blob') {
-      const blob = pdf.output('blob');
-      return blob;
-    } else {
-      pdf.save(filename);
-      return true;
+      
+      if (outputMode === 'blob') {
+        const blob = pdf.output('blob');
+        return blob;
+      } else {
+        pdf.save(filename);
+        return true;
+      }
+    } catch (renderError) {
+      // Ensure container is removed from DOM even on error
+      if (container.parentNode) {
+        document.body.removeChild(container);
+      }
+      throw renderError;
     }
   } catch (error) {
     console.error('Export error:', error);
