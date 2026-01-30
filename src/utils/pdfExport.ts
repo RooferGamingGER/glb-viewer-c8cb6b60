@@ -1818,34 +1818,72 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const calculationMethodsSection = createCalculationMethodsSection();
     container.appendChild(calculationMethodsSection);
     
-    const options = {
-      margin: 10,
-      filename: `${coverData.title || 'Vermessungsbericht'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true,
-        letterRendering: true
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait'
-      }
-    };
+    const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
     
-    const html2pdf = (await import('html2pdf.js')).default;
+    // Use html2canvas + jspdf directly (replacing vulnerable html2pdf.js)
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
+    
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+    
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    const pdf = new jsPDF({
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    });
+    
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const contentWidth = pdfWidth - (margin * 2);
+    
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = contentWidth / imgWidth;
+    const scaledHeight = imgHeight * ratio;
+    
+    // Calculate how many pages we need
+    const pageContentHeight = pdfHeight - (margin * 2);
+    const totalPages = Math.ceil(scaledHeight / pageContentHeight);
+    
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) {
+        pdf.addPage();
+      }
+      
+      // Calculate the y position for this page's slice
+      const sourceY = (page * pageContentHeight) / ratio;
+      const sourceHeight = Math.min(pageContentHeight / ratio, imgHeight - sourceY);
+      
+      // Create a temporary canvas for this page slice
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = imgWidth;
+      pageCanvas.height = sourceHeight;
+      const ctx = pageCanvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.drawImage(
+          canvas,
+          0, sourceY, imgWidth, sourceHeight,
+          0, 0, imgWidth, sourceHeight
+        );
+        
+        const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
+        const destHeight = sourceHeight * ratio;
+        pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, destHeight);
+      }
+    }
+    
     if (outputMode === 'blob') {
-      const worker = html2pdf().from(container).set(options).toPdf();
-      const pdf = await worker.get('pdf');
       const blob = pdf.output('blob');
       return blob;
     } else {
-      await html2pdf()
-        .from(container)
-        .set(options)
-        .save();
-      
+      pdf.save(filename);
       return true;
     }
   } catch (error) {
