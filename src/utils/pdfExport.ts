@@ -1251,11 +1251,16 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     `;
     container.appendChild(style);
     
-    // Create the cover page
+    // ============ PAGE 1: DECKBLATT (Title Page with TOC and Footer) ============
     const coverPage = document.createElement('div');
     coverPage.className = 'cover-page page-break';
     coverPage.style.pageBreakAfter = 'always';
+    coverPage.style.position = 'relative';
+    coverPage.style.minHeight = '270mm';
+    coverPage.style.display = 'flex';
+    coverPage.style.flexDirection = 'column';
     
+    // Header with company name
     const coverHeader = document.createElement('div');
     coverHeader.className = 'cover-header';
     
@@ -1270,16 +1275,15 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       companyName.appendChild(sup);
     }
     coverHeader.appendChild(companyName);
-    
     coverPage.appendChild(coverHeader);
     
+    // Title
     const title = document.createElement('h1');
     title.className = 'cover-title';
     title.textContent = coverData.title;
     coverPage.appendChild(title);
     
-    // Subtitle moved to footer - will be added after summarySection
-    
+    // Info section (Projektdaten + Kundendaten)
     const infoSection = document.createElement('div');
     infoSection.className = 'info-section';
     
@@ -1304,16 +1308,13 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     projectRows.forEach(row => {
       if (row.value) {
         const tableRow = document.createElement('tr');
-        
         const labelCell = document.createElement('td');
         labelCell.className = 'info-label';
         labelCell.textContent = row.label;
         tableRow.appendChild(labelCell);
-        
         const valueCell = document.createElement('td');
         valueCell.textContent = row.value;
         tableRow.appendChild(valueCell);
-        
         projectTable.appendChild(tableRow);
       }
     });
@@ -1343,56 +1344,222 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     customerRows.forEach(row => {
       if (row.value) {
         const tableRow = document.createElement('tr');
-        
         const labelCell = document.createElement('td');
         labelCell.className = 'info-label';
         labelCell.textContent = row.label;
         tableRow.appendChild(labelCell);
-        
         const valueCell = document.createElement('td');
         valueCell.textContent = row.value;
         tableRow.appendChild(valueCell);
-        
         customerTable.appendChild(tableRow);
       }
     });
-    
 
     rightInfo.appendChild(customerTable);
     infoSection.appendChild(rightInfo);
-    
     coverPage.appendChild(infoSection);
     
-    if ((measurements as any).topDownScreenshot) {
-      const modelView = document.createElement('div');
-      modelView.className = 'model-view';
+    // Notes if present
+    if (coverData.notes && coverData.notes.trim().length > 0) {
+      const notesDiv = document.createElement('div');
+      notesDiv.style.marginTop = '20px';
+      notesDiv.style.padding = '15px';
+      notesDiv.style.backgroundColor = '#f8fafc';
+      notesDiv.style.border = '1px solid #e2e8f0';
+      notesDiv.style.borderRadius = '8px';
+      notesDiv.style.fontSize = '11px';
+      notesDiv.style.lineHeight = '1.5';
       
-      const modelImage = document.createElement('img');
-      modelImage.className = 'model-image';
-      modelImage.src = (measurements as any).topDownScreenshot;
-      modelImage.alt = 'Dachdraufsicht';
+      const notesLabel = document.createElement('strong');
+      notesLabel.textContent = 'Bemerkungen: ';
+      notesDiv.appendChild(notesLabel);
       
-      modelView.appendChild(modelImage);
-      coverPage.appendChild(modelView);
+      const notesText = document.createTextNode(coverData.notes);
+      notesDiv.appendChild(notesText);
+      
+      coverPage.appendChild(notesDiv);
     }
     
-    // Add the cover page to the container first (PAGE 1 - with summary integrated)
-    // Integrate summary directly into cover page instead of separate info page
+    // Table of Contents (Inhaltsverzeichnis)
+    const tocSection = document.createElement('div');
+    tocSection.style.marginTop = '30px';
+    tocSection.style.padding = '20px';
+    tocSection.style.backgroundColor = '#ffffff';
+    tocSection.style.border = '1px solid #e5e7eb';
+    tocSection.style.borderRadius = '8px';
+    
+    const tocTitle = document.createElement('h3');
+    tocTitle.textContent = 'Inhaltsverzeichnis';
+    tocTitle.style.margin = '0 0 15px 0';
+    tocTitle.style.color = '#1e40af';
+    tocTitle.style.fontSize = '14px';
+    tocTitle.style.borderBottom = '2px solid #1e40af';
+    tocTitle.style.paddingBottom = '8px';
+    tocSection.appendChild(tocTitle);
+    
+    const tocList = document.createElement('div');
+    tocList.style.display = 'flex';
+    tocList.style.flexDirection = 'column';
+    tocList.style.gap = '8px';
+    
+    // Build TOC entries dynamically
+    let currentPage = 2;
+    const tocEntries: { title: string; page: number }[] = [];
+    
+    // Page 2: Übersicht (Luftbild + Zusammenfassung)
+    tocEntries.push({ title: 'Übersicht & Zusammenfassung', page: currentPage });
+    currentPage++;
+    
+    // Page 3: Roof plan if available
+    if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
+      tocEntries.push({ title: 'Dachplan Übersicht', page: currentPage });
+      currentPage++;
+    }
+    
+    // Page: Measurements overview
+    tocEntries.push({ title: 'Messungen - Übersicht', page: currentPage });
+    currentPage++;
+    
+    // Pages for individual areas
+    const areaMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'area');
+    if (areaMeasurementsForToc.length > 0) {
+      tocEntries.push({ title: `Einzelflächen (${areaMeasurementsForToc.length} Flächen)`, page: currentPage });
+      currentPage += areaMeasurementsForToc.length;
+    }
+    
+    // Gesamtübersicht
+    if (areaMeasurementsForToc.length > 0) {
+      tocEntries.push({ title: 'Gesamtübersicht', page: currentPage });
+      currentPage++;
+    }
+    
+    // Berechnungsmethoden
+    tocEntries.push({ title: 'Anhang: Berechnungsmethoden', page: currentPage });
+    
+    tocEntries.forEach(entry => {
+      const tocRow = document.createElement('div');
+      tocRow.style.display = 'flex';
+      tocRow.style.justifyContent = 'space-between';
+      tocRow.style.alignItems = 'center';
+      tocRow.style.padding = '6px 10px';
+      tocRow.style.backgroundColor = '#f9fafb';
+      tocRow.style.borderRadius = '4px';
+      tocRow.style.fontSize = '12px';
+      
+      const tocText = document.createElement('span');
+      tocText.textContent = entry.title;
+      tocText.style.color = '#374151';
+      tocRow.appendChild(tocText);
+      
+      const tocPage = document.createElement('span');
+      tocPage.textContent = `Seite ${entry.page}`;
+      tocPage.style.color = '#6b7280';
+      tocPage.style.fontWeight = '500';
+      tocRow.appendChild(tocPage);
+      
+      tocList.appendChild(tocRow);
+    });
+    
+    tocSection.appendChild(tocList);
+    coverPage.appendChild(tocSection);
+    
+    // Spacer to push footer to bottom
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+    coverPage.appendChild(spacer);
+    
+    // Footer
+    const coverFooter = document.createElement('div');
+    coverFooter.style.borderTop = '2px solid #1e40af';
+    coverFooter.style.paddingTop = '15px';
+    coverFooter.style.marginTop = '20px';
+    coverFooter.style.textAlign = 'center';
+    
+    const footerBrand = document.createElement('div');
+    footerBrand.style.fontSize = '14px';
+    footerBrand.style.fontWeight = 'bold';
+    footerBrand.style.color = '#1e40af';
+    footerBrand.style.marginBottom = '10px';
+    footerBrand.textContent = 'DrohnenGLB by RooferGaming';
+    coverFooter.appendChild(footerBrand);
+    
+    const footerLinks = document.createElement('div');
+    footerLinks.style.display = 'flex';
+    footerLinks.style.justifyContent = 'center';
+    footerLinks.style.gap = '30px';
+    footerLinks.style.fontSize = '11px';
+    footerLinks.style.flexWrap = 'wrap';
+    
+    const link1Container = document.createElement('div');
+    link1Container.style.color = '#6b7280';
+    link1Container.innerHTML = 'Kostenloser GLB Viewer: <a href="https://drohnenglb.de" style="color: #2563eb; text-decoration: underline;">drohnenglb.de</a>';
+    footerLinks.appendChild(link1Container);
+    
+    const link2Container = document.createElement('div');
+    link2Container.style.color = '#6b7280';
+    link2Container.innerHTML = 'Drohnenaufmaß ab 90€/Monat: <a href="https://drohnenvermessung-roofergaming.de" style="color: #2563eb; text-decoration: underline;">drohnenvermessung-roofergaming.de</a>';
+    footerLinks.appendChild(link2Container);
+    
+    coverFooter.appendChild(footerLinks);
+    coverPage.appendChild(coverFooter);
+    
+    container.appendChild(coverPage);
+    
+    // ============ PAGE 2: ÜBERSICHT (Luftbild + Zusammenfassung) ============
+    const overviewPage = document.createElement('div');
+    overviewPage.className = 'page-break';
+    overviewPage.style.pageBreakBefore = 'always';
+    overviewPage.style.pageBreakAfter = 'always';
+    overviewPage.style.padding = '20px';
+    
+    const overviewTitle = document.createElement('h2');
+    overviewTitle.textContent = 'Übersicht & Zusammenfassung';
+    overviewTitle.style.marginTop = '0';
+    overviewTitle.style.marginBottom = '20px';
+    overviewPage.appendChild(overviewTitle);
+    
+    // Luftbild (Top Down Screenshot)
+    if ((measurements as any).topDownScreenshot) {
+      const imageContainer = document.createElement('div');
+      imageContainer.style.textAlign = 'center';
+      imageContainer.style.marginBottom = '25px';
+      
+      const modelImage = document.createElement('img');
+      modelImage.src = (measurements as any).topDownScreenshot;
+      modelImage.alt = 'Dachdraufsicht';
+      modelImage.style.maxWidth = '100%';
+      modelImage.style.maxHeight = '280px';
+      modelImage.style.objectFit = 'contain';
+      modelImage.style.border = '1px solid #e5e7eb';
+      modelImage.style.borderRadius = '8px';
+      
+      imageContainer.appendChild(modelImage);
+      
+      const imageCaption = document.createElement('div');
+      imageCaption.style.fontSize = '10px';
+      imageCaption.style.color = '#6b7280';
+      imageCaption.style.marginTop = '8px';
+      imageCaption.textContent = 'Luftbild / Draufsicht des Objekts';
+      imageContainer.appendChild(imageCaption);
+      
+      overviewPage.appendChild(imageContainer);
+    }
+    
+    // Zusammenfassung
     const summarySection = document.createElement('div');
-    summarySection.style.marginTop = '20px';
-    summarySection.style.padding = '15px';
+    summarySection.style.padding = '20px';
     summarySection.style.backgroundColor = '#f8fafc';
     summarySection.style.borderRadius = '8px';
     summarySection.style.border = '1px solid #e2e8f0';
     
     const summaryTitle = document.createElement('h3');
     summaryTitle.textContent = 'Zusammenfassung';
-    summaryTitle.style.margin = '0 0 15px 0';
+    summaryTitle.style.margin = '0 0 20px 0';
     summaryTitle.style.color = '#1e40af';
-    summaryTitle.style.fontSize = '14px';
+    summaryTitle.style.fontSize = '16px';
     summarySection.appendChild(summaryTitle);
     
-    // Total area highlight
+    // Summary boxes
     const totalAreaBox = document.createElement('div');
     totalAreaBox.style.display = 'flex';
     totalAreaBox.style.gap = '20px';
@@ -1405,18 +1572,18 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     areaBox.style.backgroundColor = '#eff6ff';
     areaBox.style.border = '2px solid #3b82f6';
     areaBox.style.borderRadius = '8px';
-    areaBox.style.padding = '15px';
+    areaBox.style.padding = '20px';
     areaBox.style.textAlign = 'center';
     
     const areaLabel = document.createElement('div');
-    areaLabel.style.fontSize = '11px';
+    areaLabel.style.fontSize = '12px';
     areaLabel.style.color = '#6b7280';
-    areaLabel.style.marginBottom = '5px';
+    areaLabel.style.marginBottom = '8px';
     areaLabel.textContent = 'Dachfläche gesamt';
     areaBox.appendChild(areaLabel);
     
     const areaValue = document.createElement('div');
-    areaValue.style.fontSize = '24px';
+    areaValue.style.fontSize = '28px';
     areaValue.style.fontWeight = 'bold';
     areaValue.style.color = '#1e40af';
     const totalArea = summaryData.totalArea || calculateTotalArea(sortedMeasurements);
@@ -1432,19 +1599,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     countBox.style.backgroundColor = '#f0fdf4';
     countBox.style.border = '2px solid #22c55e';
     countBox.style.borderRadius = '8px';
-    countBox.style.padding = '15px';
+    countBox.style.padding = '20px';
     countBox.style.textAlign = 'center';
     
     const countLabel = document.createElement('div');
-    countLabel.style.fontSize = '11px';
+    countLabel.style.fontSize = '12px';
     countLabel.style.color = '#6b7280';
-    countLabel.style.marginBottom = '5px';
+    countLabel.style.marginBottom = '8px';
     countLabel.textContent = 'Anzahl Teilflächen';
     countBox.appendChild(countLabel);
     
     const areaMeasurementsForCount = sortedMeasurements.filter(m => m.type === 'area');
     const countValue = document.createElement('div');
-    countValue.style.fontSize = '24px';
+    countValue.style.fontSize = '28px';
     countValue.style.fontWeight = 'bold';
     countValue.style.color = '#166534';
     countValue.textContent = `${areaMeasurementsForCount.length}`;
@@ -1459,18 +1626,18 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     measurementsBox.style.backgroundColor = '#fef3c7';
     measurementsBox.style.border = '2px solid #f59e0b';
     measurementsBox.style.borderRadius = '8px';
-    measurementsBox.style.padding = '15px';
+    measurementsBox.style.padding = '20px';
     measurementsBox.style.textAlign = 'center';
     
     const measurementsLabel = document.createElement('div');
-    measurementsLabel.style.fontSize = '11px';
+    measurementsLabel.style.fontSize = '12px';
     measurementsLabel.style.color = '#6b7280';
-    measurementsLabel.style.marginBottom = '5px';
+    measurementsLabel.style.marginBottom = '8px';
     measurementsLabel.textContent = 'Messungen gesamt';
     measurementsBox.appendChild(measurementsLabel);
     
     const measurementsValue = document.createElement('div');
-    measurementsValue.style.fontSize = '24px';
+    measurementsValue.style.fontSize = '28px';
     measurementsValue.style.fontWeight = 'bold';
     measurementsValue.style.color = '#b45309';
     measurementsValue.textContent = `${sortedMeasurements.length}`;
@@ -1479,29 +1646,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     totalAreaBox.appendChild(measurementsBox);
     summarySection.appendChild(totalAreaBox);
     
-    // Add notes if present (compact)
-    if (coverData.notes && coverData.notes.trim().length > 0) {
-      const notesDiv = document.createElement('div');
-      notesDiv.style.marginTop = '15px';
-      notesDiv.style.padding = '10px';
-      notesDiv.style.backgroundColor = '#ffffff';
-      notesDiv.style.border = '1px solid #e5e7eb';
-      notesDiv.style.borderRadius = '4px';
-      notesDiv.style.fontSize = '11px';
-      notesDiv.style.lineHeight = '1.4';
-      
-      const notesLabel = document.createElement('strong');
-      notesLabel.textContent = 'Bemerkungen: ';
-      notesDiv.appendChild(notesLabel);
-      
-      const notesText = document.createTextNode(coverData.notes.substring(0, 300) + (coverData.notes.length > 300 ? '...' : ''));
-      notesDiv.appendChild(notesText);
-      
-      summarySection.appendChild(notesDiv);
-    }
-    
-    coverPage.appendChild(summarySection);
-    container.appendChild(coverPage);
+    overviewPage.appendChild(summarySection);
+    container.appendChild(overviewPage);
     
     // PAGE 2: Roof plan (if available)
     if ((measurements as any).roofPlan && ((measurements as any).placeRoofPlanOnPage2 || (measurements as any).roofPlanPageNumber === 2)) {
