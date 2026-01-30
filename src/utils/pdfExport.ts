@@ -19,6 +19,7 @@ export interface CoverPageData {
   contactPhone: string;
   creationDate: string;
   notes: string;
+  companyLogo?: string; // Base64-encoded company logo
 }
 
 const createAreaSegmentsTable = (measurement: Measurement, index: number): HTMLElement => {
@@ -1259,12 +1260,45 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     coverPage.style.display = 'flex';
     coverPage.style.flexDirection = 'column';
     coverPage.style.boxSizing = 'border-box';
+    coverPage.style.backgroundColor = '#fafbfc';
+    coverPage.style.border = '1px solid #e5e7eb';
+    coverPage.style.borderRadius = '4px';
+    coverPage.style.padding = '20px';
+    
+    // Accent stripe at top
+    const accentStripe = document.createElement('div');
+    accentStripe.style.position = 'absolute';
+    accentStripe.style.top = '0';
+    accentStripe.style.left = '0';
+    accentStripe.style.right = '0';
+    accentStripe.style.height = '6px';
+    accentStripe.style.backgroundColor = '#1e40af';
+    accentStripe.style.borderRadius = '4px 4px 0 0';
+    coverPage.appendChild(accentStripe);
+    
+    // Company Logo (if provided)
+    if (coverData.companyLogo) {
+      const logoContainer = document.createElement('div');
+      logoContainer.style.textAlign = 'center';
+      logoContainer.style.marginTop = '20px';
+      logoContainer.style.marginBottom = '20px';
+      
+      const logo = document.createElement('img');
+      logo.src = coverData.companyLogo;
+      logo.alt = 'Firmenlogo';
+      logo.style.maxWidth = '200px';
+      logo.style.maxHeight = '80px';
+      logo.style.objectFit = 'contain';
+      
+      logoContainer.appendChild(logo);
+      coverPage.appendChild(logoContainer);
+    }
     
     // Title (directly, without company header)
     const title = document.createElement('h1');
     title.className = 'cover-title';
     title.textContent = coverData.title;
-    title.style.marginTop = '0';
+    title.style.marginTop = coverData.companyLogo ? '10px' : '30px';
     coverPage.appendChild(title);
     
     // Info section (Projektdaten + Kundendaten)
@@ -1447,44 +1481,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     tocSection.appendChild(tocList);
     coverPage.appendChild(tocSection);
     
-    // Footer - positioned at bottom
-    const coverFooter = document.createElement('div');
-    coverFooter.style.position = 'absolute';
-    coverFooter.style.bottom = '0';
-    coverFooter.style.left = '0';
-    coverFooter.style.right = '0';
-    coverFooter.style.borderTop = '2px solid #1e40af';
-    coverFooter.style.paddingTop = '15px';
-    coverFooter.style.textAlign = 'center';
-    coverFooter.style.backgroundColor = '#ffffff';
-    
-    const footerBrand = document.createElement('div');
-    footerBrand.style.fontSize = '14px';
-    footerBrand.style.fontWeight = 'bold';
-    footerBrand.style.color = '#1e40af';
-    footerBrand.style.marginBottom = '10px';
-    footerBrand.textContent = 'DrohnenGLB by RooferGaming';
-    coverFooter.appendChild(footerBrand);
-    
-    const footerLinks = document.createElement('div');
-    footerLinks.style.display = 'flex';
-    footerLinks.style.justifyContent = 'center';
-    footerLinks.style.gap = '30px';
-    footerLinks.style.fontSize = '11px';
-    footerLinks.style.flexWrap = 'wrap';
-    
-    const link1Container = document.createElement('div');
-    link1Container.style.color = '#6b7280';
-    link1Container.innerHTML = 'Kostenloser GLB Viewer: <a href="https://drohnenglb.de" style="color: #2563eb; text-decoration: underline;">drohnenglb.de</a>';
-    footerLinks.appendChild(link1Container);
-    
-    const link2Container = document.createElement('div');
-    link2Container.style.color = '#6b7280';
-    link2Container.innerHTML = 'Drohnenaufmaß ab 90€/Monat: <a href="https://drohnenvermessung-roofergaming.de" style="color: #2563eb; text-decoration: underline;">drohnenvermessung-roofergaming.de</a>';
-    footerLinks.appendChild(link2Container);
-    
-    coverFooter.appendChild(footerLinks);
-    coverPage.appendChild(coverFooter);
+    // Footer removed from cover page - now integrated into page numbering
     
     container.appendChild(coverPage);
     
@@ -2315,15 +2312,30 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         }
       }
       
-      // Add page numbers to all pages
+      // Add page numbers with branding to all pages
       const totalPages = pdf.getNumberOfPages();
+      const footerY = pdfHeight - 5;
+      
       for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
         pdf.setPage(pageNum);
-        pdf.setFontSize(10);
+        pdf.setFontSize(8);
         pdf.setTextColor(128, 128, 128);
-        const pageText = `Seite ${pageNum} von ${totalPages}`;
-        const textWidth = pdf.getTextWidth(pageText);
-        pdf.text(pageText, (pdfWidth - textWidth) / 2, pdfHeight - 5);
+        
+        // Left: DrohnenGLB branding with link
+        const leftText = 'DrohnenGLB | drohnenglb.de';
+        pdf.textWithLink(leftText, margin, footerY, { url: 'https://drohnenglb.de' });
+        
+        // Center: Page number
+        pdf.setFontSize(9);
+        const centerText = `Seite ${pageNum} von ${totalPages}`;
+        const centerTextWidth = pdf.getTextWidth(centerText);
+        pdf.text(centerText, (pdfWidth - centerTextWidth) / 2, footerY);
+        
+        // Right: Service link
+        pdf.setFontSize(8);
+        const rightText = 'Aufmaß ab 90€ | drohnenvermessung-roofergaming.de';
+        const rightTextWidth = pdf.getTextWidth(rightText);
+        pdf.textWithLink(rightText, pdfWidth - margin - rightTextWidth, footerY, { url: 'https://drohnenvermessung-roofergaming.de' });
       }
       
       // Remove container from DOM after rendering
