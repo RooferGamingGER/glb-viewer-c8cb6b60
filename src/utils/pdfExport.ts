@@ -1278,12 +1278,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     title.textContent = coverData.title;
     coverPage.appendChild(title);
     
-    const subtitle = document.createElement('div');
-    subtitle.className = 'cover-subtitle';
-    subtitle.append(document.createTextNode('Kostenloser GLB Viewer: drohnenglb.de'));
-    subtitle.appendChild(document.createElement('br'));
-    subtitle.append(document.createTextNode('Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de'));
-    coverPage.appendChild(subtitle);
+    // Subtitle moved to footer - will be added after summarySection
     
     const infoSection = document.createElement('div');
     infoSection.className = 'info-section';
@@ -1506,6 +1501,34 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     }
     
     coverPage.appendChild(summarySection);
+    
+    // Add compact footer with links
+    const coverFooter = document.createElement('div');
+    coverFooter.style.position = 'absolute';
+    coverFooter.style.bottom = '15px';
+    coverFooter.style.left = '20px';
+    coverFooter.style.right = '20px';
+    coverFooter.style.display = 'flex';
+    coverFooter.style.justifyContent = 'center';
+    coverFooter.style.gap = '30px';
+    coverFooter.style.fontSize = '10px';
+    coverFooter.style.color = '#6b7280';
+    coverFooter.style.borderTop = '1px solid #e5e7eb';
+    coverFooter.style.paddingTop = '10px';
+    
+    const footerLink1 = document.createElement('span');
+    footerLink1.textContent = 'Kostenloser GLB Viewer: drohnenglb.de';
+    coverFooter.appendChild(footerLink1);
+    
+    const footerLink2 = document.createElement('span');
+    footerLink2.textContent = 'Drohnenaufmaß ab 90€/Monat: drohnenvermessung-server.de';
+    coverFooter.appendChild(footerLink2);
+    
+    coverPage.appendChild(coverFooter);
+    
+    // Make cover page positioned relative for absolute footer
+    coverPage.style.position = 'relative';
+    coverPage.style.minHeight = '270mm';
     container.appendChild(coverPage);
     
     // PAGE 2: Roof plan (if available)
