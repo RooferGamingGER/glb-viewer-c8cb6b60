@@ -81,9 +81,9 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
   }, [isEditing]);
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-screen overflow-hidden w-[320px] min-w-[320px]">
       {/* Tabs for navigation between tools and measurements */}
-      <div className="p-3 border-b border-border/50">
+      <div className="p-3 border-b border-border/50 flex-shrink-0">
         <Tabs 
           defaultValue="tools" 
           value={activeTab} 
@@ -102,15 +102,17 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
       
       {/* Layer visibility controls */}
       {layerVisibility && onLayerChange && (
-        <LayerControls 
-          layerVisibility={layerVisibility}
-          onLayerChange={onLayerChange}
-        />
+        <div className="flex-shrink-0">
+          <LayerControls 
+            layerVisibility={layerVisibility}
+            onLayerChange={onLayerChange}
+          />
+        </div>
       )}
       
-      {/* Show editing alerts at the top when in editing mode */}
+      {/* Show editing alerts - fixed at top when in editing mode */}
       {isEditing && (
-        <div className="px-3 pt-3">
+        <div className="px-3 pt-3 flex-shrink-0 border-b border-border/50 pb-3 bg-background sticky top-0 z-10">
           <EditingAlert 
             editMeasurementId={editMeasurementId}
             editingSegmentId={editingSegmentId}
@@ -121,8 +123,8 @@ const TabbedMeasurementSidebar: React.FC<TabbedMeasurementSidebarProps> = ({
         </div>
       )}
       
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      {/* Tab content - scrollable area */}
+      <div className="flex-1 overflow-hidden min-h-0">
         {activeTab === "tools" && (
           <ScrollArea className="h-full">
             <div className="p-3">

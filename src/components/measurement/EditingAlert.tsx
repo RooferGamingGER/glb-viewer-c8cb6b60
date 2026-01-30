@@ -41,21 +41,25 @@ const EditingAlert: React.FC<EditingAlertProps> = ({
   }
 
   return (
-    <Alert variant="warning" className="mb-2 animate-fade-in">
-      {icon}
-      <AlertTitle className="text-black">{title}</AlertTitle>
-      <AlertDescription className="flex justify-between items-center text-black">
-        <span>{description}</span>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="mt-2 text-black" 
-          onClick={handleCancelEditing}
-        >
-          <X className="h-4 w-4 mr-1" />
-          Bearbeitung beenden
-        </Button>
-      </AlertDescription>
+    <Alert variant="warning" className="animate-fade-in">
+      <div className="flex items-start gap-2">
+        <div className="flex-shrink-0 mt-0.5">{icon}</div>
+        <div className="flex-1 min-w-0">
+          <AlertTitle className="text-black text-sm">{title}</AlertTitle>
+          <AlertDescription className="text-black text-xs mt-1">
+            {description}
+          </AlertDescription>
+        </div>
+      </div>
+      <Button 
+        variant="default" 
+        size="sm" 
+        className="w-full mt-3" 
+        onClick={handleCancelEditing}
+      >
+        <X className="h-4 w-4 mr-1" />
+        Bearbeitung beenden
+      </Button>
     </Alert>
   );
 };
