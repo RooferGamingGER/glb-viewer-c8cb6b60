@@ -329,59 +329,63 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         onCancel={handlePVDisclaimerCancel}
       />
       
-      <div className="flex justify-between items-center mb-1">
-        <div className="font-medium flex items-center">
-          {getTypeIcon(measurement.type)}
-          {getTypeName(measurement.type)}
-          
-          {isPenetration && (
-            <Badge variant="outline" className="ml-2 text-xs bg-orange-50/30">
-              Durchdringung
-            </Badge>
-          )}
-          
-          {measurement.subType && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              {measurement.subType}
-            </Badge>
-          )}
-          
-          {measurement.count && measurement.count > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {measurement.count}
-            </Badge>
-          )}
-          
-          {hasCustomScreenshots && (
-            <Badge variant="outline" className="ml-2 text-xs bg-blue-50/30">
-              <Image className="h-3 w-3 mr-1" />
-              {measurement.customScreenshots!.length}
-            </Badge>
-          )}
-          
-          {hasPVInfo && (
-            <Badge variant="outline" className="ml-2 text-xs bg-green-50/30">
-              <Zap className="h-3 w-3 mr-1" />
-              {measurement.pvModuleInfo!.moduleCount}
-            </Badge>
-          )}
+      {/* Header row with title and actions */}
+      <div className="flex items-start gap-2 mb-1">
+        {/* Title and badges - takes remaining space, can wrap */}
+        <div className="flex-1 min-w-0">
+          <div className="font-medium flex items-center flex-wrap gap-1">
+            {getTypeIcon(measurement.type)}
+            <span className="truncate">{getTypeName(measurement.type)}</span>
+            
+            {isPenetration && (
+              <Badge variant="outline" className="text-xs bg-orange-50/30 flex-shrink-0">
+                Durchdringung
+              </Badge>
+            )}
+            
+            {measurement.subType && (
+              <Badge variant="outline" className="text-xs flex-shrink-0">
+                {measurement.subType}
+              </Badge>
+            )}
+            
+            {measurement.count && measurement.count > 0 && (
+              <Badge variant="secondary" className="flex-shrink-0">
+                {measurement.count}
+              </Badge>
+            )}
+            
+            {hasCustomScreenshots && (
+              <Badge variant="outline" className="text-xs bg-blue-50/30 flex-shrink-0">
+                <Image className="h-3 w-3 mr-1" />
+                {measurement.customScreenshots!.length}
+              </Badge>
+            )}
+            
+            {hasPVInfo && (
+              <Badge variant="outline" className="text-xs bg-green-50/30 flex-shrink-0">
+                <Zap className="h-3 w-3 mr-1" />
+                {measurement.pvModuleInfo!.moduleCount}
+              </Badge>
+            )}
+          </div>
         </div>
         
-        <div className="flex space-x-1">
+        {/* Action buttons - fixed width, never shrink */}
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6" 
+                  className="h-7 w-7" 
                   onClick={() => toggleMeasurementVisibility(measurement.id)}
-                  title={measurement.visible === false ? "Einblenden" : "Ausblenden"}
                 >
                   {measurement.visible === false ? (
-                    <Eye className="h-3 w-3" />
+                    <Eye className="h-4 w-4" />
                   ) : (
-                    <EyeOff className="h-3 w-3" />
+                    <EyeOff className="h-4 w-4" />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -391,25 +395,37 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
             </Tooltip>
           </TooltipProvider>
           
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6" 
-            onClick={() => handleStartPointEdit(measurement.id)}
-            title="Punkte bearbeiten"
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7" 
+                  onClick={() => handleStartPointEdit(measurement.id)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Punkte bearbeiten</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6" 
-            onClick={() => handleDeleteMeasurement(measurement.id)}
-            title="Löschen"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-destructive hover:text-destructive" 
+                  onClick={() => handleDeleteMeasurement(measurement.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Löschen</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
       
