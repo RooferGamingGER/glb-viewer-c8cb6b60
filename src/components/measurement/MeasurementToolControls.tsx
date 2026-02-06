@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,7 +28,7 @@ import RoofElementsToolbar from './RoofElementsToolbar';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
-import { generateDetailedCSV } from '@/utils/exportUtils';
+import { generateDetailedCSV, exportMeasurementsToAbsJson } from '@/utils/exportUtils';
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -126,6 +125,39 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     toast({
       title: "CSV-Export erfolgreich",
       description: "Die CSV-Datei wurde heruntergeladen"
+    });
+  };
+
+  // Test-Export für ABS-JSON
+  const exportMeasurementsAsAbsJson = () => {
+    if (!measurements || measurements.length === 0) {
+      toast({
+        title: "Fehler",
+        description: "Keine Messungen für den ABS-Export vorhanden",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const absJson = exportMeasurementsToAbsJson(measurements, {
+      address: '',
+      projectId: 0,
+      customerNames: '',
+      customersReferencePhrase: '',
+    });
+
+    const blob = new Blob([JSON.stringify(absJson, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `abs-export-test_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "ABS-Export (Test) erstellt",
+      description: "Die ABS-JSON-Testdatei wurde heruntergeladen.",
     });
   };
   
@@ -275,6 +307,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
               >
                 <FileText className="h-4 w-4 mr-2" />
                 CSV Export
+              </Button>
+
+              {/* ABS-JSON Test-Export */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={exportMeasurementsAsAbsJson}
+                disabled={measurements.length === 0}
+                title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'ABS-JSON Testexport erzeugen'}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                ABS-Export (Test)
               </Button>
               
               {/* PDF Export button */}
