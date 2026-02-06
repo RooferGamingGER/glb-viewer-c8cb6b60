@@ -423,60 +423,101 @@ export const exportMeasurementsToAbsJson = (
   );
 
   skylightAreas.forEach((skylight) => {
-    const vertexOffset = vertices.length;
+    const baseOffset = vertices.length;
+    const skylightHeight = 0.3; // 30 cm Oberlichthöhe
 
-    // Punkte des Dachfensters in dieselbe Ebene projizieren
+    // Unteres Polygon (Dachfenster-Ausschnitt) in die Ebene projizieren
     skylight.points.forEach((p) => {
       vertices.push({ x: p.x, y: p.z, z: 0 });
     });
 
     const triResult = triangulate3D(skylight.points);
-    const faceStartIndex = faces.length;
 
+    // Oberes Polygon (Oberkante Dachfenster) mit fixer Höhe
+    const topOffset = vertices.length;
+    skylight.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: skylightHeight });
+    });
+
+    const baseFaceStartIndex = faces.length;
+
+    // Untere Fläche (kann ABS zur Orientierung nutzen)
     triResult.triangles.forEach((tri) => {
       faces.push({
-        vertexKeys: tri.map((i) => i + vertexOffset),
+        vertexKeys: tri.map((i) => i + baseOffset),
+      });
+    });
+
+    // Obere Fläche als Dachfenster-Oberfläche
+    const topFaceStartIndex = faces.length;
+    triResult.triangles.forEach((tri) => {
+      faces.push({
+        vertexKeys: tri.map((i) => i + topOffset),
       });
     });
 
     if (triResult.triangles.length > 0) {
-      const faceKeys = triResult.triangles.map((_, idx) => faceStartIndex + idx);
+      const baseFaceKeys = triResult.triangles.map((_, idx) => baseFaceStartIndex + idx);
+      const topFaceKeys = triResult.triangles.map((_, idx) => topFaceStartIndex + idx);
 
-      const polyVertexKeys = skylight.points.map((_, idx) => vertexOffset + idx);
+      const basePolyVertexKeys = skylight.points.map((_, idx) => baseOffset + idx);
+      const topPolyVertexKeys = skylight.points.map((_, idx) => topOffset + idx);
 
+      // Oberseite des Dachfensters (ABS interessiert sich primär für die obere Fläche)
       assembledFaces.push({
         area: triResult.area,
         angle: 0,
         category: 'Dachfenster_Oben_Flaechen',
-        faceKeys,
+        faceKeys: topFaceKeys,
         polylines: [
           {
             category: 'Default',
-            vertexKeys: polyVertexKeys,
+            vertexKeys: topPolyVertexKeys,
           },
         ],
         orientation: [0, 0, 0],
       });
 
-      // Einfacher Platzhalter für Seitenflächen, damit ABS die Kategorie kennt
+      // Seitenflächen des Dachfensters (extrudiert auf 30 cm)
+      const sideFaceStartIndex = faces.length;
+      let sideAreaSum = 0;
+
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const next = (i + 1) % basePolyVertexKeys.length;
+        const aBase = basePolyVertexKeys[i];
+        const bBase = basePolyVertexKeys[next];
+        const aTop = topPolyVertexKeys[i];
+        const bTop = topPolyVertexKeys[next];
+
+        // Zwei Dreiecke pro Rechteck-Seitenfläche
+        faces.push({ vertexKeys: [aBase, bBase, bTop] });
+        faces.push({ vertexKeys: [aBase, bTop, aTop] });
+
+        const edgeLen = distance2D(vertices[aBase], vertices[bBase]);
+        sideAreaSum += edgeLen * skylightHeight;
+      }
+
+      const sideFaceCount = basePolyVertexKeys.length * 2;
+      const sideFaceKeys = Array.from({ length: sideFaceCount }, (_, idx) => sideFaceStartIndex + idx);
+
       assembledFaces.push({
-        area: 0,
+        area: sideAreaSum,
         angle: 90,
         category: 'Dachfenster_Seite_Flaechen',
-        faceKeys: [],
+        faceKeys: sideFaceKeys,
         polylines: [
           {
             category: 'Default',
-            vertexKeys: polyVertexKeys,
+            vertexKeys: basePolyVertexKeys,
           },
         ],
         orientation: [0, 0, -1],
       });
 
-      // Fenster-Anschlusskanten + Umfang
-      for (let i = 0; i < polyVertexKeys.length; i++) {
-        const aIndex = polyVertexKeys[i];
-        const bIndex = polyVertexKeys[(i + 1) % polyVertexKeys.length];
+      // Fenster-Anschlusskanten + Umfang (am Dach, daher Basispolygon)
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const aIndex = basePolyVertexKeys[i];
+        const bIndex = basePolyVertexKeys[(i + 1) % basePolyVertexKeys.length];
 
         classifiedEdges.push({
           category: 'Fenster_Anschluss',
