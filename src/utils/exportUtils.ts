@@ -341,6 +341,10 @@ export const exportMeasurementsToAbsJson = (
 
   const segmentGroups = groupSegmentsByType(measurements);
 
+  // Erste Höhenmessung definiert die absolute Dachhöhe in Metern
+  const heightMeasurement = measurements.find(m => m.type === 'height');
+  const baseHeight = heightMeasurement?.value ?? 0; // z.B. 4.09 m wie im Airteam-Modell
+
   // Erste Flächenmessung als Dachpolygon verwenden (falls vorhanden)
   const areaMeasurement = measurements.find(m => m.type === 'area' && m.points && m.points.length >= 3) || null;
 
@@ -367,7 +371,7 @@ export const exportMeasurementsToAbsJson = (
     // Three.js nutzt x/z als Ebene, y als Höhe.
     // Für ABS projizieren wir in eine 2D-Ebene: x -> x, z -> y, Höhe -> 0.
     areaMeasurement.points.forEach((p) => {
-      vertices.push({ x: p.x, y: p.z, z: 0 });
+      vertices.push({ x: p.x, y: p.z, z: baseHeight });
     });
 
     // Triangulation im 3D-Raum (nutzt Originalpunkte mit Höhe)
@@ -426,9 +430,9 @@ export const exportMeasurementsToAbsJson = (
     const baseOffset = vertices.length;
     const skylightHeight = 0.3; // 30 cm Oberlichthöhe
 
-    // Unteres Polygon (Dachfenster-Ausschnitt) in die Ebene projizieren
+    // Unteres Polygon (Dachfenster-Ausschnitt) auf Dachhöhe projizieren
     skylight.points.forEach((p) => {
-      vertices.push({ x: p.x, y: p.z, z: 0 });
+      vertices.push({ x: p.x, y: p.z, z: baseHeight });
     });
 
     const triResult = triangulate3D(skylight.points);
@@ -436,7 +440,7 @@ export const exportMeasurementsToAbsJson = (
     // Oberes Polygon (Oberkante Dachfenster) mit fixer Höhe
     const topOffset = vertices.length;
     skylight.points.forEach((p) => {
-      vertices.push({ x: p.x, y: p.z, z: skylightHeight });
+      vertices.push({ x: p.x, y: p.z, z: baseHeight + skylightHeight });
     });
 
     const baseFaceStartIndex = faces.length;
