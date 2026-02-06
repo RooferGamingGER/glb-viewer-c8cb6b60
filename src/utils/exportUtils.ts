@@ -348,7 +348,10 @@ export const exportMeasurementsToAbsJson = (
   const faces: { vertexKeys: number[] }[] = [];
   const assembledFaces: any[] = [];
 
+  // 1) Dachfläche exportieren
   if (areaMeasurement) {
+    const roofVertexOffset = vertices.length;
+
     // Basis-Vertexliste aus den Punkten der Flächenmessung
     // Three.js nutzt x/z als Ebene, y als Höhe.
     // Für ABS projizieren wir in eine 2D-Ebene: x -> x, z -> y, Höhe -> 0.
@@ -356,29 +359,76 @@ export const exportMeasurementsToAbsJson = (
       vertices.push({ x: p.x, y: p.z, z: 0 });
     });
 
-    // Triangulation im 3D-Raum
+    // Triangulation im 3D-Raum (nutzt Originalpunkte mit Höhe)
     const triResult = triangulate3D(areaMeasurement.points);
 
+    const roofFaceStartIndex = faces.length;
+
     triResult.triangles.forEach((tri) => {
-      faces.push({ vertexKeys: tri });
+      faces.push({
+        vertexKeys: tri.map((i) => i + roofVertexOffset),
+      });
     });
 
     if (triResult.triangles.length > 0) {
+      const roofFaceKeys = triResult.triangles.map((_, idx) => roofFaceStartIndex + idx);
+
       assembledFaces.push({
         area: triResult.area,
         angle: 0,
         category: 'Dachoberflaeche',
-        faceKeys: triResult.triangles.map((_, idx) => idx),
+        faceKeys: roofFaceKeys,
         polylines: [
           {
             category: 'Default',
-            vertexKeys: areaMeasurement.points.map((_, idx) => idx),
+            vertexKeys: areaMeasurement.points.map((_, idx) => roofVertexOffset + idx),
           },
         ],
         orientation: [0, 0, 0],
       });
     }
   }
+
+  // 2) Dachfenster (skylight) als Oberlichter exportieren
+  const skylightAreas = measurements.filter(
+    (m) => m.type === 'skylight' && m.points && m.points.length >= 3,
+  );
+
+  skylightAreas.forEach((skylight) => {
+    const vertexOffset = vertices.length;
+
+    // Punkte des Dachfensters in dieselbe Ebene projizieren
+    skylight.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: 0 });
+    });
+
+    const triResult = triangulate3D(skylight.points);
+    const faceStartIndex = faces.length;
+
+    triResult.triangles.forEach((tri) => {
+      faces.push({
+        vertexKeys: tri.map((i) => i + vertexOffset),
+      });
+    });
+
+    if (triResult.triangles.length > 0) {
+      const faceKeys = triResult.triangles.map((_, idx) => faceStartIndex + idx);
+
+      assembledFaces.push({
+        area: triResult.area,
+        angle: 0,
+        category: 'Dachfenster_Oben_Flaechen',
+        faceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: skylight.points.map((_, idx) => vertexOffset + idx),
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+    }
+  });
 
   // Mapping für Flachdach-Längen (testweise sehr simpel)
   const totalLengthsFlatRoof = {
