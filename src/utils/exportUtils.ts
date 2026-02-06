@@ -265,6 +265,63 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
  * - Geometrie (vertices/edges/faces) aus dem Modell übernehmen
  * - assembledFaces / classifiedEdges aus echten Klassifizierungen ableiten
  */
+/**
+ * Generates a detailed CSV string from measurements.
+ * Each roof surface lists area/inclination, followed by individual edge rows.
+ */
+export const generateDetailedCSV = (measurements: Measurement[]): string => {
+  const separator = ';';
+  const lines: string[] = [];
+
+  // Header
+  lines.push(['Nr', 'Name', 'Typ', 'Wert', 'Einheit', 'Neigung (°)', 'Kantentyp', 'Kantenlänge (m)'].join(separator));
+
+  measurements.forEach((m, index) => {
+    const nr = index + 1;
+    const name = m.label || `Messung ${nr}`;
+    const typeName = getMeasurementTypeDisplayName(m.type);
+    const isArea = ['area', 'solar', 'chimney', 'deductionarea', 'skylight'].includes(m.type);
+    const unit = isArea ? 'm²' : 'm';
+    const inclination = m.inclination != null ? m.inclination.toFixed(1) : '';
+
+    // Main measurement row
+    lines.push([nr, name, typeName, m.value.toFixed(2), unit, inclination, '', ''].join(separator));
+
+    // Edge/segment rows
+    if (m.segments && m.segments.length > 0) {
+      m.segments.forEach(seg => {
+        const segTypeName = getSegmentTypeDisplayName(seg.type || 'edge');
+        lines.push(['', '', '', '', '', '', segTypeName, seg.length.toFixed(2)].join(separator));
+      });
+    }
+  });
+
+  // Summary section
+  lines.push('');
+  lines.push(['Zusammenfassung'].join(separator));
+
+  const summary = getRoofElementsSummary(measurements);
+  Object.entries(summary).forEach(([type, data]) => {
+    const typeName = type === 'netarea' ? 'Nettofläche' : getMeasurementTypeDisplayName(type);
+    const value = data.totalArea != null ? data.totalArea.toFixed(2) : data.totalLength != null ? data.totalLength.toFixed(2) : '';
+    const unit = data.totalArea != null ? 'm²' : 'm';
+    lines.push([typeName, `${data.count}x`, value, unit].join(separator));
+  });
+
+  // Segment summary
+  const segmentGroups = groupSegmentsByType(measurements);
+  if (Object.keys(segmentGroups).length > 0) {
+    lines.push('');
+    lines.push(['Kantenzusammenfassung'].join(separator));
+    Object.entries(segmentGroups).forEach(([type, data]) => {
+      const typeName = getSegmentTypeDisplayName(type);
+      lines.push([typeName, `${data.count}x`, data.totalLength.toFixed(2), 'm'].join(separator));
+    });
+  }
+
+  return lines.join('\n');
+};
+
 export const exportMeasurementsToAbsJson = (
   measurements: Measurement[],
   options?: {
