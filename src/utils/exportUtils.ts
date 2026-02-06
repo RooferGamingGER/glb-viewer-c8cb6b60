@@ -1,5 +1,6 @@
 import { Measurement } from '@/types/measurements';
 import { normalizeSegmentType } from '@/pages/Viewer';
+import { triangulate3D } from '@/utils/triangulation';
 
 /**
  * Returns a user-friendly display name for a measurement type
@@ -340,6 +341,43 @@ export const exportMeasurementsToAbsJson = (
 
   const segmentGroups = groupSegmentsByType(measurements);
 
+  // Erste Flächenmessung als Dachpolygon verwenden (falls vorhanden)
+  const areaMeasurement = measurements.find(m => m.type === 'area' && m.points && m.points.length >= 3) || null;
+
+  const vertices: { x: number; y: number; z: number }[] = [];
+  const faces: { vertexKeys: number[] }[] = [];
+  const assembledFaces: any[] = [];
+
+  if (areaMeasurement) {
+    // Basis-Vertexliste aus den Punkten der Flächenmessung
+    areaMeasurement.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.y, z: p.z });
+    });
+
+    // Triangulation im 3D-Raum
+    const triResult = triangulate3D(areaMeasurement.points);
+
+    triResult.triangles.forEach((tri) => {
+      faces.push({ vertexKeys: tri });
+    });
+
+    if (triResult.triangles.length > 0) {
+      assembledFaces.push({
+        area: triResult.area,
+        angle: 0,
+        category: 'Dachoberflaeche',
+        faceKeys: triResult.triangles.map((_, idx) => idx),
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: areaMeasurement.points.map((_, idx) => idx),
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+    }
+  }
+
   // Mapping für Flachdach-Längen (testweise sehr simpel)
   const totalLengthsFlatRoof = {
     eaves: segmentGroups['eave']?.totalLength ?? 0,
@@ -400,11 +438,10 @@ export const exportMeasurementsToAbsJson = (
     totalLengthsFlatRoof,
     totalLengthsSteepRoof,
     amountOfObjects,
-    // Geometrie: vorerst leer in der Testversion
-    vertices: [],
+    vertices,
     edges: [],
-    faces: [],
-    assembledFaces: [],
+    faces,
+    assembledFaces,
     classifiedEdges: [],
     address: options?.address ?? '',
     projectId: options?.projectId ?? 0,
