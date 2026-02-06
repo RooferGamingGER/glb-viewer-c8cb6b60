@@ -347,6 +347,17 @@ export const exportMeasurementsToAbsJson = (
   const vertices: { x: number; y: number; z: number }[] = [];
   const faces: { vertexKeys: number[] }[] = [];
   const assembledFaces: any[] = [];
+  const classifiedEdges: { category: string; vertexKeys: number[] }[] = [];
+
+  // Hilfsfunktion für 2D-Abstand (x / z-Ebene)
+  const distance2D = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  let windowsPerimeter = 0;
+  let innerAttikaPerimeter = 0;
 
   // 1) Dachfläche exportieren
   if (areaMeasurement) {
@@ -373,6 +384,8 @@ export const exportMeasurementsToAbsJson = (
     if (triResult.triangles.length > 0) {
       const roofFaceKeys = triResult.triangles.map((_, idx) => roofFaceStartIndex + idx);
 
+      const roofPolylineVertexKeys = areaMeasurement.points.map((_, idx) => roofVertexOffset + idx);
+
       assembledFaces.push({
         area: triResult.area,
         angle: 0,
@@ -381,11 +394,57 @@ export const exportMeasurementsToAbsJson = (
         polylines: [
           {
             category: 'Default',
-            vertexKeys: areaMeasurement.points.map((_, idx) => roofVertexOffset + idx),
+            vertexKeys: roofPolylineVertexKeys,
           },
         ],
         orientation: [0, 0, 0],
       });
+
+      // Vereinfachte Attika-Flächen analog Airteam-Export:
+      // Wir messen keine Attika-Breite, daher legen wir nur symbolische Flächen
+      // mit dem Dachpolygon als Polyline an, damit ABS die Kategorien kennt.
+      assembledFaces.push({
+        area: 0,
+        angle: 90,
+        category: 'Innerer_Attika_Seite',
+        faceKeys: [],
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: roofPolylineVertexKeys,
+          },
+        ],
+        orientation: [0, 0, -1],
+      });
+
+      assembledFaces.push({
+        area: 0,
+        angle: 0,
+        category: 'Attikaoberflaeche',
+        faceKeys: [],
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: roofPolylineVertexKeys,
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+
+      // Attika-Innenkante entlang der Dachpolygon-Perimeterkante
+      for (let i = 0; i < roofPolylineVertexKeys.length; i++) {
+        const aIndex = roofPolylineVertexKeys[i];
+        const bIndex = roofPolylineVertexKeys[(i + 1) % roofPolylineVertexKeys.length];
+
+        classifiedEdges.push({
+          category: 'Attika_Innenkante',
+          vertexKeys: [aIndex, bIndex],
+        });
+
+        const a = vertices[aIndex];
+        const b = vertices[bIndex];
+        innerAttikaPerimeter += distance2D(a, b);
+      }
     }
   }
 
@@ -414,6 +473,8 @@ export const exportMeasurementsToAbsJson = (
     if (triResult.triangles.length > 0) {
       const faceKeys = triResult.triangles.map((_, idx) => faceStartIndex + idx);
 
+      const polyVertexKeys = skylight.points.map((_, idx) => vertexOffset + idx);
+
       assembledFaces.push({
         area: triResult.area,
         angle: 0,
@@ -422,20 +483,35 @@ export const exportMeasurementsToAbsJson = (
         polylines: [
           {
             category: 'Default',
-            vertexKeys: skylight.points.map((_, idx) => vertexOffset + idx),
+            vertexKeys: polyVertexKeys,
           },
         ],
         orientation: [0, 0, 0],
       });
+
+      // Fenster-Anschlusskanten + Umfang
+      for (let i = 0; i < polyVertexKeys.length; i++) {
+        const aIndex = polyVertexKeys[i];
+        const bIndex = polyVertexKeys[(i + 1) % polyVertexKeys.length];
+
+        classifiedEdges.push({
+          category: 'Fenster_Anschluss',
+          vertexKeys: [aIndex, bIndex],
+        });
+
+        const a = vertices[aIndex];
+        const b = vertices[bIndex];
+        windowsPerimeter += distance2D(a, b);
+      }
     }
   });
 
-  // Mapping für Flachdach-Längen (testweise sehr simpel)
+  // Mapping für Flachdach-Längen (jetzt inkl. Attika)
   const totalLengthsFlatRoof = {
     eaves: segmentGroups['eave']?.totalLength ?? 0,
     roofEdges: segmentGroups['edge']?.totalLength ?? 0,
     railings: 0,
-    innerAttikas: 0,
+    innerAttikas: Number(innerAttikaPerimeter.toFixed(2)),
     outerAttikas: 0,
     wallConnections: segmentGroups['connection']?.totalLength ?? 0,
     attikaConnections: 0,
@@ -455,7 +531,7 @@ export const exportMeasurementsToAbsJson = (
     stairs: 0,
     rafters: 0,
     valleys: segmentGroups['valley']?.totalLength ?? 0,
-    windows: 0, // könnte aus skylight-Umfang kommen
+    windows: Number(windowsPerimeter.toFixed(2)), // Umfang der Dachfenster-Anschlusskanten
     chimneys: 0, // könnte aus chimney-Umfang kommen
     snowguards: 0,
   };
@@ -494,7 +570,7 @@ export const exportMeasurementsToAbsJson = (
     edges: [],
     faces,
     assembledFaces,
-    classifiedEdges: [],
+    classifiedEdges,
     address: options?.address ?? '',
     projectId: options?.projectId ?? 0,
     coordinates: null,
