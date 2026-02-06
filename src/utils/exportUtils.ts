@@ -400,37 +400,6 @@ export const exportMeasurementsToAbsJson = (
         orientation: [0, 0, 0],
       });
 
-      // Vereinfachte Attika-Flächen analog Airteam-Export:
-      // Wir messen keine Attika-Breite, daher legen wir nur symbolische Flächen
-      // mit dem Dachpolygon als Polyline an, damit ABS die Kategorien kennt.
-      assembledFaces.push({
-        area: 0,
-        angle: 90,
-        category: 'Innerer_Attika_Seite',
-        faceKeys: [],
-        polylines: [
-          {
-            category: 'Default',
-            vertexKeys: roofPolylineVertexKeys,
-          },
-        ],
-        orientation: [0, 0, -1],
-      });
-
-      assembledFaces.push({
-        area: 0,
-        angle: 0,
-        category: 'Attikaoberflaeche',
-        faceKeys: [],
-        polylines: [
-          {
-            category: 'Default',
-            vertexKeys: roofPolylineVertexKeys,
-          },
-        ],
-        orientation: [0, 0, 0],
-      });
-
       // Attika-Innenkante entlang der Dachpolygon-Perimeterkante
       for (let i = 0; i < roofPolylineVertexKeys.length; i++) {
         const aIndex = roofPolylineVertexKeys[i];
@@ -487,6 +456,21 @@ export const exportMeasurementsToAbsJson = (
           },
         ],
         orientation: [0, 0, 0],
+      });
+
+      // Einfacher Platzhalter für Seitenflächen, damit ABS die Kategorie kennt
+      assembledFaces.push({
+        area: 0,
+        angle: 90,
+        category: 'Dachfenster_Seite_Flaechen',
+        faceKeys: [],
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: polyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, -1],
       });
 
       // Fenster-Anschlusskanten + Umfang
