@@ -350,8 +350,10 @@ export const exportMeasurementsToAbsJson = (
 
   if (areaMeasurement) {
     // Basis-Vertexliste aus den Punkten der Flächenmessung
+    // Three.js nutzt x/z als Ebene, y als Höhe.
+    // Für ABS projizieren wir in eine 2D-Ebene: x -> x, z -> y, Höhe -> 0.
     areaMeasurement.points.forEach((p) => {
-      vertices.push({ x: p.x, y: p.y, z: p.z });
+      vertices.push({ x: p.x, y: p.z, z: 0 });
     });
 
     // Triangulation im 3D-Raum
