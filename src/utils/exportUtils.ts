@@ -1,5 +1,4 @@
-
-import { Measurement, Segment } from '@/types/measurements';
+import { Measurement } from '@/types/measurements';
 import { normalizeSegmentType } from '@/pages/Viewer';
 
 /**
@@ -257,219 +256,106 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
 };
 
 /**
- * Formats a number for German Excel (comma as decimal separator) with optional unit
+ * Testversion: ABS-JSON Export aus aktuellen Messungen
+ *
+ * Diese Funktion baut eine vereinfachte JSON-Struktur,
+ * die sich am Schema der ABS-Datei orientiert.
+ *
+ * TODO:
+ * - Geometrie (vertices/edges/faces) aus dem Modell übernehmen
+ * - assembledFaces / classifiedEdges aus echten Klassifizierungen ableiten
  */
-const formatNumberDE = (value: number, decimals: number = 2, unit?: string): string => {
-  const formatted = value.toFixed(decimals).replace('.', ',');
-  return unit ? `${formatted} ${unit}` : formatted;
-};
+export const exportMeasurementsToAbsJson = (
+  measurements: Measurement[],
+  options?: {
+    address?: string;
+    projectId?: number;
+    customerNames?: string;
+    customersReferencePhrase?: string;
+  }
+) => {
+  const totalArea = calculateTotalArea(measurements); // Summe aller "area"-Messungen
+  const netArea = calculateNetTotalArea(measurements); // area - deductionarea
 
-/**
- * Generates a detailed CSV export with sequential numbering and edge lengths
- */
-export const generateDetailedCSV = (measurements: Measurement[]): string => {
-  // Sort measurements by type priority: area, deductionarea, solar, length, height, others
-  const typePriority: Record<string, number> = {
-    'area': 1,
-    'deductionarea': 2,
-    'solar': 3,
-    'skylight': 4,
-    'chimney': 5,
-    'length': 6,
-    'height': 7,
-    'ridge': 8,
-    'valley': 9,
-    'hip': 10,
-    'eave': 11,
-    'verge': 12,
-    'vent': 13,
-    'hook': 14,
-    'other': 15
+  const skylights = measurements.filter(m => m.type === 'skylight');
+  const chimneys = measurements.filter(m => m.type === 'chimney');
+  const vents = measurements.filter(m => m.type === 'vent');
+
+  const segmentGroups = groupSegmentsByType(measurements);
+
+  // Mapping für Flachdach-Längen (testweise sehr simpel)
+  const totalLengthsFlatRoof = {
+    eaves: segmentGroups['eave']?.totalLength ?? 0,
+    roofEdges: segmentGroups['edge']?.totalLength ?? 0,
+    railings: 0,
+    innerAttikas: 0,
+    outerAttikas: 0,
+    wallConnections: segmentGroups['connection']?.totalLength ?? 0,
+    attikaConnections: 0,
+    others: 0,
+    otherSurfaces: 0,
   };
 
-  const sortedMeasurements = [...measurements].sort((a, b) => {
-    const priorityA = typePriority[a.type] || 99;
-    const priorityB = typePriority[b.type] || 99;
-    return priorityA - priorityB;
-  });
+  // Steildach-Längen nutzen wir hier als Sammelcontainer
+  const totalLengthsSteepRoof = {
+    hips: segmentGroups['hip']?.totalLength ?? 0,
+    eaves: segmentGroups['eave']?.totalLength ?? 0,
+    rakes: segmentGroups['verge']?.totalLength ?? 0,
+    breaks: 0,
+    decays: 0,
+    others: 0,
+    ridges: segmentGroups['ridge']?.totalLength ?? 0,
+    stairs: 0,
+    rafters: 0,
+    valleys: segmentGroups['valley']?.totalLength ?? 0,
+    windows: 0, // könnte aus skylight-Umfang kommen
+    chimneys: 0, // könnte aus chimney-Umfang kommen
+    snowguards: 0,
+  };
 
-  // Group by type for sequential numbering
-  const typeCounters: Record<string, number> = {};
-  
-  // CSV header
-  const lines: string[] = [
-    'Typ;Nr;Fläche;Neigung;Kanten-Nr;Kantentyp;Kantenlänge'
-  ];
+  const amountOfObjects = {
+    amountOfVents: vents.length,
+    amountOfStairs: -1,
+    amountOfWindows: skylights.length,
+    amountOfAntennas: -1,
+    amountOfChimneys: chimneys.length,
+    amountOfDownspouts: -1,
+    amountOfSnowguards: -1,
+  };
 
-  // Totals for summary
-  let totalArea = 0;
-  let totalDeductionArea = 0;
-  let totalEdgeLength = 0;
-  let areaCount = 0;
-  let deductionCount = 0;
+  const absJson = {
+    areas: {
+      flatRoofArea: 0,
+      steepRoofArea: 0,
+      totalRoofArea: 0,
+      dormerRoofArea: 0,
+      dormerFrontArea: 0,
+      wallSurfaceArea: 0,
+      attikaSurfaceArea: 0,
+      totalFlatRoofArea: Number(netArea.toFixed(2)),
+      dormerStringerArea: 0,
+      totalSteepRoofArea: 0,
+      flatRoofSurfaceArea: Number(totalArea.toFixed(2)),
+      angledParapetWallArea: 0,
+      otherFlatRoofSurfaceArea: 0,
+      otherSteepRoofSurfacesArea: 0,
+    },
+    totalLengthsFlatRoof,
+    totalLengthsSteepRoof,
+    amountOfObjects,
+    // Geometrie: vorerst leer in der Testversion
+    vertices: [],
+    edges: [],
+    faces: [],
+    assembledFaces: [],
+    classifiedEdges: [],
+    address: options?.address ?? '',
+    projectId: options?.projectId ?? 0,
+    coordinates: null,
+    customerNames: options?.customerNames ?? '',
+    schemaVersion: '1.1.8',
+    customersReferencePhrase: options?.customersReferencePhrase ?? '',
+  };
 
-  sortedMeasurements.forEach(measurement => {
-    const typeName = getMeasurementTypeDisplayName(measurement.type);
-    
-    // Get sequential number for this type
-    if (!typeCounters[measurement.type]) {
-      typeCounters[measurement.type] = 0;
-    }
-    typeCounters[measurement.type]++;
-    const sequentialNumber = typeCounters[measurement.type];
-
-    // Handle area-type measurements (area, deductionarea, solar, skylight, chimney)
-    if (['area', 'deductionarea', 'solar', 'skylight', 'chimney'].includes(measurement.type)) {
-      const areaValue = formatNumberDE(measurement.value || 0, 2, 'm²');
-      const inclination = measurement.inclination !== undefined 
-        ? formatNumberDE(measurement.inclination, 1, '°') 
-        : '-';
-      
-      // Track totals
-      if (measurement.type === 'area') {
-        totalArea += measurement.value || 0;
-        areaCount++;
-      } else if (measurement.type === 'deductionarea') {
-        totalDeductionArea += measurement.value || 0;
-        deductionCount++;
-      }
-
-      // If there are segments, output each edge
-      if (measurement.segments && measurement.segments.length > 0) {
-        measurement.segments.forEach((segment, index) => {
-          const edgeNumber = index + 1;
-          const edgeType = getSegmentTypeDisplayName(segment.type || 'edge');
-          const edgeLength = formatNumberDE(segment.length || 0, 2, 'm');
-          totalEdgeLength += segment.length || 0;
-          
-          // First line includes area info, subsequent lines only edge info
-          if (index === 0) {
-            lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${edgeNumber};${edgeType};${edgeLength}`);
-          } else {
-            lines.push(`;;;;${edgeNumber};${edgeType};${edgeLength}`);
-          }
-        });
-      } else {
-        // No segments - calculate edge lengths from points
-        const points = measurement.points || [];
-        if (points.length >= 3) {
-          for (let i = 0; i < points.length; i++) {
-            const p1 = points[i];
-            const p2 = points[(i + 1) % points.length];
-            const edgeLength = Math.sqrt(
-              Math.pow(p2.x - p1.x, 2) + 
-              Math.pow(p2.y - p1.y, 2) + 
-              Math.pow(p2.z - p1.z, 2)
-            );
-            totalEdgeLength += edgeLength;
-            
-            if (i === 0) {
-              lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
-            } else {
-              lines.push(`;;;;${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
-            }
-          }
-        } else {
-          lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};-;-;-`);
-        }
-      }
-    }
-    // Handle length-type measurements (length, ridge, valley, hip, eave, verge)
-    else if (['length', 'ridge', 'valley', 'hip', 'eave', 'verge'].includes(measurement.type)) {
-      const lengthValue = formatNumberDE(measurement.value || 0, 2, 'm');
-      totalEdgeLength += measurement.value || 0;
-      lines.push(`${typeName};${sequentialNumber};-;-;-;-;${lengthValue}`);
-    }
-    // Handle height measurements
-    else if (measurement.type === 'height') {
-      const heightValue = formatNumberDE(measurement.value || 0, 2, 'm');
-      lines.push(`${typeName};${sequentialNumber};-;-;-;-;${heightValue}`);
-    }
-    // Handle point-based elements (vent, hook, other)
-    else if (['vent', 'hook', 'other'].includes(measurement.type)) {
-      const position = measurement.position || measurement.points?.[0];
-      const posStr = position 
-        ? `(${formatNumberDE(position.x, 2, 'm')}, ${formatNumberDE(position.y, 2, 'm')}, ${formatNumberDE(position.z, 2, 'm')})` 
-        : '-';
-      lines.push(`${typeName};${sequentialNumber};-;-;-;Position;${posStr}`);
-    }
-  });
-
-  // Add empty line and summary
-  lines.push('');
-  lines.push('--- ZUSAMMENFASSUNG ---;;;;;;');
-  
-  if (areaCount > 0) {
-    lines.push(`Flächen gesamt;${areaCount};${formatNumberDE(totalArea, 2, 'm²')};;;;`);
-  }
-  if (deductionCount > 0) {
-    lines.push(`Abzugsflächen gesamt;${deductionCount};${formatNumberDE(totalDeductionArea, 2, 'm²')};;;;`);
-  }
-  if (areaCount > 0 || deductionCount > 0) {
-    const netArea = totalArea - totalDeductionArea;
-    lines.push(`Netto-Fläche;;${formatNumberDE(netArea, 2, 'm²')};;;;`);
-  }
-  lines.push(`Kanten gesamt;;;;;;${formatNumberDE(totalEdgeLength, 2, 'm')}`);
-
-  // Append calculation methods explanation
-  lines.push(...getCalculationMethodsExplanation());
-
-  return lines.join('\n');
-};
-
-/**
- * Returns explanation text for calculation methods used in area measurements
- */
-export const getCalculationMethodsExplanation = (): string[] => {
-  return [
-    '',
-    '',
-    '=== ANHANG: BERECHNUNGSMETHODEN ===',
-    '',
-    '** Flächenberechnung bei Dreiecken (3 Eckpunkte) **',
-    'Verwendet wird die Heronsche Formel, benannt nach dem griechischen Mathematiker Heron von Alexandria.',
-    'Diese Formel ermöglicht die Berechnung der Fläche eines Dreiecks allein aus den drei Seitenlängen.',
-    '',
-    'Schritt 1: Alle drei Seitenlängen messen (a, b, c)',
-    'Schritt 2: Den halben Umfang berechnen: s = (a + b + c) / 2',
-    'Schritt 3: Die Fläche berechnen: A = Wurzel(s × (s-a) × (s-b) × (s-c))',
-    '',
-    'Beispiel:',
-    '  Seiten: a = 3,00 m, b = 4,00 m, c = 5,00 m',
-    '  Halbumfang: s = (3 + 4 + 5) / 2 = 6 m',
-    '  Fläche: A = Wurzel(6 × 3 × 2 × 1) = Wurzel(36) = 6,00 m²',
-    '',
-    '',
-    '** Flächenberechnung bei Vierecken (4 Eckpunkte) **',
-    'Die Fläche wird durch Aufteilung in zwei Dreiecke berechnet.',
-    '',
-    'Schritt 1: Das Viereck wird diagonal in zwei Dreiecke geteilt',
-    'Schritt 2: Jedes Dreieck wird mit der Heronschen Formel berechnet',
-    'Schritt 3: Beide Dreiecksflächen werden addiert',
-    '',
-    'Formel: Fläche = Dreieck 1 + Dreieck 2',
-    '',
-    '',
-    '** Flächenberechnung bei Polygonen (5+ Eckpunkte) **',
-    'Komplexe Formen werden durch "Triangulation" berechnet - die Zerlegung in mehrere Dreiecke.',
-    '',
-    'Schritt 1: Das Polygon wird automatisch in einzelne Dreiecke zerlegt',
-    'Schritt 2: Jedes Dreieck wird mit der Heronschen Formel berechnet',
-    'Schritt 3: Alle Dreiecksflächen werden summiert',
-    '',
-    'Beispiel: Ein Fünfeck wird in 3 Dreiecke zerlegt',
-    '          Fläche = Dreieck 1 + Dreieck 2 + Dreieck 3',
-    '',
-    'Hinweis: Die Anzahl der Dreiecke bei einem Polygon mit n Ecken beträgt n-2.',
-    '',
-    '',
-    '** Neigungsberechnung **',
-    'Die Dachneigung wird aus dem Winkel zwischen der Flächennormale',
-    'und der vertikalen Achse (Y-Achse) berechnet.',
-    '',
-    '0° = waagerechte Fläche (Flachdach)',
-    '45° = geneigte Fläche (typisches Satteldach)',
-    '90° = senkrechte Fläche (Wand)',
-    ''
-  ];
+  return absJson;
 };
