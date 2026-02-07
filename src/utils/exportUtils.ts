@@ -576,7 +576,7 @@ export const exportMeasurementsToAbsJson = (
       // Kaminoberseite
       assembledFaces.push({
         area: triResult.area,
-        angle: 90,
+        angle: 0,
         category: 'Kamin_Oben_Flaechen',
         faceKeys: topFaceKeys,
         polylines: [
@@ -585,7 +585,7 @@ export const exportMeasurementsToAbsJson = (
             vertexKeys: topPolyVertexKeys,
           },
         ],
-        orientation: [0, 0, -1],
+        orientation: [0, 0, 0],
       });
 
       // Kaminseitenflächen
@@ -610,7 +610,7 @@ export const exportMeasurementsToAbsJson = (
 
       assembledFaces.push({
         area: sideAreaSum,
-        angle: 0,
+        angle: 90,
         category: 'Kamin_Seite_Flaechen',
         faceKeys: sideFaceKeys,
         polylines: [
@@ -619,7 +619,7 @@ export const exportMeasurementsToAbsJson = (
             vertexKeys: basePolyVertexKeys,
           },
         ],
-        orientation: [0, 0, 0],
+        orientation: [0, 0, -1],
       });
 
       // Kamin-Anschlusskanten + Umfang
