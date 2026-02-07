@@ -2,15 +2,61 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '@/components/FileUpload';
 import ModelViewer from '@/components/ModelViewer';
-import { Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, Upload, Save, Eye, AlertTriangle, Loader2 } from 'lucide-react';
+import { 
+  Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, 
+  Upload, Eye, AlertTriangle, Loader2, Save, LucideIcon 
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from '@/hooks/use-mobile';
 
+// --- Constants & Data ---
 const DEMO_MODEL_URL = '/models/test-model.glb';
 
-// Fallback when demo isn't available
+interface FeatureItem {
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+}
+
+const FEATURES: FeatureItem[] = [
+  { icon: MoveHorizontal, title: "Interaktive Darstellung", desc: "Drehen, zoomen und bewegen Sie Ihre 3D-Modelle, um sie aus jedem Blickwinkel zu betrachten." },
+  { icon: Layers, title: "Präzise Messungen", desc: "Messen Sie Abstände, Flächen und Neigungen direkt im 3D-Raum." },
+  { icon: Save, title: "Messungen speichern & exportieren", desc: "Speichern Sie Messungen lokal und exportieren Sie sie mit dem GLB. Später jederzeit wieder einlesen." },
+  { icon: Smartphone, title: "Hochformat-Unterstützung", desc: "Komplett optimiert für den Hochkantmodus auf Mobilgeräten." },
+  { icon: Box, title: "GLB-Format", desc: "Unterstützung für das gängige GLB-Format (glTF) direkt vom Server." },
+  { icon: Smartphone, title: "Responsives Design", desc: "Funktioniert auf allen Geräten - vom Desktop bis zum Smartphone." },
+  { icon: Zap, title: "Schnelle Verarbeitung", desc: "Optimierte Performance für flüssige Darstellung auch komplexer Modelle." },
+  { icon: Shield, title: "Datensicherheit", desc: "Ihre 3D-Modelle werden lokal im Browser verarbeitet, kein Upload auf Fremdserver." },
+];
+
+// --- Custom Hooks ---
+const useSeoMetadata = () => {
+  useEffect(() => {
+    document.title = "GLB Viewer – Messungen speichern & exportieren";
+    const descContent = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
+    
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'description';
+      document.head.appendChild(meta);
+    }
+    meta.content = descContent;
+
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
+    link.href = window.location.origin + '/';
+  }, []);
+};
+
+// --- Sub-Components ---
+
 const DemoFallback = ({ loading }: { loading?: boolean }) => (
-  <div className="flex flex-col items-center justify-center h-full bg-muted/30 rounded-lg">
+  <div className="flex flex-col items-center justify-center h-full bg-muted/30 rounded-lg min-h-[12rem]">
     {loading ? (
       <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
     ) : (
@@ -22,312 +68,99 @@ const DemoFallback = ({ loading }: { loading?: boolean }) => (
   </div>
 );
 
+const FeatureCard = ({ item }: { item: FeatureItem }) => (
+  <div className="glass-panel p-3 md:p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90 border border-white/5">
+    <div className="w-8 h-8 md:w-10 md:h-10 bg-primary/10 rounded-full flex items-center justify-center mb-2 md:mb-3">
+      <item.icon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+    </div>
+    <h3 className="text-sm md:text-base font-medium mb-1">{item.title}</h3>
+    <p className="text-xs md:text-sm text-muted-foreground">{item.desc}</p>
+  </div>
+);
+
+const HeaderSection = () => (
+  <div className="text-center mb-4 md:mb-6">
+    <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in mb-2">
+      DrohnenGLB by RooferGaming®
+    </div>
+    
+    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 animate-slide-up">
+      3D-Modelle einfach visualisieren
+    </h1>
+    
+    <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in mb-4">
+      Laden Sie Ihre 3D-Modelle im GLB-Format hoch, erstellen Sie präzise Messungen und generieren Sie professionelle Berichte.
+    </p>
+
+    <div className="hidden md:flex glass-panel p-4 rounded-lg items-center justify-between gap-3 border border-white/10 max-w-3xl mx-auto">
+      <div className="text-left">
+        <p className="text-sm font-medium">Drohnenvermessung by RooferGaming®</p>
+        <p className="text-xs text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
+      </div>
+      <Button asChild variant="secondary" size="sm">
+        <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
+          Zur Website
+        </a>
+      </Button>
+    </div>
+    
+    <div className="mt-4 text-xs text-muted-foreground animate-fade-in space-y-1">
+       <p>Neu 07.02.2026: Export für Flachdächer nach ABS-Plan & Mobile Optimierung.</p>
+    </div>
+  </div>
+);
+
+// --- Main Component ---
+
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [demoAvailable, setDemoAvailable] = useState<boolean | null>(null);
-  
-  const handleStartClick = () => {
-    navigate('/viewer');
-  };
-  
-  // Check if demo model exists before trying to load it
+
+  useSeoMetadata();
+
   useEffect(() => {
     fetch(DEMO_MODEL_URL, { method: 'HEAD' })
       .then(res => setDemoAvailable(res.ok))
       .catch(() => setDemoAvailable(false));
   }, []);
-  useEffect(() => {
-    document.title = "GLB Viewer – Messungen speichern & exportieren";
-    const desc = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
-    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'description';
-      document.head.appendChild(meta);
-    }
-    meta.content = desc;
-    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'canonical';
-      document.head.appendChild(link);
-    }
-    link.href = window.location.origin + '/';
-  }, []);
-  return <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-3">
-        <div className="text-center mb-2">
-          <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in">
-            DrohnenGLB by RooferGaming® - ein kostenloser Service von <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">Drohnenvermessung by RooferGaming®</a>
-          </div>
-          
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mt-2 mb-2 animate-slide-up">
-            3D-Modelle einfach visualisieren
-          </h1>
-          
-          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in hidden md:block">
-            Laden Sie Ihre 3D-Modelle im GLB-Format hoch und erleben Sie diese in einer interaktiven 3D-Umgebung. 
-            Erstellen Sie präzise Messungen für Längen, Höhen und Flächen, und generieren Sie professionelle Messberichte mit einem Klick.
-          </p>
-          
-          <p className="text-xs text-muted-foreground mt-1 max-w-2xl mx-auto hidden md:block">
-            Hinweis: Bei Fragen oder Verbesserungsvorschlägen kontaktieren Sie uns gerne unter:
-            <br /> 
-            <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
-              info@drohnenvermessung-roofergaming.de
-            </a>
-         </p>      
-          <div className="mt-2 text-xs text-muted-foreground animate-fade-in">
-            Neu: Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.
-          </div>
-        <div className="glass-panel p-4 md:p-5 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-white/10">
-          <div>
-            <p className="text-sm md:text-base font-medium">Drohnenvermessung by RooferGaming®</p>
-            <p className="text-xs md:text-sm text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig und professionell.</p>
-          </div>
-          <Button asChild>
-            <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">
-              Jetzt Drohnenvermessung ansehen
-            </a>
-          </Button>
-        </div>
 
-        </div>
+  const handleStartClick = () => navigate('/viewer');
 
-        <div className="flex-grow flex flex-col md:hidden">
-          <div className="glass-panel p-4 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 mb-3">
-            <div className="w-full mx-auto">
-              <h2 className="text-lg font-bold mb-3 text-center">Modell hochladen</h2>
-              <FileUpload />
-            </div>
-          </div>
-          
-        {isMobile && <div className="glass-panel p-4 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-3">
-    <h3 className="text-sm font-medium mb-2 text-center">Demo-Modell Vorschau</h3>
-    <div className="relative w-full h-48 rounded-md overflow-hidden">
-      {demoAvailable === true ? (
-        <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
-      ) : (
-        <DemoFallback loading={demoAvailable === null} />
-      )}
-    </div>
-    <div className="mt-3 flex flex-wrap justify-center gap-2">
-      <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo ansehen">
-        <Eye className="mr-2 h-4 w-4" />
-        Demo ansehen
-      </Button>
-      <Button onClick={handleStartClick} aria-label="Viewer öffnen">
-        <Upload className="mr-2 h-4 w-4" />
-        Eigenes Modell
-      </Button>
-    </div>
-  </div>}
-          
-          <div className="grid grid-cols-1 gap-2">
-            <p className="text-xs text-muted-foreground mt-1 mb-1 text-center">
-              Hinweis: Bei Fragen kontaktieren Sie uns unter{" "}
-              <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-primary hover:underline">
-                info@drohnenvermessung-roofergaming.de
-              </a>
-            </p>
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <MoveHorizontal className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Interaktive Darstellung</h3>
-              <p className="text-xs text-muted-foreground">
-                Drehen, zoomen und bewegen Sie Ihre 3D-Modelle, um sie aus jedem Blickwinkel zu betrachten.
-              </p>
-            </div>
-            
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Layers className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Präzise Messungen</h3>
-              <p className="text-xs text-muted-foreground">
-                Messen Sie Abstände, Flächen und Neigungen direkt im 3D-Raum.
-              </p>
-            </div>
-
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Save className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Messungen speichern & exportieren</h3>
-              <p className="text-xs text-muted-foreground">
-                Speichern Sie Messungen lokal und exportieren Sie sie mit dem GLB. Später jederzeit wieder einlesen.
-              </p>
-            </div>
-
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Smartphone className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Hochformat-Unterstützung</h3>
-              <p className="text-xs text-muted-foreground">
-                Komplett optimiert für den Hochkantmodus auf Mobilgeräten.
-              </p>
-            </div>
-
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Box className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">GLB-Format</h3>
-              <p className="text-xs text-muted-foreground">
-                Unterstützung für das gängige GLB-Format, das direkt vom Server als Textured Modell (glTF) zur Verfügung gestellt wird.
-              </p>
-            </div>
-
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Smartphone className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Responsives Design</h3>
-              <p className="text-xs text-muted-foreground">
-                Funktioniert auf allen Geräten - vom Desktop bis zum Smartphone, mit angepassten Steuerungen.
-              </p>
-            </div>
-
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Zap className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Schnelle Verarbeitung</h3>
-              <p className="text-xs text-muted-foreground">
-                Optimierte Performance für schnelle Ladezeiten und flüssige Darstellung auch komplexer 3D-Modelle.
-              </p>
-            </div>
-
-            <div className="glass-panel p-3 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <Shield className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-medium mb-1">Datensicherheit</h3>
-              <p className="text-xs text-muted-foreground">
-                Ihre 3D-Modelle werden lokal im Browser verarbeitet und nicht auf externe Server hochgeladen.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2 flex-grow">
-          {/* Swapped the order: Upload panel first (left side), features grid second (right side) */}
-          <div className="glass-panel p-5 md:p-6 rounded-lg flex flex-col justify-center items-center backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300 order-1 lg:order-1">
-            <div className="w-full max-w-md mx-auto">
-              <h2 className="text-xl font-bold mb-5 text-center">Modell hochladen</h2>
-              <FileUpload />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 auto-rows-min pb-2 lg:col-span-2 lg:row-start-2">
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <MoveHorizontal className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Interaktive Darstellung</h3>
-              <p className="text-sm text-muted-foreground">
-                Drehen, zoomen und bewegen Sie Ihre 3D-Modelle, um sie aus jedem Blickwinkel zu betrachten.
-              </p>
-            </div>
-            
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Box className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">GLB-Format</h3>
-              <p className="text-sm text-muted-foreground">Unterstützung für das gängige GLB-Format, das direkt vom Server als Textured Modell (glTF) zur Verfügung gestellt wird.</p>
-            </div>
-            
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Smartphone className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Responsives Design</h3>
-              <p className="text-sm text-muted-foreground">
-                Funktioniert auf allen Geräten - vom Desktop bis zum Smartphone, mit angepassten Steuerungen.
-              </p>
-            </div>
-
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Layers className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Präzise Messungen</h3>
-              <p className="text-sm text-muted-foreground">Messen Sie Abstände, Flächen und Neigungen mit professionellen Werkzeugen direkt im 3D-Raum.</p>
-            </div>
-
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Zap className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Schnelle Verarbeitung</h3>
-              <p className="text-sm text-muted-foreground">
-                Optimierte Performance für schnelle Ladezeiten und flüssige Darstellung auch komplexer 3D-Modelle.
-              </p>
-            </div>
-
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Shield className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Datensicherheit</h3>
-              <p className="text-sm text-muted-foreground">
-                Ihre 3D-Modelle werden lokal im Browser verarbeitet und nicht auf externe Server hochgeladen.
-              </p>
-            </div>
-
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Save className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Messungen speichern & exportieren</h3>
-              <p className="text-sm text-muted-foreground">
-                Speichern Sie Messungen lokal und exportieren Sie sie mit dem GLB – später jederzeit wieder einlesen.
-              </p>
-            </div>
-
-            <div className="glass-panel p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Smartphone className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-base font-medium mb-1">Hochformat-Unterstützung</h3>
-              <p className="text-sm text-muted-foreground">
-                Vollständig optimierte Bedienung und Layout für den Hochkantmodus.
-              </p>
-            </div>
-          </div>
-
-        {/* Preview section with Demo Model (desktop) */}
-        {!isMobile && <div className="glass-panel p-5 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 hover:shadow-xl transition-all duration-300">
-    <h3 className="text-lg font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
-    <div className="relative w-full h-80 rounded-md overflow-hidden">
-      {demoAvailable === true ? (
-        <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
-      ) : (
-        <DemoFallback loading={demoAvailable === null} />
-      )}
-    </div>
-    <div className="mt-4 flex flex-wrap justify-center gap-3">
-      <Button onClick={() => navigate('/test')} variant="outline" aria-label="Demo mit Tools ansehen">
-        <Eye className="mr-2 h-4 w-4" />
-        Demo mit Messwerkzeugen
-      </Button>
-      
-    </div>
-  </div>}
-        </div>
-        
-        <footer className="w-full text-center text-xs text-muted-foreground mt-2 mb-0">
-          <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming® | Alle Rechte vorbehalten</p>
-          <p className="mt-1">
-            Service: <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" aria-label="Drohnenvermessung by RooferGaming in neuem Tab öffnen" title="Drohnenvermessung by RooferGaming">Drohnenvermessung by RooferGaming®</a>
-          </p>
-          <p className="text-xs mt-1 hidden md:block">Unterstützt GLB-Dateien bis zu 100MB</p>
-        </footer>
+  const DemoSection = () => (
+    <div className="glass-panel p-4 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-4 h-full">
+      <h3 className="text-sm md:text-lg font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
+      <div className="relative w-full h-48 md:h-80 rounded-md overflow-hidden bg-secondary/20">
+        {demoAvailable === true ? (
+          <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+        ) : (
+          <DemoFallback loading={demoAvailable === null} />
+        )}
       </div>
-    </div>;
-};
-export default Index;
+      <div className="mt-4 flex flex-wrap justify-center gap-3">
+        <Button onClick={() => navigate('/test')} variant="outline" size={isMobile ? "sm" : "default"}>
+          <Eye className="mr-2 h-4 w-4" />
+          Demo ansehen
+        </Button>
+        {isMobile && (
+          <Button onClick={handleStartClick} size="sm">
+            <Upload className="mr-2 h-4 w-4" />
+            Eigenes Modell
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-4">
+        
+        {/* Header */}
+        <HeaderSection />
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Left Column (Desktop) / Top (Mobile): Upload & Demo */}
+          <div className="lg:col-span-4 flex flex-col gap-4 order-1">
+            <div className="glass-
