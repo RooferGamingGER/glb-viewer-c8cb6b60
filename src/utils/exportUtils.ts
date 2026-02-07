@@ -361,6 +361,7 @@ export const exportMeasurementsToAbsJson = (
   };
 
   let windowsPerimeter = 0;
+  let chimneysPerimeter = 0;
   let innerAttikaPerimeter = 0;
 
   // 1) Dachfläche exportieren
@@ -535,6 +536,215 @@ export const exportMeasurementsToAbsJson = (
     }
   });
 
+  // 3) Kamine (chimney) als 1m hohe Quader
+  const chimneyAreas = measurements.filter(
+    (m) => m.type === 'chimney' && m.points && m.points.length >= 3,
+  );
+
+  chimneyAreas.forEach((chimney) => {
+    const baseOffset = vertices.length;
+    const chimneyHeight = 1.0; // 1 m Kaminhöhe
+
+    // Untere Kaminfläche auf Dachhöhe
+    chimney.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight });
+    });
+
+    const triResult = triangulate3D(chimney.points);
+
+    // Obere Kaminfläche (Dachhöhe + 1m)
+    const topOffset = vertices.length;
+    chimney.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight + chimneyHeight });
+    });
+
+    const baseFaceStartIndex = faces.length;
+    triResult.triangles.forEach((tri) => {
+      faces.push({ vertexKeys: tri.map((i) => i + baseOffset) });
+    });
+
+    const topFaceStartIndex = faces.length;
+    triResult.triangles.forEach((tri) => {
+      faces.push({ vertexKeys: tri.map((i) => i + topOffset) });
+    });
+
+    if (triResult.triangles.length > 0) {
+      const topFaceKeys = triResult.triangles.map((_, idx) => topFaceStartIndex + idx);
+      const basePolyVertexKeys = chimney.points.map((_, idx) => baseOffset + idx);
+      const topPolyVertexKeys = chimney.points.map((_, idx) => topOffset + idx);
+
+      // Kaminoberseite
+      assembledFaces.push({
+        area: triResult.area,
+        angle: 90,
+        category: 'Kamin_Oben_Flaechen',
+        faceKeys: topFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: topPolyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, -1],
+      });
+
+      // Kaminseitenflächen
+      const sideFaceStartIndex = faces.length;
+      let sideAreaSum = 0;
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const next = (i + 1) % basePolyVertexKeys.length;
+        const aBase = basePolyVertexKeys[i];
+        const bBase = basePolyVertexKeys[next];
+        const aTop = topPolyVertexKeys[i];
+        const bTop = topPolyVertexKeys[next];
+
+        faces.push({ vertexKeys: [aBase, bBase, bTop] });
+        faces.push({ vertexKeys: [aBase, bTop, aTop] });
+
+        const edgeLen = distance2D(vertices[aBase], vertices[bBase]);
+        sideAreaSum += edgeLen * chimneyHeight;
+      }
+
+      const sideFaceCount = basePolyVertexKeys.length * 2;
+      const sideFaceKeys = Array.from({ length: sideFaceCount }, (_, idx) => sideFaceStartIndex + idx);
+
+      assembledFaces.push({
+        area: sideAreaSum,
+        angle: 0,
+        category: 'Kamin_Seite_Flaechen',
+        faceKeys: sideFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: basePolyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+
+      // Kamin-Anschlusskanten + Umfang
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const aIndex = basePolyVertexKeys[i];
+        const bIndex = basePolyVertexKeys[(i + 1) % basePolyVertexKeys.length];
+
+        classifiedEdges.push({
+          category: 'Kamin_Anschluss',
+          vertexKeys: [aIndex, bIndex],
+        });
+
+        const a = vertices[aIndex];
+        const b = vertices[bIndex];
+        chimneysPerimeter += distance2D(a, b);
+      }
+    }
+  });
+
+  // 4) Lüfter (vent) als 0.3m hohe Zylinder (8-Eck approximation)
+  const ventMeasurements = measurements.filter((m) => m.type === 'vent');
+
+  const ventRadius = 0.05; // 100 mm Durchmesser
+  const ventHeight = 0.3; // 30 cm Höhe
+  const ventSegments = 8;
+
+  ventMeasurements.forEach((vent) => {
+    if (!vent.position && (!vent.points || vent.points.length === 0)) return;
+
+    const center = vent.position || vent.points[0];
+
+    const baseOffset = vertices.length;
+
+    // Basisring
+    for (let i = 0; i < ventSegments; i++) {
+      const angle = (2 * Math.PI * i) / ventSegments;
+      const x = center.x + Math.cos(angle) * ventRadius;
+      const y = center.z + Math.sin(angle) * ventRadius;
+      vertices.push({ x, y, z: baseHeight });
+    }
+
+    const topOffset = vertices.length;
+    // Topring
+    for (let i = 0; i < ventSegments; i++) {
+      const angle = (2 * Math.PI * i) / ventSegments;
+      const x = center.x + Math.cos(angle) * ventRadius;
+      const y = center.z + Math.sin(angle) * ventRadius;
+      vertices.push({ x, y, z: baseHeight + ventHeight });
+    }
+
+    // Deckelfläche (oben) triangulieren (Fan vom ersten Top-Vertex)
+    const topCenterIndex = vertices.length;
+    vertices.push({ x: center.x, y: center.z, z: baseHeight + ventHeight });
+
+    const topFaceStartIndex = faces.length;
+    for (let i = 0; i < ventSegments; i++) {
+      const next = (i + 1) % ventSegments;
+      faces.push({ vertexKeys: [topCenterIndex, topOffset + i, topOffset + next] });
+    }
+
+    const topFaceKeys = Array.from({ length: ventSegments }, (_, idx) => topFaceStartIndex + idx);
+    const topRingKeys = Array.from({ length: ventSegments }, (_, idx) => topOffset + idx);
+
+    assembledFaces.push({
+      area: Math.PI * ventRadius * ventRadius,
+      angle: 0,
+      category: 'Lueftungsrohre_Oben_Flaechen',
+      faceKeys: topFaceKeys,
+      polylines: [
+        {
+          category: 'Default',
+          vertexKeys: topRingKeys,
+        },
+      ],
+      orientation: [0, 0, 0],
+    });
+
+    // Mantelfläche
+    const sideFaceStartIndex = faces.length;
+    let sideAreaSum = 0;
+    const baseRingKeys = Array.from({ length: ventSegments }, (_, idx) => baseOffset + idx);
+
+    for (let i = 0; i < ventSegments; i++) {
+      const next = (i + 1) % ventSegments;
+      const aBase = baseRingKeys[i];
+      const bBase = baseRingKeys[next];
+      const aTop = topRingKeys[i];
+      const bTop = topRingKeys[next];
+
+      faces.push({ vertexKeys: [aBase, bBase, bTop] });
+      faces.push({ vertexKeys: [aBase, bTop, aTop] });
+
+      const edgeLen = distance2D(vertices[aBase], vertices[bBase]);
+      sideAreaSum += edgeLen * ventHeight;
+    }
+
+    const sideFaceCount = ventSegments * 2;
+    const sideFaceKeys = Array.from({ length: sideFaceCount }, (_, idx) => sideFaceStartIndex + idx);
+
+    assembledFaces.push({
+      area: sideAreaSum,
+      angle: 90,
+      category: 'Lueftungsrohre_Seite_Flaechen',
+      faceKeys: sideFaceKeys,
+      polylines: [
+        {
+          category: 'Default',
+          vertexKeys: baseRingKeys,
+        },
+      ],
+      orientation: [0, 0, -1],
+    });
+
+    // Anschlusskanten am Dach
+    for (let i = 0; i < ventSegments; i++) {
+      const aIndex = baseRingKeys[i];
+      const bIndex = baseRingKeys[(i + 1) % ventSegments];
+
+      classifiedEdges.push({
+        category: 'Lueftungsrohre_Anschluss',
+        vertexKeys: [aIndex, bIndex],
+      });
+    }
+  });
+
   // Mapping für Flachdach-Längen (jetzt inkl. Attika)
   const totalLengthsFlatRoof = {
     eaves: segmentGroups['eave']?.totalLength ?? 0,
@@ -561,7 +771,7 @@ export const exportMeasurementsToAbsJson = (
     rafters: 0,
     valleys: segmentGroups['valley']?.totalLength ?? 0,
     windows: Number(windowsPerimeter.toFixed(2)), // Umfang der Dachfenster-Anschlusskanten
-    chimneys: 0, // könnte aus chimney-Umfang kommen
+    chimneys: Number(chimneysPerimeter.toFixed(2)),
     snowguards: 0,
   };
 
