@@ -198,27 +198,27 @@ const Index = () => {
         {/* Row 1: Drohnenvermessung banner + Changelog */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <div className="glass-panel p-4 rounded-lg border border-border/10 flex items-center justify-between gap-3 relative overflow-visible">
-            <div className="text-left">
-              <p className="text-sm font-medium">Drohnenvermessung by RooferGaming®</p>
-              <p className="text-xs text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="text-left relative">
+              <p className="text-sm font-medium inline">
+                Drohnenvermessung by RooferGaming®
+              </p>
               <a
                 href="https://drohnenvermessung-roofergaming.de/shop/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative -rotate-6 hover:rotate-0 transition-transform duration-300 cursor-pointer group"
+                className="absolute -top-4 -right-20 -rotate-6 hover:rotate-0 transition-transform duration-300 cursor-pointer group z-10"
               >
                 <div className="bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1.5 rounded-full shadow-lg ring-2 ring-destructive/30 group-hover:scale-110 transition-transform duration-300 whitespace-nowrap">
                   ab 90€/Mo
                 </div>
               </a>
-              <Button asChild variant="secondary" size="sm">
-                <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
-                  Zur Website
-                </a>
-              </Button>
+              <p className="text-xs text-muted-foreground mt-0.5">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
             </div>
+            <Button asChild variant="secondary" size="sm" className="shrink-0">
+              <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
+                Zur Website
+              </a>
+            </Button>
           </div>
           <ChangelogSection />
         </div>
