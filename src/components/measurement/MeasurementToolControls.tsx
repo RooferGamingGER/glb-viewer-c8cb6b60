@@ -25,6 +25,7 @@ import { SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@/componen
 import MeasurementToolbar from './MeasurementToolbar';
 import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
@@ -87,9 +88,13 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   showMeasurementList = true
 }) => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("tools"); // Changed from "measurements" to "tools"
+  const [activeTab, setActiveTab] = useState("tools");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Mobile portrait detection
+  const { isPortrait, isTablet, isPhone } = useScreenOrientation();
+  const isMobilePortrait = isPortrait && (isPhone || isTablet);
   
   const handleCategoryClick = (category: MeasurementMode) => {
     setActiveCategory(category);
@@ -213,12 +218,14 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="w-full grid grid-cols-2 h-8 mb-3">
+          <TabsList className={`w-full grid ${isMobilePortrait ? 'grid-cols-1' : 'grid-cols-2'} h-8 mb-3`}>
             <TabsTrigger value="tools">Werkzeuge</TabsTrigger>
-            <TabsTrigger value="measurements">
-              Messungen 
-              {measurements.length > 0 && <span className="ml-1 text-muted-foreground text-xs">({measurements.length})</span>}
-            </TabsTrigger>
+            {!isMobilePortrait && (
+              <TabsTrigger value="measurements">
+                Messungen 
+                {measurements.length > 0 && <span className="ml-1 text-muted-foreground text-xs">({measurements.length})</span>}
+              </TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="tools" className="flex-1 m-0 space-y-3">
@@ -255,110 +262,106 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
             />
           </TabsContent>
           
-          <TabsContent value="measurements" className="flex-1 m-0">
-            <div className="flex mb-3 items-center justify-between">
-              <div className="text-sm font-medium">
-                {activeCategory ? (
+          {!isMobilePortrait && (
+            <TabsContent value="measurements" className="flex-1 m-0">
+              <div className="flex mb-3 items-center justify-between">
+                <div className="text-sm font-medium">
+                  {activeCategory ? (
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-sm -ml-3" 
+                      onClick={() => setActiveCategory(null)}
+                    >
+                      ← Zurück zu allen Messungen
+                    </Button>
+                  ) : (
+                    "Alle Messungen"
+                  )}
+                </div>
+                
+                <div className="flex gap-1">
                   <Button 
-                    variant="link" 
-                    className="p-0 h-auto text-sm -ml-3" 
-                    onClick={() => setActiveCategory(null)}
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowTable(!showTable)}
+                    title={showTable ? "Als Liste anzeigen" : "Als Tabelle anzeigen"}
+                    className="h-7"
                   >
-                    ← Zurück zu allen Messungen
+                    {showTable ? "Liste" : "Tabelle"}
                   </Button>
-                ) : (
-                  "Alle Messungen"
-                )}
+                </div>
               </div>
               
-              <div className="flex gap-1">
+              {/* Export options - Only in Measurements tab */}
+              <div className="flex flex-col gap-2 mb-4 border-b pb-3">
+                <div className="text-xs text-muted-foreground mb-1">
+                  Exportoptionen:
+                </div>
+                
+                <ExportGLBWithMeasurementsButton measurements={measurements} />
+                <GenerateRoofPlanButton measurements={measurements} />
+                
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setShowTable(!showTable)}
-                  title={showTable ? "Als Liste anzeigen" : "Als Tabelle anzeigen"}
-                  className="h-7"
+                  className="w-full"
+                  onClick={exportMeasurementsAsCSV}
+                  disabled={measurements.length === 0}
+                  title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'Messungen als CSV exportieren'}
                 >
-                  {showTable ? "Liste" : "Tabelle"}
+                  <FileText className="h-4 w-4 mr-2" />
+                  CSV Export
                 </Button>
-              </div>
-            </div>
-            
-            {/* Export options - Only in Measurements tab */}
-            <div className="flex flex-col gap-2 mb-4 border-b pb-3">
-              <div className="text-xs text-muted-foreground mb-1">
-                Exportoptionen:
-              </div>
-              
-              {/* Export GLB with embedded measurements (only for RooferGaming models) */}
-              <ExportGLBWithMeasurementsButton measurements={measurements} />
-              
-              {/* Roof plan generation button */}
-              <GenerateRoofPlanButton measurements={measurements} />
-              
-              {/* CSV Export button */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={exportMeasurementsAsCSV}
-                disabled={measurements.length === 0}
-                title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'Messungen als CSV exportieren'}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                CSV Export
-              </Button>
 
-              {/* ABS-JSON Test-Export */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={exportMeasurementsAsAbsJson}
-                disabled={measurements.length === 0}
-                title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'ABS-JSON Testexport erzeugen'}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                ABS-Export (Test)
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={exportMeasurementsAsAbsJson}
+                  disabled={measurements.length === 0}
+                  title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'ABS-JSON Testexport erzeugen'}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  ABS-Export (Test)
+                </Button>
+                
+                <ExportPdfButton measurements={measurements} />
+              </div>
               
-              {/* PDF Export button */}
-              <ExportPdfButton measurements={measurements} />
-            </div>
-            
-            {showMeasurementList && (
-              <div style={tableContainerStyle}>
-                {showTable ? (
-                  <MeasurementTable 
-                    measurements={measurements}
-                    toggleMeasurementVisibility={toggleMeasurementVisibility}
-                    handleDeleteMeasurement={handleDeleteMeasurement}
-                  />
-                ) : (
-                  <div className="flex-1">
-                    <MeasurementList 
+              {showMeasurementList && (
+                <div style={tableContainerStyle}>
+                  {showTable ? (
+                    <MeasurementTable 
                       measurements={measurements}
                       toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      toggleLabelVisibility={toggleLabelVisibility}
-                      handleStartPointEdit={handleStartPointEdit}
                       handleDeleteMeasurement={handleDeleteMeasurement}
-                      handleDeletePoint={handleDeletePoint}
-                      updateMeasurement={updateMeasurement}
-                      editMeasurementId={editMeasurementId}
-                      segmentsOpen={segmentsOpen}
-                      toggleSegments={toggleSegments}
-                      onEditSegment={onEditSegment}
-                      movingPointInfo={movingPointInfo}
-                      handleMoveMeasurementUp={handleMoveMeasurementUp}
-                      handleMoveMeasurementDown={handleMoveMeasurementDown}
-                      activeCategory={activeCategory || undefined}
-                      showTable={showTable}
                     />
-                  </div>
-                )}
-              </div>
-            )}
-          </TabsContent>
+                  ) : (
+                    <div className="flex-1">
+                      <MeasurementList 
+                        measurements={measurements}
+                        toggleMeasurementVisibility={toggleMeasurementVisibility}
+                        toggleLabelVisibility={toggleLabelVisibility}
+                        handleStartPointEdit={handleStartPointEdit}
+                        handleDeleteMeasurement={handleDeleteMeasurement}
+                        handleDeletePoint={handleDeletePoint}
+                        updateMeasurement={updateMeasurement}
+                        editMeasurementId={editMeasurementId}
+                        segmentsOpen={segmentsOpen}
+                        toggleSegments={toggleSegments}
+                        onEditSegment={onEditSegment}
+                        movingPointInfo={movingPointInfo}
+                        handleMoveMeasurementUp={handleMoveMeasurementUp}
+                        handleMoveMeasurementDown={handleMoveMeasurementDown}
+                        activeCategory={activeCategory || undefined}
+                        showTable={showTable}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </ScrollArea>
