@@ -195,20 +195,7 @@ const Index = () => {
         
         <HeaderSection />
 
-        {/* Row 1: Demo + Upload side by side on desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          <DemoSection />
-          <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
-            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
-            <FileUpload />
-            <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
-              <Upload className="mr-2 h-4 w-4" />
-              Viewer öffnen
-            </Button>
-          </div>
-        </div>
-
-        {/* Row 2: Drohnenvermessung banner + Changelog */}
+        {/* Row 1: Drohnenvermessung banner + Changelog */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <div className="glass-panel p-4 rounded-lg border border-border/10 flex items-center justify-between gap-3">
             <div className="text-left">
@@ -222,6 +209,19 @@ const Index = () => {
             </Button>
           </div>
           <ChangelogSection />
+        </div>
+
+        {/* Row 2: Demo + Upload side by side on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          <DemoSection />
+          <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
+            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
+            <FileUpload />
+            <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
+              <Upload className="mr-2 h-4 w-4" />
+              Viewer öffnen
+            </Button>
+          </div>
         </div>
 
         {/* Row 3: Features */}
