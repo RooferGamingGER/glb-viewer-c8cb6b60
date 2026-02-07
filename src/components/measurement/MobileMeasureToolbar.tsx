@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Undo2, Check } from 'lucide-react';
+import { Undo2, Check, X } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { getMeasurementTypeDisplayName } from '@/utils/exportUtils';
 
@@ -8,6 +8,7 @@ interface MobileMeasureToolbarProps {
   activeMode: MeasurementMode;
   onUndo: () => void;
   onFinalize: () => void;
+  onCancel: () => void;
   currentPointsCount: number;
 }
 
@@ -15,6 +16,7 @@ const MobileMeasureToolbar: React.FC<MobileMeasureToolbarProps> = ({
   activeMode,
   onUndo,
   onFinalize,
+  onCancel,
   currentPointsCount,
 }) => {
   const canFinalize = activeMode === 'length' || activeMode === 'height'
@@ -28,6 +30,16 @@ const MobileMeasureToolbar: React.FC<MobileMeasureToolbarProps> = ({
           {getMeasurementTypeDisplayName(activeMode)} aktiv
         </span>
         <div className="flex gap-2 ml-2 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="h-8"
+            title="Abbrechen"
+          >
+            <X className="h-3.5 w-3.5 mr-1" />
+            Abbruch
+          </Button>
           <Button
             variant="outline"
             size="sm"

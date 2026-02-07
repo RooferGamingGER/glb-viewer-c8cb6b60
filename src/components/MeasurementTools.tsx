@@ -484,12 +484,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </div>
       )}
 
-      {/* Mobile: Mess-Panel above bottom bar */}
-      {showMobileBottomBar && isMobileMeasurePanelOpen && (
+      {/* Mobile: Mess-Panel above bottom bar — hide when a tool is active */}
+      {showMobileBottomBar && isMobileMeasurePanelOpen && activeMode === 'none' && (
         <div
           className="fixed left-0 right-0 z-30 bg-background border-t border-border/50 pointer-events-auto overflow-auto"
           style={{
-            bottom: `calc(52px + max(env(safe-area-inset-bottom), 8px)${showMobileMeasureToolbar ? ' + 48px' : ''})`,
+            bottom: `calc(52px + max(env(safe-area-inset-bottom), 8px))`,
             maxHeight: '50vh',
           }}
         >
@@ -497,12 +497,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </div>
       )}
 
-      {/* Mobile: Mess-Toolbar (Undo/Finalize) */}
+      {/* Mobile: Mess-Toolbar (Undo/Finalize/Cancel) */}
       {showMobileMeasureToolbar && (
         <MobileMeasureToolbar
           activeMode={activeMode}
           onUndo={handleUndoLastPoint}
           onFinalize={handleFinalizeMeasurement}
+          onCancel={() => toggleMeasurementTool(activeMode)}
           currentPointsCount={currentPoints.length}
         />
       )}
