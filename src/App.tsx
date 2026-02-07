@@ -27,7 +27,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />
-              <SonnerToaster richColors position="top-center" />
+              <SonnerToaster richColors position="top-center" duration={2000} closeButton={false} />
               <PWAInstallPrompt />
               <PWAUpdatePrompt />
             </Router>

@@ -161,7 +161,7 @@ export const useMeasurementEvents = (
             });
             document.dispatchEvent(addPointEvent);
             
-            toast.success(`Punkt zu Flächenmessung hinzugefügt`);
+            toast.success(`Punkt zu Flächenmessung hinzugefügt`, { duration: 1500 });
             return;
           }
         }
@@ -233,7 +233,7 @@ export const useMeasurementEvents = (
         // Handle editing case
         if (editMeasurementId !== null && editingPointIndex !== null) {
           handlers.addPoint(finalPoint);
-          toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`);
+          toast.success(`Messpunkt ${editingPointIndex + 1} wurde aktualisiert.`, { duration: 1500 });
           clearSnapIndicator(true); // Clear immediately when placing a point
           return;
         }
@@ -246,19 +246,19 @@ export const useMeasurementEvents = (
         
         if (activeMode === 'length') {
           if (currentCount === 0) {
-            toast.info("Ersten Punkt für Längenmessung gesetzt");
+            toast.info("Ersten Punkt für Längenmessung gesetzt", { duration: 1500 });
           }
         } else if (activeMode === 'height') {
           if (currentCount === 0) {
-            toast.info("Ersten Punkt für Höhenmessung gesetzt");
+            toast.info("Ersten Punkt für Höhenmessung gesetzt", { duration: 1500 });
           }
         } else if (activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') {
           if (currentCount === 0) {
             toast.info(`Ersten Punkt für ${activeMode === 'area' ? 'Flächenmessung' : 
                        activeMode === 'solar' ? 'Solarfläche' : 
-                       activeMode === 'skylight' ? 'Dachfenster' : 'Schornstein'} gesetzt`);
+                       activeMode === 'skylight' ? 'Dachfenster' : 'Schornstein'} gesetzt`, { duration: 1500 });
           } else {
-            toast.info(`Punkt ${currentCount + 1} gesetzt`);
+            toast.info(`Punkt ${currentCount + 1} gesetzt`, { duration: 1500 });
           }
         }
       }
@@ -488,7 +488,7 @@ export const useMeasurementEvents = (
           const initialPoint = handlers.startPointMovement(measurementId, pointIndex, point);
           handlers.setPreviewPoint(initialPoint);
         }
-        toast.info(`Punkt ${pointIndex + 1} aktiviert`);
+        toast.info(`Punkt ${pointIndex + 1} aktiviert`, { duration: 1500 });
         return;
       }
     }
