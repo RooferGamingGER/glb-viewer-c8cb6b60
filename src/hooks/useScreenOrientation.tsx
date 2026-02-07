@@ -35,18 +35,28 @@ export function useScreenOrientation() {
     };
   }, []);
 
+  // Fallback: even on non-touch devices, if viewport is very narrow
+  // and in portrait orientation, force mobile UI so the sidebar fits
+  const FORCE_MOBILE_WIDTH = 600;
+  const isNarrowPortrait =
+    !isMobileOrTablet &&
+    orientation === "portrait" &&
+    window.innerWidth <= FORCE_MOBILE_WIDTH;
+
+  const effectiveMobile = isMobileOrTablet || isNarrowPortrait;
+
   // Tablet: touch device with smallest side > 600px
   const isTablet =
     isMobileOrTablet &&
     Math.min(window.innerWidth, window.innerHeight) > 600;
 
-  const isPhone = isMobileOrTablet && !isTablet;
+  const isPhone = effectiveMobile && !isTablet;
   const isPortrait = orientation === "portrait";
 
   return {
-    orientation: isMobileOrTablet ? orientation : "landscape",
-    isPortrait: isMobileOrTablet && isPortrait,
-    isLandscape: !isMobileOrTablet || !isPortrait,
+    orientation: effectiveMobile ? orientation : "landscape",
+    isPortrait: effectiveMobile && isPortrait,
+    isLandscape: !effectiveMobile || !isPortrait,
     isTablet,
     isPhone,
   };
