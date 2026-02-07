@@ -1,98 +1,181 @@
 
-# Plan: Deckblatt-Optimierung mit Logo-Upload und Footer-Umgestaltung
 
-## Übersicht
-Drei Änderungen am PDF-Export:
-1. **Footer-Text in Seitennummerierung integrieren** - Die Fußzeile vom Deckblatt entfernen und stattdessen links und rechts neben der Seitenzahl platzieren
-2. **Firmenlogo-Upload** - Nutzer können ein eigenes Logo hochladen, das auf dem Deckblatt angezeigt wird
-3. **Dezenter Rahmen/Hintergrund für das Deckblatt** - Visuell ansprechenderes Deckblatt
+# Mobile Hochkant-Layout: Bottom-Bar, Overlays und Mess-Toolbar
 
----
+## Zusammenfassung
 
-## Änderungen
+Die aktuelle mobile Portrait-Ansicht zeigt ein statisches Bottom-Sheet (33vh hoch) mit allen Werkzeugen und Messungen. Das wird ersetzt durch ein platzsparendes Layout mit drei Hauptbereichen:
 
-### 1. Footer-Text zur Seitennummerierung verschieben
+1. **Bottom-Bar** mit drei Buttons: Messen / Export / Massen
+2. **Mess-Panel** (nur Werkzeuge, keine Messliste) + **Mess-Toolbar** (Rueckgaengig/Abschliessen bei aktiver Messung)
+3. **Vollbild-Overlays** fuer Massen (Messliste) und Export (alle Export-Optionen)
 
-**Datei:** `src/utils/pdfExport.ts`
+## Betroffene Dateien
 
-**Aktuell (Zeilen 1450-1487):**
-- Footer auf dem Deckblatt mit "DrohnenGLB by RooferGaming" und Links
-- Seitennummerierung nur mit "Seite X von Y" zentriert (Zeilen 2318-2327)
+### Datei 1: `src/components/MeasurementTools.tsx` (Hauptaenderungen)
 
-**Neu:**
-- Footer komplett vom Deckblatt entfernen
-- Seitennummerierung erweitern:
-  - Links: "DrohnenGLB by RooferGaming | drohnenglb.de"
-  - Mitte: "Seite X von Y"
-  - Rechts: "Drohnenaufmaß ab 90€/Monat | drohnenvermessung-roofergaming.de"
+Die groesste Aenderung findet hier statt. Das aktuelle Bottom-Sheet (Zeilen 476-480) wird komplett ersetzt.
 
+**A) Neue State-Variablen (nach Zeile 398)**
+
+Drei neue States fuer die mobilen Panels:
+- `isMobileMeasurePanelOpen` -- Werkzeug-Panel (oben auf/zu)
+- `isMobileMassesOpen` -- Massen-Overlay (Vollbild mit Messliste)
+- `isMobileExportOpen` -- Export-Overlay (Vollbild mit Export-Buttons)
+
+Plus abgeleitete Flags:
+- `showMobileBottomBar = useBottomSheet && enabled` -- Bottom-Bar anzeigen
+- `showMobileMeasureToolbar = useBottomSheet && enabled && activeMode !== 'none'` -- Toolbar bei aktiver Messung
+
+**B) Neue Imports**
+
+Zusaetzliche Imports fuer die Export-Komponenten und Hilfsfunktionen:
+- `Button` aus UI-Bibliothek
+- `getMeasurementTypeDisplayName` aus exportUtils
+- `ExportGLBWithMeasurementsButton`, `GenerateRoofPlanButton`, `ExportPdfButton`
+- `generateDetailedCSV`, `exportMeasurementsToAbsJson` aus exportUtils
+- Icons: `Ruler`, `Download`, `List`, `Undo2`, `Check`, `FileText`, `X`
+
+**C) CSV/ABS-Export-Funktionen**
+
+Da die Export-Logik momentan nur in `MeasurementToolControls.tsx` lebt, wird sie auch hier benoetigt. Dafuer werden die `exportMeasurementsAsCSV()` und `exportMeasurementsAsAbsJson()` Funktionen hier dupliziert (oder aus einer Hilfsfunktion importiert).
+
+**D) Bottom-Sheet (Zeilen 476-480) ersetzen durch neues Layout**
+
+Das bisherige statische 33vh-Bottom-Sheet wird ersetzt durch vier separate UI-Bereiche:
+
+1. **Mess-Toolbar** (ueber der Bottom-Bar, nur bei aktiver Messung):
+   - Zeigt den aktuellen Messungstyp-Namen
+   - "Rueckgaengig"-Button (ruft `handleUndoLastPoint`)
+   - "Abschliessen"-Button (ruft `handleFinalizeMeasurement`)
+   - Positioniert direkt ueber der Bottom-Bar
+
+2. **Bottom-Bar** (feste Leiste am unteren Rand):
+   - Drei gleichgrosse Buttons: "Messen" / "Export" / "Massen"
+   - "Messen" togglet das Werkzeug-Panel
+   - "Export" oeffnet das Export-Overlay
+   - "Massen" oeffnet das Massen-Overlay
+   - Safe-Area-Inset fuer Geraete mit Home-Indicator
+
+3. **Mess-Panel** (wenn `isMobileMeasurePanelOpen`):
+   - Rendert `panelContent` (MeasurementToolControls + Controls)
+   - Positioniert ueber der Bottom-Bar
+   - Scrollbar bei vielen Werkzeugen
+
+4. **Massen-Overlay** (wenn `isMobileMassesOpen`):
+   - Vollbild-Overlay mit Kopfzeile "Massen" + Schliessen-Button
+   - Liste aller Messungen mit Label, Typ und Wert
+   - Einheit wird je nach Typ bestimmt (m2 fuer Flaechen, m fuer Laengen/Hoehen)
+   - Scrollbar fuer lange Listen
+
+5. **Export-Overlay** (wenn `isMobileExportOpen`):
+   - Vollbild-Overlay mit Kopfzeile "Export" + Schliessen-Button
+   - Alle Export-Optionen: GLB, Dachplan, CSV, ABS-JSON, PDF
+   - Verwendet die bestehenden Export-Komponenten
+
+### Datei 2: `src/components/measurement/MeasurementToolControls.tsx`
+
+**A) Orientation-Hook einbauen**
+
+Import und Verwendung von `useScreenOrientation`:
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  DrohnenGLB | drohnenglb.de    Seite 1 von 8    Aufmaß ab 90€   │
-└─────────────────────────────────────────────────────────────────┘
+const { isPortrait, isTablet, isPhone } = useScreenOrientation();
+const isMobilePortrait = isPortrait && (isPhone || isTablet);
 ```
 
-### 2. Firmenlogo-Upload ermöglichen
+**B) Messungen-Tab auf Mobile ausblenden**
 
-**Datei:** `src/utils/pdfExport.ts`
+In der `TabsList` (Zeile 216) wird der "Messungen"-Tab auf Mobile ausgeblendet:
+- Die TabsList wird nur noch 1 Spalte breit auf Mobile (statt 2)
+- Der TabsTrigger fuer "measurements" wird mit `{!isMobilePortrait && ...}` umschlossen
 
-- Interface `CoverPageData` erweitern um `companyLogo?: string` (Base64-Bild)
+**C) Messungen-Content auf Mobile ausblenden**
 
-**Datei:** `src/components/measurement/ExportPdfButton.tsx`
+Der gesamte `TabsContent value="measurements"` (Zeilen 258-361) wird mit `{!isMobilePortrait && ...}` umschlossen. So sieht man auf Mobile nur die Werkzeuge, waehrend die Messliste und Exporte ueber die separaten Overlays zugaenglich sind.
 
-- Neues Eingabefeld im "Berichtsinfos"-Tab für Logo-Upload
-- Verwendung eines `<input type="file" accept="image/*">` mit Vorschau
-- Logo als Base64 in `form` speichern und an `exportMeasurementsToPdf` übergeben
+## Visuelles Layout (Mobile Portrait)
 
-**Datei:** `src/utils/pdfExport.ts`
+```text
++---------------------------+
+|                           |
+|                           |
+|      3D Viewer            |
+|      (maximale Flaeche)   |
+|                           |
+|                           |
++---------------------------+  <-- nur bei aktiver Messung:
+| Laenge aktiv   [Undo][OK]|  <-- Mess-Toolbar
++---------------------------+
+| [Messen] [Export] [Massen]|  <-- Bottom-Bar
++---------------------------+
 
-- Logo oben auf dem Deckblatt anzeigen (oberhalb des Titels)
-- Falls kein Logo vorhanden, normales Layout beibehalten
+Beim Tippen auf "Messen":
++---------------------------+
+|      3D Viewer            |
++---------------------------+
+| Messwerkzeuge             |  <-- Mess-Panel (scrollbar)
+| [Laenge] [Hoehe] [Fl.]   |
+| [Solar] [Dachelemente]    |
++---------------------------+
+| Laenge aktiv   [Undo][OK]|  <-- Mess-Toolbar (falls aktiv)
++---------------------------+
+| [Messen] [Export] [Massen]|
++---------------------------+
 
-### 3. Dezenter Rahmen/Hintergrund für Deckblatt
+Beim Tippen auf "Massen":
++---------------------------+
+| Massen              [X]  |  <-- Vollbild-Overlay
+|---------------------------|
+| Dachflaeche 1             |
+|   Typ: Flaeche            |
+|   45.23 m2                |
+|                           |
+| Firstlaenge               |
+|   Typ: Laenge              |
+|   12.50 m                 |
+|                           |
+| ...                       |
++---------------------------+
 
-**Datei:** `src/utils/pdfExport.ts`
+Beim Tippen auf "Export":
++---------------------------+
+| Export               [X]  |  <-- Vollbild-Overlay
+|---------------------------|
+| [GLB Export]              |
+| [Dachplan]                |
+| [CSV Export]              |
+| [ABS-Export (Test)]       |
+| [PDF Export]              |
++---------------------------+
+```
 
-- Deckblatt-Container mit dezenter visueller Gestaltung:
-  - Leichter Rahmen (1px solid #e5e7eb)
-  - Dezente Hintergrundfarbe (#fafbfc)
-  - Schattierung oder abgerundete Ecken für professionelles Aussehen
-  - Eventuell ein farbiger Akzent-Streifen am oberen Rand
+## Desktop-Verhalten
 
----
+Keine Aenderung. Die Desktop-Sidebar (rechts, 20rem breit) bleibt komplett wie bisher mit allen Tabs (Werkzeuge + Messungen inkl. Export).
 
 ## Technische Details
 
-### CoverPageData Interface-Erweiterung
-```typescript
-export interface CoverPageData {
-  // ... bestehende Felder
-  companyLogo?: string; // Base64-encoded Bild
-}
+### Bedingungs-Logik
+
+- `useBottomSheet = isPortrait && (isPhone || isTablet)` -- identisch zum bestehenden Hook
+- Bottom-Bar sichtbar: `useBottomSheet && enabled`
+- Mess-Toolbar sichtbar: `useBottomSheet && enabled && activeMode !== 'none'`
+- Mess-Panel: `useBottomSheet && enabled && isMobileMeasurePanelOpen`
+- Massen-Overlay: `useBottomSheet && enabled && isMobileMassesOpen`
+- Export-Overlay: `useBottomSheet && enabled && isMobileExportOpen`
+
+### Z-Index-Hierarchie
+
+- Bottom-Bar: z-40
+- Mess-Toolbar: z-40 (ueber der Bottom-Bar positioniert)
+- Mess-Panel: z-30 (zwischen 3D-Viewer und Bottom-Bar)
+- Vollbild-Overlays (Massen, Export): z-50 (ueber allem)
+
+### Einheiten-Logik fuer Massen-Overlay
+
+```text
+['area','solar','chimney','deductionarea','skylight'].includes(m.type) -> m2
+['height','length'].includes(m.type) -> m
+Sonst: leer
 ```
 
-### Neue Footer-Struktur (Seitennummerierung)
-```typescript
-// Anstatt nur zentrierter Seitentext:
-const leftText = 'DrohnenGLB | drohnenglb.de';
-const centerText = `Seite ${pageNum} von ${totalPages}`;
-const rightText = 'Aufmaß ab 90€ | drohnenvermessung-roofergaming.de';
-
-// Links ausgerichtet
-pdf.text(leftText, margin, pdfHeight - 5);
-// Zentriert
-pdf.text(centerText, pdfWidth / 2, pdfHeight - 5, { align: 'center' });
-// Rechts ausgerichtet
-pdf.text(rightText, pdfWidth - margin, pdfHeight - 5, { align: 'right' });
-```
-
-### Logo-Upload UI in ExportPdfButton.tsx
-- File-Input mit Vorschau
-- Konvertierung zu Base64 via `FileReader`
-- Bild-Größenbeschränkung/Skalierung für PDF
-
----
-
-## Betroffene Dateien
-1. `src/utils/pdfExport.ts` - Interface, Deckblatt-Styling, Footer-Entfernung, Seitennummerierung
-2. `src/components/measurement/ExportPdfButton.tsx` - Logo-Upload-UI, Form-Erweiterung
