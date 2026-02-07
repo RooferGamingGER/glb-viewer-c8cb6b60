@@ -1,17 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import FileUpload from '@/components/FileUpload';
-import ModelViewer from '@/components/ModelViewer';
-import { 
-  Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, 
-  Upload, Eye, AlertTriangle, Loader2, Save, LucideIcon,
-  ExternalLink, Newspaper
-} from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import FileUpload from "@/components/FileUpload";
+import ModelViewer from "@/components/ModelViewer";
+import {
+  Smartphone,
+  Box,
+  Layers,
+  MoveHorizontal,
+  Zap,
+  Shield,
+  Upload,
+  Eye,
+  AlertTriangle,
+  Loader2,
+  Save,
+  LucideIcon,
+  ExternalLink,
+  Newspaper,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // --- Constants & Data ---
-const DEMO_MODEL_URL = '/models/test-model.glb';
+const DEMO_MODEL_URL = "/models/test-model.glb";
 
 interface FeatureItem {
   icon: LucideIcon;
@@ -20,7 +31,11 @@ interface FeatureItem {
 }
 
 const FEATURES: FeatureItem[] = [
-  { icon: MoveHorizontal, title: "Interaktive Darstellung", desc: "Drehen, zoomen und bewegen Sie Ihre 3D-Modelle aus jedem Blickwinkel." },
+  {
+    icon: MoveHorizontal,
+    title: "Interaktive Darstellung",
+    desc: "Drehen, zoomen und bewegen Sie Ihre 3D-Modelle aus jedem Blickwinkel.",
+  },
   { icon: Layers, title: "Präzise Messungen", desc: "Abstände, Flächen und Neigungen direkt im 3D-Raum messen." },
   { icon: Save, title: "Speichern & Exportieren", desc: "Messungen lokal speichern und mit dem GLB exportieren." },
   { icon: Smartphone, title: "Mobile First", desc: "Komplett optimiert für Hochkant auf Mobilgeräten." },
@@ -40,7 +55,7 @@ const CHANGELOG: ChangelogEntry[] = [
   {
     date: "07.02.2026",
     text: "Export für Flachdächer nach ABS-Plan",
-    link: { url: "https://apps.absturzsicherung.de/plan", label: "ABS-Plan öffnen" },
+    link: { url: "https://apps.absturzsicherung.de", label: "ABS-Plan öffnen" },
   },
   {
     date: "07.02.2026",
@@ -56,23 +71,24 @@ const CHANGELOG: ChangelogEntry[] = [
 const useSeoMetadata = () => {
   useEffect(() => {
     document.title = "GLB Viewer – Messungen speichern & exportieren";
-    const descContent = "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
-    
+    const descContent =
+      "GLB-Modelle messen, speichern, exportieren und wieder einlesen – jetzt auch im Hochformat. Drohnenvermessung by RooferGaming für präzise Dachaufmaße.";
+
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'description';
+      meta = document.createElement("meta");
+      meta.name = "description";
       document.head.appendChild(meta);
     }
     meta.content = descContent;
 
     let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!link) {
-      link = document.createElement('link');
-      link.rel = 'canonical';
+      link = document.createElement("link");
+      link.rel = "canonical";
       document.head.appendChild(link);
     }
-    link.href = window.location.origin + '/';
+    link.href = window.location.origin + "/";
   }, []);
 };
 
@@ -136,11 +152,11 @@ const HeaderSection = () => (
     <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in mb-2">
       DrohnenGLB by RooferGaming®
     </div>
-    
+
     <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-2 animate-slide-up">
       3D-Modelle einfach visualisieren
     </h1>
-    
+
     <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in">
       GLB-Modelle hochladen, präzise messen und professionelle Berichte generieren.
     </p>
@@ -157,12 +173,12 @@ const Index = () => {
   useSeoMetadata();
 
   useEffect(() => {
-    fetch(DEMO_MODEL_URL, { method: 'HEAD' })
-      .then(res => setDemoAvailable(res.ok))
+    fetch(DEMO_MODEL_URL, { method: "HEAD" })
+      .then((res) => setDemoAvailable(res.ok))
       .catch(() => setDemoAvailable(false));
   }, []);
 
-  const handleStartClick = () => navigate('/viewer');
+  const handleStartClick = () => navigate("/viewer");
 
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
@@ -175,7 +191,7 @@ const Index = () => {
         )}
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-3">
-        <Button onClick={() => navigate('/test')} variant="outline" size={isMobile ? "sm" : "default"}>
+        <Button onClick={() => navigate("/test")} variant="outline" size={isMobile ? "sm" : "default"}>
           <Eye className="mr-2 h-4 w-4" />
           Demo ansehen
         </Button>
@@ -192,16 +208,13 @@ const Index = () => {
   return (
     <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-4">
-        
         <HeaderSection />
 
         {/* Row 1: Drohnenvermessung banner + Changelog */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <div className="glass-panel p-4 rounded-lg border border-border/10 flex items-center justify-between gap-3 relative overflow-visible">
             <div className="text-left relative">
-              <p className="text-sm font-medium inline">
-                Drohnenvermessung by RooferGaming®
-              </p>
+              <p className="text-sm font-medium inline">Drohnenvermessung by RooferGaming®</p>
               <a
                 href="https://drohnenvermessung-roofergaming.de/shop/"
                 target="_blank"
@@ -212,7 +225,9 @@ const Index = () => {
                   ab 90€/Mo
                 </div>
               </a>
-              <p className="text-xs text-muted-foreground mt-0.5">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.
+              </p>
             </div>
             <Button asChild variant="secondary" size="sm" className="shrink-0">
               <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
