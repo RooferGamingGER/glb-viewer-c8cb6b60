@@ -523,6 +523,19 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <MobileMassesOverlay
           measurements={measurements}
           onClose={() => setIsMobileMassesOpen(false)}
+          toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+          toggleLabelVisibility={handleToggleLabelVisibility}
+          handleStartPointEdit={handleStartPointEdit}
+          handleDeleteMeasurement={handleDeleteMeasurement}
+          handleDeletePoint={handleDeletePoint}
+          updateMeasurement={updateMeasurement}
+          editMeasurementId={editMeasurementId}
+          segmentsOpen={segmentsOpen}
+          toggleSegments={toggleSegments}
+          onEditSegment={setEditingSegmentId}
+          movingPointInfo={movingPointInfo}
+          handleMoveMeasurementUp={handleMoveMeasurementUp}
+          handleMoveMeasurementDown={handleMoveMeasurementDown}
         />
       )}
 

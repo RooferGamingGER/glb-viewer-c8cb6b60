@@ -25,40 +25,39 @@ const MobileMeasureToolbar: React.FC<MobileMeasureToolbarProps> = ({
 
   return (
     <div className="fixed left-0 right-0 bottom-[calc(52px+max(env(safe-area-inset-bottom),8px))] z-40 pointer-events-auto">
-      <div className="mx-2 bg-background border border-border/50 rounded-lg px-3 py-2 flex items-center justify-between shadow-lg">
-        <span className="text-sm font-medium truncate">
-          {getMeasurementTypeDisplayName(activeMode)} aktiv
+      <div className="mx-2 bg-background border border-border/50 rounded-lg px-2 py-1.5 flex items-center justify-between shadow-lg">
+        <span className="text-xs font-medium truncate mr-1">
+          {getMeasurementTypeDisplayName(activeMode)}
         </span>
-        <div className="flex gap-2 ml-2 shrink-0">
+        <div className="flex gap-1 shrink-0">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onCancel}
-            className="h-8"
+            className="h-7 w-7"
             title="Abbrechen"
           >
-            <X className="h-3.5 w-3.5 mr-1" />
-            Abbruch
+            <X className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={onUndo}
             disabled={currentPointsCount === 0}
-            className="h-8"
+            className="h-7 w-7"
+            title="Rückgängig"
           >
-            <Undo2 className="h-3.5 w-3.5 mr-1" />
-            Rückgängig
+            <Undo2 className="h-4 w-4" />
           </Button>
           <Button
             variant="default"
             size="sm"
             onClick={onFinalize}
             disabled={!canFinalize}
-            className="h-8"
+            className="h-7 px-3 text-xs"
           >
             <Check className="h-3.5 w-3.5 mr-1" />
-            Abschließen
+            OK
           </Button>
         </div>
       </div>
