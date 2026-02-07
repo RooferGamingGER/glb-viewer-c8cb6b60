@@ -4,7 +4,8 @@ import FileUpload from '@/components/FileUpload';
 import ModelViewer from '@/components/ModelViewer';
 import { 
   Smartphone, Box, Layers, MoveHorizontal, Zap, Shield, 
-  Upload, Eye, AlertTriangle, Loader2, Save, LucideIcon 
+  Upload, Eye, AlertTriangle, Loader2, Save, LucideIcon,
+  ExternalLink, Newspaper
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -19,14 +20,36 @@ interface FeatureItem {
 }
 
 const FEATURES: FeatureItem[] = [
-  { icon: MoveHorizontal, title: "Interaktive Darstellung", desc: "Drehen, zoomen und bewegen Sie Ihre 3D-Modelle, um sie aus jedem Blickwinkel zu betrachten." },
-  { icon: Layers, title: "Präzise Messungen", desc: "Messen Sie Abstände, Flächen und Neigungen direkt im 3D-Raum." },
-  { icon: Save, title: "Messungen speichern & exportieren", desc: "Speichern Sie Messungen lokal und exportieren Sie sie mit dem GLB. Später jederzeit wieder einlesen." },
-  { icon: Smartphone, title: "Hochformat-Unterstützung", desc: "Komplett optimiert für den Hochkantmodus auf Mobilgeräten." },
-  { icon: Box, title: "GLB-Format", desc: "Unterstützung für das gängige GLB-Format (glTF) direkt vom Server." },
-  { icon: Smartphone, title: "Responsives Design", desc: "Funktioniert auf allen Geräten - vom Desktop bis zum Smartphone." },
-  { icon: Zap, title: "Schnelle Verarbeitung", desc: "Optimierte Performance für flüssige Darstellung auch komplexer Modelle." },
-  { icon: Shield, title: "Datensicherheit", desc: "Ihre 3D-Modelle werden lokal im Browser verarbeitet, kein Upload auf Fremdserver." },
+  { icon: MoveHorizontal, title: "Interaktive Darstellung", desc: "Drehen, zoomen und bewegen Sie Ihre 3D-Modelle aus jedem Blickwinkel." },
+  { icon: Layers, title: "Präzise Messungen", desc: "Abstände, Flächen und Neigungen direkt im 3D-Raum messen." },
+  { icon: Save, title: "Speichern & Exportieren", desc: "Messungen lokal speichern und mit dem GLB exportieren." },
+  { icon: Smartphone, title: "Mobile First", desc: "Komplett optimiert für Hochkant auf Mobilgeräten." },
+  { icon: Box, title: "GLB-Format", desc: "Unterstützung für glTF/GLB direkt vom Server." },
+  { icon: Smartphone, title: "Responsiv", desc: "Desktop, Tablet und Smartphone." },
+  { icon: Zap, title: "Schnelle Performance", desc: "Optimiert für flüssige Darstellung komplexer Modelle." },
+  { icon: Shield, title: "Datensicherheit", desc: "Lokale Verarbeitung im Browser, kein Fremdserver." },
+];
+
+interface ChangelogEntry {
+  date: string;
+  text: string;
+  link?: { url: string; label: string };
+}
+
+const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: "07.02.2026",
+    text: "Export für Flachdächer nach ABS-Plan",
+    link: { url: "https://apps.absturzsicherung.de/plan", label: "ABS-Plan öffnen" },
+  },
+  {
+    date: "07.02.2026",
+    text: "Bedienung auf Handy deutlich verbessert und optimiert",
+  },
+  {
+    date: "Januar 2026",
+    text: "Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.",
+  },
 ];
 
 // --- Custom Hooks ---
@@ -69,30 +92,60 @@ const DemoFallback = ({ loading }: { loading?: boolean }) => (
 );
 
 const FeatureCard = ({ item }: { item: FeatureItem }) => (
-  <div className="glass-panel p-3 md:p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90 border border-white/5">
+  <div className="glass-panel p-3 md:p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90 border border-border/10">
     <div className="w-8 h-8 md:w-10 md:h-10 bg-primary/10 rounded-full flex items-center justify-center mb-2 md:mb-3">
       <item.icon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
     </div>
     <h3 className="text-sm md:text-base font-medium mb-1">{item.title}</h3>
-    <p className="text-xs md:text-sm text-muted-foreground">{item.desc}</p>
+    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+  </div>
+);
+
+const ChangelogSection = () => (
+  <div className="glass-panel p-4 rounded-lg border border-border/10 animate-fade-in">
+    <div className="flex items-center gap-2 mb-3">
+      <Newspaper className="w-4 h-4 text-primary" />
+      <h3 className="text-sm font-semibold">Neu</h3>
+    </div>
+    <ul className="space-y-2">
+      {CHANGELOG.map((entry, i) => (
+        <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground/70 whitespace-nowrap shrink-0">{entry.date}:</span>
+          <span className="leading-relaxed">
+            {entry.text}
+            {entry.link && (
+              <a
+                href={entry.link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 ml-1.5 text-primary hover:underline font-medium"
+              >
+                {entry.link.label}
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
   </div>
 );
 
 const HeaderSection = () => (
-  <div className="text-center mb-4 md:mb-6">
+  <div className="text-center mb-2 md:mb-4">
     <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium animate-fade-in mb-2">
       DrohnenGLB by RooferGaming®
     </div>
     
-    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 animate-slide-up">
+    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-2 animate-slide-up">
       3D-Modelle einfach visualisieren
     </h1>
     
-    <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in mb-4">
-      Laden Sie Ihre 3D-Modelle im GLB-Format hoch, erstellen Sie präzise Messungen und generieren Sie professionelle Berichte.
+    <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in mb-3">
+      GLB-Modelle hochladen, präzise messen und professionelle Berichte generieren.
     </p>
 
-    <div className="hidden md:flex glass-panel p-4 rounded-lg items-center justify-between gap-3 border border-white/10 max-w-3xl mx-auto">
+    <div className="hidden md:flex glass-panel p-3 rounded-lg items-center justify-between gap-3 border border-border/10 max-w-2xl mx-auto">
       <div className="text-left">
         <p className="text-sm font-medium">Drohnenvermessung by RooferGaming®</p>
         <p className="text-xs text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
@@ -102,10 +155,6 @@ const HeaderSection = () => (
           Zur Website
         </a>
       </Button>
-    </div>
-    
-    <div className="mt-4 text-xs text-muted-foreground animate-fade-in space-y-1">
-       <p>Neu 07.02.2026: Export für Flachdächer nach ABS-Plan & Mobile Optimierung.</p>
     </div>
   </div>
 );
@@ -128,16 +177,16 @@ const Index = () => {
   const handleStartClick = () => navigate('/viewer');
 
   const DemoSection = () => (
-    <div className="glass-panel p-4 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10 mb-4 h-full">
-      <h3 className="text-sm md:text-lg font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
-      <div className="relative w-full h-48 md:h-80 rounded-md overflow-hidden bg-secondary/20">
+    <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
+      <h3 className="text-sm md:text-base font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
+      <div className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
         {demoAvailable === true ? (
           <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
         ) : (
           <DemoFallback loading={demoAvailable === null} />
         )}
       </div>
-      <div className="mt-4 flex flex-wrap justify-center gap-3">
+      <div className="mt-3 flex flex-wrap justify-center gap-3">
         <Button onClick={() => navigate('/test')} variant="outline" size={isMobile ? "sm" : "default"}>
           <Eye className="mr-2 h-4 w-4" />
           Demo ansehen
@@ -156,14 +205,14 @@ const Index = () => {
     <div className="min-h-svh flex flex-col bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-4 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex-grow max-w-7xl mx-auto flex flex-col w-full gap-4">
         
-        {/* Header */}
         <HeaderSection />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Main content: 3-column on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
           
-          {/* Left Column (Desktop) / Top (Mobile): Upload & Demo */}
+          {/* Left: Upload + Changelog */}
           <div className="lg:col-span-4 flex flex-col gap-4 order-1">
-            <div className="glass-panel p-4 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10">
+            <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
               <h2 className="text-base md:text-lg font-medium mb-3 text-center">Modell hochladen</h2>
               <FileUpload />
               <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
@@ -171,12 +220,17 @@ const Index = () => {
                 Viewer öffnen
               </Button>
             </div>
+            <ChangelogSection />
+          </div>
+
+          {/* Center: Demo */}
+          <div className="lg:col-span-4 order-2">
             <DemoSection />
           </div>
 
-          {/* Right Column (Desktop) / Bottom (Mobile): Features */}
-          <div className="lg:col-span-8 order-2">
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {/* Right: Features (2x4 grid) */}
+          <div className="lg:col-span-4 order-3">
+            <div className="grid grid-cols-2 gap-3">
               {FEATURES.map((item, i) => (
                 <FeatureCard key={i} item={item} />
               ))}
