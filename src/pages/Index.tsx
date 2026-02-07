@@ -163,4 +163,34 @@ const Index = () => {
           
           {/* Left Column (Desktop) / Top (Mobile): Upload & Demo */}
           <div className="lg:col-span-4 flex flex-col gap-4 order-1">
-            <div className="glass-
+            <div className="glass-panel p-4 md:p-6 rounded-lg backdrop-blur-sm shadow-lg border border-white/10">
+              <h2 className="text-base md:text-lg font-medium mb-3 text-center">Modell hochladen</h2>
+              <FileUpload />
+              <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
+                <Upload className="mr-2 h-4 w-4" />
+                Viewer öffnen
+              </Button>
+            </div>
+            <DemoSection />
+          </div>
+
+          {/* Right Column (Desktop) / Bottom (Mobile): Features */}
+          <div className="lg:col-span-8 order-2">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {FEATURES.map((item, i) => (
+                <FeatureCard key={i} item={item} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="text-center py-3 text-xs text-muted-foreground mt-4">
+        <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming®</p>
+      </footer>
+    </div>
+  );
+};
+
+export default Index;
