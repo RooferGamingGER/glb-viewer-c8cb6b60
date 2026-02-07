@@ -197,16 +197,28 @@ const Index = () => {
 
         {/* Row 1: Drohnenvermessung banner + Changelog */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          <div className="glass-panel p-4 rounded-lg border border-border/10 flex items-center justify-between gap-3">
+          <div className="glass-panel p-4 rounded-lg border border-border/10 flex items-center justify-between gap-3 relative overflow-visible">
             <div className="text-left">
               <p className="text-sm font-medium">Drohnenvermessung by RooferGaming®</p>
               <p className="text-xs text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
             </div>
-            <Button asChild variant="secondary" size="sm" className="shrink-0">
-              <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
-                Zur Website
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href="https://drohnenvermessung-roofergaming.de/shop/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative -rotate-6 hover:rotate-0 transition-transform duration-300 cursor-pointer group"
+              >
+                <div className="bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1.5 rounded-full shadow-lg ring-2 ring-destructive/30 group-hover:scale-110 transition-transform duration-300 whitespace-nowrap">
+                  ab 90€/Mo
+                </div>
               </a>
-            </Button>
+              <Button asChild variant="secondary" size="sm">
+                <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
+                  Zur Website
+                </a>
+              </Button>
+            </div>
           </div>
           <ChangelogSection />
         </div>
