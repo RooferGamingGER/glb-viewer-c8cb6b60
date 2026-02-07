@@ -27,7 +27,10 @@ import MeasurementToolControls from './measurement/MeasurementToolControls';
 import MeasurementControls from './measurement/MeasurementControls';
 import EditingAlert from './measurement/EditingAlert';
 import RoofElementControls from './measurement/RoofElementControls';
-// Bottom sheet and orientation
+import MobileBottomBar from './measurement/MobileBottomBar';
+import MobileMeasureToolbar from './measurement/MobileMeasureToolbar';
+import MobileMassesOverlay from './measurement/MobileMassesOverlay';
+import MobileExportOverlay from './measurement/MobileExportOverlay';
 
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
@@ -394,6 +397,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Orientation-aware layout: bottom sheet in portrait on phones/tablets
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
   const useBottomSheet = isPortrait && (isPhone || isTablet);
+
+  // Mobile panel states
+  const [isMobileMeasurePanelOpen, setIsMobileMeasurePanelOpen] = React.useState(false);
+  const [isMobileMassesOpen, setIsMobileMassesOpen] = React.useState(false);
+  const [isMobileExportOpen, setIsMobileExportOpen] = React.useState(false);
+
+  const showMobileBottomBar = useBottomSheet && enabled;
+  const showMobileMeasureToolbar = useBottomSheet && enabled && activeMode !== 'none';
   
 
   // Shared panel content
@@ -473,10 +484,67 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </div>
       )}
 
-      {useBottomSheet && enabled && (
-        <div className="absolute left-0 right-0 bottom-0 h-[33vh] glass-panel border-t border-border/50 bg-background pointer-events-auto flex flex-col pb-[max(env(safe-area-inset-bottom),12px)]">
+      {/* Mobile: Mess-Panel above bottom bar — hide when a tool is active */}
+      {showMobileBottomBar && isMobileMeasurePanelOpen && activeMode === 'none' && (
+        <div
+          className="fixed left-0 right-0 z-30 bg-background border-t border-border/50 pointer-events-auto overflow-auto"
+          style={{
+            bottom: `calc(52px + max(env(safe-area-inset-bottom), 8px))`,
+            maxHeight: '50vh',
+          }}
+        >
           {panelContent}
         </div>
+      )}
+
+      {/* Mobile: Mess-Toolbar (Undo/Finalize/Cancel) */}
+      {showMobileMeasureToolbar && (
+        <MobileMeasureToolbar
+          activeMode={activeMode}
+          onUndo={handleUndoLastPoint}
+          onFinalize={handleFinalizeMeasurement}
+          onCancel={() => toggleMeasurementTool(activeMode)}
+          currentPointsCount={currentPoints.length}
+        />
+      )}
+
+      {/* Mobile: Bottom-Bar */}
+      {showMobileBottomBar && (
+        <MobileBottomBar
+          isMeasurePanelOpen={isMobileMeasurePanelOpen}
+          onToggleMeasurePanel={() => setIsMobileMeasurePanelOpen(v => !v)}
+          onOpenExport={() => setIsMobileExportOpen(true)}
+          onOpenMasses={() => setIsMobileMassesOpen(true)}
+        />
+      )}
+
+      {/* Mobile: Massen-Overlay */}
+      {showMobileBottomBar && isMobileMassesOpen && (
+        <MobileMassesOverlay
+          measurements={measurements}
+          onClose={() => setIsMobileMassesOpen(false)}
+          toggleMeasurementVisibility={handleToggleMeasurementVisibility}
+          toggleLabelVisibility={handleToggleLabelVisibility}
+          handleStartPointEdit={handleStartPointEdit}
+          handleDeleteMeasurement={handleDeleteMeasurement}
+          handleDeletePoint={handleDeletePoint}
+          updateMeasurement={updateMeasurement}
+          editMeasurementId={editMeasurementId}
+          segmentsOpen={segmentsOpen}
+          toggleSegments={toggleSegments}
+          onEditSegment={setEditingSegmentId}
+          movingPointInfo={movingPointInfo}
+          handleMoveMeasurementUp={handleMoveMeasurementUp}
+          handleMoveMeasurementDown={handleMoveMeasurementDown}
+        />
+      )}
+
+      {/* Mobile: Export-Overlay */}
+      {showMobileBottomBar && isMobileExportOpen && (
+        <MobileExportOverlay
+          measurements={measurements}
+          onClose={() => setIsMobileExportOpen(false)}
+        />
       )}
     </div>
   );

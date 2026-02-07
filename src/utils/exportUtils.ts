@@ -1,6 +1,6 @@
-
-import { Measurement, Segment } from '@/types/measurements';
+import { Measurement } from '@/types/measurements';
 import { normalizeSegmentType } from '@/pages/Viewer';
+import { triangulate3D } from '@/utils/triangulation';
 
 /**
  * Returns a user-friendly display name for a measurement type
@@ -257,219 +257,566 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
 };
 
 /**
- * Formats a number for German Excel (comma as decimal separator) with optional unit
+ * Testversion: ABS-JSON Export aus aktuellen Messungen
+ *
+ * Diese Funktion baut eine vereinfachte JSON-Struktur,
+ * die sich am Schema der ABS-Datei orientiert.
+ *
+ * TODO:
+ * - Geometrie (vertices/edges/faces) aus dem Modell übernehmen
+ * - assembledFaces / classifiedEdges aus echten Klassifizierungen ableiten
  */
-const formatNumberDE = (value: number, decimals: number = 2, unit?: string): string => {
-  const formatted = value.toFixed(decimals).replace('.', ',');
-  return unit ? `${formatted} ${unit}` : formatted;
-};
-
 /**
- * Generates a detailed CSV export with sequential numbering and edge lengths
+ * Generates a detailed CSV string from measurements.
+ * Each roof surface lists area/inclination, followed by individual edge rows.
  */
 export const generateDetailedCSV = (measurements: Measurement[]): string => {
-  // Sort measurements by type priority: area, deductionarea, solar, length, height, others
-  const typePriority: Record<string, number> = {
-    'area': 1,
-    'deductionarea': 2,
-    'solar': 3,
-    'skylight': 4,
-    'chimney': 5,
-    'length': 6,
-    'height': 7,
-    'ridge': 8,
-    'valley': 9,
-    'hip': 10,
-    'eave': 11,
-    'verge': 12,
-    'vent': 13,
-    'hook': 14,
-    'other': 15
-  };
+  const separator = ';';
+  const lines: string[] = [];
 
-  const sortedMeasurements = [...measurements].sort((a, b) => {
-    const priorityA = typePriority[a.type] || 99;
-    const priorityB = typePriority[b.type] || 99;
-    return priorityA - priorityB;
-  });
+  // Header
+  lines.push(['Nr', 'Name', 'Typ', 'Wert', 'Einheit', 'Neigung (°)', 'Kantentyp', 'Kantenlänge (m)'].join(separator));
 
-  // Group by type for sequential numbering
-  const typeCounters: Record<string, number> = {};
-  
-  // CSV header
-  const lines: string[] = [
-    'Typ;Nr;Fläche;Neigung;Kanten-Nr;Kantentyp;Kantenlänge'
-  ];
+  measurements.forEach((m, index) => {
+    const nr = index + 1;
+    const name = m.label || `Messung ${nr}`;
+    const typeName = getMeasurementTypeDisplayName(m.type);
+    const isArea = ['area', 'solar', 'chimney', 'deductionarea', 'skylight'].includes(m.type);
+    const unit = isArea ? 'm²' : 'm';
+    const inclination = m.inclination != null ? m.inclination.toFixed(1) : '';
 
-  // Totals for summary
-  let totalArea = 0;
-  let totalDeductionArea = 0;
-  let totalEdgeLength = 0;
-  let areaCount = 0;
-  let deductionCount = 0;
+    // Main measurement row
+    lines.push([nr, name, typeName, m.value.toFixed(2), unit, inclination, '', ''].join(separator));
 
-  sortedMeasurements.forEach(measurement => {
-    const typeName = getMeasurementTypeDisplayName(measurement.type);
-    
-    // Get sequential number for this type
-    if (!typeCounters[measurement.type]) {
-      typeCounters[measurement.type] = 0;
-    }
-    typeCounters[measurement.type]++;
-    const sequentialNumber = typeCounters[measurement.type];
-
-    // Handle area-type measurements (area, deductionarea, solar, skylight, chimney)
-    if (['area', 'deductionarea', 'solar', 'skylight', 'chimney'].includes(measurement.type)) {
-      const areaValue = formatNumberDE(measurement.value || 0, 2, 'm²');
-      const inclination = measurement.inclination !== undefined 
-        ? formatNumberDE(measurement.inclination, 1, '°') 
-        : '-';
-      
-      // Track totals
-      if (measurement.type === 'area') {
-        totalArea += measurement.value || 0;
-        areaCount++;
-      } else if (measurement.type === 'deductionarea') {
-        totalDeductionArea += measurement.value || 0;
-        deductionCount++;
-      }
-
-      // If there are segments, output each edge
-      if (measurement.segments && measurement.segments.length > 0) {
-        measurement.segments.forEach((segment, index) => {
-          const edgeNumber = index + 1;
-          const edgeType = getSegmentTypeDisplayName(segment.type || 'edge');
-          const edgeLength = formatNumberDE(segment.length || 0, 2, 'm');
-          totalEdgeLength += segment.length || 0;
-          
-          // First line includes area info, subsequent lines only edge info
-          if (index === 0) {
-            lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${edgeNumber};${edgeType};${edgeLength}`);
-          } else {
-            lines.push(`;;;;${edgeNumber};${edgeType};${edgeLength}`);
-          }
-        });
-      } else {
-        // No segments - calculate edge lengths from points
-        const points = measurement.points || [];
-        if (points.length >= 3) {
-          for (let i = 0; i < points.length; i++) {
-            const p1 = points[i];
-            const p2 = points[(i + 1) % points.length];
-            const edgeLength = Math.sqrt(
-              Math.pow(p2.x - p1.x, 2) + 
-              Math.pow(p2.y - p1.y, 2) + 
-              Math.pow(p2.z - p1.z, 2)
-            );
-            totalEdgeLength += edgeLength;
-            
-            if (i === 0) {
-              lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
-            } else {
-              lines.push(`;;;;${i + 1};Kante;${formatNumberDE(edgeLength, 2, 'm')}`);
-            }
-          }
-        } else {
-          lines.push(`${typeName};${sequentialNumber};${areaValue};${inclination};-;-;-`);
-        }
-      }
-    }
-    // Handle length-type measurements (length, ridge, valley, hip, eave, verge)
-    else if (['length', 'ridge', 'valley', 'hip', 'eave', 'verge'].includes(measurement.type)) {
-      const lengthValue = formatNumberDE(measurement.value || 0, 2, 'm');
-      totalEdgeLength += measurement.value || 0;
-      lines.push(`${typeName};${sequentialNumber};-;-;-;-;${lengthValue}`);
-    }
-    // Handle height measurements
-    else if (measurement.type === 'height') {
-      const heightValue = formatNumberDE(measurement.value || 0, 2, 'm');
-      lines.push(`${typeName};${sequentialNumber};-;-;-;-;${heightValue}`);
-    }
-    // Handle point-based elements (vent, hook, other)
-    else if (['vent', 'hook', 'other'].includes(measurement.type)) {
-      const position = measurement.position || measurement.points?.[0];
-      const posStr = position 
-        ? `(${formatNumberDE(position.x, 2, 'm')}, ${formatNumberDE(position.y, 2, 'm')}, ${formatNumberDE(position.z, 2, 'm')})` 
-        : '-';
-      lines.push(`${typeName};${sequentialNumber};-;-;-;Position;${posStr}`);
+    // Edge/segment rows
+    if (m.segments && m.segments.length > 0) {
+      m.segments.forEach(seg => {
+        const segTypeName = getSegmentTypeDisplayName(seg.type || 'edge');
+        lines.push(['', '', '', '', '', '', segTypeName, seg.length.toFixed(2)].join(separator));
+      });
     }
   });
 
-  // Add empty line and summary
+  // Summary section
   lines.push('');
-  lines.push('--- ZUSAMMENFASSUNG ---;;;;;;');
-  
-  if (areaCount > 0) {
-    lines.push(`Flächen gesamt;${areaCount};${formatNumberDE(totalArea, 2, 'm²')};;;;`);
-  }
-  if (deductionCount > 0) {
-    lines.push(`Abzugsflächen gesamt;${deductionCount};${formatNumberDE(totalDeductionArea, 2, 'm²')};;;;`);
-  }
-  if (areaCount > 0 || deductionCount > 0) {
-    const netArea = totalArea - totalDeductionArea;
-    lines.push(`Netto-Fläche;;${formatNumberDE(netArea, 2, 'm²')};;;;`);
-  }
-  lines.push(`Kanten gesamt;;;;;;${formatNumberDE(totalEdgeLength, 2, 'm')}`);
+  lines.push(['Zusammenfassung'].join(separator));
 
-  // Append calculation methods explanation
-  lines.push(...getCalculationMethodsExplanation());
+  const summary = getRoofElementsSummary(measurements);
+  Object.entries(summary).forEach(([type, data]) => {
+    const typeName = type === 'netarea' ? 'Nettofläche' : getMeasurementTypeDisplayName(type);
+    const value = data.totalArea != null ? data.totalArea.toFixed(2) : data.totalLength != null ? data.totalLength.toFixed(2) : '';
+    const unit = data.totalArea != null ? 'm²' : 'm';
+    lines.push([typeName, `${data.count}x`, value, unit].join(separator));
+  });
+
+  // Segment summary
+  const segmentGroups = groupSegmentsByType(measurements);
+  if (Object.keys(segmentGroups).length > 0) {
+    lines.push('');
+    lines.push(['Kantenzusammenfassung'].join(separator));
+    Object.entries(segmentGroups).forEach(([type, data]) => {
+      const typeName = getSegmentTypeDisplayName(type);
+      lines.push([typeName, `${data.count}x`, data.totalLength.toFixed(2), 'm'].join(separator));
+    });
+  }
 
   return lines.join('\n');
 };
 
-/**
- * Returns explanation text for calculation methods used in area measurements
- */
-export const getCalculationMethodsExplanation = (): string[] => {
-  return [
-    '',
-    '',
-    '=== ANHANG: BERECHNUNGSMETHODEN ===',
-    '',
-    '** Flächenberechnung bei Dreiecken (3 Eckpunkte) **',
-    'Verwendet wird die Heronsche Formel, benannt nach dem griechischen Mathematiker Heron von Alexandria.',
-    'Diese Formel ermöglicht die Berechnung der Fläche eines Dreiecks allein aus den drei Seitenlängen.',
-    '',
-    'Schritt 1: Alle drei Seitenlängen messen (a, b, c)',
-    'Schritt 2: Den halben Umfang berechnen: s = (a + b + c) / 2',
-    'Schritt 3: Die Fläche berechnen: A = Wurzel(s × (s-a) × (s-b) × (s-c))',
-    '',
-    'Beispiel:',
-    '  Seiten: a = 3,00 m, b = 4,00 m, c = 5,00 m',
-    '  Halbumfang: s = (3 + 4 + 5) / 2 = 6 m',
-    '  Fläche: A = Wurzel(6 × 3 × 2 × 1) = Wurzel(36) = 6,00 m²',
-    '',
-    '',
-    '** Flächenberechnung bei Vierecken (4 Eckpunkte) **',
-    'Die Fläche wird durch Aufteilung in zwei Dreiecke berechnet.',
-    '',
-    'Schritt 1: Das Viereck wird diagonal in zwei Dreiecke geteilt',
-    'Schritt 2: Jedes Dreieck wird mit der Heronschen Formel berechnet',
-    'Schritt 3: Beide Dreiecksflächen werden addiert',
-    '',
-    'Formel: Fläche = Dreieck 1 + Dreieck 2',
-    '',
-    '',
-    '** Flächenberechnung bei Polygonen (5+ Eckpunkte) **',
-    'Komplexe Formen werden durch "Triangulation" berechnet - die Zerlegung in mehrere Dreiecke.',
-    '',
-    'Schritt 1: Das Polygon wird automatisch in einzelne Dreiecke zerlegt',
-    'Schritt 2: Jedes Dreieck wird mit der Heronschen Formel berechnet',
-    'Schritt 3: Alle Dreiecksflächen werden summiert',
-    '',
-    'Beispiel: Ein Fünfeck wird in 3 Dreiecke zerlegt',
-    '          Fläche = Dreieck 1 + Dreieck 2 + Dreieck 3',
-    '',
-    'Hinweis: Die Anzahl der Dreiecke bei einem Polygon mit n Ecken beträgt n-2.',
-    '',
-    '',
-    '** Neigungsberechnung **',
-    'Die Dachneigung wird aus dem Winkel zwischen der Flächennormale',
-    'und der vertikalen Achse (Y-Achse) berechnet.',
-    '',
-    '0° = waagerechte Fläche (Flachdach)',
-    '45° = geneigte Fläche (typisches Satteldach)',
-    '90° = senkrechte Fläche (Wand)',
-    ''
-  ];
+export const exportMeasurementsToAbsJson = (
+  measurements: Measurement[],
+  options?: {
+    address?: string;
+    projectId?: number;
+    customerNames?: string;
+    customersReferencePhrase?: string;
+  }
+) => {
+  const totalArea = calculateTotalArea(measurements); // Summe aller "area"-Messungen
+  const netArea = calculateNetTotalArea(measurements); // area - deductionarea
+
+  const skylights = measurements.filter(m => m.type === 'skylight');
+  const chimneys = measurements.filter(m => m.type === 'chimney');
+  const vents = measurements.filter(m => m.type === 'vent');
+
+  const segmentGroups = groupSegmentsByType(measurements);
+
+  // Erste Höhenmessung definiert die absolute Dachhöhe in Metern
+  const heightMeasurement = measurements.find(m => m.type === 'height');
+  const baseHeight = heightMeasurement?.value ?? 0; // z.B. 4.09 m wie im Airteam-Modell
+
+  // Erste Flächenmessung als Dachpolygon verwenden (falls vorhanden)
+  const areaMeasurement = measurements.find(m => m.type === 'area' && m.points && m.points.length >= 3) || null;
+
+  const vertices: { x: number; y: number; z: number }[] = [];
+  const faces: { vertexKeys: number[] }[] = [];
+  const assembledFaces: any[] = [];
+  const classifiedEdges: { category: string; vertexKeys: number[] }[] = [];
+
+  // Hilfsfunktion für 2D-Abstand (x / z-Ebene)
+  const distance2D = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  let windowsPerimeter = 0;
+  let chimneysPerimeter = 0;
+  let innerAttikaPerimeter = 0;
+
+  // 1) Dachfläche exportieren
+  if (areaMeasurement) {
+    const roofVertexOffset = vertices.length;
+
+    // Basis-Vertexliste aus den Punkten der Flächenmessung
+    // Three.js nutzt x/z als Ebene, y als Höhe.
+    // Für ABS projizieren wir in eine 2D-Ebene: x -> x, z -> y, Höhe -> 0.
+    areaMeasurement.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight });
+    });
+
+    // Triangulation im 3D-Raum (nutzt Originalpunkte mit Höhe)
+    const triResult = triangulate3D(areaMeasurement.points);
+
+    const roofFaceStartIndex = faces.length;
+
+    triResult.triangles.forEach((tri) => {
+      faces.push({
+        vertexKeys: tri.map((i) => i + roofVertexOffset),
+      });
+    });
+
+    if (triResult.triangles.length > 0) {
+      const roofFaceKeys = triResult.triangles.map((_, idx) => roofFaceStartIndex + idx);
+
+      const roofPolylineVertexKeys = areaMeasurement.points.map((_, idx) => roofVertexOffset + idx);
+
+      assembledFaces.push({
+        area: triResult.area,
+        angle: 0,
+        category: 'Dachoberflaeche',
+        faceKeys: roofFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: roofPolylineVertexKeys,
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+
+      // Attika-Innenkante entlang der Dachpolygon-Perimeterkante
+      for (let i = 0; i < roofPolylineVertexKeys.length; i++) {
+        const aIndex = roofPolylineVertexKeys[i];
+        const bIndex = roofPolylineVertexKeys[(i + 1) % roofPolylineVertexKeys.length];
+
+        classifiedEdges.push({
+          category: 'Attika_Innenkante',
+          vertexKeys: [aIndex, bIndex],
+        });
+
+        const a = vertices[aIndex];
+        const b = vertices[bIndex];
+        innerAttikaPerimeter += distance2D(a, b);
+      }
+    }
+  }
+
+  // 2) Dachfenster (skylight) als Oberlichter exportieren
+  const skylightAreas = measurements.filter(
+    (m) => m.type === 'skylight' && m.points && m.points.length >= 3,
+  );
+
+  skylightAreas.forEach((skylight) => {
+    const baseOffset = vertices.length;
+    const skylightHeight = 0.3; // 30 cm Oberlichthöhe
+
+    // Unteres Polygon (Dachfenster-Ausschnitt) auf Dachhöhe projizieren
+    skylight.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight });
+    });
+
+    const triResult = triangulate3D(skylight.points);
+
+    // Oberes Polygon (Oberkante Dachfenster) mit fixer Höhe
+    const topOffset = vertices.length;
+    skylight.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight + skylightHeight });
+    });
+
+    const baseFaceStartIndex = faces.length;
+
+    // Untere Fläche (kann ABS zur Orientierung nutzen)
+    triResult.triangles.forEach((tri) => {
+      faces.push({
+        vertexKeys: tri.map((i) => i + baseOffset),
+      });
+    });
+
+    // Obere Fläche als Dachfenster-Oberfläche
+    const topFaceStartIndex = faces.length;
+    triResult.triangles.forEach((tri) => {
+      faces.push({
+        vertexKeys: tri.map((i) => i + topOffset),
+      });
+    });
+
+    if (triResult.triangles.length > 0) {
+      const baseFaceKeys = triResult.triangles.map((_, idx) => baseFaceStartIndex + idx);
+      const topFaceKeys = triResult.triangles.map((_, idx) => topFaceStartIndex + idx);
+
+      const basePolyVertexKeys = skylight.points.map((_, idx) => baseOffset + idx);
+      const topPolyVertexKeys = skylight.points.map((_, idx) => topOffset + idx);
+
+      // Oberseite des Dachfensters (ABS interessiert sich primär für die obere Fläche)
+      assembledFaces.push({
+        area: triResult.area,
+        angle: 0,
+        category: 'Dachfenster_Oben_Flaechen',
+        faceKeys: topFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: topPolyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+
+      // Seitenflächen des Dachfensters (extrudiert auf 30 cm)
+      const sideFaceStartIndex = faces.length;
+      let sideAreaSum = 0;
+
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const next = (i + 1) % basePolyVertexKeys.length;
+        const aBase = basePolyVertexKeys[i];
+        const bBase = basePolyVertexKeys[next];
+        const aTop = topPolyVertexKeys[i];
+        const bTop = topPolyVertexKeys[next];
+
+        // Zwei Dreiecke pro Rechteck-Seitenfläche
+        faces.push({ vertexKeys: [aBase, bBase, bTop] });
+        faces.push({ vertexKeys: [aBase, bTop, aTop] });
+
+        const edgeLen = distance2D(vertices[aBase], vertices[bBase]);
+        sideAreaSum += edgeLen * skylightHeight;
+      }
+
+      const sideFaceCount = basePolyVertexKeys.length * 2;
+      const sideFaceKeys = Array.from({ length: sideFaceCount }, (_, idx) => sideFaceStartIndex + idx);
+
+      assembledFaces.push({
+        area: sideAreaSum,
+        angle: 90,
+        category: 'Dachfenster_Seite_Flaechen',
+        faceKeys: sideFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: basePolyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, -1],
+      });
+
+      // Fenster-Anschlusskanten + Umfang (am Dach, daher Basispolygon)
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const aIndex = basePolyVertexKeys[i];
+        const bIndex = basePolyVertexKeys[(i + 1) % basePolyVertexKeys.length];
+
+        classifiedEdges.push({
+          category: 'Fenster_Anschluss',
+          vertexKeys: [aIndex, bIndex],
+        });
+
+        const a = vertices[aIndex];
+        const b = vertices[bIndex];
+        windowsPerimeter += distance2D(a, b);
+      }
+    }
+  });
+
+  // 3) Kamine (chimney) als 1m hohe Quader
+  const chimneyAreas = measurements.filter(
+    (m) => m.type === 'chimney' && m.points && m.points.length >= 3,
+  );
+
+  chimneyAreas.forEach((chimney) => {
+    const baseOffset = vertices.length;
+    const chimneyHeight = 1.0; // 1 m Kaminhöhe
+
+    // Untere Kaminfläche auf Dachhöhe
+    chimney.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight });
+    });
+
+    const triResult = triangulate3D(chimney.points);
+
+    // Obere Kaminfläche (Dachhöhe + 1m)
+    const topOffset = vertices.length;
+    chimney.points.forEach((p) => {
+      vertices.push({ x: p.x, y: p.z, z: baseHeight + chimneyHeight });
+    });
+
+    const baseFaceStartIndex = faces.length;
+    triResult.triangles.forEach((tri) => {
+      faces.push({ vertexKeys: tri.map((i) => i + baseOffset) });
+    });
+
+    const topFaceStartIndex = faces.length;
+    triResult.triangles.forEach((tri) => {
+      faces.push({ vertexKeys: tri.map((i) => i + topOffset) });
+    });
+
+    if (triResult.triangles.length > 0) {
+      const topFaceKeys = triResult.triangles.map((_, idx) => topFaceStartIndex + idx);
+      const basePolyVertexKeys = chimney.points.map((_, idx) => baseOffset + idx);
+      const topPolyVertexKeys = chimney.points.map((_, idx) => topOffset + idx);
+
+      // Kaminoberseite
+      assembledFaces.push({
+        area: triResult.area,
+        angle: 0,
+        category: 'Kamin_Oben_Flaechen',
+        faceKeys: topFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: topPolyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, 0],
+      });
+
+      // Kaminseitenflächen
+      const sideFaceStartIndex = faces.length;
+      let sideAreaSum = 0;
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const next = (i + 1) % basePolyVertexKeys.length;
+        const aBase = basePolyVertexKeys[i];
+        const bBase = basePolyVertexKeys[next];
+        const aTop = topPolyVertexKeys[i];
+        const bTop = topPolyVertexKeys[next];
+
+        faces.push({ vertexKeys: [aBase, bBase, bTop] });
+        faces.push({ vertexKeys: [aBase, bTop, aTop] });
+
+        const edgeLen = distance2D(vertices[aBase], vertices[bBase]);
+        sideAreaSum += edgeLen * chimneyHeight;
+      }
+
+      const sideFaceCount = basePolyVertexKeys.length * 2;
+      const sideFaceKeys = Array.from({ length: sideFaceCount }, (_, idx) => sideFaceStartIndex + idx);
+
+      assembledFaces.push({
+        area: sideAreaSum,
+        angle: 90,
+        category: 'Kamin_Seite_Flaechen',
+        faceKeys: sideFaceKeys,
+        polylines: [
+          {
+            category: 'Default',
+            vertexKeys: basePolyVertexKeys,
+          },
+        ],
+        orientation: [0, 0, -1],
+      });
+
+      // Kamin-Anschlusskanten + Umfang
+      for (let i = 0; i < basePolyVertexKeys.length; i++) {
+        const aIndex = basePolyVertexKeys[i];
+        const bIndex = basePolyVertexKeys[(i + 1) % basePolyVertexKeys.length];
+
+        classifiedEdges.push({
+          category: 'Kamin_Anschluss',
+          vertexKeys: [aIndex, bIndex],
+        });
+
+        const a = vertices[aIndex];
+        const b = vertices[bIndex];
+        chimneysPerimeter += distance2D(a, b);
+      }
+    }
+  });
+
+  // 4) Lüfter (vent) als 0.3m hohe Zylinder (8-Eck approximation)
+  const ventMeasurements = measurements.filter((m) => m.type === 'vent');
+
+  const ventRadius = 0.05; // 100 mm Durchmesser
+  const ventHeight = 0.3; // 30 cm Höhe
+  const ventSegments = 8;
+
+  ventMeasurements.forEach((vent) => {
+    if (!vent.position && (!vent.points || vent.points.length === 0)) return;
+
+    const center = vent.position || vent.points[0];
+
+    const baseOffset = vertices.length;
+
+    // Basisring
+    for (let i = 0; i < ventSegments; i++) {
+      const angle = (2 * Math.PI * i) / ventSegments;
+      const x = center.x + Math.cos(angle) * ventRadius;
+      const y = center.z + Math.sin(angle) * ventRadius;
+      vertices.push({ x, y, z: baseHeight });
+    }
+
+    const topOffset = vertices.length;
+    // Topring
+    for (let i = 0; i < ventSegments; i++) {
+      const angle = (2 * Math.PI * i) / ventSegments;
+      const x = center.x + Math.cos(angle) * ventRadius;
+      const y = center.z + Math.sin(angle) * ventRadius;
+      vertices.push({ x, y, z: baseHeight + ventHeight });
+    }
+
+    // Deckelfläche (oben) triangulieren (Fan vom ersten Top-Vertex)
+    const topCenterIndex = vertices.length;
+    vertices.push({ x: center.x, y: center.z, z: baseHeight + ventHeight });
+
+    const topFaceStartIndex = faces.length;
+    for (let i = 0; i < ventSegments; i++) {
+      const next = (i + 1) % ventSegments;
+      faces.push({ vertexKeys: [topCenterIndex, topOffset + i, topOffset + next] });
+    }
+
+    const topFaceKeys = Array.from({ length: ventSegments }, (_, idx) => topFaceStartIndex + idx);
+    const topRingKeys = Array.from({ length: ventSegments }, (_, idx) => topOffset + idx);
+
+    assembledFaces.push({
+      area: Math.PI * ventRadius * ventRadius,
+      angle: 0,
+      category: 'Lueftungsrohre_Oben_Flaechen',
+      faceKeys: topFaceKeys,
+      polylines: [
+        {
+          category: 'Default',
+          vertexKeys: topRingKeys,
+        },
+      ],
+      orientation: [0, 0, 0],
+    });
+
+    // Mantelfläche
+    const sideFaceStartIndex = faces.length;
+    let sideAreaSum = 0;
+    const baseRingKeys = Array.from({ length: ventSegments }, (_, idx) => baseOffset + idx);
+
+    for (let i = 0; i < ventSegments; i++) {
+      const next = (i + 1) % ventSegments;
+      const aBase = baseRingKeys[i];
+      const bBase = baseRingKeys[next];
+      const aTop = topRingKeys[i];
+      const bTop = topRingKeys[next];
+
+      faces.push({ vertexKeys: [aBase, bBase, bTop] });
+      faces.push({ vertexKeys: [aBase, bTop, aTop] });
+
+      const edgeLen = distance2D(vertices[aBase], vertices[bBase]);
+      sideAreaSum += edgeLen * ventHeight;
+    }
+
+    const sideFaceCount = ventSegments * 2;
+    const sideFaceKeys = Array.from({ length: sideFaceCount }, (_, idx) => sideFaceStartIndex + idx);
+
+    assembledFaces.push({
+      area: sideAreaSum,
+      angle: 90,
+      category: 'Lueftungsrohre_Seite_Flaechen',
+      faceKeys: sideFaceKeys,
+      polylines: [
+        {
+          category: 'Default',
+          vertexKeys: baseRingKeys,
+        },
+      ],
+      orientation: [0, 0, -1],
+    });
+
+    // Anschlusskanten am Dach
+    for (let i = 0; i < ventSegments; i++) {
+      const aIndex = baseRingKeys[i];
+      const bIndex = baseRingKeys[(i + 1) % ventSegments];
+
+      classifiedEdges.push({
+        category: 'Lueftungsrohre_Anschluss',
+        vertexKeys: [aIndex, bIndex],
+      });
+    }
+  });
+
+  // Mapping für Flachdach-Längen (jetzt inkl. Attika)
+  const totalLengthsFlatRoof = {
+    eaves: segmentGroups['eave']?.totalLength ?? 0,
+    roofEdges: segmentGroups['edge']?.totalLength ?? 0,
+    railings: 0,
+    innerAttikas: Number(innerAttikaPerimeter.toFixed(2)),
+    outerAttikas: 0,
+    wallConnections: segmentGroups['connection']?.totalLength ?? 0,
+    attikaConnections: 0,
+    others: 0,
+    otherSurfaces: 0,
+  };
+
+  // Steildach-Längen nutzen wir hier als Sammelcontainer
+  const totalLengthsSteepRoof = {
+    hips: segmentGroups['hip']?.totalLength ?? 0,
+    eaves: segmentGroups['eave']?.totalLength ?? 0,
+    rakes: segmentGroups['verge']?.totalLength ?? 0,
+    breaks: 0,
+    decays: 0,
+    others: 0,
+    ridges: segmentGroups['ridge']?.totalLength ?? 0,
+    stairs: 0,
+    rafters: 0,
+    valleys: segmentGroups['valley']?.totalLength ?? 0,
+    windows: Number(windowsPerimeter.toFixed(2)), // Umfang der Dachfenster-Anschlusskanten
+    chimneys: Number(chimneysPerimeter.toFixed(2)),
+    snowguards: 0,
+  };
+
+  const amountOfObjects = {
+    amountOfVents: vents.length,
+    amountOfStairs: -1,
+    amountOfWindows: skylights.length,
+    amountOfAntennas: -1,
+    amountOfChimneys: chimneys.length,
+    amountOfDownspouts: -1,
+    amountOfSnowguards: -1,
+  };
+
+  const absJson = {
+    areas: {
+      flatRoofArea: 0,
+      steepRoofArea: 0,
+      totalRoofArea: 0,
+      dormerRoofArea: 0,
+      dormerFrontArea: 0,
+      wallSurfaceArea: 0,
+      attikaSurfaceArea: 0,
+      totalFlatRoofArea: Number(netArea.toFixed(2)),
+      dormerStringerArea: 0,
+      totalSteepRoofArea: 0,
+      flatRoofSurfaceArea: Number(totalArea.toFixed(2)),
+      angledParapetWallArea: 0,
+      otherFlatRoofSurfaceArea: 0,
+      otherSteepRoofSurfacesArea: 0,
+    },
+    totalLengthsFlatRoof,
+    totalLengthsSteepRoof,
+    amountOfObjects,
+    vertices,
+    edges: [],
+    faces,
+    assembledFaces,
+    classifiedEdges,
+    address: options?.address ?? '',
+    projectId: options?.projectId ?? 0,
+    coordinates: null,
+    customerNames: options?.customerNames ?? '',
+    schemaVersion: '1.1.8',
+    customersReferencePhrase: options?.customersReferencePhrase ?? '',
+  };
+
+  return absJson;
 };
