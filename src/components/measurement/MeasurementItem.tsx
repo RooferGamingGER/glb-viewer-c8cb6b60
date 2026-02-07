@@ -88,6 +88,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [showPVDetails, setShowPVDetails] = useState(false);
   const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
   const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const updateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
     if (!measurement.segments) return;
@@ -329,9 +330,12 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         onCancel={handlePVDisclaimerCancel}
       />
       
-      {/* Header row with title and actions */}
-      <div className="flex items-start gap-2 mb-1">
-        {/* Title and badges - takes remaining space, can wrap */}
+      {/* Collapsed header: always visible – click to expand */}
+      <div 
+        className="flex items-start gap-2 cursor-pointer select-none"
+        onClick={() => setIsExpanded(v => !v)}
+      >
+        {/* Title and value */}
         <div className="flex-1 min-w-0">
           <div className="font-medium flex items-center flex-wrap gap-1">
             {getTypeIcon(measurement.type)}
@@ -369,390 +373,408 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
               </Badge>
             )}
           </div>
+          
+          {/* Value always visible in collapsed state */}
+          {!isPenetration && (
+            <div className="text-sm mt-0.5">
+              <strong>Wert:</strong> {measurement.label}
+            </div>
+          )}
+          
+          {measurement.description && !isExpanded && (
+            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+              {measurement.description}
+            </div>
+          )}
         </div>
         
-        {/* Action buttons - fixed width, never shrink */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7" 
-                  onClick={() => toggleMeasurementVisibility(measurement.id)}
-                >
-                  {measurement.visible === false ? (
-                    <Eye className="h-4 w-4" />
-                  ) : (
-                    <EyeOff className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {measurement.visible === false ? "Messung einblenden" : "Messung ausblenden"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7" 
-                  onClick={() => handleStartPointEdit(measurement.id)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Punkte bearbeiten</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 text-destructive hover:text-destructive" 
-                  onClick={() => handleDeleteMeasurement(measurement.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Löschen</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        {/* Expand indicator */}
+        <span className="text-muted-foreground text-xs mt-1 shrink-0">
+          {isExpanded ? '▲' : '▼'}
+        </span>
       </div>
-      
-      <div className="text-sm mb-1">
-        {!isPenetration && (
-          <>
-            <strong>Wert:</strong> {measurement.label}
-          </>
-        )}
-        
-        {measurement.dimensions && (
-          <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-xs">
-            {measurement.dimensions.length !== undefined && (
-              <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
-            )}
-            {measurement.dimensions.width !== undefined && (
-              <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
-            )}
-            {measurement.dimensions.height !== undefined && (
-              <div><strong>Höhe:</strong> {measurement.dimensions.height.toFixed(2)} m</div>
-            )}
-            {measurement.dimensions.diameter !== undefined && (
-              <div><strong>Durchmesser:</strong> {measurement.dimensions.diameter.toFixed(2)} m</div>
-            )}
-            {measurement.dimensions.area !== undefined && (
-              <div><strong>Fläche:</strong> {measurement.dimensions.area.toFixed(2)} m²</div>
-            )}
-          </div>
-        )}
-        
-        {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
-         measurement.inclination !== undefined && (
-          <span className="ml-2">
-            <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
-          </span>
-        )}
-        
-        {hasPVInfo && (
-          <div className="mt-2 p-2 bg-blue-50/10 border border-blue-200/30 rounded-md">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center">
-                <Zap className="h-4 w-4 mr-1 text-blue-600" />
-                <span className="font-medium">PV-Planung</span>
-              </div>
-              <div className="flex items-center">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={() => setShowPVDetails(!showPVDetails)}
-                >
-                  <Info className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
-              <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
-              <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
-              <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
-                ? 'Hochformat' 
-                : 'Querformat'}</div>
-              <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
-              <div className="col-span-2"><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
-              <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
-              {measurement.pvModuleInfo!.edgeDistance !== undefined && (
-                <div><strong>Randabstand:</strong> {measurement.pvModuleInfo!.edgeDistance.toFixed(2)}m</div>
-              )}
-              {measurement.pvModuleInfo!.moduleSpacing !== undefined && (
-                <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing.toFixed(2)}m</div>
-              )}
-              <div className="col-span-2"><strong>Geschätzter Jahresertrag:</strong> {calculateAnnualYield(
-                calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425),
-                measurement.pvModuleInfo!.orientation === 'portrait' ? 'hochformat' : 'querformat'
-              ).toFixed(0)} kWh/Jahr</div>
-            </div>
-            
-            {showPVDetails && (
-              <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs text-black">
-                <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
-                
-                {measurement.pvModuleInfo && (
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3)}m</div>
-                    <div><strong>Begrenzungslänge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Begrenzungsfl��che:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
-                    
-                    <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
-                    <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
-                    
-                    {measurement.pvModuleInfo.orientation === 'portrait' ? (
-                      <>
-                        <div className="col-span-2 mt-1 font-semibold">Hochformat-Berechnung:</div>
-                        <div className="col-span-2"><strong>Modulanordnung:</strong> 
-                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
-                        </div>
-                        <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
-                          <span> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
-                        </div>
-                        <div className="col-span-2"><strong>Formel:</strong> 
-                          <span> floor(
-                            {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
-                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
-                            {Math.floor(
-                              measurement.pvModuleInfo.availableWidth / 
-                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
-                            )}
-                          </span>
-                        </div>
-                        <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
-                          <span> floor(verfügbare Länge / (Modulbreite + Modulabstand))</span>
-                        </div>
-                        <div className="col-span-2"><strong>Formel:</strong> 
-                          <span> floor(
-                            {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
-                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
-                            {Math.floor(
-                              measurement.pvModuleInfo.availableLength / 
-                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
-                            )}
-                          </span>
-                        </div>
-                      </>
+
+      {/* Expanded details */}
+      {isExpanded && (
+        <div className="mt-2 border-t border-border/30 pt-2">
+          {/* Action buttons */}
+          <div className="flex items-center gap-0.5 mb-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7" 
+                    onClick={(e) => { e.stopPropagation(); toggleMeasurementVisibility(measurement.id); }}
+                  >
+                    {measurement.visible === false ? (
+                      <Eye className="h-4 w-4" />
                     ) : (
-                      <>
-                        <div className="col-span-2 mt-1 font-semibold">Querformat-Berechnung:</div>
-                        <div className="col-span-2"><strong>Modulanordnung:</strong> 
-                          <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zur Traufe</span>
-                        </div>
-                        <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
-                          <span> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>
-                        </div>
-                        <div className="col-span-2"><strong>Formel:</strong> 
-                          <span> floor(
-                            {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
-                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
-                            {Math.floor(
-                              measurement.pvModuleInfo.availableWidth / 
-                              (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
-                            )}
-                          </span>
-                        </div>
-                        <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
-                          <span> floor(verfügbare Länge / (Modulhöhe + Modulabstand))</span>
-                        </div>
-                        <div className="col-span-2"><strong>Formel:</strong>
-                          <span> floor(
-                            {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
-                            {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
-                            {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
-                            {Math.floor(
-                              measurement.pvModuleInfo.availableLength / 
-                              (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
-                            )}
-                          </span>
-                        </div>
-                      </>
+                      <EyeOff className="h-4 w-4" />
                     )}
-                    <div className="col-span-2 mt-2 font-semibold">Modulanzahl: {measurement.pvModuleInfo.columns || '?'} × {measurement.pvModuleInfo.rows || '?'} = {measurement.pvModuleInfo.moduleCount} Module</div>
-                  </div>
-                )}
-              </div>
-            )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {measurement.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
-            {measurement.pvModuleInfo && measurement.pvModuleInfo.manualDimensions && (
-              <div className="mt-1 p-1 bg-green-50/10 border border-green-200/30 rounded-md text-xs">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7" 
+                    onClick={(e) => { e.stopPropagation(); handleStartPointEdit(measurement.id); }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Punkte bearbeiten</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 text-destructive hover:text-destructive" 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMeasurement(measurement.id); }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Löschen</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          {/* Dimensions */}
+          {measurement.dimensions && (
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs mb-2">
+              {measurement.dimensions.length !== undefined && (
+                <div><strong>Länge:</strong> {measurement.dimensions.length.toFixed(2)} m</div>
+              )}
+              {measurement.dimensions.width !== undefined && (
+                <div><strong>Breite:</strong> {measurement.dimensions.width.toFixed(2)} m</div>
+              )}
+              {measurement.dimensions.height !== undefined && (
+                <div><strong>Höhe:</strong> {measurement.dimensions.height.toFixed(2)} m</div>
+              )}
+              {measurement.dimensions.diameter !== undefined && (
+                <div><strong>Durchmesser:</strong> {measurement.dimensions.diameter.toFixed(2)} m</div>
+              )}
+              {measurement.dimensions.area !== undefined && (
+                <div><strong>Fläche:</strong> {measurement.dimensions.area.toFixed(2)} m²</div>
+              )}
+            </div>
+          )}
+          
+          {(measurement.type === 'length' || ['valley', 'ridge', 'verge'].includes(measurement.type)) && 
+           measurement.inclination !== undefined && (
+            <div className="text-sm mb-2">
+              <strong>Neigung:</strong> {Math.abs(measurement.inclination).toFixed(1)}°
+            </div>
+          )}
+          
+          {hasPVInfo && (
+            <div className="p-2 bg-blue-50/10 border border-blue-200/30 rounded-md mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center">
-                  <Ruler className="h-3 w-3 mr-1 text-green-600" />
-                  <span className="font-medium">Manuelle Abmessungen:</span>
+                  <Zap className="h-4 w-4 mr-1 text-blue-600" />
+                  <span className="font-medium">PV-Planung</span>
                 </div>
-                <div className="grid grid-cols-2 gap-x-2 mt-1">
-                  <div><strong>Breite:</strong> {measurement.pvModuleInfo.userDefinedWidth?.toFixed(2) || "-"} m</div>
-                  <div><strong>Länge:</strong> {measurement.pvModuleInfo.userDefinedLength?.toFixed(2) || "-"} m</div>
+                <div className="flex items-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    onClick={(e) => { e.stopPropagation(); setShowPVDetails(!showPVDetails); }}
+                  >
+                    <Info className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {isSolarMeasurement && !hasPVInfo && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="mt-2 w-full"
-          onClick={handleCalculatePV}
-        >
-          <Zap className="h-4 w-4 mr-2" />
-          PV-Module berechnen
-        </Button>
-      )}
-      
-      {(isRoofElement || isPenetration) && handleMoveUp && handleMoveDown && (
-        <div className="flex justify-end space-x-1 mt-1 mb-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => handleMoveUp(measurement.id)}
-                >
-                  <MoveUp className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Nach oben verschieben</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                <div><strong>Module:</strong> {measurement.pvModuleInfo!.moduleCount} Stück</div>
+                <div><strong>Abdeckung:</strong> {measurement.pvModuleInfo!.coveragePercent.toFixed(1)}%</div>
+                <div><strong>Ausrichtung:</strong> {measurement.pvModuleInfo!.orientation === 'portrait' 
+                  ? 'Hochformat' 
+                  : 'Querformat'}</div>
+                <div><strong>Leistung:</strong> {calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425).toFixed(2)} kWp</div>
+                <div className="col-span-2"><strong>Spalten × Reihen:</strong> {measurement.pvModuleInfo!.columns || '?'} × {measurement.pvModuleInfo!.rows || '?'}</div>
+                <div className="col-span-2"><strong>Modulgröße:</strong> {measurement.pvModuleInfo!.moduleWidth.toFixed(3)}m × {measurement.pvModuleInfo!.moduleHeight.toFixed(3)}m</div>
+                {measurement.pvModuleInfo!.edgeDistance !== undefined && (
+                  <div><strong>Randabstand:</strong> {measurement.pvModuleInfo!.edgeDistance.toFixed(2)}m</div>
+                )}
+                {measurement.pvModuleInfo!.moduleSpacing !== undefined && (
+                  <div><strong>Modulabstand:</strong> {measurement.pvModuleInfo!.moduleSpacing.toFixed(2)}m</div>
+                )}
+                <div className="col-span-2"><strong>Geschätzter Jahresertrag:</strong> {calculateAnnualYield(
+                  calculatePVPower(measurement.pvModuleInfo!.moduleCount, measurement.pvModuleInfo!.pvModuleSpec?.power || 425),
+                  measurement.pvModuleInfo!.orientation === 'portrait' ? 'hochformat' : 'querformat'
+                ).toFixed(0)} kWh/Jahr</div>
+              </div>
+              
+              {showPVDetails && (
+                <div className="mt-2 border-t border-blue-200/30 pt-2 text-xs text-black">
+                  <h4 className="font-medium mb-1">Berechnungsdetails:</h4>
+                  
+                  {measurement.pvModuleInfo && (
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                      <div><strong>Begrenzungshöhe:</strong> {measurement.pvModuleInfo.boundingHeight?.toFixed(3)}m</div>
+                      <div><strong>Begrenzungslänge:</strong> {measurement.pvModuleInfo.boundingLength.toFixed(3)}m</div>
+                      <div className="col-span-2"><strong>Begrenzungsfläche:</strong> {(measurement.pvModuleInfo.boundingHeight * measurement.pvModuleInfo.boundingLength).toFixed(3)}m²</div>
+                      
+                      <div className="col-span-2 mt-1"><strong>Verfügbare Breite:</strong> {measurement.pvModuleInfo.availableWidth.toFixed(3)}m</div>
+                      <div className="col-span-2"><strong>Verfügbare Länge:</strong> {measurement.pvModuleInfo.availableLength.toFixed(3)}m</div>
+                      
+                      {measurement.pvModuleInfo.orientation === 'portrait' ? (
+                        <>
+                          <div className="col-span-2 mt-1 font-semibold">Hochformat-Berechnung:</div>
+                          <div className="col-span-2"><strong>Modulanordnung:</strong> 
+                            <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zum Ortgang</span>
+                          </div>
+                          <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
+                            <span> floor(verfügbare Breite / (Modulhöhe + Modulabstand))</span>
+                          </div>
+                          <div className="col-span-2"><strong>Formel:</strong> 
+                            <span> floor(
+                              {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
+                              {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                              {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                              {Math.floor(
+                                measurement.pvModuleInfo.availableWidth / 
+                                (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              )}
+                            </span>
+                          </div>
+                          <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
+                            <span> floor(verfügbare Länge / (Modulbreite + Modulabstand))</span>
+                          </div>
+                          <div className="col-span-2"><strong>Formel:</strong> 
+                            <span> floor(
+                              {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
+                              {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                              {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                              {Math.floor(
+                                measurement.pvModuleInfo.availableLength / 
+                                (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="col-span-2 mt-1 font-semibold">Querformat-Berechnung:</div>
+                          <div className="col-span-2"><strong>Modulanordnung:</strong> 
+                            <span> Längere Modulseite ({measurement.pvModuleInfo.moduleHeight.toFixed(2)}m) parallel zur Traufe</span>
+                          </div>
+                          <div className="col-span-2"><strong>Berechnung Module pro Breite:</strong> 
+                            <span> floor(verfügbare Breite / (Modulbreite + Modulabstand))</span>
+                          </div>
+                          <div className="col-span-2"><strong>Formel:</strong> 
+                            <span> floor(
+                              {measurement.pvModuleInfo.availableWidth.toFixed(3)} / (
+                              {measurement.pvModuleInfo.moduleWidth.toFixed(3)} + 
+                              {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                              {Math.floor(
+                                measurement.pvModuleInfo.availableWidth / 
+                                (measurement.pvModuleInfo.moduleWidth + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              )}
+                            </span>
+                          </div>
+                          <div className="col-span-2"><strong>Berechnung Reihen:</strong> 
+                            <span> floor(verfügbare Länge / (Modulhöhe + Modulabstand))</span>
+                          </div>
+                          <div className="col-span-2"><strong>Formel:</strong>
+                            <span> floor(
+                              {measurement.pvModuleInfo.availableLength.toFixed(3)} / (
+                              {measurement.pvModuleInfo.moduleHeight.toFixed(3)} + 
+                              {(measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING).toFixed(3)})) = 
+                              {Math.floor(
+                                measurement.pvModuleInfo.availableLength / 
+                                (measurement.pvModuleInfo.moduleHeight + (measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING))
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="col-span-2 mt-2 font-semibold">Modulanzahl: {measurement.pvModuleInfo.columns || '?'} × {measurement.pvModuleInfo.rows || '?'} = {measurement.pvModuleInfo.moduleCount} Module</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {measurement.pvModuleInfo && measurement.pvModuleInfo.manualDimensions && (
+                <div className="mt-1 p-1 bg-green-50/10 border border-green-200/30 rounded-md text-xs">
+                  <div className="flex items-center">
+                    <Ruler className="h-3 w-3 mr-1 text-green-600" />
+                    <span className="font-medium">Manuelle Abmessungen:</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 mt-1">
+                    <div><strong>Breite:</strong> {measurement.pvModuleInfo.userDefinedWidth?.toFixed(2) || "-"} m</div>
+                    <div><strong>Länge:</strong> {measurement.pvModuleInfo.userDefinedLength?.toFixed(2) || "-"} m</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
+          {isSolarMeasurement && !hasPVInfo && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full mb-2"
+              onClick={(e) => { e.stopPropagation(); handleCalculatePV(); }}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              PV-Module berechnen
+            </Button>
+          )}
+          
+          {(isRoofElement || isPenetration) && handleMoveUp && handleMoveDown && (
+            <div className="flex justify-end space-x-1 mb-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => { e.stopPropagation(); handleMoveUp(measurement.id); }}
+                    >
+                      <MoveUp className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Nach oben verschieben</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => { e.stopPropagation(); handleMoveDown(measurement.id); }}
+                    >
+                      <MoveDown className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Nach unten verschieben</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+          
+          {editingId === measurement.id ? (
+            <div className="flex flex-col space-y-2 mb-2">
+              <Input
+                placeholder="Beschreibung hinzufügen"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div className="flex space-x-2">
                 <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => handleMoveDown(measurement.id)}
+                  variant="default" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={(e) => { e.stopPropagation(); handleEditSave(measurement.id); }}
                 >
-                  <MoveDown className="h-3 w-3" />
+                  <Save className="h-3 w-3 mr-1" />
+                  Speichern
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Nach unten verschieben</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
-      
-      {editingId === measurement.id ? (
-        <div className="flex flex-col space-y-2 mt-2">
-          <Input
-            placeholder="Beschreibung hinzufügen"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-          />
-          <div className="flex space-x-2">
-            <Button 
-              variant="default" 
-              size="sm" 
-              className="flex-1"
-              onClick={() => handleEditSave(measurement.id)}
-            >
-              <Save className="h-3 w-3 mr-1" />
-              Speichern
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-              onClick={() => setEditingId(null)}
-            >
-              <X className="h-3 w-3 mr-1" />
-              Abbrechen
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex mt-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-xs h-7 px-2"
-            onClick={() => handleEditStart(measurement.id, measurement.description)}
-          >
-            {measurement.description ? 
-              measurement.description : 
-              "Beschreibung hinzufügen..."
-            }
-          </Button>
-        </div>
-      )}
-      
-      <div className="mt-2">
-        <CaptureScreenshotButton 
-          measurementId={measurement.id}
-          onScreenshotCaptured={handleScreenshotCaptured}
-        />
-      </div>
-      
-      {hasCustomScreenshots && (
-        <Collapsible
-          open={screenshotsOpen}
-          onOpenChange={setScreenshotsOpen}
-          className="mt-2"
-        >
-          <CollapsibleTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full flex justify-between items-center"
-            >
-              <span>Screenshots ({measurement.customScreenshots!.length})</span>
-              <span>{screenshotsOpen ? '▲' : '▼'}</span>
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <ScreenshotGallery
-              screenshots={measurement.customScreenshots!}
-              onDelete={handleDeleteScreenshot}
-              onMoveUp={handleMoveScreenshotUp}
-              onMoveDown={handleMoveScreenshotDown}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={(e) => { e.stopPropagation(); setEditingId(null); }}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Abbrechen
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex mb-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs h-7 px-2"
+                onClick={(e) => { e.stopPropagation(); handleEditStart(measurement.id, measurement.description); }}
+              >
+                {measurement.description ? 
+                  measurement.description : 
+                  "Beschreibung hinzufügen..."
+                }
+              </Button>
+            </div>
+          )}
+          
+          <div className="mb-2">
+            <CaptureScreenshotButton 
+              measurementId={measurement.id}
+              onScreenshotCaptured={handleScreenshotCaptured}
             />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-      
-      {measurement.editMode && handleDeletePoint && (
-        <PointEditList 
-          measurement={measurement}
-          handleDeletePoint={handleDeletePoint}
-          movingPointInfo={movingPointInfo}
-        />
-      )}
-      
-      {(measurement.type === 'area' || measurement.type === 'solar') && 
-        measurement.segments && (
-        <SegmentList 
-          measurementId={measurement.id}
-          segments={measurement.segments}
-          isOpen={segmentsOpen}
-          toggleSegments={toggleSegments}
-          onEditSegment={onEditSegment}
-          updateSegment={updateSegment}
-        />
+          </div>
+          
+          {hasCustomScreenshots && (
+            <Collapsible
+              open={screenshotsOpen}
+              onOpenChange={setScreenshotsOpen}
+              className="mb-2"
+            >
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full flex justify-between items-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span>Screenshots ({measurement.customScreenshots!.length})</span>
+                  <span>{screenshotsOpen ? '▲' : '▼'}</span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <ScreenshotGallery
+                  screenshots={measurement.customScreenshots!}
+                  onDelete={handleDeleteScreenshot}
+                  onMoveUp={handleMoveScreenshotUp}
+                  onMoveDown={handleMoveScreenshotDown}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+          
+          {measurement.editMode && handleDeletePoint && (
+            <PointEditList 
+              measurement={measurement}
+              handleDeletePoint={handleDeletePoint}
+              movingPointInfo={movingPointInfo}
+            />
+          )}
+          
+          {(measurement.type === 'area' || measurement.type === 'solar') && 
+            measurement.segments && (
+            <SegmentList 
+              measurementId={measurement.id}
+              segments={measurement.segments}
+              isOpen={segmentsOpen}
+              toggleSegments={toggleSegments}
+              onEditSegment={onEditSegment}
+              updateSegment={updateSegment}
+            />
+          )}
+        </div>
       )}
     </div>
   );
