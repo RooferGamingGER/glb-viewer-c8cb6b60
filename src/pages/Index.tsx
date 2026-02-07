@@ -141,21 +141,9 @@ const HeaderSection = () => (
       3D-Modelle einfach visualisieren
     </h1>
     
-    <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in mb-3">
+    <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto animate-fade-in">
       GLB-Modelle hochladen, präzise messen und professionelle Berichte generieren.
     </p>
-
-    <div className="hidden md:flex glass-panel p-3 rounded-lg items-center justify-between gap-3 border border-border/10 max-w-2xl mx-auto">
-      <div className="text-left">
-        <p className="text-sm font-medium">Drohnenvermessung by RooferGaming®</p>
-        <p className="text-xs text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
-      </div>
-      <Button asChild variant="secondary" size="sm">
-        <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
-          Zur Website
-        </a>
-      </Button>
-    </div>
   </div>
 );
 
@@ -207,35 +195,40 @@ const Index = () => {
         
         <HeaderSection />
 
-        {/* Main content: 3-column on desktop */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          
-          {/* Left: Upload + Changelog */}
-          <div className="lg:col-span-4 flex flex-col gap-4 order-1">
-            <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
-              <h2 className="text-base md:text-lg font-medium mb-3 text-center">Modell hochladen</h2>
-              <FileUpload />
-              <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
-                <Upload className="mr-2 h-4 w-4" />
-                Viewer öffnen
-              </Button>
-            </div>
-            <ChangelogSection />
+        {/* Row 1: Demo + Upload side by side on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          <DemoSection />
+          <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
+            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
+            <FileUpload />
+            <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
+              <Upload className="mr-2 h-4 w-4" />
+              Viewer öffnen
+            </Button>
           </div>
+        </div>
 
-          {/* Center: Demo */}
-          <div className="lg:col-span-4 order-2">
-            <DemoSection />
-          </div>
-
-          {/* Right: Features (2x4 grid) */}
-          <div className="lg:col-span-4 order-3">
-            <div className="grid grid-cols-2 gap-3">
-              {FEATURES.map((item, i) => (
-                <FeatureCard key={i} item={item} />
-              ))}
+        {/* Row 2: Drohnenvermessung banner + Changelog */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          <div className="glass-panel p-4 rounded-lg border border-border/10 flex items-center justify-between gap-3">
+            <div className="text-left">
+              <p className="text-sm font-medium">Drohnenvermessung by RooferGaming®</p>
+              <p className="text-xs text-muted-foreground">Präzise Dachaufmaße mit Drohne – schnell, zuverlässig.</p>
             </div>
+            <Button asChild variant="secondary" size="sm" className="shrink-0">
+              <a href="https://drohnenvermessung-roofergaming.de" target="_blank" rel="noopener noreferrer">
+                Zur Website
+              </a>
+            </Button>
           </div>
+          <ChangelogSection />
+        </div>
+
+        {/* Row 3: Features */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          {FEATURES.map((item, i) => (
+            <FeatureCard key={i} item={item} />
+          ))}
         </div>
       </div>
 
