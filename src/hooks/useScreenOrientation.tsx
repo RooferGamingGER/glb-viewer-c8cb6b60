@@ -4,16 +4,12 @@ import { useIsMobile } from "./use-mobile";
 
 type Orientation = "portrait" | "landscape" | undefined;
 
-const TABLET_MAX_WIDTH = 1024;
-
 export function useScreenOrientation() {
   const [orientation, setOrientation] = React.useState<Orientation>(undefined);
-  const [windowWidth, setWindowWidth] = React.useState(window.innerWidth);
-  const isMobileUA = useIsMobile();
+  const isMobileOrTablet = useIsMobile(); // touch-based detection
 
   React.useEffect(() => {
     const update = () => {
-      setWindowWidth(window.innerWidth);
       if (window.innerHeight > window.innerWidth) {
         setOrientation("portrait");
       } else {
@@ -39,15 +35,10 @@ export function useScreenOrientation() {
     };
   }, []);
 
-  // Treat as mobile/tablet if either UA says mobile OR viewport is narrow enough (≤1024px)
-  const isNarrowViewport = windowWidth <= TABLET_MAX_WIDTH;
-  const isMobileOrTablet = isMobileUA || isNarrowViewport;
-
-  // Tablet: narrow viewport between 601-1024px, or UA-detected mobile with min dimension > 600
-  const isTablet = isMobileOrTablet && (
-    (!isMobileUA && isNarrowViewport && windowWidth > 600) ||
-    (isMobileUA && Math.min(window.innerWidth, window.innerHeight) > 600)
-  );
+  // Tablet: touch device with smallest side > 600px
+  const isTablet =
+    isMobileOrTablet &&
+    Math.min(window.innerWidth, window.innerHeight) > 600;
 
   const isPhone = isMobileOrTablet && !isTablet;
   const isPortrait = orientation === "portrait";
