@@ -456,7 +456,7 @@ export const createCombinedRoofPlan = (
     // Define colors for different measurement types - improved with more distinct colors
     const colors: Record<string, { fill: string; stroke: string }> = {
       'area': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#666666' },
-      'solar': { fill: 'rgba(0, 180, 0, 0.2)', stroke: '#006600' },
+      'solar': { fill: 'rgba(240, 240, 240, 0.3)', stroke: '#666666' },
       'pvmodule': { fill: 'rgba(0, 120, 255, 0.2)', stroke: '#0044AA' },
       'skylight': { fill: 'rgba(255, 165, 0, 0.3)', stroke: '#cc7000' }, // More vivid for skylights
       'chimney': { fill: 'rgba(180, 0, 0, 0.2)', stroke: '#990000' },
