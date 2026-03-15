@@ -185,13 +185,15 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      // Convert solar back to area instead of deleting
-                      updateMeasurement(m.id, { 
-                        type: 'area', 
-                        pvModuleInfo: undefined, 
-                        pvModuleSpec: undefined, 
-                        powerOutput: undefined 
-                      });
+                      // Convert solar back to area — remove PV data
+                      const cleaned: Partial<Measurement> = { 
+                        type: 'area' as const, 
+                        pvModuleInfo: undefined as any, 
+                        pvModuleSpec: undefined as any, 
+                        powerOutput: undefined as any 
+                      };
+                      // Use functional update to strip PV fields
+                      updateMeasurement(m.id, cleaned);
                     }}
                     title="PV-Module entfernen (Fläche bleibt erhalten)"
                   >
