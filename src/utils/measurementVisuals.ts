@@ -22,10 +22,34 @@ const pointsToVector3Array = (points: Point[]): THREE.Vector3[] => {
 };
 
 // Constants for visualization
-const POINT_Y_OFFSET = 0.01; // Reduced from 0.1 to place points closer to the model
-const LINE_Y_OFFSET = 0.025; // Slightly higher than points to ensure visibility
-const LABEL_Y_OFFSET = 0.15; // Maintained higher for readability
-const PV_LINE_Y_OFFSET = 0.03; // Slightly higher than regular lines for PV visibility
+const POINT_Y_OFFSET = 0.03; // Raised for depth-tested visibility on roof surfaces
+const LINE_Y_OFFSET = 0.04; // Slightly higher than points to ensure visibility
+const LABEL_Y_OFFSET = 0.20; // Maintained higher for readability
+const PV_LINE_Y_OFFSET = 0.05; // Slightly higher than regular lines for PV visibility
+
+// Shared depth/polygonOffset settings for all measurement materials
+const DEPTH_SETTINGS = {
+  depthTest: true,
+  polygonOffset: true,
+  polygonOffsetFactor: -4,
+  polygonOffsetUnits: -4,
+} as const;
+
+// Unified color palette (matching reference project)
+const COLORS = {
+  CYAN: 0x00e5ff,        // Standard points & lines
+  ORANGE: 0xffab00,      // Selected/editing points
+  SOLAR: 0x1EAEDB,       // Solar/PV elements
+  SKYLIGHT: 0xff8800,    // Skylight elements
+  CHIMNEY: 0xff0000,     // Chimney elements
+  VENT: 0x00ffff,        // Vent elements
+  HOOK: 0xff00ff,        // Hook elements
+};
+
+// Standard point size
+const POINT_SIZE = 0.05;
+const EDIT_POINT_SIZE = 0.05;
+const EDIT_POINT_SELECTED_SIZE = 0.08;
 
 // PV Module visualization constants
 const PV_MODULE_COLORS = {
@@ -167,55 +191,47 @@ export function renderCurrentPoints(
 
   // Add current points as spheres with minimal Y position offset
   currentPoints.forEach((point, index) => {
-    const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+    const pointColor = activeMode === 'solar' ? COLORS.SOLAR :
+                       activeMode === 'skylight' ? COLORS.SKYLIGHT :
+                       activeMode === 'chimney' ? COLORS.CHIMNEY :
+                       activeMode === 'vent' ? COLORS.VENT :
+                       activeMode === 'hook' ? COLORS.HOOK :
+                       COLORS.CYAN;
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: activeMode === 'length' ? 0x00ff00 : 
-             activeMode === 'height' ? 0x0000ff : 
-             activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
-             activeMode === 'skylight' ? 0xff8800 :
-             activeMode === 'chimney' ? 0xff0000 :
-             activeMode === 'vent' ? 0x00ffff :
-             activeMode === 'hook' ? 0xff00ff :
-             0xffaa00 
+      color: pointColor,
+      ...DEPTH_SETTINGS
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    // Add a smaller Y offset to place points closer to the surface
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    // Set higher renderOrder to ensure points are visible
-    sphere.renderOrder = 1;
+    sphere.renderOrder = 10;
     pointsRef.add(sphere);
 
     // Add connecting lines between points with slightly higher Y offset
     if (index > 0) {
       const prevPoint = currentPoints[index - 1];
-      // Add Y offset to both points when creating the line
       const p1 = new THREE.Vector3(prevPoint.x, prevPoint.y + LINE_Y_OFFSET, prevPoint.z);
       const p2 = new THREE.Vector3(point.x, point.y + LINE_Y_OFFSET, point.z);
       
       const points = [p1, p2];
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
       const lineMaterial = new THREE.LineBasicMaterial({ 
-        color: activeMode === 'length' ? 0x00ff00 : 
-               activeMode === 'height' ? 0x0000ff : 
-               activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
-               activeMode === 'skylight' ? 0xff8800 :
-               activeMode === 'chimney' ? 0xff0000 :
-               activeMode === 'vent' ? 0x00ffff :
-               activeMode === 'hook' ? 0xff00ff :
-               0xffaa00,
-        linewidth: 3, // Increased from 2 for better visibility
-        opacity: 0.9, // Higher opacity
-        transparent: true
+        color: pointColor,
+        linewidth: 3,
+        ...DEPTH_SETTINGS
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      // Set high renderOrder to ensure lines appear above the model
-      line.renderOrder = 2;
+      line.renderOrder = 10;
       linesRef.add(line);
     }
   });
 
   // Add special final connecting line for area/solar/skylight measurement to close the shape
   if ((activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') && currentPoints.length >= 3) {
+    const closingColor = activeMode === 'solar' ? COLORS.SOLAR :
+                         activeMode === 'skylight' ? COLORS.SKYLIGHT :
+                         activeMode === 'chimney' ? COLORS.CHIMNEY :
+                         COLORS.CYAN;
     const firstPoint = currentPoints[0];
     const lastPoint = currentPoints[currentPoints.length - 1];
     const p1 = new THREE.Vector3(lastPoint.x, lastPoint.y + LINE_Y_OFFSET, lastPoint.z);
@@ -223,24 +239,17 @@ export function renderCurrentPoints(
     
     const closingPoints = [p1, p2];
     const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
-    // Use a dashed line material with improved visibility
     const closingMaterial = new THREE.LineDashedMaterial({ 
-      color: activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
-             activeMode === 'skylight' ? 0xff8800 :
-             activeMode === 'chimney' ? 0xff0000 :
-             0xffaa00,
-      linewidth: 3, // Increased from 2 for better visibility
-      opacity: 0.9, // Higher opacity
-      transparent: true,
+      color: closingColor,
+      linewidth: 3,
+      ...DEPTH_SETTINGS,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
     });
     const closingLine = new THREE.Line(closingGeometry, closingMaterial);
-    // Must call computeLineDistances for the dashed line to work
     closingLine.computeLineDistances();
-    // Set high renderOrder to ensure visibility
-    closingLine.renderOrder = 2;
+    closingLine.renderOrder = 10;
     linesRef.add(closingLine);
   }
   
@@ -373,22 +382,17 @@ export function renderEditPoints(
   measurement.points.forEach((point, index) => {
     const isSelected = index === editingPointIndex;
     
-    // Create a larger, highlighted sphere for editable points
-    const size = isSelected ? 0.1 : 0.08; // Slightly larger for touch
+    const size = isSelected ? EDIT_POINT_SELECTED_SIZE : EDIT_POINT_SIZE;
     const sphereGeometry = new THREE.SphereGeometry(size, 16, 16);
     
-    // Use a bright color for the selected point, different color for others
-    const color = isSelected ? 0xff00ff : 0xffff00;
+    const color = isSelected ? COLORS.ORANGE : COLORS.CYAN;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      opacity: 0.85,
-      transparent: true
+      ...DEPTH_SETTINGS
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    // Add reduced Y offset to place edit points closer to the surface
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    // Set high renderOrder for visibility
     sphere.renderOrder = 10;
     
     // Add user data to the sphere for identification when clicking
@@ -401,10 +405,10 @@ export function renderEditPoints(
 
     // Add an invisible, larger hit area to make touch selection easier
     const hitGeometry = new THREE.SphereGeometry(size * 1.8, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 });
+    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, ...DEPTH_SETTINGS });
     const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
     hitSphere.position.copy(sphere.position);
-    hitSphere.userData = { ...userData }; // same identification
+    hitSphere.userData = { ...userData };
     hitSphere.renderOrder = 9;
     
     editPointsRef.add(sphere);
@@ -500,7 +504,8 @@ export function renderMeasurements(
   labelsRef: THREE.Group | null,
   segmentLabelsRef: THREE.Group | null,
   measurements: Measurement[],
-  visible: boolean
+  visible: boolean,
+  isDrawing: boolean = false
 ) {
   if (!measurementsRef || !labelsRef || !segmentLabelsRef) return;
   
@@ -837,8 +842,8 @@ export function renderMeasurements(
     isPreview: boolean, 
     measurementId: string | undefined
   ) => {
-    // Immer ausblenden während der Bearbeitung
-    if (anyMeasurementBeingEdited && !isPreview) {
+    // Ausblenden während der Bearbeitung ODER während des Zeichnens
+    if ((anyMeasurementBeingEdited || isDrawing) && !isPreview) {
       child.visible = false;
       return;
     }
@@ -864,7 +869,7 @@ export function renderMeasurements(
     }
     
     // Hohe Render-Ordnung sicherstellen
-    child.renderOrder = 100;
+    child.renderOrder = 20;
   };
   
   // Haupt-Labels aktualisieren
@@ -884,6 +889,15 @@ export function renderMeasurements(
       child.userData.measurementId
     );
   });
+  
+  // PV-Module während des Zeichnens ausblenden
+  if (isDrawing) {
+    measurementsRef.children.forEach(child => {
+      if (child.userData?.isPVModule || child.userData?.isPVGridLine) {
+        child.visible = false;
+      }
+    });
+  }
 }
 
 /**
@@ -905,27 +919,25 @@ function renderLengthMeasurement(
   const linePoints = [point1, point2];
   const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
   const lineMaterial = new THREE.LineBasicMaterial({ 
-    color: 0x00ff00,
-    linewidth: 3, // Increased from 2
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    linewidth: 3,
+    ...DEPTH_SETTINGS
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
-  line.renderOrder = 2; // Ensure line renders above model
+  line.renderOrder = 10;
   measurementsRef.add(line);
   
   // Add small spheres at endpoints with minimal Y offset
-  const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+  const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x00ff00,
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    ...DEPTH_SETTINGS
   });
   
   measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    sphere.renderOrder = 3; // Higher than line
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -991,13 +1003,12 @@ function renderHeightMeasurement(
   ];
   const verticalLineGeometry = new THREE.BufferGeometry().setFromPoints(verticalLinePoints);
   const verticalLineMaterial = new THREE.LineBasicMaterial({ 
-    color: 0x0000ff,
-    linewidth: 3, // Increased from 2
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    linewidth: 3,
+    ...DEPTH_SETTINGS
   });
   const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
-  verticalLine.renderOrder = 2; // Ensure line renders above model
+  verticalLine.renderOrder = 10;
   measurementsRef.add(verticalLine);
   
   // Draw horizontal reference line
@@ -1007,30 +1018,28 @@ function renderHeightMeasurement(
   ];
   const horizontalLineGeometry = new THREE.BufferGeometry().setFromPoints(horizontalLinePoints);
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
-    color: 0x0000ff,
-    linewidth: 3, // Increased from 2
-    opacity: 0.9,
-    transparent: true,
+    color: COLORS.CYAN,
+    linewidth: 3,
+    ...DEPTH_SETTINGS,
     dashSize: 0.1,
     gapSize: 0.05,
   });
   const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
   horizontalLine.computeLineDistances();
-  horizontalLine.renderOrder = 2;
+  horizontalLine.renderOrder = 10;
   measurementsRef.add(horizontalLine);
   
   // Add small spheres at all points
-  const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+  const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x0000ff,
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    ...DEPTH_SETTINGS
   });
   
   [point1, point2].forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.copy(point);
-    sphere.renderOrder = 3;
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1077,32 +1086,30 @@ function renderAreaMeasurement(
   const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
   
   // Choose color based on measurement type
-  const measurementColor = measurement.type === 'solar' ? 0x1EAEDB : 0xffaa00; // Changed to blue for solar/PV
+  const measurementColor = measurement.type === 'solar' ? COLORS.SOLAR : COLORS.CYAN;
   
   // Create outline from points
   for (let i = 0; i < points3D.length; i++) {
     const p1 = points3D[i];
-    const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
+    const p2 = points3D[(i + 1) % points3D.length];
     
     // Draw the line segment
     const linePoints = [p1, p2];
     const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
-      linewidth: 3, // Increased from 2
-      opacity: 0.9,
-      transparent: true
+      linewidth: 3,
+      ...DEPTH_SETTINGS
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
-    line.renderOrder = 2;
+    line.renderOrder = 10;
     measurementsRef.add(line);
     
     // Add small sphere at each vertex with minimal Y offset
-    const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      opacity: 0.9,
-      transparent: true
+      ...DEPTH_SETTINGS
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1111,7 +1118,7 @@ function renderAreaMeasurement(
       measurement.points[i].y + POINT_Y_OFFSET, 
       measurement.points[i].z
     );
-    sphere.renderOrder = 3;
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1207,32 +1214,30 @@ function renderSolarMeasurement(
   const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
   
   // Use a distinct blue color for solar measurements
-  const measurementColor = 0x1EAEDB; // Bright blue for solar/PV
+  const measurementColor = COLORS.SOLAR;
   
   // Create outline from points
   for (let i = 0; i < points3D.length; i++) {
     const p1 = points3D[i];
-    const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
+    const p2 = points3D[(i + 1) % points3D.length];
     
     // Draw the line segment
     const linePoints = [p1, p2];
     const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
-      linewidth: 3, // Thicker line for better visibility
-      opacity: 0.9,
-      transparent: true
+      linewidth: 3,
+      ...DEPTH_SETTINGS
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
-    line.renderOrder = 2;
+    line.renderOrder = 10;
     measurementsRef.add(line);
     
     // Add small sphere at each vertex with minimal Y offset
-    const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16); // Slightly larger points
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      opacity: 0.9,
-      transparent: true
+      ...DEPTH_SETTINGS
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1241,7 +1246,7 @@ function renderSolarMeasurement(
       measurement.points[i].y + POINT_Y_OFFSET, 
       measurement.points[i].z
     );
-    sphere.renderOrder = 3;
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1315,11 +1320,12 @@ function renderSolarMeasurement(
       color: measurementColor,
       opacity: 0.3,
       transparent: true,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide,
+      ...DEPTH_SETTINGS
     });
     
     const mesh = new THREE.Mesh(geometry, fillMaterial);
-    mesh.renderOrder = 1; // Render below lines and points
+    mesh.renderOrder = 5;
     
     // Store measurement ID in user data
     mesh.userData = {
@@ -1374,10 +1380,10 @@ function renderRoofElementMeasurement(
   // Set element color based on type
   const getElementColor = (type: string): number => {
     switch(type) {
-      case 'skylight': return 0xff8800;
-      case 'chimney': return 0xff0000;
-      case 'vent': return 0x00ffff;
-      case 'hook': return 0xff00ff;
+      case 'skylight': return COLORS.SKYLIGHT;
+      case 'chimney': return COLORS.CHIMNEY;
+      case 'vent': return COLORS.VENT;
+      case 'hook': return COLORS.HOOK;
       default: return 0xcccccc;
     }
   };
@@ -1401,20 +1407,18 @@ function renderRoofElementMeasurement(
     measurementsRef.add(marker);
     
     // Add small sphere at the point for interaction
-    const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: elementColor,
-      opacity: 0.9,
-      transparent: true
+      ...DEPTH_SETTINGS
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    // Place point closer to model surface
     sphere.position.set(
       measurement.points[0].x, 
       measurement.points[0].y + POINT_Y_OFFSET, 
       measurement.points[0].z
     );
-    sphere.renderOrder = 3;
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1460,28 +1464,25 @@ function renderRoofElementMeasurement(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
         linewidth: 3,
-        opacity: 0.9,
-        transparent: true
+        ...DEPTH_SETTINGS
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.renderOrder = 2;
+      line.renderOrder = 10;
       measurementsRef.add(line);
       
       // Add small sphere at each vertex with minimal Y offset
-      const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+      const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: elementColor,
-        opacity: 0.9,
-        transparent: true
+        ...DEPTH_SETTINGS
       });
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      // Place points closer to model surface
       sphere.position.set(
         measurement.points[i].x, 
         measurement.points[i].y + POINT_Y_OFFSET, 
         measurement.points[i].z
       );
-      sphere.renderOrder = 3;
+      sphere.renderOrder = 10;
       
       // Add userData for interactive selection
       sphere.userData = {
@@ -1536,115 +1537,56 @@ function renderPVModuleGrid(
   labelsRef: THREE.Group
 ) {
   if (!measurement.pvModuleInfo || measurement.pvModuleInfo.moduleCount <= 0) return;
-  
+
   // Get the base height from the first point (assuming relatively flat roof surface)
   const baseY = measurement.points[0]?.y || 0;
-  
-  // Generate the PV module grid
-  const { modulePoints, gridLines } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
-  
-  // Visual defaults and materials (can be overridden via pvModuleInfo.moduleVisuals)
+
+  // Generate the PV module grid (only module surfaces)
+  const { modulePoints, moduleOriginalIndices } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
+
+  // Visual defaults (can be overridden via pvModuleInfo.moduleVisuals)
   const vDefaults = {
-    panelColor: 0x0b1f3a, // deep navy
-    panelOpacity: 0.9,
-    frame: true,
-    frameColor: 0xbfc7cf, // silver
-    frameOpacity: 1,
-    frameLineWidth: 2,
-    cellRows: 12,
-    cellCols: 10,
-    cellLineColor: 0xffffff,
-    cellLineOpacity: 0.25,
-    cellLineWidth: 1,
-    midGapEnabled: true,
-    midGapColor: 0xffffff,
-    midGapOpacity: 0.6,
-    midGapWidth: 2
+    panelColor: 0x0b1f3a,
+    panelOpacity: 0.95,
   } as const;
   const v = { ...vDefaults, ...(measurement.pvModuleInfo?.moduleVisuals || {}) } as any;
-  
-  // Create materials for different elements
-  const moduleMaterial = new THREE.MeshBasicMaterial({
-    color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
-    opacity: v.panelOpacity ?? 0.9,
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthTest: false,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4
-  });
-  
-  const frameMaterial = new THREE.LineBasicMaterial({
-    color: (v.frameColor ?? 0xbfc7cf) as any,
-    linewidth: v.frameLineWidth ?? 2,
-    opacity: v.frameOpacity ?? 1,
-    transparent: (v.frameOpacity ?? 1) < 1,
-    depthTest: false
-  });
-  
-  const gridLineMaterial = new THREE.LineBasicMaterial({
-    color: PV_MODULE_COLORS.GRID,
-    linewidth: 3,
-    opacity: 0.8,
-    transparent: true,
-    depthTest: false
-  });
-  
-  const boundaryMaterial = new THREE.LineDashedMaterial({
-    color: PV_MODULE_COLORS.BOUNDARY,
-    dashSize: 0.2,
-    gapSize: 0.1,
-    linewidth: 2,
-    opacity: 0.8,
-    transparent: true,
-    depthTest: false
-  });
-  
-  const availableAreaMaterial = new THREE.LineDashedMaterial({
-    color: PV_MODULE_COLORS.AVAILABLE_AREA,
-    dashSize: 0.1,
-    gapSize: 0.1,
-    linewidth: 2,
-    opacity: 0.8,
-    transparent: true,
-    depthTest: false
-  });
-  
-  // Subtle cell grid lines material
-  const cellLineMaterial = new THREE.LineBasicMaterial({
-    color: (v.cellLineColor ?? PV_MODULE_COLORS.GRID) as any,
-    linewidth: v.cellLineWidth ?? 1,
-    opacity: v.cellLineOpacity ?? 0.25,
-    transparent: true,
-    depthTest: false
-  });
-  
-  // Create module meshes - this is where we're fixing the floating issue
-  modulePoints.forEach((points, index) => {
-    // Instead of projecting to a shape and then setting Y values afterwards,
-    // we'll directly use the 3D coordinates to create a custom BufferGeometry
 
-    // Create a buffer geometry
-    const geometry = new THREE.BufferGeometry();
-    
-    // Define vertices for the module (4 corners, 2 triangles = 6 vertices)
-    // We need to define each vertex for each triangle separately for proper rendering
-    const vertices = new Float32Array([
-      // First triangle (bottom-right half of quad)
-      points[0].x, points[0].y, points[0].z, // bottom-left
-      points[1].x, points[1].y, points[1].z, // bottom-right
-      points[3].x, points[3].y, points[3].z, // top-right
-      
-      // Second triangle (top-left half of quad)
-      points[0].x, points[0].y, points[0].z, // bottom-left
-      points[3].x, points[3].y, points[3].z, // top-right
-      points[2].x, points[2].y, points[2].z  // top-left
-    ]);
-    
-    // Add a slight offset along the normal to prevent z-fighting with the roof mesh
-    // Calculate normal from the points (simplified as an approximate)
+  // Load module texture
+  const textureLoader = new THREE.TextureLoader();
+  let moduleTexture: THREE.Texture | null = null;
+  try {
+    const texturePath = new URL('@/assets/moduli_standard.png', import.meta.url).href;
+    moduleTexture = textureLoader.load(texturePath);
+    moduleTexture.colorSpace = THREE.SRGBColorSpace;
+    moduleTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    moduleTexture.magFilter = THREE.LinearFilter;
+  } catch (e) {
+    console.warn('Could not load PV module texture, falling back to color', e);
+  }
+
+  // PV modules with depth testing for proper occlusion
+  const moduleMaterial = moduleTexture
+    ? new THREE.MeshBasicMaterial({
+        map: moduleTexture,
+        transparent: true,
+        opacity: 1,
+        side: THREE.DoubleSide,
+        ...DEPTH_SETTINGS,
+        depthWrite: false
+      })
+    : new THREE.MeshBasicMaterial({
+        color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
+        opacity: v.panelOpacity ?? 0.95,
+        transparent: true,
+        side: THREE.DoubleSide,
+        ...DEPTH_SETTINGS,
+        depthWrite: false
+      });
+
+  const MODULE_THICKNESS = 0.025; // 2.5cm thick modules
+
+  modulePoints.forEach((points, index) => {
+    // Calculate surface normal for this module
     const normal = new THREE.Vector3()
       .crossVectors(
         new THREE.Vector3().subVectors(
@@ -1652,135 +1594,94 @@ function renderPVModuleGrid(
           new THREE.Vector3(points[0].x, points[0].y, points[0].z)
         ),
         new THREE.Vector3().subVectors(
-          new THREE.Vector3(points[2].x, points[2].y, points[2].z),
+          new THREE.Vector3(points[3].x, points[3].y, points[3].z),
           new THREE.Vector3(points[0].x, points[0].y, points[0].z)
         )
       )
       .normalize();
-    
-    // Apply a small offset (0.01 units) along the normal to every vertex
-    const OFFSET_DISTANCE = 0.01;
-    for (let i = 0; i < vertices.length; i += 3) {
-      vertices[i] += normal.x * OFFSET_DISTANCE;
-      vertices[i + 1] += normal.y * OFFSET_DISTANCE;
-      vertices[i + 2] += normal.z * OFFSET_DISTANCE;
-    }
-    
-    // Set vertices
+
+    const OFFSET_DISTANCE = 0.02; // Base offset from roof surface
+
+    // Bottom face corners (on roof surface + small offset)
+    const bottomCorners = points.map(p => new THREE.Vector3(
+      p.x + normal.x * OFFSET_DISTANCE,
+      p.y + normal.y * OFFSET_DISTANCE,
+      p.z + normal.z * OFFSET_DISTANCE
+    ));
+
+    // Top face corners (raised by MODULE_THICKNESS along normal)
+    const topCorners = bottomCorners.map(bc => new THREE.Vector3(
+      bc.x + normal.x * MODULE_THICKNESS,
+      bc.y + normal.y * MODULE_THICKNESS,
+      bc.z + normal.z * MODULE_THICKNESS
+    ));
+
+    // Build box geometry: 6 faces × 2 triangles × 3 vertices = 36 vertices
+    // Face order: top, bottom, front, back, left, right
+    const b = bottomCorners; // BL=0, BR=1, TR=2, TL=3
+    const t = topCorners;
+
+    const vertices = new Float32Array([
+      // Top face (textured) - BL, BR, TR + BL, TR, TL
+      t[0].x, t[0].y, t[0].z,  t[1].x, t[1].y, t[1].z,  t[2].x, t[2].y, t[2].z,
+      t[0].x, t[0].y, t[0].z,  t[2].x, t[2].y, t[2].z,  t[3].x, t[3].y, t[3].z,
+      // Bottom face - TL, TR, BR + TL, BR, BL (reversed winding)
+      b[3].x, b[3].y, b[3].z,  b[2].x, b[2].y, b[2].z,  b[1].x, b[1].y, b[1].z,
+      b[3].x, b[3].y, b[3].z,  b[1].x, b[1].y, b[1].z,  b[0].x, b[0].y, b[0].z,
+      // Front face (BL-BR edge) - b0, b1, t1 + b0, t1, t0
+      b[0].x, b[0].y, b[0].z,  b[1].x, b[1].y, b[1].z,  t[1].x, t[1].y, t[1].z,
+      b[0].x, b[0].y, b[0].z,  t[1].x, t[1].y, t[1].z,  t[0].x, t[0].y, t[0].z,
+      // Back face (TR-TL edge) - b2, b3, t3 + b2, t3, t2
+      b[2].x, b[2].y, b[2].z,  b[3].x, b[3].y, b[3].z,  t[3].x, t[3].y, t[3].z,
+      b[2].x, b[2].y, b[2].z,  t[3].x, t[3].y, t[3].z,  t[2].x, t[2].y, t[2].z,
+      // Right face (BR-TR edge) - b1, b2, t2 + b1, t2, t1
+      b[1].x, b[1].y, b[1].z,  b[2].x, b[2].y, b[2].z,  t[2].x, t[2].y, t[2].z,
+      b[1].x, b[1].y, b[1].z,  t[2].x, t[2].y, t[2].z,  t[1].x, t[1].y, t[1].z,
+      // Left face (TL-BL edge) - b3, b0, t0 + b3, t0, t3
+      b[3].x, b[3].y, b[3].z,  b[0].x, b[0].y, b[0].z,  t[0].x, t[0].y, t[0].z,
+      b[3].x, b[3].y, b[3].z,  t[0].x, t[0].y, t[0].z,  t[3].x, t[3].y, t[3].z,
+    ]);
+
+    const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    
-    // Compute vertex normals for proper lighting
+
+    // UVs: texture only on top face, solid color on sides/bottom
+    const uvs = new Float32Array(36 * 2); // 36 vertices × 2 UV coords
+    // Top face UVs (first 6 vertices)
+    uvs[0] = 0; uvs[1] = 0;   // BL
+    uvs[2] = 1; uvs[3] = 0;   // BR
+    uvs[4] = 1; uvs[5] = 1;   // TR
+    uvs[6] = 0; uvs[7] = 0;   // BL
+    uvs[8] = 1; uvs[9] = 1;   // TR
+    uvs[10] = 0; uvs[11] = 1; // TL
+    // Remaining faces get 0,0 UVs (will use side material)
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geometry.computeVertexNormals();
-    
-    // Create mesh for the module
-    const mesh = new THREE.Mesh(geometry, moduleMaterial);
-    mesh.renderOrder = 1002;
-    
-    // Store measurement ID in user data
+
+    // Use material array: textured top + dark sides
+    const sideMaterial = new THREE.MeshBasicMaterial({
+      color: 0x1a1a2e,
+      ...DEPTH_SETTINGS,
+      depthWrite: false
+    });
+
+    // Groups: top=0-5, bottom=6-11, front=12-17, back=18-23, right=24-29, left=30-35
+    geometry.addGroup(0, 6, 0);   // top → textured
+    geometry.addGroup(6, 6, 1);   // bottom → side
+    geometry.addGroup(12, 6, 1);  // front → side
+    geometry.addGroup(18, 6, 1);  // back → side
+    geometry.addGroup(24, 6, 1);  // right → side
+    geometry.addGroup(30, 6, 1);  // left → side
+
+    const mesh = new THREE.Mesh(geometry, [moduleMaterial, sideMaterial]);
+    mesh.renderOrder = 5;
     mesh.userData = {
       measurementId: measurement.id,
       isPVModule: true,
-      moduleIndex: index
+      moduleIndex: moduleOriginalIndices[index]
     };
-    
     measurementsRef.add(mesh);
-    
-    // Draw subtle cell grid to mimic PV cells
-    const p0 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-    const p1 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-    const p2 = new THREE.Vector3(points[2].x, points[2].y, points[2].z);
-    const p3 = new THREE.Vector3(points[3].x, points[3].y, points[3].z);
 
-    const edgeWBottom = new THREE.Vector3().subVectors(p1, p0);
-    const edgeWTop = new THREE.Vector3().subVectors(p3, p2);
-    const edgeHLeft = new THREE.Vector3().subVectors(p2, p0);
-    const edgeHRight = new THREE.Vector3().subVectors(p3, p1);
-
-    const cols = (v.cellCols ?? 10); // vertical divisions
-    const rows = (v.cellRows ?? 6);  // horizontal divisions
-
-    // Vertical cell lines (along height)
-    for (let c = 1; c < cols; c++) {
-      const t = c / cols;
-      const start = new THREE.Vector3().copy(p0).add(edgeWBottom.clone().multiplyScalar(t));
-      const end = new THREE.Vector3().copy(p2).add(edgeWTop.clone().multiplyScalar(t));
-      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
-      const line = new THREE.Line(geom, cellLineMaterial);
-      line.renderOrder = 1004;
-      measurementsRef.add(line);
-    }
-
-    // Horizontal cell lines (along width)
-    for (let r = 1; r < rows; r++) {
-      const t = r / rows;
-      const start = new THREE.Vector3().copy(p0).add(edgeHLeft.clone().multiplyScalar(t));
-      const end = new THREE.Vector3().copy(p1).add(edgeHRight.clone().multiplyScalar(t));
-      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
-      const line = new THREE.Line(geom, cellLineMaterial);
-      line.renderOrder = 1004;
-      measurementsRef.add(line);
-    }
-    
-    // Add module number label - calculate the actual center of the module
-    const centerX = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
-    const centerY = (points[0].y + points[1].y + points[2].y + points[3].y) / 4; 
-    const centerZ = (points[0].z + points[1].z + points[2].z + points[3].z) / 4;
-    
-    const moduleCenter = new THREE.Vector3(
-      centerX,
-      centerY + 0.03, // Small offset for visibility
-      centerZ
-    );
-    
-    // Fixed: Convert color number to string using CSS hex format
-    const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true, '#' + PV_MODULE_COLORS.MODULE.toString(16).padStart(6, '0'));
-    moduleLabel.userData = {
-      measurementId: measurement.id,
-      isModuleLabel: true,
-      moduleIndex: index
-    };
-    
-    // Make module labels smaller
-    moduleLabel.userData.isModuleLabel = true;
-    moduleLabel.scale.set(0.2, 0.2, 0.2);
-    
-    labelsRef.add(moduleLabel);
-  });
-  
-  // Create lines for the grid - using the actual 3D coordinates
-  gridLines.forEach((line, index) => {
-    // First 4 * moduleCount lines are module borders, 
-    // next 4 are boundary lines,
-    // last 4 are available area lines
-    const isBoundary = index >= 4 * modulePoints.length && index < 4 * modulePoints.length + 4;
-    const isAvailableArea = index >= 4 * modulePoints.length + 4;
-    
-    const material = isBoundary ? boundaryMaterial : 
-                    isAvailableArea ? availableAreaMaterial : 
-                    gridLineMaterial;
-    
-    const fromVec = new THREE.Vector3(line.from.x, line.from.y, line.from.z);
-    const toVec = new THREE.Vector3(line.to.x, line.to.y, line.to.z);
-    
-    const points = [fromVec, toVec];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const lineObj = new THREE.Line(geometry, material);
-    
-    // For dashed lines, compute line distances
-    if (isBoundary || isAvailableArea) {
-      lineObj.computeLineDistances();
-    }
-    
-    lineObj.renderOrder = 1003;
-    
-    // Store metadata in user data
-    lineObj.userData = {
-      measurementId: measurement.id,
-      isPVGridLine: true,
-      isBoundary,
-      isAvailableArea
-    };
-    
-    measurementsRef.add(lineObj);
+    // Module number labels removed - they caused visual clutter (white bars on modules)
   });
 }

@@ -1,11 +1,11 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { PVMaterials } from '@/types/measurements';
 import { formatPVMaterials } from '@/utils/pvCalculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DownloadIcon, LayersIcon, ZapIcon, WrenchIcon, Cable, AlertTriangle, Loader2 } from 'lucide-react';
+import { DownloadIcon, LayersIcon, ZapIcon, WrenchIcon, Cable, AlertTriangle, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PVMaterialsListProps {
@@ -17,26 +17,18 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
   materials,
   onCalculate
 }) => {
-  // Debug log to check the materials being passed in
-  useEffect(() => {
-    console.log("PVMaterialsList: Rendering with materials:", materials);
-  }, [materials]);
-
-  // Check if materials data is valid and complete
   const isValidMaterials = materials && 
     materials.mountingSystem && 
     materials.electricalSystem && 
     materials.totalModuleCount > 0;
 
   if (!isValidMaterials) {
-    console.warn("Invalid or incomplete PV materials data:", materials);
     return (
-      <div className="p-4 border border-dashed border-gray-300 rounded-md">
+      <div className="p-4 border border-dashed border-border rounded-md">
         <div className="flex flex-col items-center gap-2 text-center">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
           <p className="text-sm text-muted-foreground">
             Keine vollständige Materialliste verfügbar
-            {materials ? " (unvollständige Daten)" : ""}
           </p>
           {onCalculate && (
             <Button size="sm" variant="outline" onClick={onCalculate}>
@@ -48,14 +40,19 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
     );
   }
 
+  // Extract yield from notes
+  const yieldNote = materials.notes?.find(n => n.includes('Jahresertrag'));
+  const stringNote = materials.notes?.find(n => n.includes('Stringaufteilung'));
+  const inverterNote = materials.notes?.find(n => n.includes('Wechselrichter'));
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-start gap-2">
-          <Badge variant="outline" className="px-2 py-1 bg-blue-50">
+        <div className="flex items-start gap-2 flex-wrap">
+          <Badge variant="outline" className="px-2 py-1 bg-blue-50 dark:bg-blue-950">
             {materials.totalModuleCount} Module
           </Badge>
-          <Badge variant="outline" className="px-2 py-1 bg-green-50">
+          <Badge variant="outline" className="px-2 py-1 bg-green-50 dark:bg-green-950">
             {materials.totalPower.toFixed(1)} kWp
           </Badge>
         </div>
@@ -64,6 +61,32 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
           Export
         </Button>
       </div>
+
+      {/* Yield & System Summary */}
+      {(yieldNote || stringNote || inverterNote) && (
+        <Card className="border-primary/20">
+          <CardContent className="py-3 px-4 space-y-1.5">
+            {yieldNote && (
+              <div className="flex items-center gap-2 text-sm">
+                <Sun className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                <span>{yieldNote}</span>
+              </div>
+            )}
+            {stringNote && (
+              <div className="flex items-center gap-2 text-sm">
+                <Cable className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                <span>{stringNote}</span>
+              </div>
+            )}
+            {inverterNote && (
+              <div className="flex items-center gap-2 text-sm">
+                <ZapIcon className="h-3.5 w-3.5 text-yellow-600 shrink-0" />
+                <span>{inverterNote}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Accordion type="single" collapsible className="w-full" defaultValue="modules">
         <AccordionItem value="modules">
@@ -82,13 +105,13 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
               <div>{materials.totalModuleCount} Stück</div>
               
               <div className="text-muted-foreground">Leistung je Modul:</div>
-              <div>{materials.moduleSpec?.power || 425} Wp</div>
+              <div>{materials.moduleSpec?.power || 420} Wp</div>
               
               <div className="text-muted-foreground">Gesamtleistung:</div>
-              <div>{materials.totalPower.toFixed(1)} kWp</div>
+              <div>{materials.totalPower.toFixed(2)} kWp</div>
               
               <div className="text-muted-foreground">Abmessungen:</div>
-              <div>{materials.moduleSpec?.width?.toFixed(2) || "1.04"} × {materials.moduleSpec?.height?.toFixed(2) || "1.77"} m</div>
+              <div>{materials.moduleSpec?.width?.toFixed(2) || "1.13"} × {materials.moduleSpec?.height?.toFixed(2) || "1.72"} m</div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -129,6 +152,15 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
           </AccordionTrigger>
           <AccordionContent>
             <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="text-muted-foreground">Strings:</div>
+              <div>{materials.electricalSystem.stringCount}× à {materials.electricalSystem.modulesPerString} Module</div>
+
+              <div className="text-muted-foreground">Max. Stringspannung:</div>
+              <div>{(materials.electricalSystem.modulesPerString * 41.5).toFixed(0)} V DC</div>
+              
+              <div className="text-muted-foreground">Wechselrichter:</div>
+              <div>{materials.electricalSystem.inverterCount}× {materials.electricalSystem.inverterPower} kW</div>
+              
               <div className="text-muted-foreground">Stringkabel:</div>
               <div>{materials.electricalSystem.stringCableLength} m</div>
               
@@ -140,15 +172,6 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
               
               <div className="text-muted-foreground">Steckverbinder:</div>
               <div>{materials.electricalSystem.connectorPairCount} Paare</div>
-              
-              <div className="text-muted-foreground">Wechselrichter:</div>
-              <div>{materials.electricalSystem.inverterCount} Stück</div>
-              
-              <div className="text-muted-foreground">WR-Leistung:</div>
-              <div>{materials.electricalSystem.inverterPower.toFixed(1)} kW</div>
-              
-              <div className="text-muted-foreground">Strings:</div>
-              <div>{materials.electricalSystem.stringCount} ({materials.electricalSystem.modulesPerString} Module/String)</div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -162,11 +185,20 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
           </AccordionTrigger>
           <AccordionContent>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="text-muted-foreground">Überspannungsschutz:</div>
-              <div>{materials.includesSurgeProtection ? 'Ja' : 'Nein'}</div>
+              <div className="text-muted-foreground">DC-Trennschalter:</div>
+              <div>1 Stück</div>
               
+              <div className="text-muted-foreground">Überspannungsschutz DC:</div>
+              <div>{materials.includesSurgeProtection ? '1 Stück' : 'Nein'}</div>
+              
+              <div className="text-muted-foreground">Überspannungsschutz AC:</div>
+              <div>{materials.includesSurgeProtection ? '1 Stück' : 'Nein'}</div>
+
               <div className="text-muted-foreground">Monitoring-System:</div>
               <div>{materials.includesMonitoringSystem ? 'Ja' : 'Nein'}</div>
+              
+              <div className="text-muted-foreground">Erdung/PA:</div>
+              <div>1 Set</div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -179,9 +211,11 @@ const PVMaterialsList: React.FC<PVMaterialsListProps> = ({
           </CardHeader>
           <CardContent className="py-2 px-4">
             <ul className="text-sm list-disc pl-4 space-y-1">
-              {materials.notes.map((note, index) => (
-                <li key={index}>{note}</li>
-              ))}
+              {materials.notes
+                .filter(n => !n.includes('Jahresertrag') && !n.includes('Stringaufteilung') && !n.includes('Wechselrichter'))
+                .map((note, index) => (
+                  <li key={index}>{note}</li>
+                ))}
             </ul>
           </CardContent>
         </Card>

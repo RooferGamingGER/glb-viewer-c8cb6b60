@@ -155,10 +155,11 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         updatedMeasurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
     }
-  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef]);
+  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef, activeMode]);
 
   // Set the update function in the measurements context
   useEffect(() => {
@@ -252,82 +253,77 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     }
   );
 
-  // Update visibility when allLabelsVisible changes
+  // Update visibility when allLabelsVisible changes (but never while a tool is active)
   useEffect(() => {
+    if (activeMode !== 'none') return;
     updateAllLabelsVisibility(allLabelsVisible);
-  }, [allLabelsVisible, updateAllLabelsVisibility]);
+  }, [allLabelsVisible, updateAllLabelsVisibility, activeMode]);
 
-  // Handle label visibility based on edit mode
+  // Handle label visibility based on edit/draw mode
   useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
-    
-    // Determine if we're in any edit mode
+
     const isEditing = editMeasurementId !== null || movingPointInfo !== null || editingSegmentId !== null;
-    
-    // Process all labels in both groups
-    const processLabel = (label: THREE.Object3D, isSegmentLabel = false) => {
+    const isDrawingMode = activeMode !== 'none';
+
+    const processLabel = (label: THREE.Object3D) => {
       if (!label.userData) return;
-      
+
       // Preview labels are always visible
       if (label.userData.isPreview) {
         label.visible = true;
         return;
       }
-      
-      // During editing, hide all non-preview labels
-      if (isEditing) {
+
+      // During editing OR active drawing mode, hide all non-preview labels
+      if (isEditing || isDrawingMode) {
         label.visible = false;
         return;
       }
-      
-      // When not editing, set visibility based on the measurement's visibility state
+
       const measurementId = label.userData.measurementId;
       if (measurementId) {
         const measurement = measurements.find(m => m.id === measurementId);
-        // Only show label if measurement exists and is visible
         label.visible = measurement?.visible !== false && measurement?.labelVisible !== false;
       } else {
-        // If no measurement ID, default to visible
         label.visible = true;
       }
     };
-    
-    // Process main labels
+
     labelsRef.current.children.forEach(label => {
       processLabel(label);
     });
-    
-    // Process segment labels
+
     segmentLabelsRef.current.children.forEach(label => {
-      processLabel(label, true);
+      processLabel(label);
     });
-    
-  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible, labelsRef, segmentLabelsRef]);
+  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible, labelsRef, segmentLabelsRef, activeMode]);
 
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
     if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
-      // When editing is complete, re-render all measurements to ensure labels are updated
       renderMeasurements(
         measurementsRef.current, 
         labelsRef.current, 
         segmentLabelsRef.current, 
         measurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
     }
-  }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
+  }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef, activeMode]);
 
-  // Re-render measurements when they change
+  // Re-render measurements when they change or activeMode changes
   useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      true
+      true,
+      activeMode !== 'none'
     );
-  }, [measurements, measurementsRef, labelsRef, segmentLabelsRef]);
+  }, [measurements, measurementsRef, labelsRef, segmentLabelsRef, activeMode]);
 
   // Re-render current points when they change
   useEffect(() => {
@@ -377,7 +373,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         measurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
       
       renderEditPoints(
@@ -423,7 +420,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      true
+      true,
+      false
     );
   };
 

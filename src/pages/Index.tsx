@@ -17,6 +17,7 @@ import {
   LucideIcon,
   ExternalLink,
   Newspaper,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -53,17 +54,22 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "15.03.2026",
+    text: "Kunden von Drohnenvermessung by RooferGaming® können nun Projekte & Tasks verwalten, Drohnenbilder einsehen und neue Verarbeitungsaufträge starten – alles ohne die App zu verlassen",
+    link: { url: "https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/", label: "Jetzt Kunde werden" },
+  },
+  {
+    date: "15.03.2026",
+    text: "GLB-Modelle können jetzt direkt vom Server geladen und sofort vermessen werden – kein manueller Download mehr nötig",
+  },
+  {
+    date: "15.03.2026",
+    text: "PDF-Export optimiert: Dachplan bereinigt und korrigierte Leistungsberechnung für PV-Anlagen",
+  },
+  {
     date: "07.02.2026",
     text: "Export für Flachdächer nach ABS-Plan",
     link: { url: "https://apps.absturzsicherung.de", label: "ABS-Plan öffnen" },
-  },
-  {
-    date: "07.02.2026",
-    text: "Bedienung auf Handy deutlich verbessert und optimiert",
-  },
-  {
-    date: "Januar 2026",
-    text: "Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.",
   },
 ];
 
@@ -244,10 +250,21 @@ const Index = () => {
           <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
             <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
             <FileUpload />
-            <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
-              <Upload className="mr-2 h-4 w-4" />
-              Viewer öffnen
-            </Button>
+            <div className="flex flex-col gap-2 mt-4">
+              <Button onClick={handleStartClick} className="w-full" size={isMobile ? "sm" : "default"}>
+                <Upload className="mr-2 h-4 w-4" />
+                Viewer öffnen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/server-login")}
+                className="w-full"
+                size={isMobile ? "sm" : "default"}
+              >
+                <Server className="mr-2 h-4 w-4" />
+                Vom Server laden
+              </Button>
+            </div>
           </div>
         </div>
 

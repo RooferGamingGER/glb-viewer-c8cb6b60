@@ -133,7 +133,7 @@ export const useMeasurementEvents = (
     raycaster.setFromCamera(mousePosition, camera);
     
     // Check if we clicked on an add point indicator (plus sign)
-    if (refs.addPointIndicatorsRef.current && editMeasurementId) {
+    if (refs.addPointIndicatorsRef.current) {
       // Handle adding point indicators
       const addPointIntersects = raycaster.intersectObjects(refs.addPointIndicatorsRef.current.children, true);
       
@@ -168,18 +168,21 @@ export const useMeasurementEvents = (
       }
     }
     
-    // Check for edit point interactions - only when in edit mode
-    if (editMeasurementId && refs.editPointsRef.current) {
+    // Check for edit point interactions — only when no drawing tool is active
+    if (activeMode === 'none' && refs.editPointsRef.current) {
       const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, true);
       
       if (editPointIntersects.length > 0) {
         const intersect = editPointIntersects[0];
         const userData = intersect.object.userData;
         
-        // Check if this is an edit point or an edit point label
         if (userData.isEditPoint || userData.isEditPointLabel) {
           const measurement = measurements.find(m => m.id === userData.measurementId);
           if (measurement) {
+            // Auto-enter edit mode if not already editing this measurement
+            if (editMeasurementId !== userData.measurementId) {
+              handlers.toggleEditMode(userData.measurementId);
+            }
             const point = measurement.points[userData.pointIndex];
             const initialPoint = handlers.startPointMovement(
               userData.measurementId,
@@ -193,8 +196,38 @@ export const useMeasurementEvents = (
       }
     }
     
-    // Check for clicks on measurement points but only if we're in edit mode
-    if (editMeasurementId) {
+    // Check for clicks on PV modules — remove module on click with confirmation
+    if (activeMode === 'none' || activeMode === 'solar') {
+      const allIntersects = raycaster.intersectObjects(scene.children, true);
+      for (const intersect of allIntersects) {
+        const ud = intersect.object.userData;
+        if (ud && (ud.isPVModule || ud.isPVModulePanel)) {
+          const measurementId = ud.measurementId;
+          const moduleIndex = ud.moduleIndex;
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement && measurement.pvModuleInfo && moduleIndex !== undefined) {
+            // Show confirmation toast with action button
+            toast(`Modul ${moduleIndex + 1} entfernen?`, {
+              duration: 5000,
+              action: {
+                label: 'Entfernen',
+                onClick: () => {
+                  const removeEvent = new CustomEvent('pvModuleRemoved', {
+                    detail: { measurementId, moduleIndex }
+                  });
+                  document.dispatchEvent(removeEvent);
+                  toast.success(`Modul ${moduleIndex + 1} entfernt`, { duration: 1500 });
+                }
+              },
+            });
+            return;
+          }
+        }
+      }
+    }
+
+    // Check for clicks on measurement points — only when no drawing tool is active
+    if (activeMode === 'none') {
       const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
       for (const intersect of allSceneIntersects) {
         if (
@@ -203,14 +236,18 @@ export const useMeasurementEvents = (
           intersect.object.userData.isMeasurementPoint)
         ) {
           const userData = intersect.object.userData;
+          const measurementId = userData.measurementId;
           
-          // Only allow moving points of the measurement being edited
-          if (userData.measurementId === editMeasurementId) {
-            const measurement = measurements.find(m => m.id === userData.measurementId);
+          if (measurementId) {
+            const measurement = measurements.find(m => m.id === measurementId);
             if (measurement) {
+              // Auto-enter edit mode if needed
+              if (editMeasurementId !== measurementId) {
+                handlers.toggleEditMode(measurementId);
+              }
               const point = measurement.points[userData.pointIndex];
               const initialPoint = handlers.startPointMovement(
-                userData.measurementId,
+                measurementId,
                 userData.pointIndex,
                 point
               );

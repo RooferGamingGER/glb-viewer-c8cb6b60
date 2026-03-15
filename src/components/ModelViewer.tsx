@@ -435,7 +435,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const canonicalUrlRef = useRef<string | null>(null);
   const sourceUrlRef = useRef<string | null>(null);
   const originalBlobRef = useRef<Blob | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;

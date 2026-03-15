@@ -14,7 +14,7 @@ export const useMemoryOptimization = () => {
   } | null>(null);
   
   const [isLowMemory, setIsLowMemory] = useState(false);
-  const memoryCheckInterval = useRef<NodeJS.Timeout | null>(null);
+  const memoryCheckInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const disposedObjects = useRef<Set<THREE.Object3D>>(new Set());
 
   // Monitor memory usage

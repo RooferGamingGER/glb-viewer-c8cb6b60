@@ -3,7 +3,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 
 /**
- * Hook zur Verwaltung der Hinzufüge-Indikatoren (Plus-Symbole) für Flächenmessungen
+ * Hook zur Verwaltung der Hinzufüge-Indikatoren (grüne Kugeln) für Flächenmessungen
  */
 export const useAddPointIndicators = (scene: THREE.Scene | null) => {
   const addPointIndicatorsRef = useRef<THREE.Group | null>(null);
@@ -76,7 +76,7 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
     const points = measurement.points;
     if (points.length < 3) return;
     
-    // Create plus sign indicators at the midpoint of each line segment
+    // Create green sphere indicators at the midpoint of each line segment
     for (let i = 0; i < points.length; i++) {
       const p1 = points[i];
       const p2 = points[(i + 1) % points.length];
@@ -88,59 +88,48 @@ export const useAddPointIndicators = (scene: THREE.Scene | null) => {
         z: (p1.z + p2.z) / 2
       };
       
-      // Create plus sign using lines
-      const plusSize = 0.1; // Increased size for better visibility
-      const plusThickness = 0.02; // Add thickness to the plus sign
-      
-      // Create 3D plus sign using box geometries
-      const horizontalGeometry = new THREE.BoxGeometry(plusSize * 2, plusThickness, plusThickness);
-      const verticalGeometry = new THREE.BoxGeometry(plusThickness, plusSize * 2, plusThickness);
-      
-      // Much brighter green color for better visibility with glow effect
-      // Changed to MeshStandardMaterial which supports emissive property
-      const plusMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x00ff44,
-        emissive: 0x00ff44,
-        emissiveIntensity: 1.0
+      // Visible green sphere indicator
+      const indicatorSize = 0.04;
+      const sphereGeometry = new THREE.SphereGeometry(indicatorSize, 16, 16);
+      const sphereMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00e676,
+        depthTest: false
       });
       
-      const horizontalLine = new THREE.Mesh(horizontalGeometry, plusMaterial);
-      horizontalLine.position.set(midpoint.x, midpoint.y, midpoint.z);
+      const indicator = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      indicator.position.set(midpoint.x, midpoint.y, midpoint.z);
+      indicator.renderOrder = 999;
       
-      const verticalLine = new THREE.Mesh(verticalGeometry, plusMaterial);
-      verticalLine.position.set(midpoint.x, midpoint.y, midpoint.z);
-      
-      // Create a detection sphere (invisible but even larger for easier clicking)
-      const sphereGeometry = new THREE.SphereGeometry(plusSize * 2, 16, 16);
-      const sphereMaterial = new THREE.MeshBasicMaterial({ 
+      // Invisible larger hit area for easier clicking
+      const hitGeometry = new THREE.SphereGeometry(indicatorSize * 4, 16, 16);
+      const hitMaterial = new THREE.MeshBasicMaterial({ 
         color: 0x00ff00,
         opacity: 0.0,
-        transparent: true
+        transparent: true,
+        depthTest: false
       });
       
-      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      sphere.position.set(midpoint.x, midpoint.y, midpoint.z);
+      const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
+      hitSphere.position.set(midpoint.x, midpoint.y, midpoint.z);
+      hitSphere.renderOrder = 998;
       
       // Add user data for identification on click
-      sphere.userData = {
+      hitSphere.userData = {
         isAddPointIndicator: true,
         measurementId: measurement.id,
         segmentIndex: i,
         midpoint: midpoint
       };
       
-      // Create a group for this indicator
-      const indicatorGroup = new THREE.Group();
-      indicatorGroup.add(horizontalLine);
-      indicatorGroup.add(verticalLine);
-      indicatorGroup.add(sphere);
+      indicator.userData = {
+        isAddPointIndicator: true,
+        measurementId: measurement.id,
+        segmentIndex: i,
+        midpoint: midpoint
+      };
       
-      // Set high render order to ensure visibility
-      indicatorGroup.renderOrder = 999;
-      horizontalLine.renderOrder = 999;
-      verticalLine.renderOrder = 999;
-      
-      addPointIndicatorsRef.current.add(indicatorGroup);
+      addPointIndicatorsRef.current.add(indicator);
+      addPointIndicatorsRef.current.add(hitSphere);
     }
   }, [clearAddPointIndicators]);
 

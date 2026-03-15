@@ -37,7 +37,7 @@ export interface Segment {
   length: number;
   label?: string;
   inclination?: number;
-  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom';
+  type?: 'first' | 'grat' | 'kehle' | 'traufe' | 'ortgang' | 'custom' | 'ridge' | 'hip' | 'valley' | 'eave' | 'verge' | 'anschluss' | 'verfallung';
   shared?: boolean;            // Indicates if this segment is shared with another measurement
   sharedWithSegmentId?: string; // ID of the segment this is shared with
   isOriginal?: boolean;        // For shared segments, indicates if this is the "original" one
@@ -84,6 +84,7 @@ export interface PVModuleInfo {
   points?: Point[];           // Store the original points used for the solar area calculation
   modulePositions?: Point[];  // Array of position points for each module (center points)
   moduleCorners?: Point[][];  // Array of corner points for each module (4 corners per module)
+  removedModuleIndices?: number[]; // Indices of modules removed by user click
   moduleVisuals?: {           // Visual properties for module rendering
     frameBorder?: number;     // Frame border width in meters
     frameColor?: number;      // Frame color (hex)
@@ -94,6 +95,10 @@ export interface PVModuleInfo {
     cellColor?: number;       // Cell color (hex)
     busbarCount?: number;     // Number of busbars per cell
   };
+  exclusionZones?: Point[][];  // Polygons from roof elements (chimneys, skylights, etc.) to exclude from module placement
+  gridOffsetU?: number;        // Grid offset along primary axis (v1) in meters
+  gridOffsetW?: number;        // Grid offset along secondary axis (v2) in meters
+  gridRotation?: number;       // Grid rotation in degrees around grid center
 }
 
 export interface PVModuleSpec {

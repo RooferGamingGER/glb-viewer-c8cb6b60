@@ -1,35 +1,35 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Measurement } from '@/hooks/useMeasurements';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import MeasurementList from './MeasurementList';
-import MeasurementTable from './MeasurementTable';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2 } from 'lucide-react';
-import { MeasurementMode } from '@/types/measurements';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/components/ui/use-toast";
-import { Separator } from "@/components/ui/separator";
-// Replace CollapsibleSection import with the SidebarGroup components
-import { SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@/components/ui/collapsible-section";
-import MeasurementToolbar from './MeasurementToolbar';
+import { Input } from '@/components/ui/input';
+import { MeasurementMode, Measurement as MeasurementType, Segment } from '@/types/measurements';
+import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
+import { toast } from 'sonner';
 import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
-import { useScreenOrientation } from '@/hooks/useScreenOrientation';
-import GenerateRoofPlanButton from './GenerateRoofPlanButton';
-import ExportPdfButton from './ExportPdfButton';
-import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
-import { generateDetailedCSV, exportMeasurementsToAbsJson } from '@/utils/exportUtils';
+import SolarMeasurementContent from './SolarMeasurementContent';
+import CollapsibleSection from '@/components/ui/collapsible-section';
+import { Ruler, ArrowUpDown, Square, MinusSquare, X, ChevronDown, Pencil, Check, Sun } from 'lucide-react';
+import { formatMeasurementValue, getMeasurementTypeDisplayName } from '@/utils/exportUtils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const SEGMENT_TYPES = [
+  { value: 'custom', label: 'Dachkante' },
+  { value: 'ridge', label: 'First' },
+  { value: 'hip', label: 'Grat' },
+  { value: 'valley', label: 'Kehle' },
+  { value: 'eave', label: 'Traufe' },
+  { value: 'verge', label: 'Ortgang' },
+  { value: 'anschluss', label: 'Anschluss' },
+  { value: 'verfallung', label: 'Verfallung' },
+];
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -61,308 +61,310 @@ interface MeasurementToolControlsProps {
   showMeasurementList?: boolean;
 }
 
+const getTypeIcon = (type: string) => {
+  switch (type) {
+    case 'length': return <Ruler className="h-3 w-3 shrink-0" />;
+    case 'height': return <ArrowUpDown className="h-3 w-3 shrink-0" />;
+    case 'area': return <Square className="h-3 w-3 shrink-0" />;
+    case 'deductionarea': return <MinusSquare className="h-3 w-3 shrink-0" />;
+    case 'solar': return <Sun className="h-3 w-3 shrink-0" />;
+    default: return <Square className="h-3 w-3 shrink-0" />;
+  }
+};
+
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
-  measurements,
-  toggleMeasurementVisibility,
-  toggleLabelVisibility,
-  handleStartPointEdit,
-  handleDeleteMeasurement,
-  handleDeletePoint,
-  updateMeasurement,
-  editMeasurementId,
-  segmentsOpen,
-  toggleSegments,
-  onEditSegment,
-  activeMode,
-  toggleMeasurementTool,
-  movingPointInfo,
-  handleClearMeasurements,
-  toggleAllMeasurementsVisibility,
-  toggleAllLabelsVisibility,
-  allMeasurementsVisible,
-  allLabelsVisible,
-  showTable,
-  setShowTable,
-  handleMoveMeasurementUp,
-  handleMoveMeasurementDown,
+  measurements, toggleMeasurementVisibility, toggleLabelVisibility,
+  handleStartPointEdit, handleDeleteMeasurement, handleDeletePoint,
+  updateMeasurement, editMeasurementId, segmentsOpen, toggleSegments,
+  onEditSegment, activeMode, toggleMeasurementTool, movingPointInfo,
+  handleClearMeasurements, toggleAllMeasurementsVisibility,
+  toggleAllLabelsVisibility, allMeasurementsVisible, allLabelsVisible,
+  showTable, setShowTable, handleMoveMeasurementUp, handleMoveMeasurementDown,
   showMeasurementList = true
 }) => {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("tools");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [labelValue, setLabelValue] = useState('');
+  const [editingSegmentKey, setEditingSegmentKey] = useState<string | null>(null);
+  const [segmentSelectedType, setSegmentSelectedType] = useState<string>('custom');
+  const [segmentCustomLabel, setSegmentCustomLabel] = useState<string>('');
 
-  // Mobile portrait detection
-  const { isPortrait, isTablet, isPhone } = useScreenOrientation();
-  const isMobilePortrait = isPortrait && (isPhone || isTablet);
-  
-  const handleCategoryClick = (category: MeasurementMode) => {
-    setActiveCategory(category);
-    setActiveTab("measurements");
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
-  
-  // Function to export measurements as CSV
-  const exportMeasurementsAsCSV = () => {
-    if (!measurements || measurements.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Keine Messungen für den Export vorhanden",
-        variant: "destructive"
-      });
-      return;
+
+  const startLabelEdit = (m: { id: string; label?: string; type: string }) => {
+    setEditingLabelId(m.id);
+    setLabelValue(m.label || getMeasurementTypeDisplayName(m.type));
+  };
+
+  const saveLabelEdit = (id: string) => {
+    updateMeasurement(id, { label: labelValue.trim() || undefined });
+    setEditingLabelId(null);
+  };
+
+  const startSegmentLabelEdit = (measurementId: string, segIdx: number, segment: Segment) => {
+    setEditingSegmentKey(`${measurementId}-${segIdx}`);
+    setSegmentSelectedType(segment.type || 'custom');
+    setSegmentCustomLabel(segment.label || '');
+  };
+
+  const saveSegmentLabelEdit = (measurementId: string, segIdx: number) => {
+    const m = measurements.find(m => m.id === measurementId);
+    if (m?.segments) {
+      const updatedSegments = [...m.segments];
+      updatedSegments[segIdx] = { 
+        ...updatedSegments[segIdx], 
+        type: segmentSelectedType as Segment['type'],
+        label: segmentCustomLabel.trim() || undefined 
+      };
+      updateMeasurement(measurementId, { segments: updatedSegments });
     }
-    
-    // Generate detailed CSV content
-    const csvContent = generateDetailedCSV(measurements);
-    
-    // Create download link with BOM for Excel compatibility
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.href = url;
-    link.setAttribute('download', `Messungen_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: "CSV-Export erfolgreich",
-      description: "Die CSV-Datei wurde heruntergeladen"
-    });
+    setEditingSegmentKey(null);
   };
 
-  // Test-Export für ABS-JSON
-  const exportMeasurementsAsAbsJson = () => {
-    if (!measurements || measurements.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Keine Messungen für den ABS-Export vorhanden",
-        variant: "destructive",
-      });
-      return;
+  const getSegmentDisplayName = (segment: Segment, index: number): string => {
+    if (segment.type && segment.type !== 'custom') {
+      const typeLabel = SEGMENT_TYPES.find(t => t.value === segment.type)?.label;
+      if (segment.label) return `${typeLabel}: ${segment.label}`;
+      return typeLabel || `Segment ${index + 1}`;
+    } else if (segment.type === 'custom' && segment.label) {
+      return `Dachkante: ${segment.label}`;
     }
-
-    const absJson = exportMeasurementsToAbsJson(measurements, {
-      address: '',
-      projectId: 0,
-      customerNames: '',
-      customersReferencePhrase: '',
-    });
-
-    const blob = new Blob([JSON.stringify(absJson, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `abs-export-test_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "ABS-Export (Test) erstellt",
-      description: "Die ABS-JSON-Testdatei wurde heruntergeladen.",
-    });
+    return `Segment ${index + 1}`;
   };
-  
-  // Style for table mode to prevent sidebar overflow - fixing the TypeScript error
-  const tableContainerStyle = showTable ? { 
-    maxWidth: '100%', 
-    overflowX: 'auto' as const  // Using 'as const' to specify the correct type
-  } : {};
-  
+
+  const isExpandableType = (type: string) => ['area', 'deductionarea', 'solar'].includes(type);
+
+  const solarMeasurements = measurements.filter(m => m.type === 'solar');
+  const otherMeasurements = measurements.filter(m => m.type !== 'solar');
+
+  const handleConvertAreaToSolar = (areaId: string) => {
+    const areaMeasurement = measurements.find(m => m.id === areaId);
+    if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
+
+    // Create a solar measurement from the area's points
+    const exclusionZones = extractExclusionZones(measurements);
+    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
+    updateMeasurement(areaId, {
+      type: 'solar' as any,
+      pvModuleInfo,
+    });
+    toast.success(`Fläche "${areaMeasurement.label || 'Fläche'}" in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+  };
+
   return (
     <ScrollArea className="flex-1 h-full">
-      <div className="p-3 flex flex-col h-full">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium">Messwerkzeuge</h3>
-          
-          <div className="flex gap-1">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  disabled={measurements.length === 0 || !!editMeasurementId}
-                  title="Alle Messungen löschen"
-                  className="h-7"
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Möchten Sie wirklich alle Messungen löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => {
-                      handleClearMeasurements();
-                      toast({
-                        title: "Messungen gelöscht",
-                        description: "Alle Messungen wurden erfolgreich gelöscht."
-                      });
-                    }}
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className={`w-full grid ${isMobilePortrait ? 'grid-cols-1' : 'grid-cols-2'} h-8 mb-3`}>
-            <TabsTrigger value="tools">Werkzeuge</TabsTrigger>
-            {!isMobilePortrait && (
-              <TabsTrigger value="measurements">
-                Messungen 
-                {measurements.length > 0 && <span className="ml-1 text-muted-foreground text-xs">({measurements.length})</span>}
-              </TabsTrigger>
-            )}
-          </TabsList>
-          
-          <TabsContent value="tools" className="flex-1 m-0 space-y-3">
-            <MeasurementToolbar 
-              activeMode={activeMode} 
-              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
-                console.log('Toggle measurement tool', mode);
-                // Default implementation if not provided
-              })}
-              measurements={measurements}
-              handleClearMeasurements={handleClearMeasurements}
-              onCategoryClick={handleCategoryClick}
-              toggleAllLabelsVisibility={toggleAllLabelsVisibility}
-              allLabelsVisible={allLabelsVisible}
-            />
-            
-            {/* Add the new Solar toolbar between measurement tools and roof elements */}
-            <SolarToolbar 
-              activeMode={activeMode}
-              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
-                console.log('Toggle measurement tool', mode);
-                // Default implementation if not provided
-              })}
-              editMeasurementId={editMeasurementId}
-            />
-            
-            <RoofElementsToolbar 
-              activeMode={activeMode}
-              toggleMeasurementTool={toggleMeasurementTool || ((mode) => {
-                console.log('Toggle measurement tool', mode);
-                // Default implementation if not provided
-              })}
-              editMeasurementId={editMeasurementId}
-            />
-          </TabsContent>
-          
-          {!isMobilePortrait && (
-            <TabsContent value="measurements" className="flex-1 m-0">
-              <div className="flex mb-3 items-center justify-between">
-                <div className="text-sm font-medium">
-                  {activeCategory ? (
-                    <Button 
-                      variant="link" 
-                      className="p-0 h-auto text-sm -ml-3" 
-                      onClick={() => setActiveCategory(null)}
-                    >
-                      ← Zurück zu allen Messungen
-                    </Button>
-                  ) : (
-                    "Alle Messungen"
-                  )}
-                </div>
-                
-                <div className="flex gap-1">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowTable(!showTable)}
-                    title={showTable ? "Als Liste anzeigen" : "Als Tabelle anzeigen"}
-                    className="h-7"
-                  >
-                    {showTable ? "Liste" : "Tabelle"}
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Export options - Only in Measurements tab */}
-              <div className="flex flex-col gap-2 mb-4 border-b pb-3">
-                <div className="text-xs text-muted-foreground mb-1">
-                  Exportoptionen:
-                </div>
-                
-                <ExportGLBWithMeasurementsButton measurements={measurements} />
-                <GenerateRoofPlanButton measurements={measurements} />
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={exportMeasurementsAsCSV}
-                  disabled={measurements.length === 0}
-                  title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'Messungen als CSV exportieren'}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  CSV Export
-                </Button>
+      <div className="p-1.5 flex flex-col">
+        {/* Solar planning */}
+        <SolarToolbar 
+          activeMode={activeMode}
+          toggleMeasurementTool={toggleMeasurementTool || (() => {})}
+          editMeasurementId={editMeasurementId}
+          measurements={measurements as any}
+          onConvertAreaToSolar={handleConvertAreaToSolar}
+        />
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={exportMeasurementsAsAbsJson}
-                  disabled={measurements.length === 0}
-                  title={measurements.length === 0 ? 'Keine Messungen vorhanden' : 'ABS-JSON Testexport erzeugen'}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  ABS-Export (Test)
-                </Button>
-                
-                <ExportPdfButton measurements={measurements} />
-              </div>
-              
-              {showMeasurementList && (
-                <div style={tableContainerStyle}>
-                  {showTable ? (
-                    <MeasurementTable 
-                      measurements={measurements}
-                      toggleMeasurementVisibility={toggleMeasurementVisibility}
-                      handleDeleteMeasurement={handleDeleteMeasurement}
-                    />
-                  ) : (
-                    <div className="flex-1">
-                      <MeasurementList 
-                        measurements={measurements}
-                        toggleMeasurementVisibility={toggleMeasurementVisibility}
-                        toggleLabelVisibility={toggleLabelVisibility}
-                        handleStartPointEdit={handleStartPointEdit}
-                        handleDeleteMeasurement={handleDeleteMeasurement}
-                        handleDeletePoint={handleDeletePoint}
-                        updateMeasurement={updateMeasurement}
-                        editMeasurementId={editMeasurementId}
-                        segmentsOpen={segmentsOpen}
-                        toggleSegments={toggleSegments}
-                        onEditSegment={onEditSegment}
-                        movingPointInfo={movingPointInfo}
-                        handleMoveMeasurementUp={handleMoveMeasurementUp}
-                        handleMoveMeasurementDown={handleMoveMeasurementDown}
-                        activeCategory={activeCategory || undefined}
-                        showTable={showTable}
-                      />
+        {/* Solar measurements with full PV content */}
+        {solarMeasurements.length > 0 && (
+          <div className="mt-0.5">
+            {solarMeasurements.map(m => (
+              <CollapsibleSection 
+                key={m.id} 
+                title={`☀️ ${m.label || 'Solarfläche'} — ${formatMeasurementValue(m)}`}
+                defaultOpen={true}
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      // Convert solar back to area — remove PV data
+                      const cleaned: Partial<Measurement> = { 
+                        type: 'area' as const, 
+                        pvModuleInfo: undefined as any, 
+                        pvModuleSpec: undefined as any, 
+                        powerOutput: undefined as any 
+                      };
+                      // Use functional update to strip PV fields
+                      updateMeasurement(m.id, cleaned);
+                    }}
+                    title="PV-Module entfernen (Fläche bleibt erhalten)"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                }
+              >
+                <SolarMeasurementContent
+                  measurement={m}
+                  updateMeasurement={updateMeasurement}
+                  allMeasurements={measurements}
+                />
+              </CollapsibleSection>
+            ))}
+          </div>
+        )}
+        
+        {/* Roof elements */}
+        <RoofElementsToolbar 
+          activeMode={activeMode}
+          toggleMeasurementTool={toggleMeasurementTool || (() => {})}
+          editMeasurementId={editMeasurementId}
+        />
+
+        {/* Compact measurement list */}
+        {otherMeasurements.length > 0 && (
+          <CollapsibleSection title={`Messungen (${otherMeasurements.length})`} defaultOpen={true}>
+            <div className="flex flex-col gap-px">
+              {otherMeasurements.map((m) => {
+                const hasSegments = isExpandableType(m.type) && m.segments && m.segments.length > 0;
+                const isExpanded = expandedIds.has(m.id);
+                const isEditingLabel = editingLabelId === m.id;
+
+                return (
+                  <div key={m.id} className="border border-border/30 rounded">
+                    {/* Header row */}
+                    <div
+                      className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-accent/30 text-xs group cursor-pointer"
+                      onClick={() => {
+                        if (!isEditingLabel && hasSegments) toggleExpanded(m.id);
+                      }}
+                    >
+                      {hasSegments && (
+                        <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                      )}
+                      {getTypeIcon(m.type)}
+
+                      {/* Label: editable or display */}
+                      {isEditingLabel ? (
+                        <div className="flex items-center gap-0.5 flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+                          <Input
+                            value={labelValue}
+                            onChange={e => setLabelValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveLabelEdit(m.id); if (e.key === 'Escape') setEditingLabelId(null); }}
+                            className="h-5 text-xs px-1 py-0 min-w-0 flex-1"
+                            autoFocus
+                          />
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => saveLabelEdit(m.id)}>
+                            <Check className="h-2.5 w-2.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span
+                          className="truncate flex-1 min-w-0 cursor-text"
+                          onClick={(e) => { e.stopPropagation(); startLabelEdit(m); }}
+                          title="Klicken zum Umbenennen (z.B. First, Traufe, Ortgang)"
+                        >
+                          {m.label || getMeasurementTypeDisplayName(m.type)}
+                        </span>
+                      )}
+
+                      <span className="text-muted-foreground font-mono whitespace-nowrap text-[11px]">
+                        {formatMeasurementValue(m)}
+                      </span>
+
+                      {/* Rename button — always visible */}
+                      {!isEditingLabel && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); startLabelEdit(m); }}
+                          title="Umbenennen"
+                        >
+                          <Pencil className="h-2.5 w-2.5" />
+                        </Button>
+                      )}
+
+                      {/* Delete button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive shrink-0"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteMeasurement(m.id); }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-          )}
-        </Tabs>
+
+                    {/* Expanded segments with editable labels */}
+                    {hasSegments && isExpanded && (
+                      <div className="border-t border-border/20 bg-muted/30 px-2 py-0.5">
+                        {m.segments!.map((seg, idx) => {
+                          const segKey = `${m.id}-${idx}`;
+                          const isEditingSeg = editingSegmentKey === segKey;
+
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground py-0.5 group/seg">
+                              {isEditingSeg ? (
+                                <div className="flex flex-col gap-1 flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+                                  <Select
+                                    value={segmentSelectedType}
+                                    onValueChange={setSegmentSelectedType}
+                                  >
+                                    <SelectTrigger className="h-5 text-[10px]">
+                                      <SelectValue placeholder="Typ wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {SEGMENT_TYPES.map(t => (
+                                        <SelectItem key={t.value} value={t.value} className="text-xs">
+                                          {t.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    value={segmentCustomLabel}
+                                    onChange={e => setSegmentCustomLabel(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') saveSegmentLabelEdit(m.id, idx);
+                                      if (e.key === 'Escape') setEditingSegmentKey(null);
+                                    }}
+                                    className="h-4 text-[10px] px-1 py-0 min-w-0"
+                                    placeholder="Zusätzliche Beschreibung (optional)"
+                                  />
+                                  <div className="flex gap-1">
+                                    <Button variant="default" size="sm" className="h-5 text-[10px] flex-1" onClick={() => saveSegmentLabelEdit(m.id, idx)}>
+                                      <Check className="h-2 w-2 mr-0.5" /> OK
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-5 text-[10px] flex-1" onClick={() => setEditingSegmentKey(null)}>
+                                      Abbrechen
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span
+                                  className="truncate cursor-text hover:underline"
+                                  onClick={() => startSegmentLabelEdit(m.id, idx, seg)}
+                                  title="Klicken zum Benennen"
+                                >
+                                  {getSegmentDisplayName(seg, idx)}
+                                </span>
+                              )}
+                              <span className="font-mono whitespace-nowrap ml-2">{seg.length?.toFixed(2)} m</span>
+                            </div>
+                          );
+                        })}
+                        {m.type === 'area' && m.points && m.points.length >= 3 && (
+                          <div className="flex items-center justify-between text-[10px] font-medium pt-0.5 border-t border-border/20 mt-0.5">
+                            <span>Fläche</span>
+                            <span className="font-mono">{formatMeasurementValue(m)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CollapsibleSection>
+        )}
       </div>
     </ScrollArea>
   );

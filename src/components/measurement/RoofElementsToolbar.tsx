@@ -12,12 +12,8 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
-  SidebarMenu, 
-  SidebarMenuItem,
-  SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { smartToast } from '@/utils/smartToast';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface RoofElementToolbarProps {
   activeMode: MeasurementMode;
@@ -51,86 +47,38 @@ const RoofElementsToolbar: React.FC<RoofElementToolbarProps> = ({
     }
   };
 
+  const tools: { mode: MeasurementMode; icon: React.ReactNode; label: string }[] = [
+    { mode: 'skylight', icon: <Square className="h-4 w-4" />, label: 'Dachfenster' },
+    { mode: 'chimney', icon: <Home className="h-4 w-4" />, label: 'Kamin' },
+    { mode: 'vent', icon: <Asterisk className="h-4 w-4" />, label: 'Lüfter' },
+    { mode: 'hook', icon: <CircleDot className="h-4 w-4" />, label: 'Dachhaken' },
+    { mode: 'other', icon: <CircleX className="h-4 w-4" />, label: 'Sonstiges' },
+  ];
+
   return (
-    <SidebarGroup className="mt-4">
-      <Accordion type="single" collapsible defaultValue="roof-elements">
-        <AccordionItem value="roof-elements" className="border-0">
-          <AccordionTrigger className="py-2 px-1">
-            <SidebarGroupLabel className="!m-0">Dachelemente</SidebarGroupLabel>
-          </AccordionTrigger>
-          <AccordionContent>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {/* Removed solar and pvmodule items */}
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'skylight'}
-                    onClick={() => selectTool('skylight')}
-                    tooltip={activeMode === 'skylight' ? "Dachfenster deaktivieren" : "Dachfenster platzieren"}
-                    disabled={!!editMeasurementId}
-                    className="bg-white hover:bg-gray-100"
-                  >
-                    <Square />
-                    <span>Dachfenster</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'chimney'}
-                    onClick={() => selectTool('chimney')}
-                    tooltip={activeMode === 'chimney' ? "Kaminausschnitt deaktivieren" : "Kamin platzieren"}
-                    disabled={!!editMeasurementId}
-                    className="bg-white hover:bg-gray-100"
-                  >
-                    <Home />
-                    <span>Kamin</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'vent'}
-                    onClick={() => selectTool('vent')}
-                    tooltip={activeMode === 'vent' ? "Lüfter deaktivieren" : "Lüfter platzieren"}
-                    disabled={!!editMeasurementId}
-                    className="bg-white hover:bg-gray-100"
-                  >
-                    <Asterisk />
-                    <span>Lüfter</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'hook'}
-                    onClick={() => selectTool('hook')}
-                    tooltip={activeMode === 'hook' ? "Dachhaken deaktivieren" : "Dachhaken platzieren"}
-                    disabled={!!editMeasurementId}
-                    className="bg-white hover:bg-gray-100"
-                  >
-                    <CircleDot />
-                    <span>Dachhaken</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={activeMode === 'other'}
-                    onClick={() => selectTool('other')}
-                    tooltip={activeMode === 'other' ? "Sonstige Einbauten deaktivieren" : "Sonstige Einbauten platzieren"}
-                    disabled={!!editMeasurementId}
-                    className="bg-white hover:bg-gray-100"
-                  >
-                    <CircleX />
-                    <span>Sonstiges</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+    <SidebarGroup className="mt-2">
+      <SidebarGroupLabel className="text-xs text-muted-foreground mb-1">Dachelemente</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <div className="grid grid-cols-5 gap-1 px-1">
+          {tools.map(({ mode, icon, label }) => (
+            <button
+              key={mode}
+              onClick={() => selectTool(mode)}
+              disabled={!!editMeasurementId}
+              title={activeMode === mode ? `${label} deaktivieren` : label}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-md p-1.5 text-[10px] leading-tight transition-colors
+                ${activeMode === mode
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-background hover:bg-accent border border-border/40'}
+                ${editMeasurementId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              `}
+            >
+              {icon}
+              <span className="truncate w-full text-center">{label}</span>
+            </button>
+          ))}
+        </div>
+      </SidebarGroupContent>
     </SidebarGroup>
   );
 };

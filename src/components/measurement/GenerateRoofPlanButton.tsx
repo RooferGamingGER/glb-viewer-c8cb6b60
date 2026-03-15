@@ -129,10 +129,10 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
         <Button
           variant="outline" 
           size="sm"
-          className="w-full"
+          className="w-full justify-start text-left"
           disabled={measurements.length === 0}
         >
-          <Maximize className="h-4 w-4 mr-1" />
+          <Maximize className="h-4 w-4 mr-2 shrink-0" />
           Dachplan
         </Button>
       </DialogTrigger>
@@ -143,11 +143,6 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
             {areaCount > 0 
               ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
-            {hasPVModules && (
-              <span className="block mt-1 text-green-600 font-medium">
-                {pvModuleCount} PV-Module mit insgesamt {formattedPowerOutput} kWp Leistung werden visualisiert.
-              </span>
-            )}
           </DialogDescription>
         </DialogHeader>
         

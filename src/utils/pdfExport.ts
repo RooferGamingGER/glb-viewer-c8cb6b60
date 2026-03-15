@@ -7,6 +7,42 @@ import {
   calculateNetTotalArea, 
   groupSegmentsByType 
 } from './exportUtils';
+import { renderSolarLayout2D } from './renderPolygon2D';
+import { PVModuleInfo } from '@/types/measurements';
+
+const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'];
+
+/**
+ * Calculates string assignments for PV modules based on electrical system data.
+ */
+const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number, { stringId: string; color: string }> => {
+  const assignments: Record<number, { stringId: string; color: string }> = {};
+  const elec = pvInfo.pvMaterials?.electricalSystem;
+  if (!elec || elec.stringCount === 0) return assignments;
+  
+  const removedSet = new Set(pvInfo.removedModuleIndices || []);
+  const totalModules = pvInfo.moduleCorners?.length || pvInfo.moduleCount || 0;
+  const activeIndices: number[] = [];
+  for (let i = 0; i < totalModules; i++) {
+    if (!removedSet.has(i)) activeIndices.push(i);
+  }
+  
+  const modulesPerStr = elec.modulesPerString;
+  const numStrings = elec.stringCount;
+  
+  for (let s = 0; s < numStrings; s++) {
+    const startIdx = s * modulesPerStr;
+    const endIdx = Math.min(startIdx + modulesPerStr, activeIndices.length);
+    const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+    const stringId = `String S${s + 1}`;
+    
+    for (let m = startIdx; m < endIdx; m++) {
+      assignments[activeIndices[m]] = { stringId, color };
+    }
+  }
+  
+  return assignments;
+};
 
 export interface CoverPageData {
   title: string;
@@ -276,7 +312,7 @@ const createCalculationMethodsSection = (): HTMLElement => {
 const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
   const totalArea = calculateTotalArea(measurements);
   const netTotalArea = calculateNetTotalArea(measurements); // Get net total area
-  const areaMeasurements = measurements.filter(m => m.type === 'area');
+  const areaMeasurements = measurements.filter(m => m.type === 'area' || m.type === 'solar');
   const deductionMeasurements = measurements.filter(m => m.type === 'deductionarea'); // Get deduction areas
   
   const container = document.createElement('div');
@@ -666,7 +702,7 @@ const createTableOfContents = (measurements: Measurement[]): HTMLElement => {
   currentPage++;
   
   // Check for regular areas
-  if (measurements.filter(m => m.type === 'area').length > 0) {
+  if (measurements.filter(m => m.type === 'area' || m.type === 'solar').length > 0) {
     const areaRow = document.createElement('tr');
     const areaLabel = document.createElement('td');
     areaLabel.textContent = 'Flächenmessungen';
@@ -1442,7 +1478,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     currentPage++;
     
     // Pages for individual areas
-    const areaMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'area');
+    const areaMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar');
     if (areaMeasurementsForToc.length > 0) {
       tocEntries.push({ title: `Einzelflächen (${areaMeasurementsForToc.length} Flächen)`, page: currentPage });
       currentPage += areaMeasurementsForToc.length;
@@ -1454,7 +1490,9 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       currentPage++;
     }
     
-    // Berechnungsmethoden
+    // Solarplanung removed from PDF export
+    
+    // Berechnungsmethoden (always last)
     tocEntries.push({ title: 'Anhang: Berechnungsmethoden', page: currentPage });
     
     tocEntries.forEach(entry => {
@@ -1603,7 +1641,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     countLabel.textContent = 'Anzahl Teilflächen';
     countBox.appendChild(countLabel);
     
-    const areaMeasurementsForCount = sortedMeasurements.filter(m => m.type === 'area');
+    const areaMeasurementsForCount = sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar');
     const countValue = document.createElement('div');
     countValue.style.fontSize = '28px';
     countValue.style.fontWeight = 'bold';
@@ -1747,10 +1785,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     container.appendChild(measurementSection);
     
     // PAGE 4+: Individual areas (each on its own page)
-    const areaMeasurements = sortedMeasurements.filter(m => m.type === 'area');
+    const areaMeasurements = sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar');
     const lengthMeasurements = sortedMeasurements.filter(m => m.type === 'length');
     const heightMeasurements = sortedMeasurements.filter(m => m.type === 'height');
-    const otherMeasurements = sortedMeasurements.filter(m => !['area', 'length', 'height'].includes(m.type));
+    const otherMeasurements = sortedMeasurements.filter(m => !['area', 'solar', 'length', 'height'].includes(m.type));
     
     if (areaMeasurements.length > 0) {
       // Each area gets its own page for better visibility
@@ -2170,7 +2208,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     }
     
     if (areaMeasurements.length > 0) {
-      const areaSummary = createTotalAreaSummary(areaMeasurements);
+      const areaSummary = createTotalAreaSummary(sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar' || m.type === 'deductionarea'));
       container.appendChild(areaSummary);
       
       const hasSegments = areaMeasurements.some(
@@ -2183,7 +2221,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     }
     
-    // Add calculation methods appendix
+    // ============ SOLARPLANUNG PAGE(S) - before appendix ============
+    // Solarplanung pages removed from PDF export
+
+    // Add calculation methods appendix (always last)
     const calculationMethodsSection = createCalculationMethodsSection();
     container.appendChild(calculationMethodsSection);
     

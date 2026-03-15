@@ -1,14 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Ruler, 
   ArrowUpDown, 
   Square,
-  MinusSquare, // Added new icon for deduction area
+  MinusSquare,
   Trash2,
   Magnet,
   Eye,
-  EyeOff
+  EyeOff,
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { 
@@ -52,7 +52,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
 }) => {
   // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
-  
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
     
@@ -109,6 +108,7 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
                 Punktfang {snapEnabled ? 'Ein' : 'Aus'}
               </Toggle>
+
               
               {/* Control buttons at the top - Added Eye/EyeOff toggle button */}
               {measurements && measurements.length > 0 && toggleAllLabelsVisibility && (

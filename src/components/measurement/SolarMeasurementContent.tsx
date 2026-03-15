@@ -1,79 +1,54 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   formatPVModuleInfo, 
   calculatePVModulePlacement, 
   calculatePVPower, 
   calculateAnnualYield,
-  calculateRoofOrientation,
   calculateAnnualYieldWithOrientation,
-  updatePVModuleInfoWithOrientation
+  updatePVModuleInfoWithOrientation,
+  extractExclusionZones,
+  generatePVModuleGrid
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
-import PVMaterialsList from './PVMaterialsList';
-import { useMeasurements } from '@/hooks/useMeasurements';
-import { Zap, ListTodo, PackageIcon, Loader2, Compass } from 'lucide-react';
+import { Zap, ListTodo, Compass, Move, RotateCcw, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
-import PVPlanningDisclaimer from '../pvplanning/PVPlanningDisclaimer';
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
   updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
+  allMeasurements?: Measurement[];
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
-  updateMeasurement 
+  updateMeasurement,
+  allMeasurements = []
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
-  const { calculatePVMaterialsForMeasurement, calculatingMaterials } = useMeasurements();
-  const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
-  const [pendingInverterDistance, setPendingInverterDistance] = useState(10);
-  
-  useEffect(() => {
-    if (measurement.pvModuleInfo?.pvMaterials && activeTab === "overview") {
-      setActiveTab("materials");
-    }
-  }, [measurement.pvModuleInfo?.pvMaterials, activeTab]);
+  const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
   
   useEffect(() => {
     if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
       if (measurement.pvModuleInfo.roofAzimuth === undefined) {
-        console.log("Detecting roof orientation from 3D points");
-        
         const updatedPVInfo = updatePVModuleInfoWithOrientation(
           measurement.pvModuleInfo,
           measurement.points
         );
-        
-        updateMeasurement(measurement.id, {
-          pvModuleInfo: updatedPVInfo
-        });
-        
-        toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection}`);
+        updateMeasurement(measurement.id, { pvModuleInfo: updatedPVInfo });
+        toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection} (${Math.round(updatedPVInfo.roofAzimuth || 0)}°)`);
       }
     }
   }, [measurement.id, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
   
   useEffect(() => {
-    console.log("SolarMeasurementContent: Measurement updated", {
-      id: measurement.id,
-      hasPvModuleInfo: !!measurement.pvModuleInfo,
-      hasPvMaterials: !!measurement.pvModuleInfo?.pvMaterials,
-      pvModuleSpec: measurement.pvModuleInfo?.pvModuleSpec ? 
-        `${measurement.pvModuleInfo.pvModuleSpec.name} (${measurement.pvModuleInfo.pvModuleSpec.power}W)` : 'None',
-      orientation: measurement.pvModuleInfo?.roofDirection || 'Unknown',
-      inclination: measurement.pvModuleInfo?.roofInclination || 'Unknown',
-    });
-  }, [measurement]);
-  
-  useEffect(() => {
     if (measurement.type === 'solar' && !measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
-      const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+      const pvModuleInfo = calculatePVModulePlacement(measurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
       if (pvModuleInfo.moduleCount > 0) {
         updateMeasurement(measurement.id, { pvModuleInfo });
         toast.success(`PV-Module automatisch berechnet: ${pvModuleInfo.moduleCount} Module`);
@@ -83,70 +58,40 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   
   const handleModuleSelect = (moduleSpec: any) => {
     if (!measurement.pvModuleInfo) return;
-    
-    console.log("Module selected:", moduleSpec);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      pvModuleSpec: moduleSpec
-    };
-    
     updateMeasurement(measurement.id, {
-      pvModuleInfo: updatedPVInfo
+      pvModuleInfo: { ...measurement.pvModuleInfo, pvModuleSpec: moduleSpec }
     });
   };
   
   const handleDimensionsChange = (dimensions: {width: number, length: number}) => {
     if (!measurement.pvModuleInfo) return;
-    
-    console.log("Dimensions changed:", dimensions);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      manualDimensions: true,
-      userDefinedWidth: dimensions.width,
-      userDefinedLength: dimensions.length
-    };
-    
-    const recalculatedPVInfo = calculatePVModulePlacement(
+    const recalculated = calculatePVModulePlacement(
       measurement.points,
       measurement.pvModuleInfo.moduleWidth,
       measurement.pvModuleInfo.moduleHeight,
       measurement.pvModuleInfo.edgeDistance,
       measurement.pvModuleInfo.moduleSpacing,
-      dimensions
+      dimensions,
+      undefined, true, 'auto', exclusionZones
     );
-    
-    const finalPVInfo = {
-      ...recalculatedPVInfo,
-      manualDimensions: true,
-      userDefinedWidth: dimensions.width,
-      userDefinedLength: dimensions.length,
-      pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
-      pvMaterials: measurement.pvModuleInfo.pvMaterials,
-      roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
-      roofDirection: measurement.pvModuleInfo.roofDirection,
-      roofInclination: measurement.pvModuleInfo.roofInclination,
-      yieldFactor: measurement.pvModuleInfo.yieldFactor
-    };
-    
     updateMeasurement(measurement.id, {
-      pvModuleInfo: finalPVInfo
+      pvModuleInfo: {
+        ...recalculated,
+        manualDimensions: true,
+        userDefinedWidth: dimensions.width,
+        userDefinedLength: dimensions.length,
+        pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculated.pvModuleSpec,
+        roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
+        roofDirection: measurement.pvModuleInfo.roofDirection,
+        roofInclination: measurement.pvModuleInfo.roofInclination,
+        yieldFactor: measurement.pvModuleInfo.yieldFactor
+      }
     });
   };
   
   const handleSpacingChange = (spacing: {edgeDistance: number, moduleSpacing: number}) => {
     if (!measurement.pvModuleInfo) return;
-    
-    console.log("Spacing changed:", spacing);
-    
-    const updatedPVInfo = {
-      ...measurement.pvModuleInfo,
-      edgeDistance: spacing.edgeDistance,
-      moduleSpacing: spacing.moduleSpacing
-    };
-    
-    const recalculatedPVInfo = calculatePVModulePlacement(
+    const recalculated = calculatePVModulePlacement(
       measurement.points,
       measurement.pvModuleInfo.moduleWidth,
       measurement.pvModuleInfo.moduleHeight,
@@ -155,79 +100,44 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       measurement.pvModuleInfo.manualDimensions ? {
         width: measurement.pvModuleInfo.userDefinedWidth || 0,
         length: measurement.pvModuleInfo.userDefinedLength || 0
-      } : undefined
+      } : undefined,
+      undefined, true, 'auto', exclusionZones
     );
-    
-    const finalPVInfo = {
-      ...recalculatedPVInfo,
-      edgeDistance: spacing.edgeDistance,
-      moduleSpacing: spacing.moduleSpacing,
-      manualDimensions: measurement.pvModuleInfo.manualDimensions,
-      userDefinedWidth: measurement.pvModuleInfo.userDefinedWidth,
-      userDefinedLength: measurement.pvModuleInfo.userDefinedLength,
-      pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculatedPVInfo.pvModuleSpec,
-      pvMaterials: measurement.pvModuleInfo.pvMaterials,
-      roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
-      roofDirection: measurement.pvModuleInfo.roofDirection,
-      roofInclination: measurement.pvModuleInfo.roofInclination,
-      yieldFactor: measurement.pvModuleInfo.yieldFactor
-    };
-    
     updateMeasurement(measurement.id, {
-      pvModuleInfo: finalPVInfo
+      pvModuleInfo: {
+        ...recalculated,
+        edgeDistance: spacing.edgeDistance,
+        moduleSpacing: spacing.moduleSpacing,
+        manualDimensions: measurement.pvModuleInfo.manualDimensions,
+        userDefinedWidth: measurement.pvModuleInfo.userDefinedWidth,
+        userDefinedLength: measurement.pvModuleInfo.userDefinedLength,
+        pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculated.pvModuleSpec,
+        roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
+        roofDirection: measurement.pvModuleInfo.roofDirection,
+        roofInclination: measurement.pvModuleInfo.roofInclination,
+        yieldFactor: measurement.pvModuleInfo.yieldFactor
+      }
     });
   };
   
-  const handleCalculateMaterials = async (inverterDistance: number = 10) => {
-    setPendingInverterDistance(inverterDistance);
-    setShowPVDisclaimer(true);
-  };
-  
-  const handlePVDisclaimerConfirm = () => {
-    setShowPVDisclaimer(false);
-    
-    if (!measurement.pvModuleInfo) {
-      toast.error('Keine PV-Modul-Informationen verfügbar');
-      return;
-    }
-    
-    if (!measurement.pvModuleInfo.pvModuleSpec) {
-      toast.error('Bitte wählen Sie ein PV-Modul aus');
-      return;
-    }
-    
-    console.log("Starting materials calculation with:", {
-      measurementId: measurement.id,
-      moduleSpec: measurement.pvModuleInfo.pvModuleSpec,
-      inverterDistance: pendingInverterDistance
-    });
-    
-    calculatePVMaterialsForMeasurement(measurement.id, pendingInverterDistance);
-    
-    setActiveTab("materials");
-  };
-  
-  const handlePVDisclaimerCancel = () => {
-    setShowPVDisclaimer(false);
-  };
   
   if (!measurement.pvModuleInfo) {
     return (
-      <div className="p-4">
-        <p className="text-sm text-muted-foreground mb-3">
-          Keine PV-Modul-Informationen verfügbar. Bitte neu berechnen.
+      <div className="p-3">
+        <p className="text-xs text-muted-foreground mb-2">
+          Keine PV-Modul-Informationen verfügbar.
         </p>
         <Button 
           variant="outline" 
           size="sm"
-          className="w-full"
+          className="w-full h-7 text-xs"
           onClick={() => {
-            const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+            const pvModuleInfo = calculatePVModulePlacement(measurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
             updateMeasurement(measurement.id, { pvModuleInfo });
             toast.success(`PV-Module berechnet: ${pvModuleInfo.moduleCount} Module`);
           }}
         >
-          <Zap className="h-4 w-4 mr-2" />
+          <Zap className="h-3 w-3 mr-1" />
           PV-Module berechnen
         </Button>
       </div>
@@ -249,19 +159,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
         ),
         measurement.pvModuleInfo.orientation === 'portrait' ? 'hochformat' : 'querformat'
       );
-  
-  // Check if materials list has already been calculated
-  const materialsCalculated = !!measurement.pvModuleInfo.pvMaterials;
 
   return (
-    <div className="pt-2">
-      <PVPlanningDisclaimer 
-        open={showPVDisclaimer}
-        onConfirm={handlePVDisclaimerConfirm}
-        onCancel={handlePVDisclaimerCancel}
-      />
-      
-      <div className="flex items-center justify-between mb-2 px-2">
+    <div className="pt-1">
+      <div className="flex items-center justify-between mb-1 px-2">
         <Label className="text-xs">
           <span className="text-muted-foreground">Layout:</span>{' '}
           {formatPVModuleInfo(measurement.pvModuleInfo)}
@@ -272,25 +173,23 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           currentModule={measurement.pvModuleInfo.pvModuleSpec}
           pvModuleInfo={measurement.pvModuleInfo}
           onDimensionsChange={handleDimensionsChange}
-          onSpacingChange={handleSpacingChange}
-          onCalculateMaterials={handleCalculateMaterials}
+          onSpacingChange={handleSpacingChange} 
+          onCalculateMaterials={() => {}}
           onModuleSizeChange={({ moduleWidth, moduleHeight }) => {
             if (!measurement.pvModuleInfo) return;
             const recalculated = calculatePVModulePlacement(
-              measurement.points,
-              moduleWidth,
-              moduleHeight,
+              measurement.points, moduleWidth, moduleHeight,
               measurement.pvModuleInfo.edgeDistance,
               measurement.pvModuleInfo.moduleSpacing,
               measurement.pvModuleInfo.manualDimensions ? {
                 width: measurement.pvModuleInfo.userDefinedWidth || 0,
                 length: measurement.pvModuleInfo.userDefinedLength || 0
-              } : undefined
+              } : undefined,
+              undefined, true, 'auto', exclusionZones
             );
             updateMeasurement(measurement.id, { pvModuleInfo: {
               ...recalculated,
               pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculated.pvModuleSpec,
-              pvMaterials: measurement.pvModuleInfo.pvMaterials,
               roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
               roofDirection: measurement.pvModuleInfo.roofDirection,
               roofInclination: measurement.pvModuleInfo.roofInclination,
@@ -310,26 +209,25 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 width: measurement.pvModuleInfo.userDefinedWidth || 0,
                 length: measurement.pvModuleInfo.userDefinedLength || 0
               } : undefined,
-              undefined,
-              true,
-              (forced as any) || 'auto'
+              undefined, true,
+              (forced as any) || 'auto',
+              exclusionZones
             );
             updateMeasurement(measurement.id, { pvModuleInfo: {
               ...recalculated,
               pvModuleSpec: measurement.pvModuleInfo.pvModuleSpec || recalculated.pvModuleSpec,
-              pvMaterials: measurement.pvModuleInfo.pvMaterials,
               roofAzimuth: measurement.pvModuleInfo.roofAzimuth,
               roofDirection: measurement.pvModuleInfo.roofDirection,
               roofInclination: measurement.pvModuleInfo.roofInclination,
               yieldFactor: measurement.pvModuleInfo.yieldFactor
             }});
           }}
-          disabled={materialsCalculated}
+          disabled={false}
         />
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-2">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">
             <Zap className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Übersicht</span>
@@ -337,13 +235,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           <TabsTrigger value="details">
             <ListTodo className="h-3.5 w-3.5 mr-1" />
             <span className="text-xs">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="materials">
-            <PackageIcon className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Material</span>
-            {measurement.pvModuleInfo.pvMaterials && (
-              <span className="ml-1 w-2 h-2 bg-green-500 rounded-full"></span>
-            )}
           </TabsTrigger>
         </TabsList>
         
@@ -354,7 +245,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               <div>{measurement.pvModuleInfo.moduleWidth.toFixed(2)} × {measurement.pvModuleInfo.moduleHeight.toFixed(2)} m</div>
               
               <div className="text-muted-foreground">Anzahl Module:</div>
-              <div>{measurement.pvModuleInfo.moduleCount}</div>
+              <div className="font-medium">{measurement.pvModuleInfo.moduleCount}</div>
               
               <div className="text-muted-foreground">Raster:</div>
               <div>{measurement.pvModuleInfo.columns || 0} × {measurement.pvModuleInfo.rows || 0}</div>
@@ -389,33 +280,98 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               </div>
               
               <div className="text-muted-foreground">Jahresertrag:</div>
-              <div>
+              <div className="font-medium">
                 {annualYield.toFixed(0)} kWh/Jahr
               </div>
             </div>
             
-            <div className="mt-2 pt-2 border-t text-xs">
-              {!materialsCalculated && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full h-7"
-                  onClick={() => handleCalculateMaterials()}
-                  disabled={calculatingMaterials}
+            {/* Grid Position & Rotation Controls */}
+            <div className="mt-2 pt-2 border-t space-y-2">
+              <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Move className="h-3 w-3" /> Verschiebung & Drehung
+              </Label>
+              
+              {/* Offset U (horizontal) */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-6">↔</span>
+                <Slider
+                  min={-2}
+                  max={2}
+                  step={0.05}
+                  value={[measurement.pvModuleInfo.gridOffsetU || 0]}
+                  onValueChange={([val]) => {
+                    const updated = { ...measurement.pvModuleInfo!, gridOffsetU: val };
+                    const grid = generatePVModuleGrid(updated, 0);
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.gridOffsetU || 0).toFixed(2)}m</span>
+              </div>
+              
+              {/* Offset W (vertical) */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-6">↕</span>
+                <Slider
+                  min={-2}
+                  max={2}
+                  step={0.05}
+                  value={[measurement.pvModuleInfo.gridOffsetW || 0]}
+                  onValueChange={([val]) => {
+                    const updated = { ...measurement.pvModuleInfo!, gridOffsetW: val };
+                    const grid = generatePVModuleGrid(updated, 0);
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.gridOffsetW || 0).toFixed(2)}m</span>
+              </div>
+              
+              {/* Rotation */}
+              <div className="flex items-center gap-2">
+                <RotateCw className="h-3 w-3 text-muted-foreground shrink-0" />
+                <Slider
+                  min={-45}
+                  max={45}
+                  step={1}
+                  value={[measurement.pvModuleInfo.gridRotation || 0]}
+                  onValueChange={([val]) => {
+                    const updated = { ...measurement.pvModuleInfo!, gridRotation: val };
+                    const grid = generatePVModuleGrid(updated, 0);
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.gridRotation || 0)}°</span>
+              </div>
+              
+              {/* Reset button */}
+              {(measurement.pvModuleInfo.gridOffsetU || measurement.pvModuleInfo.gridOffsetW || measurement.pvModuleInfo.gridRotation) ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-6 text-[10px]"
+                  onClick={() => {
+                    const updated = { ...measurement.pvModuleInfo!, gridOffsetU: 0, gridOffsetW: 0, gridRotation: 0 };
+                    const grid = generatePVModuleGrid(updated, 0);
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                    });
+                  }}
                 >
-                  {calculatingMaterials ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      Berechnung läuft...
-                    </>
-                  ) : (
-                    <>
-                      <PackageIcon className="h-3 w-3 mr-1" />
-                      Materialliste berechnen
-                    </>
-                  )}
+                  <RotateCcw className="h-3 w-3 mr-1" /> Zurücksetzen
                 </Button>
-              )}
+              ) : null}
+            </div>
+            
+            <div className="mt-2 pt-2 border-t text-[10px] text-muted-foreground">
+              💡 Klicken Sie auf ein Modul im 3D-Modell um es zu entfernen.
             </div>
           </div>
         </TabsContent>
@@ -470,35 +426,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               </div>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="materials" className="pt-2">
-          {calculatingMaterials ? (
-            <div className="p-4 text-center">
-              <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
-              <p className="text-sm">Berechne Materialliste...</p>
-            </div>
-          ) : measurement.pvModuleInfo.pvMaterials ? (
-            <PVMaterialsList 
-              materials={measurement.pvModuleInfo.pvMaterials}
-              onCalculate={null}
-            />
-          ) : (
-            <div className="p-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                Keine Materialliste vorhanden. Bitte berechnen Sie die Materialliste.
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleCalculateMaterials()}
-                disabled={calculatingMaterials}
-              >
-                <PackageIcon className="h-4 w-4 mr-1" />
-                Materialliste berechnen
-              </Button>
-            </div>
-          )}
         </TabsContent>
       </Tabs>
     </div>

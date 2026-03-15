@@ -27,7 +27,8 @@ import {
   calculatePVModulePlacement,
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
-  extractRoofEdgeMeasurements
+  extractRoofEdgeMeasurements,
+  extractExclusionZones
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -87,7 +88,7 @@ export const useMeasurementCore = () => {
           };
         } else if (m.type === 'pvmodule') {
           const area = calculateArea(newPoints);
-          const moduleInfo = calculatePVModulePlacement(newPoints);
+          const moduleInfo = calculatePVModulePlacement(newPoints, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', extractExclusionZones(measurements));
           const moduleSpec = PV_MODULE_TEMPLATES[0];
           
           const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
@@ -145,6 +146,44 @@ export const useMeasurementCore = () => {
     
     return () => {
       document.removeEventListener('areaPointAdded', handleAreaPointAdded as EventListener);
+    };
+  }, []);
+
+  // Handle PV module removal by click
+  useEffect(() => {
+    const handlePVModuleRemoved = (event: CustomEvent) => {
+      const { measurementId, moduleIndex } = event.detail;
+      
+      setMeasurements(prev => prev.map(m => {
+        if (m.id === measurementId && m.pvModuleInfo) {
+          // Track removed indices instead of filtering arrays (preserves index mapping)
+          const removedIndices = [...(m.pvModuleInfo.removedModuleIndices || [])];
+          if (!removedIndices.includes(moduleIndex)) {
+            removedIndices.push(moduleIndex);
+          }
+          
+          const newCount = Math.max(0, m.pvModuleInfo.moduleCount - 1);
+          const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
+          const area = m.pvModuleInfo.actualArea || 1;
+          
+          return {
+            ...m,
+            pvModuleInfo: {
+              ...m.pvModuleInfo,
+              moduleCount: newCount,
+              coveragePercent: Math.min((moduleArea / area) * 100, 100),
+              removedModuleIndices: removedIndices,
+            }
+          };
+        }
+        return m;
+      }));
+    };
+    
+    document.addEventListener('pvModuleRemoved', handlePVModuleRemoved as EventListener);
+    
+    return () => {
+      document.removeEventListener('pvModuleRemoved', handlePVModuleRemoved as EventListener);
     };
   }, []);
 
@@ -238,7 +277,10 @@ export const useMeasurementCore = () => {
       DEFAULT_EDGE_DISTANCE,
       DEFAULT_MODULE_SPACING,
       undefined,
-      roofEdgeInfo
+      roofEdgeInfo,
+      true,
+      'auto',
+      extractExclusionZones(measurements)
     );
     const moduleSpec = PV_MODULE_TEMPLATES[0];
     
@@ -295,7 +337,10 @@ export const useMeasurementCore = () => {
       DEFAULT_EDGE_DISTANCE,
       DEFAULT_MODULE_SPACING,
       userDimensions,
-      roofEdgeInfo
+      roofEdgeInfo,
+      true,
+      'auto',
+      extractExclusionZones(measurements)
     );
     
     const moduleSpec = PV_MODULE_TEMPLATES[0];
@@ -752,7 +797,10 @@ export const useMeasurementCore = () => {
         DEFAULT_EDGE_DISTANCE,
         DEFAULT_MODULE_SPACING,
         undefined,
-        extractRoofEdgeMeasurements(measurements)
+        extractRoofEdgeMeasurements(measurements),
+        true,
+        'auto',
+        extractExclusionZones(measurements)
       );
       const moduleSpec = PV_MODULE_TEMPLATES[0];
       
