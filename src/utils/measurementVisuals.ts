@@ -875,7 +875,7 @@ export function renderMeasurements(
     }
     
     // Hohe Render-Ordnung sicherstellen
-    child.renderOrder = 100;
+    child.renderOrder = 20;
   };
   
   // Haupt-Labels aktualisieren
