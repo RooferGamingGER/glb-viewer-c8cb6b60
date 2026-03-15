@@ -143,14 +143,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     return () => { cancelled = true; };
   }, [enabled, scene, measurements.length, importMeasurements]);
 
-  // Handle label visibility based on edit mode
+  // Handle label visibility based on edit/draw mode
   React.useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
     const isEditing = editMeasurementId !== null || movingPointInfo !== null || editingSegmentId !== null;
+    const isDrawingMode = activeMode !== 'none';
+
     const processLabel = (label: THREE.Object3D) => {
       if (!label.userData) return;
       if (label.userData.isPreview) { label.visible = true; return; }
-      if (isEditing) { label.visible = false; return; }
+      if (isEditing || isDrawingMode) { label.visible = false; return; }
+
       const measurementId = label.userData.measurementId;
       if (measurementId) {
         const measurement = measurements.find(m => m.id === measurementId);
@@ -159,9 +162,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         label.visible = true;
       }
     };
+
     labelsRef.current.children.forEach(label => processLabel(label));
     segmentLabelsRef.current.children.forEach(label => processLabel(label));
-  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
+  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible, activeMode]);
 
   const isDrawing = activeMode !== 'none';
 
