@@ -1,64 +1,59 @@
 
 
-# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
+# Fixes: Messungen umbenennen, PV-Orientierung, Solar-Workflow
 
-## Zusammenfassung
+## 1. Messungen umbenennen — UI-Problem
 
-Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
+Die Rename-Logik existiert bereits im Code (`startLabelEdit`, `saveLabelEdit`), aber:
+- Der Pencil-Button hat `opacity-0 group-hover:opacity-100` — auf Touch/Tablet unsichtbar
+- Double-Click ist nicht intuitiv ohne visuellen Hinweis
 
-## Aenderungen
+**Fix in `MeasurementToolControls.tsx`:**
+- Pencil-Icon immer sichtbar machen (nicht nur on hover)
+- Alternativ: Single-Click auf den Label-Text startet die Bearbeitung
+- Segment-Labels (Teilstrecken bei Flächen) ebenfalls editierbar machen, damit man einzelne Kanten als "First", "Traufe", "Ortgang" benennen kann
 
-### Datei 1: `src/hooks/use-mobile.tsx`
+## 2. PV-Orientierung vertauscht (portrait/landscape)
 
-**Was aendert sich:**
-- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
-- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
-- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
+**Bug in `pvCalculations.ts` Zeile 348-350:**
+```typescript
+// AKTUELL (falsch):
+const mw = portrait ? moduleHeight : moduleWidth;  // 1.722m horizontal = Querformat!
+const mh = portrait ? moduleWidth : moduleHeight;   // 1.134m vertikal
 
-**Neue Logik `isTouchDevice()`:**
-1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
-2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
-3. `matchMedia('(hover: none)')` -- kein Hover moeglich
-4. User-Agent Regex (android, iphone, ipad, etc.)
-
-Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
-
-**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
-
-### Datei 2: `src/hooks/useScreenOrientation.tsx`
-
-**Was aendert sich:**
-- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
-- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
-- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
-- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
-
-**Neue Logik:**
-```text
-isMobileOrTablet = useIsMobile()  // = isTouchDevice()
-isTablet = isMobileOrTablet && Math.min(width, height) > 600
-isPhone  = isMobileOrTablet && !isTablet
+// KORREKT:
+const mw = portrait ? moduleWidth : moduleHeight;   // 1.134m horizontal = Hochformat ✓
+const mh = portrait ? moduleHeight : moduleWidth;    // 1.722m vertikal
 ```
 
-### Keine Aenderungen noetig in:
-- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
-- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
-- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
-- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
+Portrait (Hochformat) = lange Seite (1.722m) vertikal, kurze Seite (1.134m) horizontal.
+Aktuell ist es invertiert: "portrait" legt die lange Seite horizontal — das ist Querformat.
 
-## Erwartetes Verhalten nach der Aenderung
+Gleicher Fix in `generatePVModuleGrid()` Zeile 473-474.
 
-| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
-|---|---|---|---|---|---|
-| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
-| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
+## 3. Solar-Workflow: Bestehende Fläche für PV nutzen + Sperrflächen
 
-## Technische Details
+Statt eine neue "Solarfläche" zu zeichnen, soll der Nutzer:
+1. Eine bereits vermessene Fläche (Typ `area`) auswählen
+2. Auf "PV-Planung starten" klicken
+3. Das System prüft automatisch ob Dachelemente (Fenster, Kamine) innerhalb der Fläche liegen
+4. Diese werden als Sperrflächen (No-Go-Zonen) markiert
+5. Module werden nur ausserhalb der Sperrflächen platziert
 
-- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
-- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
-- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
-- Keine neuen Dependencies noetig
+**Änderungen:**
+
+**`SolarToolbar.tsx`:** Statt "Solarfläche zeichnen" Button, einen "PV-Planung für Fläche" Button der ein Dropdown zeigt mit allen vorhandenen `area`-Messungen. Nach Auswahl wird die Fläche in eine `solar`-Messung konvertiert (oder eine Kopie erstellt).
+
+**`pvCalculations.ts`:** Neue Funktion `findExclusionZones(solarPoints, allMeasurements)` die prüft ob `deductionarea`, `skylight`, `chimney` etc. Messungen geometrisch innerhalb der Solarfläche liegen. Diese werden als Sperrflächen-Polygone an `calculatePVModulePlacement` übergeben.
+
+**`calculatePVModulePlacement`:** Neuer Parameter `exclusionZones: Point[][]`. Beim Polygon-Clipping-Check wird zusätzlich geprüft ob ein Modul mit einer Sperrfläche kollidiert (`isModuleInsidePolygon` gegen jede Sperrfläche). Falls ja, wird das Modul übersprungen.
+
+## Dateien
+
+| Datei | Änderung |
+|---|---|
+| `src/components/measurement/MeasurementToolControls.tsx` | Rename-Button immer sichtbar, Segment-Labels editierbar |
+| `src/utils/pvCalculations.ts` | Portrait/Landscape-Mapping korrigieren, Exclusion-Zones-Support |
+| `src/components/measurement/SolarToolbar.tsx` | "PV für bestehende Fläche" statt "Solarfläche zeichnen" |
+| `src/components/measurement/SolarMeasurementContent.tsx` | Orientierungsanzeige an korrigierte Logik anpassen |
 
