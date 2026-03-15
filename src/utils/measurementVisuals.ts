@@ -210,13 +210,10 @@ export function renderCurrentPoints(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: pointColor,
         linewidth: 3,
-        depthTest: true,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
+        depthTest: false
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.renderOrder = 10;
+      line.renderOrder = 999;
       linesRef.add(line);
     }
   });
