@@ -1024,12 +1024,15 @@ function renderHeightMeasurement(
     color: COLORS.CYAN,
     linewidth: 3,
     depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
     dashSize: 0.1,
     gapSize: 0.05,
   });
   const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
   horizontalLine.computeLineDistances();
-  horizontalLine.renderOrder = 2;
+  horizontalLine.renderOrder = 10;
   measurementsRef.add(horizontalLine);
   
   // Add small spheres at all points
