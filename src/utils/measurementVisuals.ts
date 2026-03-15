@@ -1550,24 +1550,49 @@ function renderPVModuleGrid(
   const v = { ...vDefaults, ...(measurement.pvModuleInfo?.moduleVisuals || {}) } as any;
   
   // Create materials for different elements
-  const moduleMaterial = new THREE.MeshBasicMaterial({
-    color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
-    opacity: v.panelOpacity ?? 0.9,
-    transparent: true,
-    side: THREE.FrontSide,
-    depthTest: false,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4
-  });
+  // Load module texture
+  const textureLoader = new THREE.TextureLoader();
+  let moduleTexture: THREE.Texture | null = null;
+  try {
+    // Use dynamic import path for the module texture
+    const texturePath = new URL('@/assets/moduli_standard.png', import.meta.url).href;
+    moduleTexture = textureLoader.load(texturePath);
+    moduleTexture.colorSpace = THREE.SRGBColorSpace;
+    moduleTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    moduleTexture.magFilter = THREE.LinearFilter;
+  } catch (e) {
+    console.warn('Could not load PV module texture, falling back to color', e);
+  }
+
+  const moduleMaterial = moduleTexture
+    ? new THREE.MeshBasicMaterial({
+        map: moduleTexture,
+        transparent: false,
+        side: THREE.FrontSide,
+        depthTest: true,
+        depthWrite: true,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4
+      })
+    : new THREE.MeshBasicMaterial({
+        color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
+        opacity: v.panelOpacity ?? 0.9,
+        transparent: true,
+        side: THREE.FrontSide,
+        depthTest: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4
+      });
   
   const frameMaterial = new THREE.LineBasicMaterial({
     color: (v.frameColor ?? 0xbfc7cf) as any,
     linewidth: v.frameLineWidth ?? 2,
     opacity: v.frameOpacity ?? 1,
     transparent: (v.frameOpacity ?? 1) < 1,
-    depthTest: false
+    depthTest: true
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
@@ -1575,7 +1600,7 @@ function renderPVModuleGrid(
     linewidth: 3,
     opacity: 0.8,
     transparent: true,
-    depthTest: false
+    depthTest: true
   });
   
   const boundaryMaterial = new THREE.LineDashedMaterial({
@@ -1585,7 +1610,7 @@ function renderPVModuleGrid(
     linewidth: 2,
     opacity: 0.8,
     transparent: true,
-    depthTest: false
+    depthTest: true
   });
   
   const availableAreaMaterial = new THREE.LineDashedMaterial({
@@ -1595,7 +1620,7 @@ function renderPVModuleGrid(
     linewidth: 2,
     opacity: 0.8,
     transparent: true,
-    depthTest: false
+    depthTest: true
   });
   
   // Subtle cell grid lines material
@@ -1604,7 +1629,7 @@ function renderPVModuleGrid(
     linewidth: v.cellLineWidth ?? 1,
     opacity: v.cellLineOpacity ?? 0.25,
     transparent: true,
-    depthTest: false
+    depthTest: true
   });
   
   // Create module meshes - this is where we're fixing the floating issue
