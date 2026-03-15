@@ -11,7 +11,6 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
-import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
   SidebarGroupLabel,
