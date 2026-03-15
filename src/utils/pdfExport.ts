@@ -1442,7 +1442,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     currentPage++;
     
     // Pages for individual areas
-    const areaMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'area');
+    const areaMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar');
     if (areaMeasurementsForToc.length > 0) {
       tocEntries.push({ title: `Einzelflächen (${areaMeasurementsForToc.length} Flächen)`, page: currentPage });
       currentPage += areaMeasurementsForToc.length;
