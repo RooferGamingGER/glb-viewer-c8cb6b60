@@ -49,9 +49,17 @@ export const useMeasurementEditing = (
 
   // Update measurement metadata
   const updateMeasurement = useCallback((id: string, data: Partial<Measurement>) => {
-    setMeasurements(prev => prev.map(m => 
-      m.id === id ? { ...m, ...data } : m
-    ));
+    setMeasurements(prev => prev.map(m => {
+      if (m.id !== id) return m;
+      const updated = { ...m, ...data };
+      // Remove keys explicitly set to undefined (e.g. when clearing PV data)
+      for (const key of Object.keys(data) as (keyof Measurement)[]) {
+        if (data[key] === undefined) {
+          delete (updated as any)[key];
+        }
+      }
+      return updated;
+    }));
   }, [setMeasurements]);
 
   // Update a specific segment in a measurement
