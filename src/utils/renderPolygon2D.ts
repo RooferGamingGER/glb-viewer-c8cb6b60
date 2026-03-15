@@ -1,4 +1,4 @@
-import { Measurement, Point, Point2D } from '../types/measurements';
+import { Measurement, Point, Point2D, PVModuleInfo } from '../types/measurements';
 import * as THREE from 'three';
 
 /**
