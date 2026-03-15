@@ -393,7 +393,7 @@ export function renderEditPoints(
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    sphere.renderOrder = 999;
+    sphere.renderOrder = 10;
     
     // Add user data to the sphere for identification when clicking
     const userData = {
