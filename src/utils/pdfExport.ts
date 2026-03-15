@@ -7,6 +7,7 @@ import {
   calculateNetTotalArea, 
   groupSegmentsByType 
 } from './exportUtils';
+import { renderSolarLayout2D } from './renderPolygon2D';
 
 export interface CoverPageData {
   title: string;
