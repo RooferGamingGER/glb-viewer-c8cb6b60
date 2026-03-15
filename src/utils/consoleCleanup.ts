@@ -1,13 +1,12 @@
 /**
  * Console cleanup utility for production builds
- * This file removes all console statements in production
  */
 
-// Override console methods in production
-if (process.env.NODE_ENV === 'production') {
+const isProd = import.meta.env.PROD;
+const isDev = import.meta.env.DEV;
+
+if (isProd) {
   const noop = () => {};
-  
-  // Completely silence all console output in production
   console.log = noop;
   console.warn = noop;
   console.error = noop;
@@ -25,21 +24,19 @@ if (process.env.NODE_ENV === 'production') {
   console.timeEnd = noop;
   console.timeLog = noop;
   console.assert = noop;
-  console.profile = noop;
-  console.profileEnd = noop;
+  (console as any).profile = noop;
+  (console as any).profileEnd = noop;
   console.timeStamp = noop;
   console.dirxml = noop;
   console.dir = noop;
 }
 
-// Export development-only logging functions
-export const devLog = process.env.NODE_ENV === 'development' ? console.log : () => {};
-export const devWarn = process.env.NODE_ENV === 'development' ? console.warn : () => {};
-export const devError = process.env.NODE_ENV === 'development' ? console.error : () => {};
+export const devLog = isDev ? console.log : () => {};
+export const devWarn = isDev ? console.warn : () => {};
+export const devError = isDev ? console.error : () => {};
 
-// Performance logging that only runs in development
 export const perfLog = (label: string, fn: () => void) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     console.time(label);
     fn();
     console.timeEnd(label);
@@ -48,9 +45,8 @@ export const perfLog = (label: string, fn: () => void) => {
   }
 };
 
-// Memory usage logging
 export const memLog = (label: string) => {
-  if (process.env.NODE_ENV === 'development' && 'memory' in performance) {
+  if (isDev && 'memory' in performance) {
     const memory = (performance as any).memory;
     console.log(`${label} - Memory: ${formatBytes(memory.usedJSHeapSize)} / ${formatBytes(memory.jsHeapSizeLimit)}`);
   }
