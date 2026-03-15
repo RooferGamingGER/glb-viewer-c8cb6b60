@@ -485,7 +485,10 @@ function createRoofElementMarker(
   const material = new THREE.MeshLambertMaterial({
     color: color,
     transparent: true,
-    opacity: 0.7
+    opacity: 0.7,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
   });
   
   // Create mesh and position it
