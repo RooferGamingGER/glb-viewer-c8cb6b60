@@ -453,7 +453,7 @@ export const generatePVModuleGrid = (
   const roofPoints = pvInfo.points;
   if (!roofPoints || roofPoints.length < 3) {
     console.warn("Not enough roof points for PV grid generation");
-    return { modulePoints, gridLines };
+    return { modulePoints, moduleOriginalIndices, gridLines };
   }
 
   // Fit plane using all roof points (stable for complex polygons)
