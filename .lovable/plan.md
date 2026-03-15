@@ -1,64 +1,70 @@
 
+# PV-Anlage verschieben & drehen im 3D-Viewer
 
-# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
+## Überblick
+Die PV-Modulanlage soll direkt im 3D-Viewer per Drag verschoben und per Rotation-Handle gedreht werden können. Die Rotation erfolgt um den Mittelpunkt des Modul-Grids.
 
-## Zusammenfassung
+## Datenmodell-Erweiterung
 
-Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
-
-## Aenderungen
-
-### Datei 1: `src/hooks/use-mobile.tsx`
-
-**Was aendert sich:**
-- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
-- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
-- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
-
-**Neue Logik `isTouchDevice()`:**
-1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
-2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
-3. `matchMedia('(hover: none)')` -- kein Hover moeglich
-4. User-Agent Regex (android, iphone, ipad, etc.)
-
-Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
-
-**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
-
-### Datei 2: `src/hooks/useScreenOrientation.tsx`
-
-**Was aendert sich:**
-- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
-- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
-- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
-- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
-
-**Neue Logik:**
-```text
-isMobileOrTablet = useIsMobile()  // = isTouchDevice()
-isTablet = isMobileOrTablet && Math.min(width, height) > 600
-isPhone  = isMobileOrTablet && !isTablet
+### `PVModuleInfo` (src/types/measurements.ts)
+Neue Felder:
+```typescript
+gridOffsetU?: number;    // Verschiebung entlang der Hauptachse (v1) in Metern
+gridOffsetW?: number;    // Verschiebung entlang der Nebenachse (v2) in Metern
+gridRotation?: number;   // Rotation in Grad um den Grid-Mittelpunkt
 ```
 
-### Keine Aenderungen noetig in:
-- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
-- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
-- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
-- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
+## Änderungen
 
-## Erwartetes Verhalten nach der Aenderung
+### 1. Type-Erweiterung (`src/types/measurements.ts`)
+- `gridOffsetU`, `gridOffsetW`, `gridRotation` zu `PVModuleInfo` hinzufügen
 
-| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
-|---|---|---|---|---|---|
-| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
-| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
+### 2. Grid-Generierung (`src/utils/pvCalculations.ts` → `generatePVModuleGrid`)
+- Nach Berechnung der Module-Positionen im 2D-Raum (u/w), vor der Projektion nach 3D:
+  1. Grid-Mittelpunkt berechnen (Durchschnitt aller Modul-Zentren)
+  2. Rotation um diesen Mittelpunkt anwenden (cos/sin Transform)
+  3. Offset (gridOffsetU, gridOffsetW) addieren
+- Module die nach Transform außerhalb des Dachpolygons liegen werden weiterhin gefiltert
+
+### 3. Interaktions-Modus (`src/hooks/usePVGridInteraction.ts` – NEU)
+Neuer Hook der PV-Grid Drag & Rotate handhabt:
+
+**Drag (Verschieben):**
+- Klick auf ein PV-Modul → Grid wird "ausgewählt" (visueller Highlight)
+- Drag → Raycaster berechnet Intersection mit Dachfläche → Delta in u/w-Koordinaten → `gridOffsetU/W` aktualisieren
+- Modul-Grid wird in Echtzeit neu gerendert
+
+**Rotate (Drehen):**
+- Wenn Grid ausgewählt: Ein Rotations-Handle (kleiner Kreis/Pfeil) am Rand des Grids
+- Drag am Handle → Winkel zum Grid-Mittelpunkt berechnen → `gridRotation` aktualisieren
+- Alternative: Zwei-Finger-Geste auf Touch-Geräten
+
+**State-Management:**
+- `selectedPVGridId: string | null` – aktuell ausgewählte Solarfläche
+- `isDraggingPVGrid: boolean`
+- `isRotatingPVGrid: boolean`
+- Bei Änderung: `updateMeasurement()` mit neuen gridOffset/Rotation-Werten aufrufen
+
+### 4. Visuelle Handles (`src/utils/measurementVisuals.ts`)
+- Wenn ein PV-Grid ausgewählt ist:
+  - Blaue Umrandung um das gesamte Grid
+  - Rotations-Handle (kleiner Kreis) an einer Ecke des Grids
+  - Move-Cursor beim Hovern über Module
+
+### 5. Integration in bestehende Measurement-Events
+- `useMeasurementEvents.ts` oder `useMeasurementInteraction.ts`: 
+  - PV-Grid Klick-Erkennung (userData.isPVModule → Grid auswählen)
+  - Drag-Events weiterleiten an `usePVGridInteraction`
+  - ESC oder Klick außerhalb → Grid deselektieren
+
+## Implementierungsreihenfolge
+1. Type-Erweiterung (PVModuleInfo)
+2. generatePVModuleGrid mit Offset/Rotation
+3. usePVGridInteraction Hook
+4. Visuelle Handles
+5. Integration in Event-System
 
 ## Technische Details
-
-- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
-- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
-- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
-- Keine neuen Dependencies noetig
-
+- Die Transformation passiert im 2D u/w-Koordinatensystem (vor der 3D-Projektion), damit die Module korrekt auf der Dachfläche bleiben
+- Rotation: Standard 2D-Rotation `u' = cos(θ)*(u-cu) - sin(θ)*(w-cw) + cu`, `w' = sin(θ)*(u-cu) + cos(θ)*(w-cw) + cw`
+- Module die nach Transform außerhalb liegen werden automatisch ausgeblendet (bestehende Polygon-Clipping-Logik)
