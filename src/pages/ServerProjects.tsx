@@ -216,11 +216,30 @@ const ServerProjects = () => {
           </div>
         ) : view.type === "tasks" ? (
           <div className="animate-fade-in">
-            <div className="mb-6 flex items-center gap-3">
-              <Folder className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">{view.project.name}</h2>
-              <span className="text-sm text-muted-foreground">({tasks.length} Tasks)</span>
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Folder className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold">{view.project.name}</h2>
+                <span className="text-sm text-muted-foreground">({tasks.length} Tasks)</span>
+              </div>
+              <Button onClick={() => setCreateTaskOpen(true)} size="sm">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Neuer Task
+              </Button>
             </div>
+            <CreateTaskDialog
+              open={createTaskOpen}
+              onOpenChange={setCreateTaskOpen}
+              projectId={view.project.id}
+              projectName={view.project.name}
+              onTaskCreated={async () => {
+                if (!token) return;
+                try {
+                  const t = await getProjectTasks(token, view.project.id);
+                  setTasks(t);
+                } catch {}
+              }}
+            />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[...tasks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((t) => (
                 <TaskCard
