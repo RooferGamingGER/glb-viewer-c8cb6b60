@@ -108,19 +108,35 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     setEditingLabelId(null);
   };
 
-  const startSegmentLabelEdit = (measurementId: string, segIdx: number, currentLabel: string) => {
+  const startSegmentLabelEdit = (measurementId: string, segIdx: number, segment: Segment) => {
     setEditingSegmentKey(`${measurementId}-${segIdx}`);
-    setSegmentLabelValue(currentLabel);
+    setSegmentSelectedType(segment.type || 'custom');
+    setSegmentCustomLabel(segment.label || '');
   };
 
   const saveSegmentLabelEdit = (measurementId: string, segIdx: number) => {
     const m = measurements.find(m => m.id === measurementId);
     if (m?.segments) {
       const updatedSegments = [...m.segments];
-      updatedSegments[segIdx] = { ...updatedSegments[segIdx], label: segmentLabelValue.trim() || undefined };
+      updatedSegments[segIdx] = { 
+        ...updatedSegments[segIdx], 
+        type: segmentSelectedType as Segment['type'],
+        label: segmentCustomLabel.trim() || undefined 
+      };
       updateMeasurement(measurementId, { segments: updatedSegments });
     }
     setEditingSegmentKey(null);
+  };
+
+  const getSegmentDisplayName = (segment: Segment, index: number): string => {
+    if (segment.type && segment.type !== 'custom') {
+      const typeLabel = SEGMENT_TYPES.find(t => t.value === segment.type)?.label;
+      if (segment.label) return `${typeLabel}: ${segment.label}`;
+      return typeLabel || `Segment ${index + 1}`;
+    } else if (segment.type === 'custom' && segment.label) {
+      return `Dachkante: ${segment.label}`;
+    }
+    return `Segment ${index + 1}`;
   };
 
   const isExpandableType = (type: string) => ['area', 'deductionarea', 'solar'].includes(type);
