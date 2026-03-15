@@ -1033,13 +1033,13 @@ function renderHeightMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: false
+    ...DEPTH_SETTINGS
   });
   
   [point1, point2].forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.copy(point);
-    sphere.renderOrder = 999;
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
