@@ -987,13 +987,12 @@ function renderHeightMeasurement(
   ];
   const verticalLineGeometry = new THREE.BufferGeometry().setFromPoints(verticalLinePoints);
   const verticalLineMaterial = new THREE.LineBasicMaterial({ 
-    color: 0x0000ff,
-    linewidth: 3, // Increased from 2
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    linewidth: 3,
+    depthTest: false
   });
   const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
-  verticalLine.renderOrder = 2; // Ensure line renders above model
+  verticalLine.renderOrder = 2;
   measurementsRef.add(verticalLine);
   
   // Draw horizontal reference line
@@ -1003,10 +1002,9 @@ function renderHeightMeasurement(
   ];
   const horizontalLineGeometry = new THREE.BufferGeometry().setFromPoints(horizontalLinePoints);
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
-    color: 0x0000ff,
-    linewidth: 3, // Increased from 2
-    opacity: 0.9,
-    transparent: true,
+    color: COLORS.CYAN,
+    linewidth: 3,
+    depthTest: false,
     dashSize: 0.1,
     gapSize: 0.05,
   });
@@ -1016,11 +1014,10 @@ function renderHeightMeasurement(
   measurementsRef.add(horizontalLine);
   
   // Add small spheres at all points
-  const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+  const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x0000ff,
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    depthTest: false
   });
   
   [point1, point2].forEach((point, index) => {
