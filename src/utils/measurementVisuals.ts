@@ -183,21 +183,19 @@ export function renderCurrentPoints(
 
   // Add current points as spheres with minimal Y position offset
   currentPoints.forEach((point, index) => {
-    const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+    const pointColor = activeMode === 'solar' ? COLORS.SOLAR :
+                       activeMode === 'skylight' ? COLORS.SKYLIGHT :
+                       activeMode === 'chimney' ? COLORS.CHIMNEY :
+                       activeMode === 'vent' ? COLORS.VENT :
+                       activeMode === 'hook' ? COLORS.HOOK :
+                       COLORS.CYAN;
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: activeMode === 'length' ? 0x00ff00 : 
-             activeMode === 'height' ? 0x0000ff : 
-             activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
-             activeMode === 'skylight' ? 0xff8800 :
-             activeMode === 'chimney' ? 0xff0000 :
-             activeMode === 'vent' ? 0x00ffff :
-             activeMode === 'hook' ? 0xff00ff :
-             0xffaa00 
+      color: pointColor,
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    // Add a smaller Y offset to place points closer to the surface
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    // Set higher renderOrder to ensure points are visible
     sphere.renderOrder = 1;
     pointsRef.add(sphere);
 
