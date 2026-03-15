@@ -1810,7 +1810,7 @@ function renderPVModuleGrid(
       const end = new THREE.Vector3().copy(p1).add(edgeHRight.clone().multiplyScalar(t));
       const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
       const line = new THREE.Line(geom, cellLineMaterial);
-      line.renderOrder = 1004;
+      line.renderOrder = 8;
       measurementsRef.add(line);
     }
     
