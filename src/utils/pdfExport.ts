@@ -8,6 +8,41 @@ import {
   groupSegmentsByType 
 } from './exportUtils';
 import { renderSolarLayout2D } from './renderPolygon2D';
+import { PVModuleInfo } from '@/types/measurements';
+
+const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'];
+
+/**
+ * Calculates string assignments for PV modules based on electrical system data.
+ */
+const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number, { stringId: string; color: string }> => {
+  const assignments: Record<number, { stringId: string; color: string }> = {};
+  const elec = pvInfo.pvMaterials?.electricalSystem;
+  if (!elec || elec.stringCount === 0) return assignments;
+  
+  const removedSet = new Set(pvInfo.removedModuleIndices || []);
+  const totalModules = pvInfo.moduleCorners?.length || pvInfo.moduleCount || 0;
+  const activeIndices: number[] = [];
+  for (let i = 0; i < totalModules; i++) {
+    if (!removedSet.has(i)) activeIndices.push(i);
+  }
+  
+  const modulesPerStr = elec.modulesPerString;
+  const numStrings = elec.stringCount;
+  
+  for (let s = 0; s < numStrings; s++) {
+    const startIdx = s * modulesPerStr;
+    const endIdx = Math.min(startIdx + modulesPerStr, activeIndices.length);
+    const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+    const stringId = `String S${s + 1}`;
+    
+    for (let m = startIdx; m < endIdx; m++) {
+      assignments[activeIndices[m]] = { stringId, color };
+    }
+  }
+  
+  return assignments;
+};
 
 export interface CoverPageData {
   title: string;
@@ -2199,71 +2234,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     const solarMeasurements = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
     
     if (solarMeasurements.length > 0) {
-      // Try to fetch AI string planning
-      let stringPlanTexts: Record<string, string> = {};
-      
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        
-        if (supabaseUrl && supabaseKey) {
-          for (const solarM of solarMeasurements) {
-            const pvInfo = solarM.pvModuleInfo!;
-            const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
-            
-            const moduleLayout = {
-              totalModules: activeModules,
-              roofArea: {
-                azimuth: pvInfo.roofAzimuth || 0,
-                direction: pvInfo.roofDirection || 'unbekannt',
-                inclination: pvInfo.roofInclination || 0,
-                areaM2: solarM.value,
-              },
-              moduleSpec: {
-                name: pvInfo.pvModuleSpec?.name || 'Standard-Modul',
-                width: pvInfo.moduleWidth,
-                height: pvInfo.moduleHeight,
-                power: pvInfo.pvModuleSpec?.power || 400,
-                U_oc: 41.5,  // Typical values for ~400W module
-                U_mpp: 34.5,
-                I_sc: 12.5,
-                I_mpp: 11.6,
-              },
-              inverterSpec: {
-                maxDcVoltage: 600,
-                mppVoltageMin: 150,
-                mppVoltageMax: 500,
-                maxInputCurrent: 25,
-                mppTrackers: 2,
-              },
-              totalPower_kWp: pvInfo.pvMaterials?.totalPower || 0,
-            };
-            
-            try {
-              const resp = await fetch(`${supabaseUrl}/functions/v1/solar-string-planning`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${supabaseKey}`,
-                },
-                body: JSON.stringify({ moduleLayout }),
-              });
-              
-              if (resp.ok) {
-                const data = await resp.json();
-                if (data.stringPlan) {
-                  stringPlanTexts[solarM.id] = data.stringPlan;
-                }
-              }
-            } catch (aiError) {
-              console.warn('AI string planning failed for measurement:', solarM.id, aiError);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Could not fetch string planning:', e);
-      }
-      
       for (const solarM of solarMeasurements) {
         const pvInfo = solarM.pvModuleInfo!;
         const solarPage = document.createElement('div');
@@ -2285,6 +2255,31 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         solarHeader.appendChild(solarTitle);
         solarPage.appendChild(solarHeader);
         
+        // Disclaimer box
+        const disclaimerBox = document.createElement('div');
+        disclaimerBox.style.padding = '12px 15px';
+        disclaimerBox.style.backgroundColor = '#fffbeb';
+        disclaimerBox.style.border = '1px solid #f59e0b';
+        disclaimerBox.style.borderRadius = '8px';
+        disclaimerBox.style.marginBottom = '15px';
+        disclaimerBox.style.display = 'flex';
+        disclaimerBox.style.gap = '10px';
+        disclaimerBox.style.alignItems = 'flex-start';
+        
+        const warningIcon = document.createElement('div');
+        warningIcon.style.fontSize = '18px';
+        warningIcon.style.flexShrink = '0';
+        warningIcon.textContent = '⚠️';
+        disclaimerBox.appendChild(warningIcon);
+        
+        const disclaimerText = document.createElement('div');
+        disclaimerText.style.fontSize = '10px';
+        disclaimerText.style.lineHeight = '1.5';
+        disclaimerText.style.color = '#92400e';
+        disclaimerText.innerHTML = '<strong>Wichtiger Hinweis zur PV-Planung:</strong> Die hier dargestellte Planung ist eine erste, unverbindliche Vorplanung. Die exakte Ausrichtung der PV-Anlage sowie die genaue Dachneigung wurden bei dieser Einschätzung noch nicht vollständig berücksichtigt. Diese Vorplanung dient lediglich einer ersten Orientierung und ersetzt keine detaillierte Fachplanung. Für eine präzise und verbindliche Planung empfehlen wir, ein professionelles Angebot von einem Fachbetrieb einzuholen.';
+        disclaimerBox.appendChild(disclaimerText);
+        solarPage.appendChild(disclaimerBox);
+        
         // Two-column: Layout image left, specs right
         const solarContent = document.createElement('div');
         solarContent.style.display = 'flex';
@@ -2296,7 +2291,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         layoutCol.style.flex = '1';
         layoutCol.style.minWidth = '0';
         
-        const layoutImage = renderSolarLayout2D(solarM, 500, 400);
+        // Calculate string assignments for coloring
+        const stringAssignments = calculateStringAssignments(pvInfo);
+        
+        const layoutImage = renderSolarLayout2D(solarM, 500, 400, stringAssignments);
         if (layoutImage) {
           const img = document.createElement('img');
           img.src = layoutImage;
@@ -2370,7 +2368,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         specsTable.style.fontSize = '11px';
         specsTable.style.borderCollapse = 'collapse';
         
-        const specRows = [
+        const specRows: [string, string][] = [
           ['Modultyp', pvInfo.pvModuleSpec?.name || 'Standard'],
           ['Modulmaße', `${(pvInfo.moduleWidth * 100).toFixed(0)} × ${(pvInfo.moduleHeight * 100).toFixed(0)} cm`],
           ['Leistung/Modul', `${pvInfo.pvModuleSpec?.power || '?'} Wp`],
@@ -2383,6 +2381,13 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         if (pvInfo.yieldFactor) {
           specRows.push(['Ertragsfaktor', `${pvInfo.yieldFactor.toFixed(0)} kWh/kWp`]);
           specRows.push(['Jahresertrag', `${(totalPower * pvInfo.yieldFactor).toFixed(0)} kWh`]);
+        }
+        
+        // Add string info
+        const elec = pvInfo.pvMaterials?.electricalSystem;
+        if (elec) {
+          specRows.push(['Strings', `${elec.stringCount} × ${elec.modulesPerString} Module`]);
+          specRows.push(['Wechselrichter', `${elec.inverterCount}× ${elec.inverterPower} kW`]);
         }
         
         specRows.forEach(([label, value]) => {
@@ -2407,6 +2412,138 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         specsCol.appendChild(specsTable);
         solarContent.appendChild(specsCol);
         solarPage.appendChild(solarContent);
+        
+        // String plan table
+        if (elec && elec.stringCount > 0) {
+          const stringSection = document.createElement('div');
+          stringSection.style.marginTop = '10px';
+          stringSection.style.padding = '12px';
+          stringSection.style.backgroundColor = '#f5f3ff';
+          stringSection.style.borderRadius = '8px';
+          stringSection.style.border = '1px solid #c4b5fd';
+          
+          const stringTitle = document.createElement('h4');
+          stringTitle.style.margin = '0 0 8px 0';
+          stringTitle.style.fontSize = '12px';
+          stringTitle.style.color = '#6d28d9';
+          stringTitle.textContent = 'Stringplanung';
+          stringSection.appendChild(stringTitle);
+          
+          const stringTable = document.createElement('table');
+          stringTable.style.width = '100%';
+          stringTable.style.fontSize = '10px';
+          stringTable.style.borderCollapse = 'collapse';
+          
+          // Header
+          const stHead = document.createElement('thead');
+          const stHeadRow = document.createElement('tr');
+          ['String', 'MPP-Tracker', 'Module', 'Anzahl', 'U_mpp (V)', 'U_oc (V)'].forEach(col => {
+            const th = document.createElement('th');
+            th.style.padding = '4px 6px';
+            th.style.borderBottom = '2px solid #c4b5fd';
+            th.style.textAlign = 'left';
+            th.style.fontSize = '10px';
+            th.style.color = '#6d28d9';
+            th.textContent = col;
+            stHeadRow.appendChild(th);
+          });
+          stHead.appendChild(stHeadRow);
+          stringTable.appendChild(stHead);
+          
+          const stBody = document.createElement('tbody');
+          const STRING_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d'];
+          const removedSet = new Set(pvInfo.removedModuleIndices || []);
+          const activeIndices: number[] = [];
+          const totalModuleCount = pvInfo.moduleCorners?.length || pvInfo.moduleCount || 0;
+          for (let i = 0; i < totalModuleCount; i++) {
+            if (!removedSet.has(i)) activeIndices.push(i);
+          }
+          
+          const modulesPerStr = elec.modulesPerString;
+          const numStrings = elec.stringCount;
+          const U_mpp = 34.5; // typical
+          const U_oc = 41.5;  // typical
+          
+          for (let s = 0; s < numStrings; s++) {
+            const startIdx = s * modulesPerStr;
+            const endIdx = Math.min(startIdx + modulesPerStr, activeIndices.length);
+            const moduleIds = [];
+            for (let m = startIdx; m < endIdx; m++) {
+              moduleIds.push(`M${m + 1}`);
+            }
+            const count = endIdx - startIdx;
+            
+            const row = document.createElement('tr');
+            
+            // Color indicator + string name
+            const stringCell = document.createElement('td');
+            stringCell.style.padding = '4px 6px';
+            stringCell.style.borderBottom = '1px solid #e5e7eb';
+            const colorDot = document.createElement('span');
+            colorDot.style.display = 'inline-block';
+            colorDot.style.width = '10px';
+            colorDot.style.height = '10px';
+            colorDot.style.borderRadius = '50%';
+            colorDot.style.backgroundColor = STRING_COLORS[s % STRING_COLORS.length];
+            colorDot.style.marginRight = '5px';
+            colorDot.style.verticalAlign = 'middle';
+            stringCell.appendChild(colorDot);
+            const stringName = document.createTextNode(`S${s + 1}`);
+            stringCell.appendChild(stringName);
+            row.appendChild(stringCell);
+            
+            // MPP tracker
+            const trackerCell = document.createElement('td');
+            trackerCell.style.padding = '4px 6px';
+            trackerCell.style.borderBottom = '1px solid #e5e7eb';
+            trackerCell.textContent = `MPPT ${Math.floor(s / Math.ceil(numStrings / 2)) + 1}`;
+            row.appendChild(trackerCell);
+            
+            // Modules
+            const modulesCell = document.createElement('td');
+            modulesCell.style.padding = '4px 6px';
+            modulesCell.style.borderBottom = '1px solid #e5e7eb';
+            modulesCell.style.fontSize = '9px';
+            modulesCell.textContent = count <= 6 ? moduleIds.join(', ') : `${moduleIds[0]}–${moduleIds[moduleIds.length - 1]}`;
+            row.appendChild(modulesCell);
+            
+            // Count
+            const countCell = document.createElement('td');
+            countCell.style.padding = '4px 6px';
+            countCell.style.borderBottom = '1px solid #e5e7eb';
+            countCell.textContent = `${count}`;
+            row.appendChild(countCell);
+            
+            // U_mpp total
+            const umppCell = document.createElement('td');
+            umppCell.style.padding = '4px 6px';
+            umppCell.style.borderBottom = '1px solid #e5e7eb';
+            umppCell.textContent = `${(count * U_mpp).toFixed(1)}`;
+            row.appendChild(umppCell);
+            
+            // U_oc total
+            const uocCell = document.createElement('td');
+            uocCell.style.padding = '4px 6px';
+            uocCell.style.borderBottom = '1px solid #e5e7eb';
+            uocCell.textContent = `${(count * U_oc).toFixed(1)}`;
+            row.appendChild(uocCell);
+            
+            stBody.appendChild(row);
+          }
+          
+          stringTable.appendChild(stBody);
+          stringSection.appendChild(stringTable);
+          
+          // Voltage check note
+          const voltageNote = document.createElement('div');
+          voltageNote.style.marginTop = '8px';
+          voltageNote.style.fontSize = '9px';
+          voltageNote.style.color = '#6b7280';
+          voltageNote.textContent = `Max. Systemspannung: 600 V DC | U_oc pro Modul: ${U_oc} V | U_mpp pro Modul: ${U_mpp} V`;
+          stringSection.appendChild(voltageNote);
+          
+          solarPage.appendChild(stringSection);
+        }
         
         // Materials list
         if (pvInfo.pvMaterials) {
@@ -2439,7 +2576,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
             ['Stringkabel', `${mats.electricalSystem.stringCableLength.toFixed(1)} m`],
             ['DC-Hauptkabel', `${mats.electricalSystem.mainCableLength.toFixed(1)} m`],
             ['Wechselrichter', `${mats.electricalSystem.inverterCount}× ${mats.electricalSystem.inverterPower.toFixed(1)} kW`],
-            ['Strings', `${mats.electricalSystem.stringCount} (je ${mats.electricalSystem.modulesPerString} Module)`],
           ];
           
           matRows.forEach(([label, value]) => {
@@ -2464,47 +2600,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         }
         
         container.appendChild(solarPage);
-        
-        // AI String planning page (if available)
-        if (stringPlanTexts[solarM.id]) {
-          const stringPage = document.createElement('div');
-          stringPage.className = 'page-break';
-          stringPage.style.pageBreakBefore = 'always';
-          stringPage.style.pageBreakAfter = 'always';
-          stringPage.style.padding = '20px';
-          
-          const stringHeader = document.createElement('div');
-          stringHeader.style.borderBottom = '2px solid #7c3aed';
-          stringHeader.style.paddingBottom = '10px';
-          stringHeader.style.marginBottom = '15px';
-          
-          const stringTitle = document.createElement('h2');
-          stringTitle.style.margin = '0';
-          stringTitle.style.color = '#6d28d9';
-          stringTitle.textContent = `Stringplanung${solarM.description ? `: ${solarM.description}` : ''}`;
-          stringHeader.appendChild(stringTitle);
-          stringPage.appendChild(stringHeader);
-          
-          const stringContent = document.createElement('div');
-          stringContent.style.fontSize = '11px';
-          stringContent.style.lineHeight = '1.6';
-          stringContent.style.whiteSpace = 'pre-wrap';
-          stringContent.style.fontFamily = 'Arial, sans-serif';
-          stringContent.textContent = stringPlanTexts[solarM.id];
-          stringPage.appendChild(stringContent);
-          
-          const disclaimer = document.createElement('div');
-          disclaimer.style.marginTop = '20px';
-          disclaimer.style.padding = '10px';
-          disclaimer.style.backgroundColor = '#fef3c7';
-          disclaimer.style.borderRadius = '4px';
-          disclaimer.style.fontSize = '9px';
-          disclaimer.style.color = '#92400e';
-          disclaimer.textContent = 'Hinweis: Diese Stringplanung wurde KI-gestützt erstellt und dient als Planungshilfe. Die endgültige Auslegung muss von einem qualifizierten Elektriker geprüft und freigegeben werden.';
-          stringPage.appendChild(disclaimer);
-          
-          container.appendChild(stringPage);
-        }
       }
     }
     
