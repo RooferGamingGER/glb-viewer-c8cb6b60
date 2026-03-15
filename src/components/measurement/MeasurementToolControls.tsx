@@ -3,7 +3,9 @@ import { Measurement } from '@/hooks/useMeasurements';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MeasurementMode } from '@/types/measurements';
+import { MeasurementMode, Measurement as MeasurementType } from '@/types/measurements';
+import { calculatePVModulePlacement } from '@/utils/pvCalculations';
+import { toast } from 'sonner';
 import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import SolarMeasurementContent from './SolarMeasurementContent';
@@ -65,6 +67,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [labelValue, setLabelValue] = useState('');
+  const [editingSegmentKey, setEditingSegmentKey] = useState<string | null>(null);
+  const [segmentLabelValue, setSegmentLabelValue] = useState('');
 
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
@@ -85,25 +89,54 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     setEditingLabelId(null);
   };
 
+  const startSegmentLabelEdit = (measurementId: string, segIdx: number, currentLabel: string) => {
+    setEditingSegmentKey(`${measurementId}-${segIdx}`);
+    setSegmentLabelValue(currentLabel);
+  };
+
+  const saveSegmentLabelEdit = (measurementId: string, segIdx: number) => {
+    const m = measurements.find(m => m.id === measurementId);
+    if (m?.segments) {
+      const updatedSegments = [...m.segments];
+      updatedSegments[segIdx] = { ...updatedSegments[segIdx], label: segmentLabelValue.trim() || undefined };
+      updateMeasurement(measurementId, { segments: updatedSegments });
+    }
+    setEditingSegmentKey(null);
+  };
+
   const isExpandableType = (type: string) => ['area', 'deductionarea', 'solar'].includes(type);
 
-  // Separate solar measurements from others
   const solarMeasurements = measurements.filter(m => m.type === 'solar');
   const otherMeasurements = measurements.filter(m => m.type !== 'solar');
 
+  const handleConvertAreaToSolar = (areaId: string) => {
+    const areaMeasurement = measurements.find(m => m.id === areaId);
+    if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
+
+    // Create a solar measurement from the area's points
+    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points);
+    updateMeasurement(areaId, {
+      type: 'solar' as any,
+      pvModuleInfo,
+    });
+    toast.success(`Fläche "${areaMeasurement.label || 'Fläche'}" in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+  };
+
   return (
     <ScrollArea className="flex-1 h-full">
-      <div className="p-2 flex flex-col h-full">
+      <div className="p-1.5 flex flex-col">
         {/* Solar planning */}
         <SolarToolbar 
           activeMode={activeMode}
           toggleMeasurementTool={toggleMeasurementTool || (() => {})}
           editMeasurementId={editMeasurementId}
+          measurements={measurements as any}
+          onConvertAreaToSolar={handleConvertAreaToSolar}
         />
 
         {/* Solar measurements with full PV content */}
         {solarMeasurements.length > 0 && (
-          <div className="mt-1">
+          <div className="mt-0.5">
             {solarMeasurements.map(m => (
               <CollapsibleSection 
                 key={m.id} 
@@ -139,7 +172,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   <div key={m.id} className="border border-border/30 rounded">
                     {/* Header row */}
                     <div
-                      className="flex items-center gap-1 px-1.5 py-1 hover:bg-accent/30 text-xs group cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-accent/30 text-xs group cursor-pointer"
                       onClick={() => {
                         if (!isEditingLabel && hasSegments) toggleExpanded(m.id);
                       }}
@@ -165,9 +198,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                         </div>
                       ) : (
                         <span
-                          className="truncate flex-1 min-w-0 hover:underline"
-                          onDoubleClick={(e) => { e.stopPropagation(); startLabelEdit(m); }}
-                          title="Doppelklick zum Umbenennen"
+                          className="truncate flex-1 min-w-0 cursor-text"
+                          onClick={(e) => { e.stopPropagation(); startLabelEdit(m); }}
+                          title="Klicken zum Umbenennen (z.B. First, Traufe, Ortgang)"
                         >
                           {m.label || getMeasurementTypeDisplayName(m.type)}
                         </span>
@@ -177,12 +210,12 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                         {formatMeasurementValue(m)}
                       </span>
 
-                      {/* Rename button */}
+                      {/* Rename button — always visible */}
                       {!isEditingLabel && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 shrink-0"
+                          className="h-5 w-5 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                           onClick={(e) => { e.stopPropagation(); startLabelEdit(m); }}
                           title="Umbenennen"
                         >
@@ -201,15 +234,45 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                       </Button>
                     </div>
 
-                    {/* Expanded segments */}
+                    {/* Expanded segments with editable labels */}
                     {hasSegments && isExpanded && (
-                      <div className="border-t border-border/20 bg-muted/30 px-2 py-1">
-                        {m.segments!.map((seg, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground py-px">
-                            <span className="truncate">{seg.label || `Segment ${idx + 1}`}</span>
-                            <span className="font-mono whitespace-nowrap ml-2">{seg.length?.toFixed(2)} m</span>
-                          </div>
-                        ))}
+                      <div className="border-t border-border/20 bg-muted/30 px-2 py-0.5">
+                        {m.segments!.map((seg, idx) => {
+                          const segKey = `${m.id}-${idx}`;
+                          const isEditingSeg = editingSegmentKey === segKey;
+
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground py-px group/seg">
+                              {isEditingSeg ? (
+                                <div className="flex items-center gap-0.5 flex-1 min-w-0">
+                                  <Input
+                                    value={segmentLabelValue}
+                                    onChange={e => setSegmentLabelValue(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') saveSegmentLabelEdit(m.id, idx);
+                                      if (e.key === 'Escape') setEditingSegmentKey(null);
+                                    }}
+                                    className="h-4 text-[10px] px-1 py-0 min-w-0 flex-1"
+                                    autoFocus
+                                    placeholder="z.B. First, Traufe, Ortgang"
+                                  />
+                                  <Button variant="ghost" size="sm" className="h-4 w-4 p-0 shrink-0" onClick={() => saveSegmentLabelEdit(m.id, idx)}>
+                                    <Check className="h-2 w-2" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span
+                                  className="truncate cursor-text hover:underline"
+                                  onClick={() => startSegmentLabelEdit(m.id, idx, seg.label || `Segment ${idx + 1}`)}
+                                  title="Klicken zum Benennen (z.B. First, Traufe)"
+                                >
+                                  {seg.label || `Segment ${idx + 1}`}
+                                </span>
+                              )}
+                              <span className="font-mono whitespace-nowrap ml-2">{seg.length?.toFixed(2)} m</span>
+                            </div>
+                          );
+                        })}
                         {m.type === 'area' && m.points && m.points.length >= 3 && (
                           <div className="flex items-center justify-between text-[10px] font-medium pt-0.5 border-t border-border/20 mt-0.5">
                             <span>Fläche</span>

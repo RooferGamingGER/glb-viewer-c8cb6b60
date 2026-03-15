@@ -346,8 +346,9 @@ export const calculatePVModulePlacement = (
 
   // Try both orientations with polygon clipping, pick the one with more modules
   const tryOrientation = (portrait: boolean): { count: number; cols: number; rows: number } => {
-    const mw = portrait ? moduleHeight : moduleWidth;  // dimension along v1
-    const mh = portrait ? moduleWidth : moduleHeight;   // dimension along v2
+    // Portrait = long side vertical (along v2), short side horizontal (along v1)
+    const mw = portrait ? moduleWidth : moduleHeight;   // dimension along v1 (horizontal)
+    const mh = portrait ? moduleHeight : moduleWidth;    // dimension along v2 (vertical)
 
     const cols = Math.floor(availableWidth / (mw + moduleSpacing));
     const rows = Math.floor(availableLength / (mh + moduleSpacing));
@@ -470,8 +471,9 @@ export const generatePVModuleGrid = (
   });
 
   // Module dimensions based on orientation
-  const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
-  const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
+  // Portrait = long side vertical (v2), short side horizontal (v1)
+  const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
+  const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   const spacing = pvInfo.moduleSpacing || DEFAULT_MODULE_SPACING;
   const edge = pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
 
