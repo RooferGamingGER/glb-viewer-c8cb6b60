@@ -1464,10 +1464,10 @@ function renderRoofElementMeasurement(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
         linewidth: 3,
-        depthTest: false
+        ...DEPTH_SETTINGS
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.renderOrder = 999;
+      line.renderOrder = 10;
       measurementsRef.add(line);
       
       // Add small sphere at each vertex with minimal Y offset
