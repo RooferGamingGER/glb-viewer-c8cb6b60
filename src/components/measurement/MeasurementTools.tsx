@@ -314,7 +314,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         measurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
     }
   }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
