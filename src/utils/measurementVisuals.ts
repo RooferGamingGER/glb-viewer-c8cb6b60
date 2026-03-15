@@ -241,13 +241,16 @@ export function renderCurrentPoints(
       color: closingColor,
       linewidth: 3,
       depthTest: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
     });
     const closingLine = new THREE.Line(closingGeometry, closingMaterial);
     closingLine.computeLineDistances();
-    closingLine.renderOrder = 2;
+    closingLine.renderOrder = 10;
     linesRef.add(closingLine);
   }
   
