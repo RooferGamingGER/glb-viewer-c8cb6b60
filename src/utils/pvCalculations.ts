@@ -471,8 +471,9 @@ export const generatePVModuleGrid = (
   });
 
   // Module dimensions based on orientation
-  const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
-  const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
+  // Portrait = long side vertical (v2), short side horizontal (v1)
+  const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
+  const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   const spacing = pvInfo.moduleSpacing || DEFAULT_MODULE_SPACING;
   const edge = pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
 
