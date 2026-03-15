@@ -109,6 +109,19 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const solarMeasurements = measurements.filter(m => m.type === 'solar');
   const otherMeasurements = measurements.filter(m => m.type !== 'solar');
 
+  const handleConvertAreaToSolar = (areaId: string) => {
+    const areaMeasurement = measurements.find(m => m.id === areaId);
+    if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
+
+    // Create a solar measurement from the area's points
+    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points);
+    updateMeasurement(areaId, {
+      type: 'solar' as any,
+      pvModuleInfo,
+    });
+    toast.success(`Fläche "${areaMeasurement.label || 'Fläche'}" in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+  };
+
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-1.5 flex flex-col">
@@ -117,6 +130,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           activeMode={activeMode}
           toggleMeasurementTool={toggleMeasurementTool || (() => {})}
           editMeasurementId={editMeasurementId}
+          measurements={measurements as any}
+          onConvertAreaToSolar={handleConvertAreaToSolar}
         />
 
         {/* Solar measurements with full PV content */}
