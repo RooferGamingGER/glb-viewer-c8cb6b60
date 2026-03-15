@@ -2170,7 +2170,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     }
     
     if (areaMeasurements.length > 0) {
-      const areaSummary = createTotalAreaSummary(areaMeasurements);
+      const areaSummary = createTotalAreaSummary(sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar' || m.type === 'deductionarea'));
       container.appendChild(areaSummary);
       
       const hasSegments = areaMeasurements.some(
