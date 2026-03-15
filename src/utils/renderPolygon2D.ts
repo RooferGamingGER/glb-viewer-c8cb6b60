@@ -339,17 +339,19 @@ export const renderSolarLayout2D = (
     }
 
     // Title and legend
+    const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
+    const modulePowerW = pvInfo.pvModuleSpec?.power || 425;
+    const totalPowerKWp = (activeModules * modulePowerW) / 1000;
+
     ctx.font = 'bold 14px Arial';
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Solarmodulbelegung', 10, 10);
+    ctx.fillText('PV-Belegungsplan', 10, 10);
 
-    // Module count info
-    const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
     ctx.font = '12px Arial';
     ctx.fillStyle = '#333333';
-    ctx.fillText(`${activeModules} Module | ${((pvInfo.pvMaterials?.totalPower || 0)).toFixed(2)} kWp`, 10, 30);
+    ctx.fillText(`${activeModules} Module | ${totalPowerKWp.toFixed(2)} kWp`, 10, 30);
 
     if (pvInfo.roofDirection) {
       ctx.fillText(`Ausrichtung: ${pvInfo.roofDirection} (${pvInfo.roofAzimuth?.toFixed(0) || '?'}°)`, 10, 48);

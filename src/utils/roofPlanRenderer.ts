@@ -662,16 +662,8 @@ export const createCombinedRoofPlan = (
       const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
       const valueText = `${measurement.value ? measurement.value.toFixed(2) : "0.00"} m²`;
       
-      // Add PV module info for solar areas
+      // No PV module info in Dachplan - shown separately in PV-Plan
       let pvText = "";
-      if ((measurement.type === 'solar' || measurement.type === 'pvmodule') && 
-          measurement.pvModuleInfo?.moduleCount) {
-        pvText = `${measurement.pvModuleInfo.moduleCount} Module`;
-        if (measurement.pvModuleInfo?.pvMaterials?.totalPower) {
-          // Ensure proper formatting with 2 decimal places
-          pvText += ` / ${measurement.pvModuleInfo.pvMaterials.totalPower.toFixed(2)} kWp`;
-        }
-      }
       
       // INCREASED font size for better readability
       ctx.font = 'bold 30px Arial'; // Increased from 26px to 30px
