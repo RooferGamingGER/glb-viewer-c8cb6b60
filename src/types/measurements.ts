@@ -95,6 +95,7 @@ export interface PVModuleInfo {
     cellColor?: number;       // Cell color (hex)
     busbarCount?: number;     // Number of busbars per cell
   };
+  exclusionZones?: Point[][];  // Polygons from roof elements (chimneys, skylights, etc.) to exclude from module placement
 }
 
 export interface PVModuleSpec {

@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MeasurementMode, Measurement as MeasurementType, Segment } from '@/types/measurements';
-import { calculatePVModulePlacement } from '@/utils/pvCalculations';
+import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { toast } from 'sonner';
 import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
@@ -149,7 +149,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
 
     // Create a solar measurement from the area's points
-    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points);
+    const exclusionZones = extractExclusionZones(measurements);
+    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
     updateMeasurement(areaId, {
       type: 'solar' as any,
       pvModuleInfo,
@@ -192,6 +193,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 <SolarMeasurementContent
                   measurement={m}
                   updateMeasurement={updateMeasurement}
+                  allMeasurements={measurements}
                 />
               </CollapsibleSection>
             ))}

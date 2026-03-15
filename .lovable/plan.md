@@ -1,31 +1,64 @@
 
 
-# Fix: PV-Module über Dachelemente + Sichtbarkeit durch Modell
+# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
 
-## Problem 1: Module werden über Dachelemente gezeichnet
+## Zusammenfassung
 
-Dachelemente (Dachfenster, Kamine, Lüfter etc.) sind als eigene Messungen mit Typ `skylight`, `chimney`, `vent`, `hook`, `other`, `deductionarea` gespeichert. Jede hat `points[]` (Polygon) oder `position` (Punkt).
+Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
 
-**Lösung**: In `generatePVModuleGrid` (pvCalculations.ts) alle Dachelemente als Ausschlusszonen berücksichtigen:
-- Neue Parameter: `exclusionZones: Point[][]` — Liste von Polygonen die blockiert sind
-- Für jedes Modul prüfen ob seine 4 Ecken oder sein Zentrum mit einer Ausschlusszone überlappt
-- Punkt-Elemente (vent, hook) bekommen einen Sicherheitsradius (z.B. 30cm) als kreisförmige Ausschlusszone
-- Die Ausschlusszonen werden aus allen Messungen mit Typ `skylight`, `chimney`, `deductionarea` und Punkt-Elementen extrahiert
-- Auch `calculatePVModulePlacement` muss die Zählung anpassen (reduzierte Modulanzahl)
+## Aenderungen
 
-Aufrufstelle anpassen: Wo `generatePVModuleGrid` / `calculatePVModulePlacement` aufgerufen wird, die relevanten Messungen als Ausschlusszonen übergeben.
+### Datei 1: `src/hooks/use-mobile.tsx`
 
-## Problem 2: PV-Module durch GLB-Modell sichtbar
+**Was aendert sich:**
+- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
+- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
+- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
 
-Die Module nutzen `THREE.DoubleSide` Material → sie sind von beiden Seiten sichtbar, auch wenn man durch das Modell hindurchschaut.
+**Neue Logik `isTouchDevice()`:**
+1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
+2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
+3. `matchMedia('(hover: none)')` -- kein Hover moeglich
+4. User-Agent Regex (android, iphone, ipad, etc.)
 
-**Lösung**: In `pvModuleRenderer.ts` das Material auf `THREE.FrontSide` ändern. Da die Module auf der Dachoberfläche liegen und ihre Normale nach außen zeigt, reicht `FrontSide` — sie sind nur von der korrekten Seite sichtbar.
+Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
 
-## Dateien
+**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
 
-| Datei | Änderung |
-|---|---|
-| `src/utils/pvModuleRenderer.ts` | `side: THREE.DoubleSide` → `THREE.FrontSide` |
-| `src/utils/pvCalculations.ts` | `generatePVModuleGrid` + `calculatePVModulePlacement`: Ausschlusszonen-Parameter + Überlappungsprüfung |
-| Aufrufstellen von `generatePVModuleGrid`/`calculatePVModulePlacement` | Dachelemente als Ausschlusszonen übergeben |
+### Datei 2: `src/hooks/useScreenOrientation.tsx`
+
+**Was aendert sich:**
+- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
+- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
+- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
+- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+
+**Neue Logik:**
+```text
+isMobileOrTablet = useIsMobile()  // = isTouchDevice()
+isTablet = isMobileOrTablet && Math.min(width, height) > 600
+isPhone  = isMobileOrTablet && !isTablet
+```
+
+### Keine Aenderungen noetig in:
+- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
+- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
+- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
+- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
+
+## Erwartetes Verhalten nach der Aenderung
+
+| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
+|---|---|---|---|---|---|
+| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
+| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
+
+## Technische Details
+
+- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
+- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
+- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
+- Keine neuen Dependencies noetig
 

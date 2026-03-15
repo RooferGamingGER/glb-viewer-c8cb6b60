@@ -55,7 +55,7 @@ export const createDetailedPVModuleMesh = (
   const texture = getModuleTexture();
   const material = new THREE.MeshBasicMaterial({
     map: texture,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     transparent: false,
   });
   const mesh = new THREE.Mesh(geometry, material);

@@ -27,7 +27,8 @@ import {
   calculatePVModulePlacement,
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
-  extractRoofEdgeMeasurements
+  extractRoofEdgeMeasurements,
+  extractExclusionZones
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -87,7 +88,7 @@ export const useMeasurementCore = () => {
           };
         } else if (m.type === 'pvmodule') {
           const area = calculateArea(newPoints);
-          const moduleInfo = calculatePVModulePlacement(newPoints);
+          const moduleInfo = calculatePVModulePlacement(newPoints, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', extractExclusionZones(measurements));
           const moduleSpec = PV_MODULE_TEMPLATES[0];
           
           const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
@@ -276,7 +277,10 @@ export const useMeasurementCore = () => {
       DEFAULT_EDGE_DISTANCE,
       DEFAULT_MODULE_SPACING,
       undefined,
-      roofEdgeInfo
+      roofEdgeInfo,
+      true,
+      'auto',
+      extractExclusionZones(measurements)
     );
     const moduleSpec = PV_MODULE_TEMPLATES[0];
     
@@ -333,7 +337,10 @@ export const useMeasurementCore = () => {
       DEFAULT_EDGE_DISTANCE,
       DEFAULT_MODULE_SPACING,
       userDimensions,
-      roofEdgeInfo
+      roofEdgeInfo,
+      true,
+      'auto',
+      extractExclusionZones(measurements)
     );
     
     const moduleSpec = PV_MODULE_TEMPLATES[0];
@@ -790,7 +797,10 @@ export const useMeasurementCore = () => {
         DEFAULT_EDGE_DISTANCE,
         DEFAULT_MODULE_SPACING,
         undefined,
-        extractRoofEdgeMeasurements(measurements)
+        extractRoofEdgeMeasurements(measurements),
+        true,
+        'auto',
+        extractExclusionZones(measurements)
       );
       const moduleSpec = PV_MODULE_TEMPLATES[0];
       

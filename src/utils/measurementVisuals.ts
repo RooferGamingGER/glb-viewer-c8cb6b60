@@ -1554,7 +1554,7 @@ function renderPVModuleGrid(
     color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
     opacity: v.panelOpacity ?? 0.9,
     transparent: true,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     depthTest: false,
     depthWrite: false,
     polygonOffset: true,

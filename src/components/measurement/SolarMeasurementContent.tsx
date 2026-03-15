@@ -10,7 +10,8 @@ import {
   calculatePVPower, 
   calculateAnnualYield,
   calculateAnnualYieldWithOrientation,
-  updatePVModuleInfoWithOrientation
+  updatePVModuleInfoWithOrientation,
+  extractExclusionZones
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 import { Zap, ListTodo, Compass } from 'lucide-react';
@@ -19,13 +20,16 @@ import { toast } from 'sonner';
 interface SolarMeasurementContentProps {
   measurement: Measurement;
   updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
+  allMeasurements?: Measurement[];
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
-  updateMeasurement 
+  updateMeasurement,
+  allMeasurements = []
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
   
   useEffect(() => {
     if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
@@ -42,7 +46,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   
   useEffect(() => {
     if (measurement.type === 'solar' && !measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
-      const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+      const pvModuleInfo = calculatePVModulePlacement(measurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
       if (pvModuleInfo.moduleCount > 0) {
         updateMeasurement(measurement.id, { pvModuleInfo });
         toast.success(`PV-Module automatisch berechnet: ${pvModuleInfo.moduleCount} Module`);
@@ -65,7 +69,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       measurement.pvModuleInfo.moduleHeight,
       measurement.pvModuleInfo.edgeDistance,
       measurement.pvModuleInfo.moduleSpacing,
-      dimensions
+      dimensions,
+      undefined, true, 'auto', exclusionZones
     );
     updateMeasurement(measurement.id, {
       pvModuleInfo: {
@@ -93,7 +98,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       measurement.pvModuleInfo.manualDimensions ? {
         width: measurement.pvModuleInfo.userDefinedWidth || 0,
         length: measurement.pvModuleInfo.userDefinedLength || 0
-      } : undefined
+      } : undefined,
+      undefined, true, 'auto', exclusionZones
     );
     updateMeasurement(measurement.id, {
       pvModuleInfo: {
@@ -124,7 +130,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           size="sm"
           className="w-full h-7 text-xs"
           onClick={() => {
-            const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+            const pvModuleInfo = calculatePVModulePlacement(measurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
             updateMeasurement(measurement.id, { pvModuleInfo });
             toast.success(`PV-Module berechnet: ${pvModuleInfo.moduleCount} Module`);
           }}
@@ -176,7 +182,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               measurement.pvModuleInfo.manualDimensions ? {
                 width: measurement.pvModuleInfo.userDefinedWidth || 0,
                 length: measurement.pvModuleInfo.userDefinedLength || 0
-              } : undefined
+              } : undefined,
+              undefined, true, 'auto', exclusionZones
             );
             updateMeasurement(measurement.id, { pvModuleInfo: {
               ...recalculated,
@@ -201,7 +208,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 length: measurement.pvModuleInfo.userDefinedLength || 0
               } : undefined,
               undefined, true,
-              (forced as any) || 'auto'
+              (forced as any) || 'auto',
+              exclusionZones
             );
             updateMeasurement(measurement.id, { pvModuleInfo: {
               ...recalculated,

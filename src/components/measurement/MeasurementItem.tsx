@@ -42,6 +42,7 @@ import {
   calculatePVModulePlacement, 
   calculatePVPower, 
   formatPVModuleInfo,
+  extractExclusionZones,
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
   PV_MODULE_TEMPLATES,
@@ -64,6 +65,7 @@ interface MeasurementItemProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleMoveUp?: (id: string) => void;
   handleMoveDown?: (id: string) => void;
+  allMeasurements?: Measurement[];
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
@@ -80,7 +82,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   onEditSegment,
   movingPointInfo,
   handleMoveUp,
-  handleMoveDown
+  handleMoveDown,
+  allMeasurements = []
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -89,6 +92,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
   const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
   const [isExpanded, setIsExpanded] = useState(false);
+  const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
 
   const updateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
     if (!measurement.segments) return;
@@ -171,7 +175,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       DEFAULT_MODULE_SPACING,
       undefined,
       undefined,
-      useOptimalRectangle
+      useOptimalRectangle,
+      'auto',
+      exclusionZones
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
   };
@@ -190,7 +196,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
         dimensions,
         undefined,
-        useOptimalRectangle
+        useOptimalRectangle,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -210,7 +218,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           length: measurement.pvModuleInfo.userDefinedLength || 0
         } : undefined,
         undefined,
-        useOptimalRectangle
+        useOptimalRectangle,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -232,7 +242,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           length: measurement.pvModuleInfo.userDefinedLength || 0
         } : undefined,
         undefined,
-        enabled
+        enabled,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
@@ -260,7 +272,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           length: updatedInfo.userDefinedLength || 0
         } : undefined,
         undefined,
-        useOptimalRectangle
+        useOptimalRectangle,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { 
