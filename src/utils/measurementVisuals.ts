@@ -1564,14 +1564,14 @@ function renderPVModuleGrid(
     console.warn('Could not load PV module texture, falling back to color', e);
   }
 
-  // Keep modules always visible through GLB, and render texture only (no extra line patterns)
+  // PV modules with depth testing for proper occlusion
   const moduleMaterial = moduleTexture
     ? new THREE.MeshBasicMaterial({
         map: moduleTexture,
         transparent: true,
         opacity: 1,
         side: THREE.DoubleSide,
-        depthTest: false,
+        ...DEPTH_SETTINGS,
         depthWrite: false
       })
     : new THREE.MeshBasicMaterial({
@@ -1579,7 +1579,7 @@ function renderPVModuleGrid(
         opacity: v.panelOpacity ?? 0.95,
         transparent: true,
         side: THREE.DoubleSide,
-        depthTest: false,
+        ...DEPTH_SETTINGS,
         depthWrite: false
       });
 
