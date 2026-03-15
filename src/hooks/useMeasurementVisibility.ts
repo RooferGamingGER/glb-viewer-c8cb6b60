@@ -54,7 +54,7 @@ export const useMeasurementVisibility = (
       
       const measurement = measurements.find(m => m.id === label.userData.measurementId);
       if (measurement) {
-        label.visible = visible && measurement.visible !== false;
+        label.visible = visible && measurement.visible !== false && measurement.labelVisible !== false;
       }
     });
 
@@ -64,7 +64,7 @@ export const useMeasurementVisibility = (
       
       const measurement = measurements.find(m => m.id === label.userData.measurementId);
       if (measurement) {
-        label.visible = visible && measurement.visible !== false;
+        label.visible = visible && measurement.visible !== false && measurement.labelVisible !== false;
       }
     });
   }, [measurements, threeObjects]);
