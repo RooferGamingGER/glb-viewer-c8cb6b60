@@ -22,10 +22,18 @@ const pointsToVector3Array = (points: Point[]): THREE.Vector3[] => {
 };
 
 // Constants for visualization
-const POINT_Y_OFFSET = 0.01; // Reduced from 0.1 to place points closer to the model
-const LINE_Y_OFFSET = 0.025; // Slightly higher than points to ensure visibility
-const LABEL_Y_OFFSET = 0.15; // Maintained higher for readability
-const PV_LINE_Y_OFFSET = 0.03; // Slightly higher than regular lines for PV visibility
+const POINT_Y_OFFSET = 0.03; // Raised for depth-tested visibility on roof surfaces
+const LINE_Y_OFFSET = 0.04; // Slightly higher than points to ensure visibility
+const LABEL_Y_OFFSET = 0.20; // Maintained higher for readability
+const PV_LINE_Y_OFFSET = 0.05; // Slightly higher than regular lines for PV visibility
+
+// Shared depth/polygonOffset settings for all measurement materials
+const DEPTH_SETTINGS = {
+  depthTest: true,
+  polygonOffset: true,
+  polygonOffsetFactor: -4,
+  polygonOffsetUnits: -4,
+} as const;
 
 // Unified color palette (matching reference project)
 const COLORS = {
