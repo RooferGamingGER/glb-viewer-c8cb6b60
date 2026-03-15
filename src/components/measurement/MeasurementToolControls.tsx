@@ -3,7 +3,7 @@ import { Measurement } from '@/hooks/useMeasurements';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MeasurementMode, Measurement as MeasurementType } from '@/types/measurements';
+import { MeasurementMode, Measurement as MeasurementType, Segment } from '@/types/measurements';
 import { calculatePVModulePlacement } from '@/utils/pvCalculations';
 import { toast } from 'sonner';
 import SolarToolbar from './SolarToolbar';
@@ -12,6 +12,24 @@ import SolarMeasurementContent from './SolarMeasurementContent';
 import CollapsibleSection from '@/components/ui/collapsible-section';
 import { Ruler, ArrowUpDown, Square, MinusSquare, X, ChevronDown, Pencil, Check, Sun } from 'lucide-react';
 import { formatMeasurementValue, getMeasurementTypeDisplayName } from '@/utils/exportUtils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const SEGMENT_TYPES = [
+  { value: 'custom', label: 'Dachkante' },
+  { value: 'ridge', label: 'First' },
+  { value: 'hip', label: 'Grat' },
+  { value: 'valley', label: 'Kehle' },
+  { value: 'eave', label: 'Traufe' },
+  { value: 'verge', label: 'Ortgang' },
+  { value: 'anschluss', label: 'Anschluss' },
+  { value: 'verfallung', label: 'Verfallung' },
+];
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
