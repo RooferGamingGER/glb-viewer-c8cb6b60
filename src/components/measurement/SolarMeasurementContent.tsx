@@ -10,7 +10,8 @@ import {
   calculatePVPower, 
   calculateAnnualYield,
   calculateAnnualYieldWithOrientation,
-  updatePVModuleInfoWithOrientation
+  updatePVModuleInfoWithOrientation,
+  extractExclusionZones
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
 import { Zap, ListTodo, Compass } from 'lucide-react';
