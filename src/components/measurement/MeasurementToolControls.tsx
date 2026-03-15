@@ -277,31 +277,50 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                           const isEditingSeg = editingSegmentKey === segKey;
 
                           return (
-                            <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground py-px group/seg">
+                            <div key={idx} className="flex items-center justify-between text-[10px] text-muted-foreground py-0.5 group/seg">
                               {isEditingSeg ? (
-                                <div className="flex items-center gap-0.5 flex-1 min-w-0">
+                                <div className="flex flex-col gap-1 flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+                                  <Select
+                                    value={segmentSelectedType}
+                                    onValueChange={setSegmentSelectedType}
+                                  >
+                                    <SelectTrigger className="h-5 text-[10px]">
+                                      <SelectValue placeholder="Typ wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {SEGMENT_TYPES.map(t => (
+                                        <SelectItem key={t.value} value={t.value} className="text-xs">
+                                          {t.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                   <Input
-                                    value={segmentLabelValue}
-                                    onChange={e => setSegmentLabelValue(e.target.value)}
+                                    value={segmentCustomLabel}
+                                    onChange={e => setSegmentCustomLabel(e.target.value)}
                                     onKeyDown={e => {
                                       if (e.key === 'Enter') saveSegmentLabelEdit(m.id, idx);
                                       if (e.key === 'Escape') setEditingSegmentKey(null);
                                     }}
-                                    className="h-4 text-[10px] px-1 py-0 min-w-0 flex-1"
-                                    autoFocus
-                                    placeholder="z.B. First, Traufe, Ortgang"
+                                    className="h-4 text-[10px] px-1 py-0 min-w-0"
+                                    placeholder="Zusätzliche Beschreibung (optional)"
                                   />
-                                  <Button variant="ghost" size="sm" className="h-4 w-4 p-0 shrink-0" onClick={() => saveSegmentLabelEdit(m.id, idx)}>
-                                    <Check className="h-2 w-2" />
-                                  </Button>
+                                  <div className="flex gap-1">
+                                    <Button variant="default" size="sm" className="h-5 text-[10px] flex-1" onClick={() => saveSegmentLabelEdit(m.id, idx)}>
+                                      <Check className="h-2 w-2 mr-0.5" /> OK
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-5 text-[10px] flex-1" onClick={() => setEditingSegmentKey(null)}>
+                                      Abbrechen
+                                    </Button>
+                                  </div>
                                 </div>
                               ) : (
                                 <span
                                   className="truncate cursor-text hover:underline"
-                                  onClick={() => startSegmentLabelEdit(m.id, idx, seg.label || `Segment ${idx + 1}`)}
-                                  title="Klicken zum Benennen (z.B. First, Traufe)"
+                                  onClick={() => startSegmentLabelEdit(m.id, idx, seg)}
+                                  title="Klicken zum Benennen"
                                 >
-                                  {seg.label || `Segment ${idx + 1}`}
+                                  {getSegmentDisplayName(seg, idx)}
                                 </span>
                               )}
                               <span className="font-mono whitespace-nowrap ml-2">{seg.length?.toFixed(2)} m</span>
