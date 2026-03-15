@@ -914,16 +914,13 @@ function renderLengthMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
