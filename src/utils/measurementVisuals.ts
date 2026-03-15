@@ -834,8 +834,8 @@ export function renderMeasurements(
     isPreview: boolean, 
     measurementId: string | undefined
   ) => {
-    // Immer ausblenden während der Bearbeitung
-    if (anyMeasurementBeingEdited && !isPreview) {
+    // Ausblenden während der Bearbeitung ODER während des Zeichnens
+    if ((anyMeasurementBeingEdited || isDrawing) && !isPreview) {
       child.visible = false;
       return;
     }
