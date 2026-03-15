@@ -90,6 +90,7 @@ const ServerProjects = () => {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) navigate("/server-login", { replace: true });
