@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet, Mountain,
+  Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet,
   Eye, EyeOff, X, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
