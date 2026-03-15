@@ -61,12 +61,5 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
       </CollapsibleContent>
     </Collapsible>
   );
-};
-      <CollapsibleContent className="px-3 pb-3 pt-0">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-};
 
 export default CollapsibleSection;
