@@ -39,6 +39,8 @@ serve(async (req) => {
     }
 
     const isDownload = path.includes("/download/");
+    const isThumbnail = path.includes("/thumbnail/");
+    const isBinary = isDownload || isThumbnail;
 
     if (method === "POST" && body) {
       headers["Content-Type"] = "application/x-www-form-urlencoded";
@@ -70,8 +72,8 @@ serve(async (req) => {
       );
     }
 
-    // For binary downloads (GLB, etc.), stream the response
-    if (isDownload) {
+    // For binary data (downloads, thumbnails, images), stream the response
+    if (isBinary) {
       const arrayBuffer = await response.arrayBuffer();
       const contentType =
         response.headers.get("content-type") || "application/octet-stream";
