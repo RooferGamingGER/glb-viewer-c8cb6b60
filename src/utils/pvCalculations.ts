@@ -587,6 +587,12 @@ export const generatePVModuleGrid = (
         continue; // Skip module — it's outside the roof
       }
 
+      // Check exclusion zones (roof elements like chimneys, skylights)
+      const exclusionZones = pvInfo.exclusionZones || [];
+      if (isModuleOverlappingExclusion(worldCorners, exclusionZones)) {
+        continue; // Skip module — it overlaps a roof element
+      }
+
       // Skip modules that were removed by user click
       const currentIndex = sequentialIndex;
       sequentialIndex++;
