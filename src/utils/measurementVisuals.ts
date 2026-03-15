@@ -1003,16 +1003,13 @@ function renderHeightMeasurement(
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
+    depthTest: false,
     dashSize: 0.1,
     gapSize: 0.05,
   });
   const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
   horizontalLine.computeLineDistances();
-  horizontalLine.renderOrder = 10;
+  horizontalLine.renderOrder = 999;
   measurementsRef.add(horizontalLine);
   
   // Add small spheres at all points
