@@ -93,19 +93,12 @@ export const useMeasurementVisibility = (
     });
   }, [measurements, threeObjects]);
 
-  // Update measurement markers visibility
+  // Update measurement markers visibility — only toggles .visible, no material resets
   const updateMeasurementMarkers = useCallback(() => {
     if (!threeObjects.measurementsRef.current) return;
     
     const { measurementsRef } = threeObjects;
 
-    // Debug message to track PV modules
-    console.log("Updating measurement markers visibility. Total objects:", measurementsRef.current.children.length);
-    
-    let pvModuleCount = 0;
-    let pvModulesVisible = 0;
-    
-    // Update mesh visibilities for PV areas and other measurements
     measurementsRef.current.children.forEach(mesh => {
       if (!mesh.userData || !mesh.userData.measurementId) return;
       
@@ -113,100 +106,12 @@ export const useMeasurementVisibility = (
       if (measurement) {
         mesh.visible = measurement.visible !== false;
         
-        // Special handling for deduction areas - display in red
-        if (measurement.type === 'deductionarea' && mesh instanceof THREE.Mesh) {
-          const material = mesh.material as THREE.MeshBasicMaterial;
-          if (material) {
-            material.color.set(0xea384c); // Red color
-            material.opacity = 0.7;
-            material.transparent = true;
-            material.side = THREE.DoubleSide;
-            material.needsUpdate = true;
-          }
-          
-          // Apply red color to all line segments for deduction areas
-          mesh.children.forEach(child => {
-            if (child instanceof THREE.Line && child.material instanceof THREE.LineBasicMaterial) {
-              child.material.color.set(0xea384c); // Red color
-              child.material.linewidth = 2;
-              child.material.needsUpdate = true;
-            }
-          });
-        }
-        
-        // Special handling for PV modules and solar areas
-        if ((measurement.type === 'pvmodule' || measurement.type === 'solar') && mesh instanceof THREE.Mesh) {
-          pvModuleCount++;
-          if (mesh.visible) pvModulesVisible++;
-          
-          const material = mesh.material as THREE.MeshBasicMaterial;
-          if (material) {
-            // Set to a bright blue with increased opacity for better visibility
-            material.color.set(0x0EA5E9); // using bright blue color
-            material.opacity = 0.95;  // increasing opacity from 0.8 to 0.95 for better visibility
-            material.transparent = true;
-            material.side = THREE.DoubleSide;
-            material.needsUpdate = true;
-            
-            // Raise position slightly to avoid z-fighting - increase offset
-            mesh.position.y += 0.05;
-            
-            // Log material properties for debugging
-            console.log(`PV Module ${mesh.name || "unnamed"} visibility:`, mesh.visible, "Material:", {
-              color: material.color.getHexString(),
-              opacity: material.opacity,
-              transparent: material.transparent,
-              side: material.side === THREE.DoubleSide ? "DoubleSide" : "SingleSide",
-              position: mesh.position.y
-            });
-          }
-          
-          // Also update any children (individual PV modules)
-          mesh.children.forEach(child => {
-            child.visible = measurement.visible !== false;
-            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
-              child.material.opacity = 0.95;
-              child.material.color.set(0x1E88E5); // Slightly different blue
-              child.material.transparent = true;
-              child.material.side = THREE.DoubleSide;
-              child.material.needsUpdate = true;
-              
-              // Raise position slightly to avoid z-fighting - increase offset
-              child.position.y += 0.05;
-            }
-          });
-        }
-        
-        // Handle standalone PV modules (not part of an area)
-        if (mesh.userData.isPVModule) {
-          pvModuleCount++;
-          if (mesh.visible) pvModulesVisible++;
-          
-          mesh.visible = measurement.visible !== false;
-          if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshBasicMaterial) {
-            mesh.material.opacity = 0.95;
-            mesh.material.color.set(0x1E88E5); // Slightly different blue
-            mesh.material.transparent = true;
-            mesh.material.side = THREE.DoubleSide;
-            mesh.material.needsUpdate = true;
-            
-            // Raise position slightly to avoid z-fighting - increase offset
-            mesh.position.y += 0.05;
-            
-            // Log material properties for debugging
-            console.log(`Standalone PV Module visibility:`, mesh.visible, "Material:", {
-              color: mesh.material.color.getHexString(),
-              opacity: mesh.material.opacity,
-              transparent: mesh.material.transparent,
-              side: mesh.material.side === THREE.DoubleSide ? "DoubleSide" : "SingleSide",
-              position: mesh.position
-            });
-          }
-        }
+        // Also update children visibility
+        mesh.children.forEach(child => {
+          child.visible = measurement.visible !== false;
+        });
       }
     });
-    
-    console.log(`PV Module visibility summary: ${pvModulesVisible}/${pvModuleCount} modules visible`);
     
   }, [measurements, threeObjects]);
 
