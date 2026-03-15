@@ -13,7 +13,7 @@ import {
   updatePVModuleInfoWithOrientation
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
-import { Zap, ListTodo, Compass, Plus, Minus } from 'lucide-react';
+import { Zap, ListTodo, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SolarMeasurementContentProps {

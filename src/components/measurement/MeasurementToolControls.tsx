@@ -177,6 +177,17 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 key={m.id} 
                 title={`☀️ ${m.label || 'Solarfläche'} — ${formatMeasurementValue(m)}`}
                 defaultOpen={true}
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMeasurement(m.id); }}
+                    title="Solarfläche löschen"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                }
               >
                 <SolarMeasurementContent
                   measurement={m}
