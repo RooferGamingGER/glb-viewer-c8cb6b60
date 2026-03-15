@@ -143,11 +143,6 @@ const GenerateRoofPlanButton: React.FC<GenerateRoofPlanButtonProps> = ({ measure
             {areaCount > 0 
               ? `Erstelle einen 2D Dachplan mit ${areaCount} Dachflächen, ${specialElementCount} Einbauten und ${uniqueSegmentCount} Segmenten in der Draufsicht.`
               : 'Keine Dachflächen für den Plan vorhanden. Bitte füge zuerst Flächenmessungen hinzu.'}
-            {hasPVModules && (
-              <span className="block mt-1 text-green-600 font-medium">
-                {pvModuleCount} PV-Module mit insgesamt {formattedPowerOutput} kWp Leistung werden visualisiert.
-              </span>
-            )}
           </DialogDescription>
         </DialogHeader>
         
