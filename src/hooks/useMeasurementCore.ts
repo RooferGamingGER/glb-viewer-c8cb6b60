@@ -148,6 +148,47 @@ export const useMeasurementCore = () => {
     };
   }, []);
 
+  // Handle PV module removal by click
+  useEffect(() => {
+    const handlePVModuleRemoved = (event: CustomEvent) => {
+      const { measurementId, moduleIndex } = event.detail;
+      
+      setMeasurements(prev => prev.map(m => {
+        if (m.id === measurementId && m.pvModuleInfo) {
+          const newCount = Math.max(0, m.pvModuleInfo.moduleCount - 1);
+          const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
+          const area = m.pvModuleInfo.actualArea || 1;
+          
+          // Remove the module corners/positions if they exist
+          const newModuleCorners = m.pvModuleInfo.moduleCorners 
+            ? m.pvModuleInfo.moduleCorners.filter((_, i) => i !== moduleIndex)
+            : undefined;
+          const newModulePositions = m.pvModuleInfo.modulePositions
+            ? m.pvModuleInfo.modulePositions.filter((_, i) => i !== moduleIndex)
+            : undefined;
+          
+          return {
+            ...m,
+            pvModuleInfo: {
+              ...m.pvModuleInfo,
+              moduleCount: newCount,
+              coveragePercent: Math.min((moduleArea / area) * 100, 100),
+              moduleCorners: newModuleCorners,
+              modulePositions: newModulePositions,
+            }
+          };
+        }
+        return m;
+      }));
+    };
+    
+    document.addEventListener('pvModuleRemoved', handlePVModuleRemoved as EventListener);
+    
+    return () => {
+      document.removeEventListener('pvModuleRemoved', handlePVModuleRemoved as EventListener);
+    };
+  }, []);
+
   const createLengthMeasurement = useCallback((points: Point[]) => {
     if (points.length < 2) return;
     
