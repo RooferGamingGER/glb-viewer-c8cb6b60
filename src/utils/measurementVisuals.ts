@@ -1864,7 +1864,7 @@ function renderPVModuleGrid(
       lineObj.computeLineDistances();
     }
     
-    lineObj.renderOrder = 1003;
+    lineObj.renderOrder = 8;
     
     // Store metadata in user data
     lineObj.userData = {
