@@ -497,6 +497,7 @@ export const calculatePVModulePlacement = (
     manualDimensions: false,
     pvModuleSpec: PV_MODULE_TEMPLATES[0],
     points: [...points],
+    exclusionZones: exclusionZones.length > 0 ? exclusionZones : undefined,
   };
 
   return result;
