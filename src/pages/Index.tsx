@@ -55,7 +55,7 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "18.03.2026",
-    text: "Kunden können sich direkt mit dem Servr verbinden um Drohnenaufnahmen zu prüfen, Daten downloaden, neue Projekte erstelle und vieles mehr",
+    text: "Kunden können sich direkt mit dem Server verbinden um Drohnenaufnahmen zu prüfen, Daten downloaden, neue Projekte erstellen und vieles mehr",
   },
   {
     date: "18.03.2026",
