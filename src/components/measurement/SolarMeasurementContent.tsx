@@ -13,7 +13,7 @@ import {
   updatePVModuleInfoWithOrientation
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
-import { Zap, ListTodo, Compass, Plus, Minus } from 'lucide-react';
+import { Zap, ListTodo, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SolarMeasurementContentProps {
@@ -112,20 +112,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     });
   };
   
-  const handleManualModuleCountChange = (delta: number) => {
-    if (!measurement.pvModuleInfo) return;
-    const newCount = Math.max(0, measurement.pvModuleInfo.moduleCount + delta);
-    const moduleArea = newCount * measurement.pvModuleInfo.moduleWidth * measurement.pvModuleInfo.moduleHeight;
-    const area = measurement.pvModuleInfo.actualArea || 1;
-    updateMeasurement(measurement.id, {
-      pvModuleInfo: {
-        ...measurement.pvModuleInfo,
-        moduleCount: newCount,
-        coveragePercent: Math.min((moduleArea / area) * 100, 100),
-      }
-    });
-    toast.info(`Module: ${newCount}`, { duration: 1000 });
-  };
   
   if (!measurement.pvModuleInfo) {
     return (
@@ -249,15 +235,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               <div>{measurement.pvModuleInfo.moduleWidth.toFixed(2)} × {measurement.pvModuleInfo.moduleHeight.toFixed(2)} m</div>
               
               <div className="text-muted-foreground">Anzahl Module:</div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => handleManualModuleCountChange(-1)}>
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <span className="font-medium">{measurement.pvModuleInfo.moduleCount}</span>
-                <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => handleManualModuleCountChange(1)}>
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
+              <div className="font-medium">{measurement.pvModuleInfo.moduleCount}</div>
               
               <div className="text-muted-foreground">Raster:</div>
               <div>{measurement.pvModuleInfo.columns || 0} × {measurement.pvModuleInfo.rows || 0}</div>

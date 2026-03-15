@@ -26,13 +26,15 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   className?: string;
+  action?: React.ReactNode;
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
   children,
   defaultOpen = false,
-  className
+  className,
+  action
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -42,15 +44,18 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
       onOpenChange={setIsOpen}
       className={cn("border rounded-md", className)}
     >
-      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 text-sm font-medium">
-        <span>{title}</span>
-        <ChevronRight
-          className={cn(
-            "h-4 w-4 transition-transform",
-            isOpen && "transform rotate-90"
-          )}
-        />
-      </CollapsibleTrigger>
+      <div className="flex items-center w-full">
+        <CollapsibleTrigger className="flex items-center justify-between flex-1 p-3 text-sm font-medium">
+          <span>{title}</span>
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 transition-transform",
+              isOpen && "transform rotate-90"
+            )}
+          />
+        </CollapsibleTrigger>
+        {action && <div className="pr-2">{action}</div>}
+      </div>
       <CollapsibleContent className="px-3 pb-3 pt-0">
         {children}
       </CollapsibleContent>

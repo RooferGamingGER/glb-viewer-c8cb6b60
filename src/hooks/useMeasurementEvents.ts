@@ -196,7 +196,7 @@ export const useMeasurementEvents = (
       }
     }
     
-    // Check for clicks on PV modules — remove module on click
+    // Check for clicks on PV modules — remove module on click with confirmation
     if (activeMode === 'none' || activeMode === 'solar') {
       const allIntersects = raycaster.intersectObjects(scene.children, true);
       for (const intersect of allIntersects) {
@@ -206,12 +206,20 @@ export const useMeasurementEvents = (
           const moduleIndex = ud.moduleIndex;
           const measurement = measurements.find(m => m.id === measurementId);
           if (measurement && measurement.pvModuleInfo && moduleIndex !== undefined) {
-            // Dispatch custom event for PV module removal
-            const removeEvent = new CustomEvent('pvModuleRemoved', {
-              detail: { measurementId, moduleIndex }
+            // Show confirmation toast with action button
+            toast(`Modul ${moduleIndex + 1} entfernen?`, {
+              duration: 5000,
+              action: {
+                label: 'Entfernen',
+                onClick: () => {
+                  const removeEvent = new CustomEvent('pvModuleRemoved', {
+                    detail: { measurementId, moduleIndex }
+                  });
+                  document.dispatchEvent(removeEvent);
+                  toast.success(`Modul ${moduleIndex + 1} entfernt`, { duration: 1500 });
+                }
+              },
             });
-            document.dispatchEvent(removeEvent);
-            toast.info(`Modul ${moduleIndex + 1} entfernt`, { duration: 1500 });
             return;
           }
         }
