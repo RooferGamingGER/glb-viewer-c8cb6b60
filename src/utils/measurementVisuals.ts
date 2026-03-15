@@ -1321,11 +1321,11 @@ function renderSolarMeasurement(
       opacity: 0.3,
       transparent: true,
       side: THREE.FrontSide,
-      depthTest: false
+      ...DEPTH_SETTINGS
     });
     
     const mesh = new THREE.Mesh(geometry, fillMaterial);
-    mesh.renderOrder = 998;
+    mesh.renderOrder = 5;
     
     // Store measurement ID in user data
     mesh.userData = {
