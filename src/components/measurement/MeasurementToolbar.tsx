@@ -53,14 +53,6 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
 }) => {
   // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
-  const [showInclination, setShowInclination] = useState(getInclinationPreference());
-  
-  const handleToggleInclination = () => {
-    const newVal = !showInclination;
-    setShowInclination(newVal);
-    setInclinationPreference(newVal);
-    smartToast.guidance(newVal ? "Neigungsanzeige aktiviert (>5°)" : "Neigungsanzeige deaktiviert");
-  };
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
     
