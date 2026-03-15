@@ -35,6 +35,71 @@ const RAIL_STANDARD_LENGTH = 3.15;    // Standard rail length in meters
 // Yield constants
 const ANNUAL_YIELD_FACTOR_DEFAULT = 950; // kWh/kWp (Germany average)
 
+// Exclusion zone safety radius for point elements (vents, hooks) in meters
+const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
+
+// Roof element types that create exclusion zones
+const EXCLUSION_ELEMENT_TYPES = ['chimney', 'skylight', 'deductionarea', 'vent', 'hook', 'other'];
+
+/**
+ * Extract exclusion zones from measurements (roof elements that block PV modules).
+ * Polygon elements (chimney, skylight, deductionarea) → polygon zones.
+ * Point elements (vent, hook) → square zones with safety radius.
+ */
+export const extractExclusionZones = (measurements: Measurement[]): Point[][] => {
+  const zones: Point[][] = [];
+  
+  for (const m of measurements) {
+    if (!EXCLUSION_ELEMENT_TYPES.includes(m.type)) continue;
+    if (!m.points || m.points.length === 0) continue;
+    
+    if (m.points.length >= 3) {
+      // Polygon element (chimney, skylight, deductionarea, etc.)
+      zones.push([...m.points]);
+    } else if (m.points.length === 1 || m.points.length === 2) {
+      // Point element (vent, hook) — create a square exclusion zone around it
+      const center = m.points[0];
+      const r = POINT_ELEMENT_SAFETY_RADIUS;
+      zones.push([
+        { x: center.x - r, y: center.y, z: center.z - r },
+        { x: center.x + r, y: center.y, z: center.z - r },
+        { x: center.x + r, y: center.y, z: center.z + r },
+        { x: center.x - r, y: center.y, z: center.z + r },
+      ]);
+    }
+  }
+  
+  return zones;
+};
+
+/**
+ * Check if any corner of a module (in world XZ coords) overlaps with any exclusion zone.
+ */
+const isModuleOverlappingExclusion = (
+  worldCorners: { x: number; z: number }[],
+  exclusionZones: Point[][]
+): boolean => {
+  if (!exclusionZones || exclusionZones.length === 0) return false;
+  
+  // Check if any module corner is inside any exclusion zone
+  for (const zone of exclusionZones) {
+    if (zone.length < 3) continue;
+    for (const corner of worldCorners) {
+      if (isPointInPolygon(corner, zone)) {
+        return true;
+      }
+    }
+    // Also check if center of module is inside exclusion zone
+    const cx = worldCorners.reduce((s, c) => s + c.x, 0) / worldCorners.length;
+    const cz = worldCorners.reduce((s, c) => s + c.z, 0) / worldCorners.length;
+    if (isPointInPolygon({ x: cx, z: cz }, zone)) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
