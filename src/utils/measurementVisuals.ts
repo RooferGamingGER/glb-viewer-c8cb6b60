@@ -1341,11 +1341,15 @@ function renderSolarMeasurement(
       color: measurementColor,
       opacity: 0.3,
       transparent: true,
-      side: THREE.FrontSide
+      side: THREE.FrontSide,
+      depthTest: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2
     });
     
     const mesh = new THREE.Mesh(geometry, fillMaterial);
-    mesh.renderOrder = 1; // Render below lines and points
+    mesh.renderOrder = 5;
     
     // Store measurement ID in user data
     mesh.userData = {
