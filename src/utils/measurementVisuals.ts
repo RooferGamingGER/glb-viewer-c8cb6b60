@@ -905,7 +905,7 @@ function renderLengthMeasurement(
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false
+    depthTest: true
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
   line.renderOrder = 2;
