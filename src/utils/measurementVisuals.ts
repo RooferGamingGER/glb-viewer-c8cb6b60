@@ -192,7 +192,7 @@ export function renderCurrentPoints(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: pointColor,
-      depthTest: false
+      depthTest: true
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
@@ -210,7 +210,7 @@ export function renderCurrentPoints(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: pointColor,
         linewidth: 3,
-        depthTest: false
+        depthTest: true
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.renderOrder = 2;
@@ -234,7 +234,7 @@ export function renderCurrentPoints(
     const closingMaterial = new THREE.LineDashedMaterial({ 
       color: closingColor,
       linewidth: 3,
-      depthTest: false,
+      depthTest: true,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
@@ -380,7 +380,7 @@ export function renderEditPoints(
     const color = isSelected ? COLORS.ORANGE : COLORS.CYAN;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      depthTest: false
+      depthTest: true
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
@@ -399,7 +399,7 @@ export function renderEditPoints(
 
     // Add an invisible, larger hit area to make touch selection easier
     const hitGeometry = new THREE.SphereGeometry(size * 1.8, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, depthTest: false });
+    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, depthTest: true });
     const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
     hitSphere.position.copy(sphere.position);
     hitSphere.userData = { ...userData };
@@ -905,7 +905,7 @@ function renderLengthMeasurement(
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false
+    depthTest: true
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
   line.renderOrder = 2;
@@ -915,7 +915,7 @@ function renderLengthMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: false
+    depthTest: true
   });
   
   measurement.points.forEach((point, index) => {
@@ -989,7 +989,7 @@ function renderHeightMeasurement(
   const verticalLineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false
+    depthTest: true
   });
   const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
   verticalLine.renderOrder = 2;
@@ -1004,7 +1004,7 @@ function renderHeightMeasurement(
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false,
+    depthTest: true,
     dashSize: 0.1,
     gapSize: 0.05,
   });
@@ -1017,7 +1017,7 @@ function renderHeightMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: false
+    depthTest: true
   });
   
   [point1, point2].forEach((point, index) => {
@@ -1083,7 +1083,7 @@ function renderAreaMeasurement(
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
       linewidth: 3,
-      depthTest: false
+      depthTest: true
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
     line.renderOrder = 2;
@@ -1093,7 +1093,7 @@ function renderAreaMeasurement(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      depthTest: false
+      depthTest: true
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1211,7 +1211,7 @@ function renderSolarMeasurement(
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
       linewidth: 3,
-      depthTest: false
+      depthTest: true
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
     line.renderOrder = 2;
@@ -1221,7 +1221,7 @@ function renderSolarMeasurement(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      depthTest: false
+      depthTest: true
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1393,7 +1393,7 @@ function renderRoofElementMeasurement(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: elementColor,
-      depthTest: false
+      depthTest: true
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Place point closer to model surface
@@ -1448,7 +1448,7 @@ function renderRoofElementMeasurement(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
         linewidth: 3,
-        depthTest: false
+        depthTest: true
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.renderOrder = 2;
@@ -1458,7 +1458,7 @@ function renderRoofElementMeasurement(
       const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: elementColor,
-        depthTest: false
+        depthTest: true
       });
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
       // Place points closer to model surface
@@ -1681,15 +1681,18 @@ function renderPVModuleGrid(
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
     
     // Add UV coordinates for texture mapping
+    // Corner order from pvCalculations: 0=BL, 1=BR, 2=TR, 3=TL
+    // Triangle 1: points[0](BL), points[1](BR), points[3](TL)
+    // Triangle 2: points[0](BL), points[3](TL), points[2](TR)
     const uvs = new Float32Array([
-      // First triangle
-      0, 0,  // bottom-left
-      1, 0,  // bottom-right
-      1, 1,  // top-right
-      // Second triangle
-      0, 0,  // bottom-left
-      1, 1,  // top-right
-      0, 1   // top-left
+      // First triangle (BL, BR, TL)
+      0, 0,  // BL
+      1, 0,  // BR
+      0, 1,  // TL
+      // Second triangle (BL, TL, TR)
+      0, 0,  // BL
+      0, 1,  // TL
+      1, 1   // TR
     ]);
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     
