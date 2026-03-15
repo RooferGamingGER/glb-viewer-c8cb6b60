@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { MeasurementMode, Point, Measurement } from '@/types/measurements';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
-import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
+
 import { smartToast } from '@/utils/smartToast';
 import ExportDialog from './ExportDialog';
 import {
