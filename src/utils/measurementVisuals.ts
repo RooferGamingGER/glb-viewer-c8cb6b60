@@ -1583,23 +1583,10 @@ function renderPVModuleGrid(
         depthWrite: false
       });
 
+  const MODULE_THICKNESS = 0.025; // 2.5cm thick modules
+
   modulePoints.forEach((points, index) => {
-    const geometry = new THREE.BufferGeometry();
-
-    // 2 triangles = quad module surface
-    // Corner order: 0=BL, 1=BR, 2=TR, 3=TL
-    // Split along diagonal 0-2: Triangle1(BL,BR,TR) + Triangle2(BL,TR,TL)
-    const vertices = new Float32Array([
-      points[0].x, points[0].y, points[0].z, // BL
-      points[1].x, points[1].y, points[1].z, // BR
-      points[2].x, points[2].y, points[2].z, // TR
-
-      points[0].x, points[0].y, points[0].z, // BL
-      points[2].x, points[2].y, points[2].z, // TR
-      points[3].x, points[3].y, points[3].z  // TL
-    ]);
-
-    // Small offset to avoid z-fighting on roof surface
+    // Calculate surface normal for this module
     const normal = new THREE.Vector3()
       .crossVectors(
         new THREE.Vector3().subVectors(
@@ -1613,29 +1600,81 @@ function renderPVModuleGrid(
       )
       .normalize();
 
-    const OFFSET_DISTANCE = 0.05;
-    for (let i = 0; i < vertices.length; i += 3) {
-      vertices[i] += normal.x * OFFSET_DISTANCE;
-      vertices[i + 1] += normal.y * OFFSET_DISTANCE;
-      vertices[i + 2] += normal.z * OFFSET_DISTANCE;
-    }
+    const OFFSET_DISTANCE = 0.02; // Base offset from roof surface
 
+    // Bottom face corners (on roof surface + small offset)
+    const bottomCorners = points.map(p => new THREE.Vector3(
+      p.x + normal.x * OFFSET_DISTANCE,
+      p.y + normal.y * OFFSET_DISTANCE,
+      p.z + normal.z * OFFSET_DISTANCE
+    ));
+
+    // Top face corners (raised by MODULE_THICKNESS along normal)
+    const topCorners = bottomCorners.map(bc => new THREE.Vector3(
+      bc.x + normal.x * MODULE_THICKNESS,
+      bc.y + normal.y * MODULE_THICKNESS,
+      bc.z + normal.z * MODULE_THICKNESS
+    ));
+
+    // Build box geometry: 6 faces × 2 triangles × 3 vertices = 36 vertices
+    // Face order: top, bottom, front, back, left, right
+    const b = bottomCorners; // BL=0, BR=1, TR=2, TL=3
+    const t = topCorners;
+
+    const vertices = new Float32Array([
+      // Top face (textured) - BL, BR, TR + BL, TR, TL
+      t[0].x, t[0].y, t[0].z,  t[1].x, t[1].y, t[1].z,  t[2].x, t[2].y, t[2].z,
+      t[0].x, t[0].y, t[0].z,  t[2].x, t[2].y, t[2].z,  t[3].x, t[3].y, t[3].z,
+      // Bottom face - TL, TR, BR + TL, BR, BL (reversed winding)
+      b[3].x, b[3].y, b[3].z,  b[2].x, b[2].y, b[2].z,  b[1].x, b[1].y, b[1].z,
+      b[3].x, b[3].y, b[3].z,  b[1].x, b[1].y, b[1].z,  b[0].x, b[0].y, b[0].z,
+      // Front face (BL-BR edge) - b0, b1, t1 + b0, t1, t0
+      b[0].x, b[0].y, b[0].z,  b[1].x, b[1].y, b[1].z,  t[1].x, t[1].y, t[1].z,
+      b[0].x, b[0].y, b[0].z,  t[1].x, t[1].y, t[1].z,  t[0].x, t[0].y, t[0].z,
+      // Back face (TR-TL edge) - b2, b3, t3 + b2, t3, t2
+      b[2].x, b[2].y, b[2].z,  b[3].x, b[3].y, b[3].z,  t[3].x, t[3].y, t[3].z,
+      b[2].x, b[2].y, b[2].z,  t[3].x, t[3].y, t[3].z,  t[2].x, t[2].y, t[2].z,
+      // Right face (BR-TR edge) - b1, b2, t2 + b1, t2, t1
+      b[1].x, b[1].y, b[1].z,  b[2].x, b[2].y, b[2].z,  t[2].x, t[2].y, t[2].z,
+      b[1].x, b[1].y, b[1].z,  t[2].x, t[2].y, t[2].z,  t[1].x, t[1].y, t[1].z,
+      // Left face (TL-BL edge) - b3, b0, t0 + b3, t0, t3
+      b[3].x, b[3].y, b[3].z,  b[0].x, b[0].y, b[0].z,  t[0].x, t[0].y, t[0].z,
+      b[3].x, b[3].y, b[3].z,  t[0].x, t[0].y, t[0].z,  t[3].x, t[3].y, t[3].z,
+    ]);
+
+    const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
-    // UVs matching: BL(0,0) BR(1,0) TR(1,1) | BL(0,0) TR(1,1) TL(0,1)
-    const uvs = new Float32Array([
-      0, 0,  // BL
-      1, 0,  // BR
-      1, 1,  // TR
-      0, 0,  // BL
-      1, 1,  // TR
-      0, 1   // TL
-    ]);
+    // UVs: texture only on top face, solid color on sides/bottom
+    const uvs = new Float32Array(36 * 2); // 36 vertices × 2 UV coords
+    // Top face UVs (first 6 vertices)
+    uvs[0] = 0; uvs[1] = 0;   // BL
+    uvs[2] = 1; uvs[3] = 0;   // BR
+    uvs[4] = 1; uvs[5] = 1;   // TR
+    uvs[6] = 0; uvs[7] = 0;   // BL
+    uvs[8] = 1; uvs[9] = 1;   // TR
+    uvs[10] = 0; uvs[11] = 1; // TL
+    // Remaining faces get 0,0 UVs (will use side material)
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geometry.computeVertexNormals();
 
-    const mesh = new THREE.Mesh(geometry, moduleMaterial);
-    mesh.renderOrder = 950;
+    // Use material array: textured top + dark sides
+    const sideMaterial = new THREE.MeshBasicMaterial({
+      color: 0x1a1a2e,
+      ...DEPTH_SETTINGS,
+      depthWrite: false
+    });
+
+    // Groups: top=0-5, bottom=6-11, front=12-17, back=18-23, right=24-29, left=30-35
+    geometry.addGroup(0, 6, 0);   // top → textured
+    geometry.addGroup(6, 6, 1);   // bottom → side
+    geometry.addGroup(12, 6, 1);  // front → side
+    geometry.addGroup(18, 6, 1);  // back → side
+    geometry.addGroup(24, 6, 1);  // right → side
+    geometry.addGroup(30, 6, 1);  // left → side
+
+    const mesh = new THREE.Mesh(geometry, [moduleMaterial, sideMaterial]);
+    mesh.renderOrder = 5;
     mesh.userData = {
       measurementId: measurement.id,
       isPVModule: true,
@@ -1644,9 +1683,9 @@ function renderPVModuleGrid(
     measurementsRef.add(mesh);
 
     // Module number label
-    const centerX = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
-    const centerY = (points[0].y + points[1].y + points[2].y + points[3].y) / 4;
-    const centerZ = (points[0].z + points[1].z + points[2].z + points[3].z) / 4;
+    const centerX = (topCorners[0].x + topCorners[1].x + topCorners[2].x + topCorners[3].x) / 4;
+    const centerY = (topCorners[0].y + topCorners[1].y + topCorners[2].y + topCorners[3].y) / 4;
+    const centerZ = (topCorners[0].z + topCorners[1].z + topCorners[2].z + topCorners[3].z) / 4;
 
     const moduleCenter = new THREE.Vector3(centerX, centerY + 0.03, centerZ);
     const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true);
