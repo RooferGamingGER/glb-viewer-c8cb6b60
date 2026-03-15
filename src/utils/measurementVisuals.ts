@@ -192,14 +192,11 @@ export function renderCurrentPoints(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: pointColor,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     pointsRef.add(sphere);
 
     // Add connecting lines between points with slightly higher Y offset
@@ -213,13 +210,10 @@ export function renderCurrentPoints(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: pointColor,
         linewidth: 3,
-        depthTest: true,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
+        depthTest: false
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.renderOrder = 10;
+      line.renderOrder = 999;
       linesRef.add(line);
     }
   });
@@ -240,17 +234,14 @@ export function renderCurrentPoints(
     const closingMaterial = new THREE.LineDashedMaterial({ 
       color: closingColor,
       linewidth: 3,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
+      depthTest: false,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
     });
     const closingLine = new THREE.Line(closingGeometry, closingMaterial);
     closingLine.computeLineDistances();
-    closingLine.renderOrder = 10;
+    closingLine.renderOrder = 999;
     linesRef.add(closingLine);
   }
   
@@ -389,15 +380,12 @@ export function renderEditPoints(
     const color = isSelected ? COLORS.ORANGE : COLORS.CYAN;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add user data to the sphere for identification when clicking
     const userData = {
@@ -409,7 +397,7 @@ export function renderEditPoints(
 
     // Add an invisible, larger hit area to make touch selection easier
     const hitGeometry = new THREE.SphereGeometry(size * 1.8, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, depthTest: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, depthTest: false });
     const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
     hitSphere.position.copy(sphere.position);
     hitSphere.userData = { ...userData };
@@ -485,10 +473,7 @@ function createRoofElementMarker(
   const material = new THREE.MeshLambertMaterial({
     color: color,
     transparent: true,
-    opacity: 0.7,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    opacity: 0.7
   });
   
   // Create mesh and position it
@@ -511,7 +496,8 @@ export function renderMeasurements(
   labelsRef: THREE.Group | null,
   segmentLabelsRef: THREE.Group | null,
   measurements: Measurement[],
-  visible: boolean
+  visible: boolean,
+  isDrawing: boolean = false
 ) {
   if (!measurementsRef || !labelsRef || !segmentLabelsRef) return;
   
@@ -848,8 +834,8 @@ export function renderMeasurements(
     isPreview: boolean, 
     measurementId: string | undefined
   ) => {
-    // Immer ausblenden während der Bearbeitung
-    if (anyMeasurementBeingEdited && !isPreview) {
+    // Ausblenden während der Bearbeitung ODER während des Zeichnens
+    if ((anyMeasurementBeingEdited || isDrawing) && !isPreview) {
       child.visible = false;
       return;
     }
@@ -895,6 +881,15 @@ export function renderMeasurements(
       child.userData.measurementId
     );
   });
+  
+  // PV-Module während des Zeichnens ausblenden
+  if (isDrawing) {
+    measurementsRef.children.forEach(child => {
+      if (child.userData?.isPVModule || child.userData?.isPVGridLine) {
+        child.visible = false;
+      }
+    });
+  }
 }
 
 /**
@@ -918,29 +913,23 @@ function renderLengthMeasurement(
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
-  line.renderOrder = 10;
+  line.renderOrder = 999;
   measurementsRef.add(line);
   
   // Add small spheres at endpoints with minimal Y offset
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   measurement.points.forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1008,13 +997,10 @@ function renderHeightMeasurement(
   const verticalLineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
-  verticalLine.renderOrder = 10;
+  verticalLine.renderOrder = 999;
   measurementsRef.add(verticalLine);
   
   // Draw horizontal reference line
@@ -1026,32 +1012,26 @@ function renderHeightMeasurement(
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
+    depthTest: false,
     dashSize: 0.1,
     gapSize: 0.05,
   });
   const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
   horizontalLine.computeLineDistances();
-  horizontalLine.renderOrder = 10;
+  horizontalLine.renderOrder = 999;
   measurementsRef.add(horizontalLine);
   
   // Add small spheres at all points
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   [point1, point2].forEach((point, index) => {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.copy(point);
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1111,23 +1091,17 @@ function renderAreaMeasurement(
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
       linewidth: 3,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
-    line.renderOrder = 10;
+    line.renderOrder = 999;
     measurementsRef.add(line);
     
     // Add small sphere at each vertex with minimal Y offset
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1136,7 +1110,7 @@ function renderAreaMeasurement(
       measurement.points[i].y + POINT_Y_OFFSET, 
       measurement.points[i].z
     );
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1245,23 +1219,17 @@ function renderSolarMeasurement(
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
       linewidth: 3,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
-    line.renderOrder = 10;
+    line.renderOrder = 999;
     measurementsRef.add(line);
     
     // Add small sphere at each vertex with minimal Y offset
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1270,7 +1238,7 @@ function renderSolarMeasurement(
       measurement.points[i].y + POINT_Y_OFFSET, 
       measurement.points[i].z
     );
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1345,14 +1313,11 @@ function renderSolarMeasurement(
       opacity: 0.3,
       transparent: true,
       side: THREE.FrontSide,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     
     const mesh = new THREE.Mesh(geometry, fillMaterial);
-    mesh.renderOrder = 5;
+    mesh.renderOrder = 998;
     
     // Store measurement ID in user data
     mesh.userData = {
@@ -1437,10 +1402,7 @@ function renderRoofElementMeasurement(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: elementColor,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(
@@ -1448,7 +1410,7 @@ function renderRoofElementMeasurement(
       measurement.points[0].y + POINT_Y_OFFSET, 
       measurement.points[0].z
     );
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
@@ -1494,23 +1456,17 @@ function renderRoofElementMeasurement(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
         linewidth: 3,
-        depthTest: true,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
+        depthTest: false
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.renderOrder = 10;
+      line.renderOrder = 999;
       measurementsRef.add(line);
       
       // Add small sphere at each vertex with minimal Y offset
       const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: elementColor,
-        depthTest: true,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
+        depthTest: false
       });
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
       sphere.position.set(
@@ -1518,7 +1474,7 @@ function renderRoofElementMeasurement(
         measurement.points[i].y + POINT_Y_OFFSET, 
         measurement.points[i].z
       );
-      sphere.renderOrder = 10;
+      sphere.renderOrder = 999;
       
       // Add userData for interactive selection
       sphere.userData = {
@@ -1620,22 +1576,16 @@ function renderPVModuleGrid(
         map: moduleTexture,
         transparent: false,
         side: THREE.FrontSide,
-        depthTest: true,
-        depthWrite: true,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
+        depthTest: false,
+        depthWrite: false
       })
     : new THREE.MeshBasicMaterial({
         color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
         opacity: v.panelOpacity ?? 0.9,
         transparent: true,
         side: THREE.FrontSide,
-        depthTest: true,
-        depthWrite: false,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
+        depthTest: false,
+        depthWrite: false
       });
   
   const frameMaterial = new THREE.LineBasicMaterial({
@@ -1643,10 +1593,7 @@ function renderPVModuleGrid(
     linewidth: v.frameLineWidth ?? 2,
     opacity: v.frameOpacity ?? 1,
     transparent: (v.frameOpacity ?? 1) < 1,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
@@ -1654,10 +1601,7 @@ function renderPVModuleGrid(
     linewidth: 3,
     opacity: 0.8,
     transparent: true,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   const boundaryMaterial = new THREE.LineDashedMaterial({
@@ -1667,10 +1611,7 @@ function renderPVModuleGrid(
     linewidth: 2,
     opacity: 0.8,
     transparent: true,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   const availableAreaMaterial = new THREE.LineDashedMaterial({
@@ -1680,10 +1621,7 @@ function renderPVModuleGrid(
     linewidth: 2,
     opacity: 0.8,
     transparent: true,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   // Subtle cell grid lines material
@@ -1692,10 +1630,7 @@ function renderPVModuleGrid(
     linewidth: v.cellLineWidth ?? 1,
     opacity: v.cellLineOpacity ?? 0.25,
     transparent: true,
-    depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    depthTest: false
   });
   
   // Create module meshes - this is where we're fixing the floating issue

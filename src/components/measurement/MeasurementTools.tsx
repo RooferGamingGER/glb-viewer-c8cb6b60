@@ -155,10 +155,11 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         updatedMeasurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
     }
-  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef]);
+  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef, activeMode]);
 
   // Set the update function in the measurements context
   useEffect(() => {
@@ -313,7 +314,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         measurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
     }
   }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
@@ -325,7 +327,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      true
+      true,
+      activeMode !== 'none'
     );
   }, [measurements, measurementsRef, labelsRef, segmentLabelsRef]);
 
@@ -377,7 +380,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         measurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
       
       renderEditPoints(
@@ -423,7 +427,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      true
+      true,
+      false
     );
   };
 

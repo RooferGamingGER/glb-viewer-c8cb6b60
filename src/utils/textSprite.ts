@@ -109,7 +109,7 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
     transparent: true,
     opacity: opacity,
     sizeAttenuation: true,
-    depthTest: true,
+    depthTest: false,
     depthWrite: false
   });
   
