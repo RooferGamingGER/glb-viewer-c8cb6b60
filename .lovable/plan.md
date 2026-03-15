@@ -1,83 +1,64 @@
 
 
-# Sidebar-Redesign: Messwerkzeuge als Overlay, Sidebar nur fuer Solar/Dachelemente/Massen
+# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
 
-## Ueberblick
+## Zusammenfassung
 
-Die Sidebar ist aktuell ueberladen: Messwerkzeuge, Messungsliste, Exportoptionen und Solar/Dachelemente sind alle gleichzeitig sichtbar. Das Referenzprojekt loest das eleganter mit einem kompakten Overlay oben-links fuer die Grundwerkzeuge und einem Dialog fuer den Export.
+Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
 
 ## Aenderungen
 
-### 1. Neues Measurement-Overlay (oben-links im Viewer)
+### Datei 1: `src/hooks/use-mobile.tsx`
 
-**Neue Datei: `src/components/measurement/MeasurementOverlay.tsx`**
+**Was aendert sich:**
+- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
+- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
+- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
 
-Kompakte Toolbar wie im Referenzprojekt -- schwebt oben-links ueber dem 3D-Viewer:
-- Tool-Buttons in einer Zeile: Laenge, Hoehe, Flaeche, Abzugsflaeche, Snap, Alle loeschen
-- Darunter: Kontext-Hinweis (z.B. "Klicke 2 Punkte fuer eine Strecke") mit Undo/Fertig/Abbrechen
-- Darunter: Kompakte Messungsliste (Typ + Wert + X-Button pro Messung)
-- Edit-Modus-Anzeige wenn ein Punkt verschoben wird
+**Neue Logik `isTouchDevice()`:**
+1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
+2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
+3. `matchMedia('(hover: none)')` -- kein Hover moeglich
+4. User-Agent Regex (android, iphone, ipad, etc.)
 
+Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
+
+**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+
+### Datei 2: `src/hooks/useScreenOrientation.tsx`
+
+**Was aendert sich:**
+- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
+- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
+- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
+- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+
+**Neue Logik:**
 ```text
-┌──────────────────────────────────┐
-│ [Länge] [Höhe] [Fläche] [Abzug] │
-│ [Snap] [Neigung] [🗑 Alle]       │
-├──────────────────────────────────┤
-│ Klicke 2 Punkte für eine Strecke│
-│ [Rückgängig] [Abbrechen]        │
-├──────────────────────────────────┤
-│ Messungen                        │
-│ Länge: 8.54 m              [×]  │
-│ Fläche: 45.23 m²           [×]  │
-│ Höhe: 3.20 m               [×]  │
-└──────────────────────────────────┘
+isMobileOrTablet = useIsMobile()  // = isTouchDevice()
+isTablet = isMobileOrTablet && Math.min(width, height) > 600
+isPhone  = isMobileOrTablet && !isTablet
 ```
 
-### 2. Export-Dialog statt permanenter Exportliste
+### Keine Aenderungen noetig in:
+- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
+- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
+- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
+- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
 
-**Neue Datei: `src/components/measurement/ExportDialog.tsx`**
+## Erwartetes Verhalten nach der Aenderung
 
-Ein einzelner "Export"-Button im Overlay oeffnet einen Dialog mit Tabs:
-- **PDF**: Formular fuer Deckblatt-Daten + "PDF erstellen" Button
-- **CSV**: Vorschau + "CSV herunterladen" Button
-- **GLB**: "GLB mit Messungen exportieren" Button
-- **ABS**: "ABS-Export" Button
-- **Dachplan**: "Dachplan generieren" Button
+| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
+|---|---|---|---|---|---|
+| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
+| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
 
-### 3. Sidebar nur fuer Solar, Dachelemente und Massen-Details
+## Technische Details
 
-**`src/components/MeasurementTools.tsx` aendern:**
-
-Die Sidebar (rechts, 320px) wird:
-- **Standardmaessig zugeklappt** (nur ein kleiner Toggle-Button am rechten Rand sichtbar)
-- Enthaelt nur noch: SolarToolbar, RoofElementsToolbar, und die ausklappbare Massen-Detailliste
-- Oeffnet sich automatisch wenn Solar- oder Dachelement-Tool aktiviert wird
-
-**`src/components/measurement/MeasurementToolControls.tsx` aendern:**
-
-- Messwerkzeuge-Buttons (Laenge/Hoehe/Flaeche/Abzug) und Exportoptionen entfernen -- sind jetzt im Overlay
-- Nur noch SolarToolbar, RoofElementsToolbar und die Messungsliste (als aufklappbare Gruppen) behalten
-
-### 4. Messungsliste kompakter
-
-Die Messungsliste im Overlay zeigt nur Typ + Wert + Loeschen-Button.
-Die detaillierte Liste mit Segmenten, Punkt-Bearbeitung etc. bleibt in der Sidebar unter "Massen" als aufklappbare Gruppen (wie im Referenzprojekt: kompakte Zeilen die man aufklappen kann).
-
-### 5. Bearbeitung vereinfachen
-
-Aktuell muss man in der Sidebar eine Flaeche auswaehlen um sie zu bearbeiten. Stattdessen:
-- Wenn kein Werkzeug aktiv ist und man auf einen Punkt klickt: Punkt wird direkt zum Verschieben ausgewaehlt
-- Rote × Badges an jedem Punkt (bei Flaechen mit >3 Punkten) zum Loeschen
-- Gruene + Badges an Kanten-Mittelpunkten zum Einfuegen
-- Dies ist bereits ueber `useAddPointIndicators.ts` und `useMeasurementEvents.ts` teilweise implementiert -- muss aber ohne vorheriges "Bearbeiten starten" funktionieren
-
-## Dateien
-
-| Datei | Aenderung |
-|---|---|
-| `src/components/measurement/MeasurementOverlay.tsx` | **Neu** -- Kompakte Tool-Buttons + Messungsliste als Overlay |
-| `src/components/measurement/ExportDialog.tsx` | **Neu** -- Dialog mit Tabs fuer alle Exportformate |
-| `src/components/MeasurementTools.tsx` | Sidebar standardmaessig zugeklappt, Overlay einbinden, Sidebar nur fuer Solar/Dachelemente/Massen |
-| `src/components/measurement/MeasurementToolControls.tsx` | Messwerkzeuge und Export entfernen, nur Solar/Dach/Massen behalten |
-| `src/hooks/useMeasurementEvents.ts` | Direkte Punkt-Bearbeitung ohne vorheriges "Edit starten" ermoeglichen |
+- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
+- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
+- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
+- Keine neuen Dependencies noetig
 
