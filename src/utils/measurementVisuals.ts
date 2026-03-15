@@ -1210,23 +1210,17 @@ function renderSolarMeasurement(
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
       linewidth: 3,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
-    line.renderOrder = 10;
+    line.renderOrder = 999;
     measurementsRef.add(line);
     
     // Add small sphere at each vertex with minimal Y offset
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1235,7 +1229,7 @@ function renderSolarMeasurement(
       measurement.points[i].y + POINT_Y_OFFSET, 
       measurement.points[i].z
     );
-    sphere.renderOrder = 10;
+    sphere.renderOrder = 999;
     
     // Add userData for interactive selection
     sphere.userData = {
