@@ -276,7 +276,7 @@ const createCalculationMethodsSection = (): HTMLElement => {
 const createTotalAreaSummary = (measurements: Measurement[]): HTMLElement => {
   const totalArea = calculateTotalArea(measurements);
   const netTotalArea = calculateNetTotalArea(measurements); // Get net total area
-  const areaMeasurements = measurements.filter(m => m.type === 'area');
+  const areaMeasurements = measurements.filter(m => m.type === 'area' || m.type === 'solar');
   const deductionMeasurements = measurements.filter(m => m.type === 'deductionarea'); // Get deduction areas
   
   const container = document.createElement('div');
