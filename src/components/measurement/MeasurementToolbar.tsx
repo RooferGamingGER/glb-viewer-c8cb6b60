@@ -1,15 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Ruler, 
   ArrowUpDown, 
   Square,
-  MinusSquare, // Added new icon for deduction area
+  MinusSquare,
   Trash2,
   Magnet,
   Eye,
-  EyeOff
+  EyeOff,
+  Mountain
 } from 'lucide-react';
+import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
 import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
@@ -52,7 +54,14 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
 }) => {
   // Use the centralized point snapping context
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
+  const [showInclination, setShowInclination] = useState(getInclinationPreference());
   
+  const handleToggleInclination = () => {
+    const newVal = !showInclination;
+    setShowInclination(newVal);
+    setInclinationPreference(newVal);
+    smartToast.guidance(newVal ? "Neigungsanzeige aktiviert (>5°)" : "Neigungsanzeige deaktiviert");
+  };
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
     
@@ -108,6 +117,20 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
               >
                 <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
                 Punktfang {snapEnabled ? 'Ein' : 'Aus'}
+              </Toggle>
+
+              {/* Inclination Toggle */}
+              <Toggle
+                pressed={showInclination}
+                onPressedChange={handleToggleInclination}
+                size="sm"
+                variant={showInclination ? "customActive" : "outline"}
+                aria-label="Neigung ein/aus"
+                title={showInclination ? "Neigungsanzeige deaktivieren" : "Neigungsanzeige aktivieren"}
+                className={`w-full justify-start mb-4 ${showInclination ? 'bg-blue-500/20 text-blue-600 border-blue-500' : ''}`}
+              >
+                <Mountain className={`h-4 w-4 mr-2 ${!showInclination ? 'text-muted-foreground' : ''}`} />
+                Neigung {showInclination ? 'Ein' : 'Aus'}
               </Toggle>
               
               {/* Control buttons at the top - Added Eye/EyeOff toggle button */}
