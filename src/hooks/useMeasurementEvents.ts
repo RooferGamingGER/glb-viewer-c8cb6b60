@@ -133,7 +133,7 @@ export const useMeasurementEvents = (
     raycaster.setFromCamera(mousePosition, camera);
     
     // Check if we clicked on an add point indicator (plus sign)
-    if (refs.addPointIndicatorsRef.current && editMeasurementId) {
+    if (refs.addPointIndicatorsRef.current) {
       // Handle adding point indicators
       const addPointIntersects = raycaster.intersectObjects(refs.addPointIndicatorsRef.current.children, true);
       
