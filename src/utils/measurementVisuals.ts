@@ -1198,32 +1198,30 @@ function renderSolarMeasurement(
   const points3D = measurement.points.map(p => new THREE.Vector3(p.x, p.y + LINE_Y_OFFSET, p.z));
   
   // Use a distinct blue color for solar measurements
-  const measurementColor = 0x1EAEDB; // Bright blue for solar/PV
+  const measurementColor = COLORS.SOLAR;
   
   // Create outline from points
   for (let i = 0; i < points3D.length; i++) {
     const p1 = points3D[i];
-    const p2 = points3D[(i + 1) % points3D.length]; // Connect back to first point
+    const p2 = points3D[(i + 1) % points3D.length];
     
     // Draw the line segment
     const linePoints = [p1, p2];
     const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
-      linewidth: 3, // Thicker line for better visibility
-      opacity: 0.9,
-      transparent: true
+      linewidth: 3,
+      depthTest: false
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
     line.renderOrder = 2;
     measurementsRef.add(line);
     
     // Add small sphere at each vertex with minimal Y offset
-    const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16); // Slightly larger points
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      opacity: 0.9,
-      transparent: true
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
