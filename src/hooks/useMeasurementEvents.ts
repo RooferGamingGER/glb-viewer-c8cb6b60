@@ -168,8 +168,8 @@ export const useMeasurementEvents = (
       }
     }
     
-    // Check for edit point interactions
-    if (refs.editPointsRef.current) {
+    // Check for edit point interactions — only when no drawing tool is active
+    if (activeMode === 'none' && refs.editPointsRef.current) {
       const editPointIntersects = raycaster.intersectObjects(refs.editPointsRef.current.children, true);
       
       if (editPointIntersects.length > 0) {
