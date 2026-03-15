@@ -9,9 +9,8 @@ import {
   Magnet,
   Eye,
   EyeOff,
-  Mountain
 } from 'lucide-react';
-import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
+import { MeasurementMode } from '@/types/measurements';
 import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
