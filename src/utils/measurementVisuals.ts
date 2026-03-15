@@ -1005,10 +1005,10 @@ function renderHeightMeasurement(
   const verticalLineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false
+    ...DEPTH_SETTINGS
   });
   const verticalLine = new THREE.Line(verticalLineGeometry, verticalLineMaterial);
-  verticalLine.renderOrder = 999;
+  verticalLine.renderOrder = 10;
   measurementsRef.add(verticalLine);
   
   // Draw horizontal reference line
