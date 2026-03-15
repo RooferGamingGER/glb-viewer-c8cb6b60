@@ -447,7 +447,10 @@ export const calculatePVModulePlacement = (
         });
 
         if (isModuleInsidePolygon(worldCorners, points)) {
-          count++;
+          // Check exclusion zones (roof elements like chimneys, skylights)
+          if (!isModuleOverlappingExclusion(worldCorners, exclusionZones)) {
+            count++;
+          }
         }
       }
     }
