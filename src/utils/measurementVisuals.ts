@@ -1640,7 +1640,10 @@ function renderPVModuleGrid(
     linewidth: v.frameLineWidth ?? 2,
     opacity: v.frameOpacity ?? 1,
     transparent: (v.frameOpacity ?? 1) < 1,
-    depthTest: true
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
   });
   
   const gridLineMaterial = new THREE.LineBasicMaterial({
@@ -1648,7 +1651,10 @@ function renderPVModuleGrid(
     linewidth: 3,
     opacity: 0.8,
     transparent: true,
-    depthTest: true
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
   });
   
   const boundaryMaterial = new THREE.LineDashedMaterial({
@@ -1658,7 +1664,10 @@ function renderPVModuleGrid(
     linewidth: 2,
     opacity: 0.8,
     transparent: true,
-    depthTest: true
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
   });
   
   const availableAreaMaterial = new THREE.LineDashedMaterial({
@@ -1668,7 +1677,10 @@ function renderPVModuleGrid(
     linewidth: 2,
     opacity: 0.8,
     transparent: true,
-    depthTest: true
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
   });
   
   // Subtle cell grid lines material
@@ -1677,7 +1689,10 @@ function renderPVModuleGrid(
     linewidth: v.cellLineWidth ?? 1,
     opacity: v.cellLineOpacity ?? 0.25,
     transparent: true,
-    depthTest: true
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
   });
   
   // Create module meshes - this is where we're fixing the floating issue
