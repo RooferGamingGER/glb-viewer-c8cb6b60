@@ -1448,7 +1448,7 @@ function renderRoofElementMeasurement(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
         linewidth: 3,
-        depthTest: false
+        depthTest: true
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.renderOrder = 2;
