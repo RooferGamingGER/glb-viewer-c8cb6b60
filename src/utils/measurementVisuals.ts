@@ -380,7 +380,7 @@ export function renderEditPoints(
     const color = isSelected ? COLORS.ORANGE : COLORS.CYAN;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      depthTest: false
+      depthTest: true
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
