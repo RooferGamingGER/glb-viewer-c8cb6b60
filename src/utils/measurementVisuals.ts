@@ -496,7 +496,8 @@ export function renderMeasurements(
   labelsRef: THREE.Group | null,
   segmentLabelsRef: THREE.Group | null,
   measurements: Measurement[],
-  visible: boolean
+  visible: boolean,
+  isDrawing: boolean = false
 ) {
   if (!measurementsRef || !labelsRef || !segmentLabelsRef) return;
   
