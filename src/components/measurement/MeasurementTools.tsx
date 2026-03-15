@@ -301,7 +301,6 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
     if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
-      // When editing is complete, re-render all measurements to ensure labels are updated
       renderMeasurements(
         measurementsRef.current, 
         labelsRef.current, 
@@ -311,9 +310,9 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         activeMode !== 'none'
       );
     }
-  }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef]);
+  }, [editMeasurementId, movingPointInfo, measurements, enabled, measurementsRef, labelsRef, segmentLabelsRef, activeMode]);
 
-  // Re-render measurements when they change
+  // Re-render measurements when they change or activeMode changes
   useEffect(() => {
     renderMeasurements(
       measurementsRef.current, 
@@ -323,7 +322,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       true,
       activeMode !== 'none'
     );
-  }, [measurements, measurementsRef, labelsRef, segmentLabelsRef]);
+  }, [measurements, measurementsRef, labelsRef, segmentLabelsRef, activeMode]);
 
   // Re-render current points when they change
   useEffect(() => {
