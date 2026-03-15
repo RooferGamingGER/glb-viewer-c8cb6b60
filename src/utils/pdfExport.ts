@@ -1490,15 +1490,15 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       currentPage++;
     }
     
-    // Berechnungsmethoden
-    tocEntries.push({ title: 'Anhang: Berechnungsmethoden', page: currentPage });
-    currentPage++;
-    
-    // Solarplanung
+    // Solarplanung (before appendix)
     const solarMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
     if (solarMeasurementsForToc.length > 0) {
       tocEntries.push({ title: `Solarplanung (${solarMeasurementsForToc.length} Flächen)`, page: currentPage });
+      currentPage += solarMeasurementsForToc.length;
     }
+    
+    // Berechnungsmethoden (always last)
+    tocEntries.push({ title: 'Anhang: Berechnungsmethoden', page: currentPage });
     
     tocEntries.forEach(entry => {
       const tocRow = document.createElement('div');
@@ -2226,11 +2226,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     }
     
-    // Add calculation methods appendix
-    const calculationMethodsSection = createCalculationMethodsSection();
-    container.appendChild(calculationMethodsSection);
-
-    // ============ SOLARPLANUNG PAGE(S) ============
+    // ============ SOLARPLANUNG PAGE(S) - before appendix ============
     const solarMeasurements = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
     
     if (solarMeasurements.length > 0) {
@@ -2311,7 +2307,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         specsCol.style.flexShrink = '0';
         
         const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
-        const totalPower = pvInfo.pvMaterials?.totalPower || 0;
+        const modulePower = pvInfo.pvModuleSpec?.power || 425;
+        const totalPower = (activeModules * modulePower) / 1000;
         
         // Module count box
         const moduleBox = document.createElement('div');
@@ -2371,8 +2368,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         const utilization = roofArea > 0 ? (moduleArea / roofArea * 100) : 0;
         
         // Calculate grid info
-        const gridCols = (pvInfo as any).gridCols || '-';
-        const gridRows = (pvInfo as any).gridRows || '-';
+        const gridCols = pvInfo.columns || '-';
+        const gridRows = pvInfo.rows || '-';
         
         const specRows: [string, string][] = [
           ['Modulgröße', `${pvInfo.moduleWidth.toFixed(2)} × ${pvInfo.moduleHeight.toFixed(2)} m`],
@@ -2381,13 +2378,11 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           ['Dachfläche', `${roofArea.toFixed(2)} m²`],
           ['Flächennutzung', `${utilization.toFixed(1)}%`],
           ['Leistung', `${totalPower.toFixed(2)} kWp`],
-          ['Ausrichtung', `${pvInfo.roofDirection || '?'}(${pvInfo.roofAzimuth?.toFixed(0) || '?'}°)`],
+          ['Ausrichtung', `${pvInfo.roofDirection || '?'} (${pvInfo.roofAzimuth?.toFixed(0) || '?'}°)`],
           ['Dachneigung', `${pvInfo.roofInclination?.toFixed(0) || '?'}°`],
         ];
         
-        if (pvInfo.yieldFactor) {
-          specRows.push(['Jahresertrag', `${(totalPower * pvInfo.yieldFactor).toFixed(0)} kWh/Jahr`]);
-        }
+        specRows.push(['Jahresertrag', `${(totalPower * (pvInfo.yieldFactor || 950)).toFixed(0)} kWh/Jahr`]);
         
         specRows.forEach(([label, value]) => {
           const tr = document.createElement('tr');
@@ -2449,18 +2444,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           
           matRows.forEach(([label, value]) => {
             const tr = document.createElement('tr');
-            const tdL = document.createElement('td');
-            tdL.style.padding = '2px 5px';
-            tdL.style.borderBottom = '1px solid #eee';
-            tdL.style.fontWeight = 'bold';
-            tdL.style.color = '#555';
-            tdL.textContent = label;
-            tr.appendChild(tdL);
-            const tdV = document.createElement('td');
-            tdV.style.padding = '2px 5px';
-            tdV.style.borderBottom = '1px solid #eee';
-            tdV.textContent = value;
-            tr.appendChild(tdV);
+            const tdLabel = document.createElement('td');
+            tdLabel.style.padding = '2px 5px';
+            tdLabel.style.borderBottom = '1px solid #eee';
+            tdLabel.style.color = '#555';
+            tdLabel.textContent = label;
+            tr.appendChild(tdLabel);
+            
+            const tdVal = document.createElement('td');
+            tdVal.style.padding = '2px 5px';
+            tdVal.style.borderBottom = '1px solid #eee';
+            tdVal.textContent = value;
+            tr.appendChild(tdVal);
+            
             matTable.appendChild(tr);
           });
           
@@ -2471,6 +2467,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         container.appendChild(solarPage);
       }
     }
+
+    // Add calculation methods appendix (always last)
+    const calculationMethodsSection = createCalculationMethodsSection();
+    container.appendChild(calculationMethodsSection);
     
     const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
     
