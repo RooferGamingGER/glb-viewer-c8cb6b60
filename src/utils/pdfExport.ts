@@ -1747,10 +1747,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     container.appendChild(measurementSection);
     
     // PAGE 4+: Individual areas (each on its own page)
-    const areaMeasurements = sortedMeasurements.filter(m => m.type === 'area');
+    const areaMeasurements = sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar');
     const lengthMeasurements = sortedMeasurements.filter(m => m.type === 'length');
     const heightMeasurements = sortedMeasurements.filter(m => m.type === 'height');
-    const otherMeasurements = sortedMeasurements.filter(m => !['area', 'length', 'height'].includes(m.type));
+    const otherMeasurements = sortedMeasurements.filter(m => !['area', 'solar', 'length', 'height'].includes(m.type));
     
     if (areaMeasurements.length > 0) {
       // Each area gets its own page for better visibility
