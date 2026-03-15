@@ -903,21 +903,19 @@ function renderLengthMeasurement(
   const linePoints = [point1, point2];
   const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
   const lineMaterial = new THREE.LineBasicMaterial({ 
-    color: 0x00ff00,
-    linewidth: 3, // Increased from 2
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    linewidth: 3,
+    depthTest: false
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
-  line.renderOrder = 2; // Ensure line renders above model
+  line.renderOrder = 2;
   measurementsRef.add(line);
   
   // Add small spheres at endpoints with minimal Y offset
-  const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+  const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x00ff00,
-    opacity: 0.9,
-    transparent: true
+    color: COLORS.CYAN,
+    depthTest: false
   });
   
   measurement.points.forEach((point, index) => {
