@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   formatPVModuleInfo, 
@@ -14,7 +15,7 @@ import {
   extractExclusionZones
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
-import { Zap, ListTodo, Compass } from 'lucide-react';
+import { Zap, ListTodo, Compass, Move, RotateCcw, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SolarMeasurementContentProps {
@@ -283,8 +284,85 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               </div>
             </div>
             
+            {/* Grid Position & Rotation Controls */}
+            <div className="mt-2 pt-2 border-t space-y-2">
+              <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Move className="h-3 w-3" /> Verschiebung & Drehung
+              </Label>
+              
+              {/* Offset U (horizontal) */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-6">↔</span>
+                <Slider
+                  min={-2}
+                  max={2}
+                  step={0.05}
+                  value={[measurement.pvModuleInfo.gridOffsetU || 0]}
+                  onValueChange={([val]) => {
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridOffsetU: val }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.gridOffsetU || 0).toFixed(2)}m</span>
+              </div>
+              
+              {/* Offset W (vertical) */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-6">↕</span>
+                <Slider
+                  min={-2}
+                  max={2}
+                  step={0.05}
+                  value={[measurement.pvModuleInfo.gridOffsetW || 0]}
+                  onValueChange={([val]) => {
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridOffsetW: val }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.gridOffsetW || 0).toFixed(2)}m</span>
+              </div>
+              
+              {/* Rotation */}
+              <div className="flex items-center gap-2">
+                <RotateCw className="h-3 w-3 text-muted-foreground shrink-0" />
+                <Slider
+                  min={-45}
+                  max={45}
+                  step={1}
+                  value={[measurement.pvModuleInfo.gridRotation || 0]}
+                  onValueChange={([val]) => {
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridRotation: val }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.gridRotation || 0)}°</span>
+              </div>
+              
+              {/* Reset button */}
+              {(measurement.pvModuleInfo.gridOffsetU || measurement.pvModuleInfo.gridOffsetW || measurement.pvModuleInfo.gridRotation) ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-6 text-[10px]"
+                  onClick={() => {
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridOffsetU: 0, gridOffsetW: 0, gridRotation: 0 }
+                    });
+                  }}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" /> Zurücksetzen
+                </Button>
+              ) : null}
+            </div>
+            
             <div className="mt-2 pt-2 border-t text-[10px] text-muted-foreground">
-              💡 Klicken Sie auf ein Modul im 3D-Modell um es zu entfernen. Auf freie Dachfläche klicken zum Hinzufügen.
+              💡 Klicken Sie auf ein Modul im 3D-Modell um es zu entfernen.
             </div>
           </div>
         </TabsContent>

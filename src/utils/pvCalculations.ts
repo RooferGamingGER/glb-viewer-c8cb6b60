@@ -557,6 +557,30 @@ export const generatePVModuleGrid = (
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
+  // Grid transform: offset and rotation
+  const offsetU = pvInfo.gridOffsetU || 0;
+  const offsetW = pvInfo.gridOffsetW || 0;
+  const rotationDeg = pvInfo.gridRotation || 0;
+  const rotationRad = (rotationDeg * Math.PI) / 180;
+  const cosR = Math.cos(rotationRad);
+  const sinR = Math.sin(rotationRad);
+
+  // Grid center for rotation pivot (center of the bounding grid area)
+  const gridCenterU = (minU + maxU) / 2;
+  const gridCenterW = (minW + maxW) / 2;
+
+  // Helper to apply rotation around grid center + offset
+  const transformPoint = (u: number, w: number): { u: number; w: number } => {
+    // Translate to grid center
+    const du = u - gridCenterU;
+    const dw = w - gridCenterW;
+    // Rotate
+    const ru = cosR * du - sinR * dw;
+    const rw = sinR * du + cosR * dw;
+    // Translate back + apply offset
+    return { u: ru + gridCenterU + offsetU, w: rw + gridCenterW + offsetW };
+  };
+
   // Track sequential index for removed module filtering
   let sequentialIndex = 0;
   const removedIndices = pvInfo.removedModuleIndices || [];
@@ -566,13 +590,16 @@ export const generatePVModuleGrid = (
       const cu = startU + c * (mw + spacing);
       const cw = startW + r * (mh + spacing);
 
-      // Module corners in 2D (v1/v2 space)
-      const corners2D = [
+      // Module corners in 2D (v1/v2 space) — before transform
+      const rawCorners = [
         { u: cu - mw / 2, w: cw - mh / 2 },
         { u: cu + mw / 2, w: cw - mh / 2 },
         { u: cu + mw / 2, w: cw + mh / 2 },
         { u: cu - mw / 2, w: cw + mh / 2 },
       ];
+
+      // Apply rotation + offset transform
+      const corners2D = rawCorners.map(c2 => transformPoint(c2.u, c2.w));
 
       // Convert to world coords for polygon check
       const worldCorners = corners2D.map(c2 => {

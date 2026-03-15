@@ -96,6 +96,9 @@ export interface PVModuleInfo {
     busbarCount?: number;     // Number of busbars per cell
   };
   exclusionZones?: Point[][];  // Polygons from roof elements (chimneys, skylights, etc.) to exclude from module placement
+  gridOffsetU?: number;        // Grid offset along primary axis (v1) in meters
+  gridOffsetW?: number;        // Grid offset along secondary axis (v2) in meters
+  gridRotation?: number;       // Grid rotation in degrees around grid center
 }
 
 export interface PVModuleSpec {
