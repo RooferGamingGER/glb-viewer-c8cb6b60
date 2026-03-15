@@ -776,12 +776,27 @@ export const calculateRoofOrientation = (points: Point[]): {
   try {
     const { normal } = fitPlane(points);
     
-    const inclination = Math.acos(Math.abs(normal.y)) * (180 / Math.PI);
+    // Inclination: angle between normal and vertical (Y-axis)
+    const inclination = Math.acos(Math.min(1, Math.abs(normal.y))) * (180 / Math.PI);
 
-    let azimuth = Math.atan2(normal.x, -normal.z) * (180 / Math.PI);
+    // Downslope direction = horizontal projection of the normal
+    // In Three.js: +X = East, +Z = South (camera convention)
+    // Azimuth: 0° = North, 90° = East, 180° = South, 270° = West
+    const hx = normal.x;
+    const hz = normal.z;
+    
+    // If roof is nearly flat, default to South
+    if (Math.sqrt(hx * hx + hz * hz) < 0.01) {
+      return { azimuth: 180, direction: 'S', inclination };
+    }
+
+    // atan2(x, -z) gives angle from South=0. We want North=0.
+    // Downslope points in the direction the normal's horizontal component points
+    let azimuth = Math.atan2(hx, -hz) * (180 / Math.PI);
     if (azimuth < 0) azimuth += 360;
 
-    const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"];
+    // German cardinal directions
+    const directions = ["N", "NO", "O", "SO", "S", "SW", "W", "NW", "N"];
     const direction = directions[Math.round(azimuth / 45)];
 
     return { azimuth, direction, inclination };
@@ -790,32 +805,82 @@ export const calculateRoofOrientation = (points: Point[]): {
   }
 };
 
+// ============================================================================
+// DGS-BASED YIELD CALCULATION FOR GERMANY
+// ============================================================================
+
+/**
+ * DGS (Deutsche Gesellschaft für Sonnenenergie) correction factors.
+ * Reference: 100% = South, 30° tilt = 1000 kWh/kWp in Central Germany.
+ * Rows: tilt angles. Columns: orientation categories.
+ */
+const DGS_TILT_ANGLES = [0, 15, 30, 45, 60, 90];
+const DGS_TABLE: Record<string, number[]> = {
+  // tilt →               0°     15°    30°    45°    60°    90°
+  'S':                  [0.87,  0.95,  1.00,  0.97,  0.88,  0.55],
+  'SO_SW':              [0.87,  0.93,  0.96,  0.92,  0.82,  0.52],
+  'O_W':                [0.87,  0.88,  0.85,  0.78,  0.67,  0.42],
+  'NO_NW':              [0.87,  0.82,  0.72,  0.60,  0.47,  0.32],
+  'N':                  [0.87,  0.80,  0.65,  0.50,  0.37,  0.25],
+};
+
+const REFERENCE_YIELD = 1000; // kWh/kWp at optimal (South, 30°) in Germany
+
+/**
+ * Map azimuth (0-360°) to DGS orientation category
+ */
+const azimuthToDGSCategory = (azimuth: number): string => {
+  // Normalize to 0-360
+  const a = ((azimuth % 360) + 360) % 360;
+  // Symmetric: distance from South (180°)
+  const diff = Math.abs(a - 180);
+  
+  if (diff <= 22.5) return 'S';           // 157.5 - 202.5
+  if (diff <= 67.5) return 'SO_SW';       // SO: 112.5-157.5, SW: 202.5-247.5
+  if (diff <= 112.5) return 'O_W';        // O: 67.5-112.5, W: 247.5-292.5
+  if (diff <= 157.5) return 'NO_NW';      // NO: 22.5-67.5, NW: 292.5-337.5
+  return 'N';                              // 0-22.5, 337.5-360
+};
+
+/**
+ * Linear interpolation
+ */
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/**
+ * Bilinear interpolation in the DGS table for precise yield factor.
+ * Returns factor as fraction (0-1) relative to optimal.
+ */
+const interpolateDGS = (category: string, tilt: number): number => {
+  const factors = DGS_TABLE[category];
+  if (!factors) return 0.87; // fallback: flat roof
+
+  const clampedTilt = Math.max(0, Math.min(90, tilt));
+  
+  // Find surrounding tilt angles
+  let lowerIdx = 0;
+  for (let i = 0; i < DGS_TILT_ANGLES.length - 1; i++) {
+    if (clampedTilt >= DGS_TILT_ANGLES[i]) lowerIdx = i;
+  }
+  const upperIdx = Math.min(lowerIdx + 1, DGS_TILT_ANGLES.length - 1);
+  
+  if (lowerIdx === upperIdx) return factors[lowerIdx];
+  
+  const t = (clampedTilt - DGS_TILT_ANGLES[lowerIdx]) / (DGS_TILT_ANGLES[upperIdx] - DGS_TILT_ANGLES[lowerIdx]);
+  return lerp(factors[lowerIdx], factors[upperIdx], t);
+};
+
+/**
+ * Calculate yield factor in kWh/kWp based on azimuth and tilt,
+ * using DGS correction factors for Germany.
+ */
 export const calculateYieldFactorFromOrientation = (
   azimuth: number,
   inclination: number
 ): number => {
-  let baseFactor = 1000;
-
-  const azimuthDiff = Math.abs(azimuth - 180);
-  let azimuthFactor = 1;
-  if (azimuthDiff <= 45) {
-    azimuthFactor = 1 - (azimuthDiff / 180);
-  } else if (azimuthDiff <= 90) {
-    azimuthFactor = 0.8 - ((azimuthDiff - 45) / 450);
-  } else {
-    azimuthFactor = 0.7 - ((azimuthDiff - 90) / 900);
-  }
-
-  let inclinationFactor = 1;
-  if (inclination < 10) {
-    inclinationFactor = 0.9;
-  } else if (inclination <= 40) {
-    inclinationFactor = 0.95 + ((inclination - 10) / 300);
-  } else {
-    inclinationFactor = 1 - ((inclination - 40) / 100);
-  }
-
-  return Math.round(baseFactor * azimuthFactor * inclinationFactor);
+  const category = azimuthToDGSCategory(azimuth);
+  const factor = interpolateDGS(category, inclination);
+  return Math.round(REFERENCE_YIELD * factor);
 };
 
 export const updatePVModuleInfoWithOrientation = (

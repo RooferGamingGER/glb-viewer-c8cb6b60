@@ -1,50 +1,64 @@
 
 
-# Fix: Ertragsberechnung für Deutschland + korrekte Himmelsrichtung
+# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
 
-## Analyse
+## Zusammenfassung
 
-### Problem 1: Azimut-Berechnung
-`calculateRoofOrientation` nutzt `atan2(normal.x, -normal.z)` — das setzt ein bestimmtes Koordinatensystem voraus. Je nach Modell-Ausrichtung kann das falsch sein. Die Flächennormale zeigt "nach oben" von der Dachfläche, ihr horizontaler Anteil zeigt die Neigungsrichtung. Das Vorzeichen von `z` bestimmt ob Nord/Süd korrekt erkannt wird.
+Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
 
-**Fix**: Die Berechnung ist mathematisch korrekt für Three.js-Standard (+X=Ost, +Z=Süd nach Kamera). Aber die Richtung der Normale hängt von der Windungsrichtung der Polygon-Punkte ab. Wenn die Normale nach "unten" zeigt (y<0), wird sie negiert — aber der horizontale Anteil kann trotzdem in die falsche Richtung zeigen. Wir müssen die **Fallrichtung** des Dachs nehmen (Projektion der Normale auf die Horizontalebene), nicht die Normale selbst.
+## Aenderungen
 
-### Problem 2: Ertragsfaktor
-`calculateYieldFactorFromOrientation` nutzt eine grobe lineare Formel mit Basisfaktor 1000. Für Deutschland brauchen wir eine realistische Lookup-Tabelle basierend auf Globalstrahlung (~1000-1100 kWh/m²/Jahr in Zentraldeutschland).
+### Datei 1: `src/hooks/use-mobile.tsx`
 
-**Fix**: Ersetzen durch eine Tabelle mit Korrekturfaktoren nach DGS-Leitfaden (Deutsche Gesellschaft für Sonnenenergie):
+**Was aendert sich:**
+- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
+- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
+- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
 
+**Neue Logik `isTouchDevice()`:**
+1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
+2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
+3. `matchMedia('(hover: none)')` -- kein Hover moeglich
+4. User-Agent Regex (android, iphone, ipad, etc.)
+
+Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
+
+**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+
+### Datei 2: `src/hooks/useScreenOrientation.tsx`
+
+**Was aendert sich:**
+- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
+- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
+- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
+- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+
+**Neue Logik:**
 ```text
-Neigung →   0°    15°   30°   45°   60°   90°
-Süd (180°)  87%   95%  100%   97%   88%   55%
-SW/SO       87%   93%   96%   92%   82%   52%
-W/O         87%   88%   85%   78%   67%   42%
-NW/NO       87%   82%   72%   60%   47%   32%
-Nord (0°)   87%   80%   65%   50%   37%   25%
+isMobileOrTablet = useIsMobile()  // = isTouchDevice()
+isTablet = isMobileOrTablet && Math.min(width, height) > 600
+isPhone  = isMobileOrTablet && !isTablet
 ```
 
-Referenzertrag für Deutschland: **1000 kWh/kWp** (Süd, 30°, optimale Bedingungen). Realistischer Durchschnitt ~950 kWh/kWp.
+### Keine Aenderungen noetig in:
+- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
+- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
+- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
+- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
 
-## Plan
+## Erwartetes Verhalten nach der Aenderung
 
-### 1. `calculateRoofOrientation` korrigieren
-- Azimut aus der horizontalen Projektion der Dachnormale ableiten
-- Sicherstellen dass die "Fallrichtung" (downslope) korrekt als Azimut interpretiert wird
-- Richtungslabels auf Deutsch: "N", "NO", "O", "SO", "S", "SW", "W", "NW"
+| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
+|---|---|---|---|---|---|
+| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
+| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
 
-### 2. `calculateYieldFactorFromOrientation` ersetzen
-- Lookup-Tabelle mit DGS-konformen Korrekturfaktoren (Azimut × Neigung)
-- Bilineare Interpolation zwischen Stützstellen
-- Basisfaktor 1000 kWh/kWp für Süd/30° in Deutschland
-- Ergebnis: realistischer Ertragsfaktor in kWh/kWp
+## Technische Details
 
-### 3. SolarMeasurementContent — Richtungsanzeige
-- Richtungslabels konsistent auf Deutsch ("SO" statt "SE", "NO" statt "NE")
-
-## Dateien
-
-| Datei | Änderung |
-|---|---|
-| `src/utils/pvCalculations.ts` | `calculateRoofOrientation`: Azimut-Fix + deutsche Labels. `calculateYieldFactorFromOrientation`: DGS-Tabelle mit Interpolation |
-| `src/components/measurement/SolarMeasurementContent.tsx` | Richtungslabels auf Deutsch anpassen (minor) |
+- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
+- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
+- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
+- Keine neuen Dependencies noetig
 

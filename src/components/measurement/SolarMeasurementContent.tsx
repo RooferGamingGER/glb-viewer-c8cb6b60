@@ -35,7 +35,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           measurement.points
         );
         updateMeasurement(measurement.id, { pvModuleInfo: updatedPVInfo });
-        toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection}`);
+        toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection} (${Math.round(updatedPVInfo.roofAzimuth || 0)}°)`);
       }
     }
   }, [measurement.id, measurement.pvModuleInfo, measurement.points, updateMeasurement]);
