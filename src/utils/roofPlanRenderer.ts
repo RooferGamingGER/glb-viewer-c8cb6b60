@@ -484,9 +484,9 @@ export const createCombinedRoofPlan = (
       return aIndex - bIndex;
     });
     
-    // First pass: Draw all base roof areas
+    // First pass: Draw all base roof areas (including solar - treated as regular area in Dachplan)
     sortedMeasurements.forEach(({ measurement, points2D }) => {
-      if (measurement.type !== 'area') return;
+      if (measurement.type !== 'area' && measurement.type !== 'solar' && measurement.type !== 'pvmodule') return;
       
       const colorSet = colors[measurement.type] || colors.default;
       usedMeasurementTypes.add(measurement.type);
@@ -511,10 +511,9 @@ export const createCombinedRoofPlan = (
       ctx.stroke();
     });
     
-    // Second pass: Draw all special areas (skylight, chimney, etc. except for PV),
-    // as we'll handle the PV areas separately to add modules
+    // Second pass: Draw all special areas (skylight, chimney, etc.)
     sortedMeasurements.forEach(({ measurement, points2D }) => {
-      // Skip regular areas and PV areas for now
+      // Skip regular areas and solar areas (already drawn)
       if (measurement.type === 'area' || measurement.type === 'solar' || measurement.type === 'pvmodule') return;
       
       const colorSet = colors[measurement.type] || colors.default;
@@ -546,53 +545,6 @@ export const createCombinedRoofPlan = (
           points2D.map(p => ({ x: toCanvasX(p.x), y: toCanvasY(p.y) })),
           colorSet.stroke
         );
-      }
-    });
-    
-    // Third pass: Handle PV areas differently - draw module rectangles instead of just the area
-    sortedMeasurements.forEach(({ measurement, points2D }) => {
-      if (measurement.type !== 'solar' && measurement.type !== 'pvmodule') return;
-      
-      // Log for debugging
-      console.log(`Processing PV area: ${measurement.id}, type: ${measurement.type}`);
-      
-      // Initially draw the outline of the area as a lightweight reference
-      const colorSet = colors[measurement.type] || colors.default;
-      usedMeasurementTypes.add(measurement.type);
-      
-      // Draw a very subtle outline
-      ctx.beginPath();
-      ctx.moveTo(toCanvasX(points2D[0].x), toCanvasY(points2D[0].y));
-      
-      for (let i = 1; i < points2D.length; i++) {
-        ctx.lineTo(toCanvasX(points2D[i].x), toCanvasY(points2D[i].y));
-      }
-      
-      ctx.closePath();
-      
-      // Apply a very light fill
-      ctx.fillStyle = 'rgba(220, 240, 255, 0.1)';
-      ctx.fill();
-      
-      // Draw a dashed outline to indicate the border of the PV area
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = '#2277AA';
-      ctx.setLineDash([5, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]); // Reset line dash
-      
-      // Draw PV modules if available
-      if (measurement.pvModuleInfo) {
-        // Get module rectangles
-        const { moduleRects } = projectPVModulesTo2D(
-          measurement, 
-          points2D, 
-          toCanvasX, 
-          toCanvasY
-        );
-        
-        // Draw all modules
-        drawPVModules(ctx, moduleRects, 1);
       }
     });
     
@@ -710,16 +662,8 @@ export const createCombinedRoofPlan = (
       const labelText = measurement.description || getMeasurementTypeDisplayName(measurement.type);
       const valueText = `${measurement.value ? measurement.value.toFixed(2) : "0.00"} m²`;
       
-      // Add PV module info for solar areas
+      // No PV module info in Dachplan - shown separately in PV-Plan
       let pvText = "";
-      if ((measurement.type === 'solar' || measurement.type === 'pvmodule') && 
-          measurement.pvModuleInfo?.moduleCount) {
-        pvText = `${measurement.pvModuleInfo.moduleCount} Module`;
-        if (measurement.pvModuleInfo?.pvMaterials?.totalPower) {
-          // Ensure proper formatting with 2 decimal places
-          pvText += ` / ${measurement.pvModuleInfo.pvMaterials.totalPower.toFixed(2)} kWp`;
-        }
-      }
       
       // INCREASED font size for better readability
       ctx.font = 'bold 30px Arial'; // Increased from 26px to 30px
