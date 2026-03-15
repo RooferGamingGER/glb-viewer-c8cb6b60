@@ -202,27 +202,17 @@ export function renderCurrentPoints(
     // Add connecting lines between points with slightly higher Y offset
     if (index > 0) {
       const prevPoint = currentPoints[index - 1];
-      // Add Y offset to both points when creating the line
       const p1 = new THREE.Vector3(prevPoint.x, prevPoint.y + LINE_Y_OFFSET, prevPoint.z);
       const p2 = new THREE.Vector3(point.x, point.y + LINE_Y_OFFSET, point.z);
       
       const points = [p1, p2];
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
       const lineMaterial = new THREE.LineBasicMaterial({ 
-        color: activeMode === 'length' ? 0x00ff00 : 
-               activeMode === 'height' ? 0x0000ff : 
-               activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
-               activeMode === 'skylight' ? 0xff8800 :
-               activeMode === 'chimney' ? 0xff0000 :
-               activeMode === 'vent' ? 0x00ffff :
-               activeMode === 'hook' ? 0xff00ff :
-               0xffaa00,
-        linewidth: 3, // Increased from 2 for better visibility
-        opacity: 0.9, // Higher opacity
-        transparent: true
+        color: pointColor,
+        linewidth: 3,
+        depthTest: false
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      // Set high renderOrder to ensure lines appear above the model
       line.renderOrder = 2;
       linesRef.add(line);
     }
