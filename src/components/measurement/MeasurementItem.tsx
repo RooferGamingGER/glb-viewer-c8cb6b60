@@ -175,7 +175,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
       DEFAULT_MODULE_SPACING,
       undefined,
       undefined,
-      useOptimalRectangle
+      useOptimalRectangle,
+      'auto',
+      exclusionZones
     );
     updateMeasurement(measurement.id, { pvModuleInfo });
   };
