@@ -921,10 +921,10 @@ function renderLengthMeasurement(
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false
+    ...DEPTH_SETTINGS
   });
   const line = new THREE.Line(lineGeometry, lineMaterial);
-  line.renderOrder = 999;
+  line.renderOrder = 10;
   measurementsRef.add(line);
   
   // Add small spheres at endpoints with minimal Y offset
