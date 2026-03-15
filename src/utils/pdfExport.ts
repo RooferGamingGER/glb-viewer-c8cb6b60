@@ -2226,7 +2226,17 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     }
     
-    // Add calculation methods appendix
+    // ============ SOLARPLANUNG PAGE(S) - before appendix ============
+    const solarMeasurements = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
+    
+    if (solarMeasurements.length > 0) {
+      for (const solarM of solarMeasurements) {
+        const solarPage = createSolarPlanPage(solarM);
+        container.appendChild(solarPage);
+      }
+    }
+
+    // Add calculation methods appendix (always last)
     const calculationMethodsSection = createCalculationMethodsSection();
     container.appendChild(calculationMethodsSection);
 
