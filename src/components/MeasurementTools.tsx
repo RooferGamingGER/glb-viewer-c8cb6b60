@@ -247,16 +247,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         handleMoveMeasurementUp={handleMoveMeasurementUp}
         handleMoveMeasurementDown={handleMoveMeasurementDown}
         handleClearMeasurements={handleClearMeasurements}
+        currentPoints={currentPoints}
+        handleFinalizeMeasurement={handleFinalizeMeasurement}
+        handleUndoLastPoint={handleUndoLastPoint}
+        clearCurrentPoints={clearCurrentPoints}
       />
-      {isRoofElementMode && (
-        <RoofElementControls
-          activeMode={activeMode}
-          currentPoints={currentPoints}
-          handleFinalizeMeasurement={handleFinalizeMeasurement}
-          handleUndoLastPoint={handleUndoLastPoint}
-          clearCurrentPoints={clearCurrentPoints}
-        />
-      )}
       {(editMeasurementId || editingSegmentId || movingPointInfo) && (
         <div className="p-3 pb-0">
           <EditingAlert 
