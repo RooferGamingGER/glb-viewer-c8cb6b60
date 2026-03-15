@@ -196,7 +196,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
         measurement.pvModuleInfo.moduleSpacing || DEFAULT_MODULE_SPACING,
         dimensions,
         undefined,
-        useOptimalRectangle
+        useOptimalRectangle,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
