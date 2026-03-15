@@ -46,7 +46,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   
   useEffect(() => {
     if (measurement.type === 'solar' && !measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
-      const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+      const pvModuleInfo = calculatePVModulePlacement(measurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
       if (pvModuleInfo.moduleCount > 0) {
         updateMeasurement(measurement.id, { pvModuleInfo });
         toast.success(`PV-Module automatisch berechnet: ${pvModuleInfo.moduleCount} Module`);
