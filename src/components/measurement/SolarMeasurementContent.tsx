@@ -112,20 +112,6 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
     });
   };
   
-  const handleManualModuleCountChange = (delta: number) => {
-    if (!measurement.pvModuleInfo) return;
-    const newCount = Math.max(0, measurement.pvModuleInfo.moduleCount + delta);
-    const moduleArea = newCount * measurement.pvModuleInfo.moduleWidth * measurement.pvModuleInfo.moduleHeight;
-    const area = measurement.pvModuleInfo.actualArea || 1;
-    updateMeasurement(measurement.id, {
-      pvModuleInfo: {
-        ...measurement.pvModuleInfo,
-        moduleCount: newCount,
-        coveragePercent: Math.min((moduleArea / area) * 100, 100),
-      }
-    });
-    toast.info(`Module: ${newCount}`, { duration: 1000 });
-  };
   
   if (!measurement.pvModuleInfo) {
     return (
