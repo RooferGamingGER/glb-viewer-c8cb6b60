@@ -2382,8 +2382,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         const utilization = roofArea > 0 ? (moduleArea / roofArea * 100) : 0;
         
         // Calculate grid info
-        const gridCols = (pvInfo as any).gridCols || '-';
-        const gridRows = (pvInfo as any).gridRows || '-';
+        const gridCols = pvInfo.columns || '-';
+        const gridRows = pvInfo.rows || '-';
         
         const specRows: [string, string][] = [
           ['Modulgröße', `${pvInfo.moduleWidth.toFixed(2)} × ${pvInfo.moduleHeight.toFixed(2)} m`],
