@@ -1,70 +1,49 @@
 
-# PV-Anlage verschieben & drehen im 3D-Viewer
 
-## Überblick
-Die PV-Modulanlage soll direkt im 3D-Viewer per Drag verschoben und per Rotation-Handle gedreht werden können. Die Rotation erfolgt um den Mittelpunkt des Modul-Grids.
+## Issues Found in Solar PDF Export
 
-## Datenmodell-Erweiterung
+Based on the uploaded report, there are several problems on the Solarplanung pages:
 
-### `PVModuleInfo` (src/types/measurements.ts)
-Neue Felder:
+### 1. Leistung / Gesamtleistung shows "0.00 kWp"
+The code uses `pvInfo.pvMaterials?.totalPower || 0` which relies on a pre-calculated materials object that is often not set. Should instead calculate directly: `activeModules * (pvModuleSpec?.power || 425) / 1000`.
+
+### 2. Jahresertrag shows "0 kWh/Jahr"
+Depends on the broken totalPower value above. Needs the same fix -- calculate power inline and multiply by yieldFactor.
+
+### 3. Raster shows "- x -"
+The code reads `(pvInfo as any).gridCols || '-'` and `gridRows`, but the actual type uses `pvInfo.columns` and `pvInfo.rows`. Simple property name fix.
+
+### 4. Solarplanung comes AFTER Anhang (Berechnungsmethoden)
+In the TOC and page order, solar pages are appended after the calculation methods appendix. They should come before the appendix, which should always be last.
+
+### 5. No module visualization in the 2D layout
+The 2D layout only shows the polygon outline with edge lengths but no module rectangles are drawn inside. This is likely a separate rendering issue in `renderSolarLayout2D`, but the immediate data fixes are higher priority.
+
+---
+
+## Plan
+
+### File: `src/utils/pdfExport.ts`
+
+**Fix 1 -- Power calculation (lines ~2313-2314)**
+Replace `pvInfo.pvMaterials?.totalPower` with inline calculation:
 ```typescript
-gridOffsetU?: number;    // Verschiebung entlang der Hauptachse (v1) in Metern
-gridOffsetW?: number;    // Verschiebung entlang der Nebenachse (v2) in Metern
-gridRotation?: number;   // Rotation in Grad um den Grid-Mittelpunkt
+const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
+const modulePower = pvInfo.pvModuleSpec?.power || 425;
+const totalPower = (activeModules * modulePower) / 1000; // kWp
 ```
 
-## Änderungen
+**Fix 2 -- Raster (lines ~2374-2375)**
+Change `gridCols`/`gridRows` to `pvInfo.columns` and `pvInfo.rows`.
 
-### 1. Type-Erweiterung (`src/types/measurements.ts`)
-- `gridOffsetU`, `gridOffsetW`, `gridRotation` zu `PVModuleInfo` hinzufügen
+**Fix 3 -- Page order (TOC + rendering)**
+- Move Solarplanung TOC entry before Anhang (swap lines ~1493-1501)
+- Move the solar page rendering block before the calculation methods block (swap the two sections around line ~2231)
 
-### 2. Grid-Generierung (`src/utils/pvCalculations.ts` → `generatePVModuleGrid`)
-- Nach Berechnung der Module-Positionen im 2D-Raum (u/w), vor der Projektion nach 3D:
-  1. Grid-Mittelpunkt berechnen (Durchschnitt aller Modul-Zentren)
-  2. Rotation um diesen Mittelpunkt anwenden (cos/sin Transform)
-  3. Offset (gridOffsetU, gridOffsetW) addieren
-- Module die nach Transform außerhalb des Dachpolygons liegen werden weiterhin gefiltert
+**Fix 4 -- Jahresertrag calculation (line ~2389)**
+Use the corrected `totalPower` value instead of the materials-based one:
+```typescript
+specRows.push(['Jahresertrag', `${(totalPower * (pvInfo.yieldFactor || 950)).toFixed(0)} kWh/Jahr`]);
+```
+And always show it (remove the conditional).
 
-### 3. Interaktions-Modus (`src/hooks/usePVGridInteraction.ts` – NEU)
-Neuer Hook der PV-Grid Drag & Rotate handhabt:
-
-**Drag (Verschieben):**
-- Klick auf ein PV-Modul → Grid wird "ausgewählt" (visueller Highlight)
-- Drag → Raycaster berechnet Intersection mit Dachfläche → Delta in u/w-Koordinaten → `gridOffsetU/W` aktualisieren
-- Modul-Grid wird in Echtzeit neu gerendert
-
-**Rotate (Drehen):**
-- Wenn Grid ausgewählt: Ein Rotations-Handle (kleiner Kreis/Pfeil) am Rand des Grids
-- Drag am Handle → Winkel zum Grid-Mittelpunkt berechnen → `gridRotation` aktualisieren
-- Alternative: Zwei-Finger-Geste auf Touch-Geräten
-
-**State-Management:**
-- `selectedPVGridId: string | null` – aktuell ausgewählte Solarfläche
-- `isDraggingPVGrid: boolean`
-- `isRotatingPVGrid: boolean`
-- Bei Änderung: `updateMeasurement()` mit neuen gridOffset/Rotation-Werten aufrufen
-
-### 4. Visuelle Handles (`src/utils/measurementVisuals.ts`)
-- Wenn ein PV-Grid ausgewählt ist:
-  - Blaue Umrandung um das gesamte Grid
-  - Rotations-Handle (kleiner Kreis) an einer Ecke des Grids
-  - Move-Cursor beim Hovern über Module
-
-### 5. Integration in bestehende Measurement-Events
-- `useMeasurementEvents.ts` oder `useMeasurementInteraction.ts`: 
-  - PV-Grid Klick-Erkennung (userData.isPVModule → Grid auswählen)
-  - Drag-Events weiterleiten an `usePVGridInteraction`
-  - ESC oder Klick außerhalb → Grid deselektieren
-
-## Implementierungsreihenfolge
-1. Type-Erweiterung (PVModuleInfo)
-2. generatePVModuleGrid mit Offset/Rotation
-3. usePVGridInteraction Hook
-4. Visuelle Handles
-5. Integration in Event-System
-
-## Technische Details
-- Die Transformation passiert im 2D u/w-Koordinatensystem (vor der 3D-Projektion), damit die Module korrekt auf der Dachfläche bleiben
-- Rotation: Standard 2D-Rotation `u' = cos(θ)*(u-cu) - sin(θ)*(w-cw) + cu`, `w' = sin(θ)*(u-cu) + cos(θ)*(w-cw) + cw`
-- Module die nach Transform außerhalb liegen werden automatisch ausgeblendet (bestehende Polygon-Clipping-Logik)
