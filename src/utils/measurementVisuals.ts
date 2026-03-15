@@ -1363,10 +1363,10 @@ function renderRoofElementMeasurement(
   // Set element color based on type
   const getElementColor = (type: string): number => {
     switch(type) {
-      case 'skylight': return 0xff8800;
-      case 'chimney': return 0xff0000;
-      case 'vent': return 0x00ffff;
-      case 'hook': return 0xff00ff;
+      case 'skylight': return COLORS.SKYLIGHT;
+      case 'chimney': return COLORS.CHIMNEY;
+      case 'vent': return COLORS.VENT;
+      case 'hook': return COLORS.HOOK;
       default: return 0xcccccc;
     }
   };
