@@ -121,8 +121,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   React.useEffect(() => {
+    if (activeMode !== 'none') return;
     updateAllLabelsVisibility(allLabelsVisible);
-  }, [allLabelsVisible, updateAllLabelsVisibility]);
+  }, [allLabelsVisible, updateAllLabelsVisibility, activeMode]);
 
   // Auto-import embedded measurements from GLB
   React.useEffect(() => {
