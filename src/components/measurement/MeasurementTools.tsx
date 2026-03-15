@@ -427,7 +427,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
       labelsRef.current, 
       segmentLabelsRef.current, 
       measurements, 
-      true
+      true,
+      false
     );
   };
 
