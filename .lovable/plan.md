@@ -1,64 +1,64 @@
 
 
-# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
+# Fix: Solarflächen in Massenermittlung + Solarplanung im PDF
 
-## Zusammenfassung
+## Problem 1: Solarflächen fehlen in der Dachflächen-Auflistung
 
-Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
+Überall im PDF-Export wird `m.type === 'area'` gefiltert — Messungen vom Typ `'solar'` werden komplett ignoriert bei:
+- Gesamtfläche / Nettofläche Berechnung (`calculateTotalArea`, `calculateNetTotalArea`)
+- Flächenübersicht auf Page 2 (Zusammenfassung)
+- Inhaltsverzeichnis (TOC) Seitenberechnung
+- Einzelflächen-Seiten (Page 4+)
+- Gesamtübersicht mit Segmenttabellen
 
-## Aenderungen
+**Lösung**: An allen relevanten Stellen `'solar'` als Dachfläche mit einbeziehen:
+- `exportUtils.ts`: `calculateTotalArea` und `calculateNetTotalArea` erweitern um `m.type === 'solar'`
+- `pdfExport.ts`: Alle `filter(m => m.type === 'area')` Stellen erweitern zu `m.type === 'area' || m.type === 'solar'`
+- Solar-Flächen bekommen eigene Einzelseiten wie normale Flächen (mit Fläche, Neigung, Segmenttabelle)
 
-### Datei 1: `src/hooks/use-mobile.tsx`
+## Problem 2: Solarplanung als neue PDF-Seite
 
-**Was aendert sich:**
-- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
-- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
-- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
+Nach den Berechnungsmethoden wird eine neue Seite "Solarplanung" eingefügt, die für jede Solar-Messung folgendes zeigt:
 
-**Neue Logik `isTouchDevice()`:**
-1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
-2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
-3. `matchMedia('(hover: none)')` -- kein Hover moeglich
-4. User-Agent Regex (android, iphone, ipad, etc.)
+### Statische Inhalte (direkt aus den vorhandenen PV-Daten)
+- Modultyp, Abmessungen, Leistung pro Modul
+- Anzahl Module, Gesamtleistung (kWp)
+- Dachneigung, Ausrichtung (Azimut)
+- Materialliste (Montagesystem, Elektro)
+- 2D-Polygon-Darstellung der Dachfläche mit eingezeichneten Modulpositionen (Canvas-Rendering)
 
-Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
+### KI-generierte Stringplanung (Lovable AI)
+- Neue Edge Function `solar-string-planning` die den vom User bereitgestellten Prompt nutzt
+- Eingabe: Modul-Layout (Positionen, Anzahl, Dachfläche, Ausrichtung, Moduldaten)
+- Ausgabe: Stringplanung als strukturierter Text (Tabelle + Beschreibung)
+- Wird als optionaler Abschnitt auf der Solarplanungs-Seite eingefügt
 
-**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+## Technischer Ablauf
 
-### Datei 2: `src/hooks/useScreenOrientation.tsx`
+### 1. Canvas-Rendering der Modulpositionen
+Neue Funktion `renderSolarLayout2D` in `renderPolygon2D.ts`:
+- Zeichnet das Dach-Polygon
+- Zeichnet die Module als Rechtecke an ihren `moduleCorners`-Positionen
+- Nummeriert die Module
+- Gibt Base64-PNG zurück
 
-**Was aendert sich:**
-- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
-- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
-- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
-- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+### 2. Edge Function für Stringplanung
+`supabase/functions/solar-string-planning/index.ts`:
+- Nimmt Moduldaten entgegen (Positionen, Specs, Dachausrichtung)
+- Sendet den bereitgestellten Prompt an Lovable AI (google/gemini-3-flash-preview)
+- Gibt strukturierte Stringplanung als Text zurück
 
-**Neue Logik:**
-```text
-isMobileOrTablet = useIsMobile()  // = isTouchDevice()
-isTablet = isMobileOrTablet && Math.min(width, height) > 600
-isPhone  = isMobileOrTablet && !isTablet
-```
+### 3. PDF-Export erweitern
+- Vor dem PDF-Rendering: Optional KI-Stringplanung abrufen
+- Neue Seite(n) "Solarplanung" nach Berechnungsmethoden einfügen
+- Modul-Layout-Zeichnung + Stringplanung-Text rendern
 
-### Keine Aenderungen noetig in:
-- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
-- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
-- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
-- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
+## Dateien
 
-## Erwartetes Verhalten nach der Aenderung
-
-| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
-|---|---|---|---|---|---|
-| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
-| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
-
-## Technische Details
-
-- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
-- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
-- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
-- Keine neuen Dependencies noetig
+| Datei | Änderung |
+|---|---|
+| `src/utils/exportUtils.ts` | `calculateTotalArea`/`calculateNetTotalArea`: Solar einbeziehen |
+| `src/utils/pdfExport.ts` | ~8 Stellen: Solar als Dachfläche behandeln + neue Solarplanungs-Seite |
+| `src/utils/renderPolygon2D.ts` | Neue Funktion `renderSolarLayout2D` für Modul-Layout |
+| `supabase/functions/solar-string-planning/index.ts` | Neue Edge Function für KI-Stringplanung |
 
