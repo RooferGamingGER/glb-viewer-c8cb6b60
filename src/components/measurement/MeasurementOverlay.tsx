@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 import { 
   Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet, Mountain,
-  Eye, EyeOff, X, ChevronDown, ChevronUp, Download,
-  Home, Asterisk, CircleDot, CircleX, Sun
+  Eye, EyeOff, X, ChevronDown, ChevronUp, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -11,6 +10,7 @@ import { MeasurementMode, Point, Measurement } from '@/types/measurements';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
 import { smartToast } from '@/utils/smartToast';
+import { formatMeasurementValue, getMeasurementTypeDisplayName } from '@/utils/exportUtils';
 import ExportDialog from './ExportDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -44,40 +44,26 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   const [showInclination, setShowInclination] = useState(getInclinationPreference());
+  const [showMeasurements, setShowMeasurements] = useState(true);
 
   if (!enabled) return null;
 
-  // Roof element modes for the overlay
-  const roofElementModes: { mode: MeasurementMode; label: string; icon: React.ReactNode }[] = [
-    { mode: 'skylight', label: 'Dachfenster', icon: <Square className="h-3.5 w-3.5" /> },
-    { mode: 'chimney', label: 'Kamin', icon: <Home className="h-3.5 w-3.5" /> },
-    { mode: 'vent', label: 'Lüfter', icon: <Asterisk className="h-3.5 w-3.5" /> },
-    { mode: 'hook', label: 'Haken', icon: <CircleDot className="h-3.5 w-3.5" /> },
-    { mode: 'other', label: 'Sonstige', icon: <CircleX className="h-3.5 w-3.5" /> },
-    { mode: 'solar', label: 'Solar', icon: <Sun className="h-3.5 w-3.5" /> },
-  ];
-
-  // Area/roof element active mode controls
-  const isRoofElementMode = roofElementModes.some(r => r.mode === activeMode);
-  const isAreaType = activeMode === 'area' || activeMode === 'deductionarea' || activeMode === 'solar' || isRoofElementMode;
-  const minPoints = (activeMode === 'length' || activeMode === 'height') ? 2 : 3;
+  const isAreaType = activeMode === 'area' || activeMode === 'deductionarea';
+  const minPoints = isAreaType ? 3 : 2;
   const isStandardMode = ['length', 'height', 'area', 'deductionarea'].includes(activeMode);
-  const isActiveToolMode = activeMode !== 'none';
 
   const selectTool = (mode: MeasurementMode) => {
     toggleMeasurementTool(mode);
+    const messages: Record<string, string> = {
+      length: 'Längenmessung – 2 Punkte setzen',
+      height: 'Höhenmessung – 2 Punkte setzen',
+      area: 'Flächenmessung – mind. 3 Punkte',
+      deductionarea: 'Abzugsfläche – mind. 3 Punkte',
+    };
     if (activeMode === mode) {
       smartToast.guidance('Werkzeug deaktiviert');
-    } else {
-      const messages: Record<string, string> = {
-        skylight: 'Dachfenster – 4 Punkte setzen',
-        chimney: 'Kamin – 4 Punkte setzen',
-        vent: 'Lüfter – Punkt setzen',
-        hook: 'Dachhaken – Punkt setzen',
-        other: 'Sonstiges – Punkt setzen',
-        solar: 'Solarfläche – mind. 3 Punkte',
-      };
-      if (messages[mode]) smartToast.guidance(messages[mode]);
+    } else if (messages[mode]) {
+      smartToast.guidance(messages[mode]);
     }
   };
 
@@ -97,10 +83,10 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   const getContextHint = (): string | null => {
     if (movingPointInfo) return 'Punkt verschieben – klicken zum Platzieren';
     if (editMeasurementId && activeMode === 'none') return 'Bearbeitungsmodus – Punkte anklicken zum Verschieben';
-    if (activeMode === 'skylight') return currentPoints.length < 4 ? `Dachfenster: Punkt ${currentPoints.length + 1}/4` : 'Abschließen';
-    if (activeMode === 'chimney') return currentPoints.length < 4 ? `Kamin: Punkt ${currentPoints.length + 1}/4` : 'Abschließen';
-    if (activeMode === 'vent' || activeMode === 'hook' || activeMode === 'other') return 'Punkt auf dem Modell setzen';
-    if (activeMode === 'solar') return currentPoints.length < 3 ? `Solarfläche: Punkt ${currentPoints.length + 1} (mind. 3)` : `${currentPoints.length} Punkte – Abschließen`;
+    if (activeMode === 'length') return currentPoints.length === 0 ? 'Ersten Punkt setzen' : 'Zweiten Punkt setzen';
+    if (activeMode === 'height') return currentPoints.length === 0 ? 'Unteren Punkt setzen' : 'Oberen Punkt setzen';
+    if (activeMode === 'area') return currentPoints.length < 3 ? `Punkt ${currentPoints.length + 1} setzen (mind. 3)` : `${currentPoints.length} Punkte – Abschließen oder weitere setzen`;
+    if (activeMode === 'deductionarea') return currentPoints.length < 3 ? `Punkt ${currentPoints.length + 1} setzen (mind. 3)` : `${currentPoints.length} Punkte – Abschließen oder weitere setzen`;
     return null;
   };
 
@@ -108,24 +94,34 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   const toolBtnClass = (mode: MeasurementMode) =>
     `h-8 px-2 text-xs gap-1 ${activeMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background/90 hover:bg-accent border border-border/50'}`;
 
+  // Get icon for measurement type
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'length': return <Ruler className="h-3 w-3" />;
+      case 'height': return <ArrowUpDown className="h-3 w-3" />;
+      case 'area': return <Square className="h-3 w-3" />;
+      case 'deductionarea': return <MinusSquare className="h-3 w-3" />;
+      default: return null;
+    }
+  };
+
   return (
     <div className="absolute top-3 left-3 z-20 pointer-events-auto flex flex-col gap-2 max-w-[320px]">
-      {/* Dachelemente + Solar tools */}
+      {/* Tool buttons */}
       <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-2">
-        <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Dachelemente & Solar</p>
         <div className="flex flex-wrap gap-1">
-          {roofElementModes.map(({ mode, label, icon }) => (
-            <Button
-              key={mode}
-              variant="ghost"
-              size="sm"
-              className={toolBtnClass(mode)}
-              onClick={() => selectTool(mode)}
-              disabled={!!editMeasurementId}
-            >
-              {icon} {label}
-            </Button>
-          ))}
+          <Button variant="ghost" size="sm" className={toolBtnClass('length')} onClick={() => selectTool('length')} disabled={!!editMeasurementId}>
+            <Ruler className="h-3.5 w-3.5" /> Länge
+          </Button>
+          <Button variant="ghost" size="sm" className={toolBtnClass('height')} onClick={() => selectTool('height')} disabled={!!editMeasurementId}>
+            <ArrowUpDown className="h-3.5 w-3.5" /> Höhe
+          </Button>
+          <Button variant="ghost" size="sm" className={toolBtnClass('area')} onClick={() => selectTool('area')} disabled={!!editMeasurementId}>
+            <Square className="h-3.5 w-3.5" /> Fläche
+          </Button>
+          <Button variant="ghost" size="sm" className={toolBtnClass('deductionarea')} onClick={() => selectTool('deductionarea')} disabled={!!editMeasurementId}>
+            <MinusSquare className="h-3.5 w-3.5" /> Abzug
+          </Button>
         </div>
 
         {/* Toggles row */}
@@ -176,13 +172,13 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
         </div>
       </div>
 
-      {/* Context hint + controls for roof elements */}
-      {(contextHint || (isActiveToolMode && currentPoints.length > 0)) && (
+      {/* Context hint + controls */}
+      {(contextHint || (isStandardMode && currentPoints.length > 0)) && (
         <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-2">
           {contextHint && (
             <p className="text-xs text-muted-foreground mb-1.5">{contextHint}</p>
           )}
-          {isActiveToolMode && currentPoints.length > 0 && (
+          {isStandardMode && currentPoints.length > 0 && (
             <div className="flex gap-1">
               <Button size="sm" className="h-7 text-xs flex-1" onClick={handleFinalizeMeasurement} disabled={currentPoints.length < minPoints}>
                 ✓ Abschließen
@@ -200,6 +196,47 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
               <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={handleCancelEditing}>
                 Bearbeitung beenden
               </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Compact measurement list */}
+      {measurements.length > 0 && (
+        <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg">
+          <button
+            onClick={() => setShowMeasurements(!showMeasurements)}
+            className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium hover:bg-accent/50 rounded-t-lg"
+          >
+            <span>Messungen ({measurements.length})</span>
+            {showMeasurements ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          {showMeasurements && (
+            <div className="max-h-[200px] overflow-y-auto border-t border-border/30">
+              {measurements.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between px-2 py-1 hover:bg-accent/30 text-xs group"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {getTypeIcon(m.type)}
+                    <span className="truncate">
+                      {m.label || getMeasurementTypeDisplayName(m.type)}
+                    </span>
+                    <span className="text-muted-foreground font-mono ml-1 whitespace-nowrap">
+                      {formatMeasurementValue(m)}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteMeasurement(m.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </div>

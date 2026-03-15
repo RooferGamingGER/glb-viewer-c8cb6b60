@@ -1122,12 +1122,8 @@ function renderAreaMeasurement(
       // Offset midpoint slightly to avoid overlap with lines
       midpoint.y += LABEL_Y_OFFSET;
       
-      // Show segment length with inclination if applicable
-      const segmentInclination = segment.inclination ?? calculateInclination(
-        new THREE.Vector3(segment.points[0].x, segment.points[0].y, segment.points[0].z),
-        new THREE.Vector3(segment.points[1].x, segment.points[1].y, segment.points[1].z)
-      );
-      const segmentLabelText = formatMeasurementLabel(segment.length, 'length', segmentInclination);
+      // Zeige immer den Messwert im 3D-Modell an, unabhängig vom benutzerdefinierten Label
+      const segmentLabelText = `${segment.length.toFixed(2)}m`;
       
       // Create label with smaller size
       const segmentLabelSprite = createMeasurementLabel(segmentLabelText, midpoint, true, '#' + measurementColor.toString(16).padStart(6, '0'));

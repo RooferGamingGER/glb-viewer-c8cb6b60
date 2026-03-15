@@ -50,7 +50,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   autoOpenSidebar = false
 }) => {
   // Sidebar collapsed state - default closed
-  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
@@ -207,7 +207,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateAllLabelsVisibility(!allLabelsVisible);
   };
 
-  // No auto-open needed - sidebar is open by default with measurement tools
+  // Auto-open sidebar when solar or roof element tool is activated
+  React.useEffect(() => {
+    if (isRoofElementMode || activeMode === 'solar') {
+      setSidebarOpen(true);
+    }
+  }, [activeMode, isRoofElementMode]);
 
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
   const useBottomSheet = isPortrait && (isPhone || isTablet);
@@ -242,11 +247,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         handleMoveMeasurementUp={handleMoveMeasurementUp}
         handleMoveMeasurementDown={handleMoveMeasurementDown}
         handleClearMeasurements={handleClearMeasurements}
-        currentPoints={currentPoints}
-        handleFinalizeMeasurement={handleFinalizeMeasurement}
-        handleUndoLastPoint={handleUndoLastPoint}
-        clearCurrentPoints={clearCurrentPoints}
       />
+      {isRoofElementMode && (
+        <RoofElementControls
+          activeMode={activeMode}
+          currentPoints={currentPoints}
+          handleFinalizeMeasurement={handleFinalizeMeasurement}
+          handleUndoLastPoint={handleUndoLastPoint}
+          clearCurrentPoints={clearCurrentPoints}
+        />
+      )}
       {(editMeasurementId || editingSegmentId || movingPointInfo) && (
         <div className="p-3 pb-0">
           <EditingAlert 

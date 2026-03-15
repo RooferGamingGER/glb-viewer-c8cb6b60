@@ -4,17 +4,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MeasurementList from './MeasurementList';
 import MeasurementTable from './MeasurementTable';
 import { Button } from '@/components/ui/button';
-import { Ruler, ArrowUpDown, Square, MinusSquare, Trash2 } from 'lucide-react';
 import { MeasurementMode } from '@/types/measurements';
 import { useToast } from "@/components/ui/use-toast";
-import MeasurementControls from './MeasurementControls';
-import { smartToast } from '@/utils/smartToast';
+import SolarToolbar from './SolarToolbar';
+import RoofElementsToolbar from './RoofElementsToolbar';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import CollapsibleSection from '@/components/ui/collapsible-section';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
-import { Point } from '@/types/measurements';
 
 interface MeasurementToolControlsProps {
   measurements: Measurement[];
@@ -44,11 +39,6 @@ interface MeasurementToolControlsProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   showMeasurementList?: boolean;
-  // New props for inline measurement controls
-  currentPoints?: Point[];
-  handleFinalizeMeasurement?: () => void;
-  handleUndoLastPoint?: () => void;
-  clearCurrentPoints?: () => void;
 }
 
 const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
@@ -59,30 +49,12 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   handleClearMeasurements, toggleAllMeasurementsVisibility,
   toggleAllLabelsVisibility, allMeasurementsVisible, allLabelsVisible,
   showTable, setShowTable, handleMoveMeasurementUp, handleMoveMeasurementDown,
-  showMeasurementList = true,
-  currentPoints, handleFinalizeMeasurement, handleUndoLastPoint, clearCurrentPoints
+  showMeasurementList = true
 }) => {
   const { toast } = useToast();
+  const { isPortrait, isTablet, isPhone } = useScreenOrientation();
+  const isMobilePortrait = isPortrait && (isPhone || isTablet);
   
-  const selectTool = (mode: MeasurementMode) => {
-    if (!toggleMeasurementTool) return;
-    toggleMeasurementTool(mode);
-    const messages: Record<string, string> = {
-      length: 'Längenmessung – 2 Punkte setzen',
-      height: 'Höhenmessung – 2 Punkte setzen',
-      area: 'Flächenmessung – mind. 3 Punkte',
-      deductionarea: 'Abzugsfläche – mind. 3 Punkte',
-    };
-    if (activeMode === mode) {
-      smartToast.guidance('Werkzeug deaktiviert');
-    } else if (messages[mode]) {
-      smartToast.guidance(messages[mode]);
-    }
-  };
-
-  const toolBtnClass = (mode: MeasurementMode) =>
-    `flex-1 h-9 text-xs gap-1.5 ${activeMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-accent border border-border/50'}`;
-
   const tableContainerStyle = showTable ? { 
     maxWidth: '100%', overflowX: 'auto' as const
   } : {};
@@ -90,60 +62,23 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-3 flex flex-col h-full gap-3">
-        {/* Measurement tools */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-medium text-muted-foreground">Messwerkzeuge</h3>
-            {measurements.length > 0 && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" title="Alle löschen">
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Alle Messungen löschen?</AlertDialogTitle>
-                    <AlertDialogDescription>Diese Aktion kann nicht rückgängig gemacht werden.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearMeasurements}>Löschen</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-1">
-            <Button variant="ghost" size="sm" className={toolBtnClass('length')} onClick={() => selectTool('length')} disabled={!!editMeasurementId}>
-              <Ruler className="h-3.5 w-3.5" /> Länge
-            </Button>
-            <Button variant="ghost" size="sm" className={toolBtnClass('height')} onClick={() => selectTool('height')} disabled={!!editMeasurementId}>
-              <ArrowUpDown className="h-3.5 w-3.5" /> Höhe
-            </Button>
-            <Button variant="ghost" size="sm" className={toolBtnClass('area')} onClick={() => selectTool('area')} disabled={!!editMeasurementId}>
-              <Square className="h-3.5 w-3.5" /> Fläche
-            </Button>
-            <Button variant="ghost" size="sm" className={toolBtnClass('deductionarea')} onClick={() => selectTool('deductionarea')} disabled={!!editMeasurementId}>
-              <MinusSquare className="h-3.5 w-3.5" /> Abzug
-            </Button>
-          </div>
-        </div>
+        {/* Solar planning */}
+        <SolarToolbar 
+          activeMode={activeMode}
+          toggleMeasurementTool={toggleMeasurementTool || ((mode) => {})}
+          editMeasurementId={editMeasurementId}
+        />
+        
+        {/* Roof elements */}
+        <RoofElementsToolbar 
+          activeMode={activeMode}
+          toggleMeasurementTool={toggleMeasurementTool || ((mode) => {})}
+          editMeasurementId={editMeasurementId}
+        />
 
-        {/* Inline measurement controls (finalize/undo/cancel) */}
-        {currentPoints && currentPoints.length > 0 && handleFinalizeMeasurement && handleUndoLastPoint && clearCurrentPoints && (
-          <MeasurementControls
-            activeMode={activeMode}
-            currentPoints={currentPoints}
-            handleFinalizeMeasurement={handleFinalizeMeasurement}
-            handleUndoLastPoint={handleUndoLastPoint}
-            clearCurrentPoints={clearCurrentPoints}
-          />
-        )}
-
-        {/* Measurements list - collapsible */}
+        {/* Massen (measurements) - collapsible detail list */}
         {measurements.length > 0 && (
-          <CollapsibleSection title={`Messungen (${measurements.length})`} defaultOpen={true}>
+          <CollapsibleSection title={`Massen (${measurements.length})`} defaultOpen={false}>
             <div className="flex mb-2 items-center justify-end">
               <Button 
                 variant="outline" 
