@@ -208,7 +208,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 length: measurement.pvModuleInfo.userDefinedLength || 0
               } : undefined,
               undefined, true,
-              (forced as any) || 'auto'
+              (forced as any) || 'auto',
+              exclusionZones
             );
             updateMeasurement(measurement.id, { pvModuleInfo: {
               ...recalculated,
