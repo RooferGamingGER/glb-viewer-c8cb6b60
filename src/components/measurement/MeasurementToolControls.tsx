@@ -86,7 +86,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [labelValue, setLabelValue] = useState('');
   const [editingSegmentKey, setEditingSegmentKey] = useState<string | null>(null);
-  const [segmentLabelValue, setSegmentLabelValue] = useState('');
+  const [segmentSelectedType, setSegmentSelectedType] = useState<string>('custom');
+  const [segmentCustomLabel, setSegmentCustomLabel] = useState<string>('');
 
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
