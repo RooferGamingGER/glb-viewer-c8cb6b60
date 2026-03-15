@@ -443,9 +443,11 @@ export const generatePVModuleGrid = (
   roofEdgeSegments?: { from: Point; to: Point }[]
 ): {
   modulePoints: Point[][];
+  moduleOriginalIndices: number[];
   gridLines: { from: Point; to: Point }[];
 } => {
   const modulePoints: Point[][] = [];
+  const moduleOriginalIndices: number[] = [];
   const gridLines: { from: Point; to: Point }[] = [];
 
   const roofPoints = pvInfo.points;
