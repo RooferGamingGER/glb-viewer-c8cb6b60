@@ -1237,7 +1237,7 @@ function renderSolarMeasurement(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: measurementColor,
-      depthTest: false
+      ...DEPTH_SETTINGS
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Adjust position to use original point data with minimal offset
@@ -1246,7 +1246,7 @@ function renderSolarMeasurement(
       measurement.points[i].y + POINT_Y_OFFSET, 
       measurement.points[i].z
     );
-    sphere.renderOrder = 999;
+    sphere.renderOrder = 10;
     
     // Add userData for interactive selection
     sphere.userData = {
