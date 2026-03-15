@@ -207,12 +207,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     updateAllLabelsVisibility(!allLabelsVisible);
   };
 
-  // Auto-open sidebar when solar or roof element tool is activated
-  React.useEffect(() => {
-    if (isRoofElementMode || activeMode === 'solar') {
-      setSidebarOpen(true);
-    }
-  }, [activeMode, isRoofElementMode]);
+  // No auto-open needed - sidebar is open by default with measurement tools
 
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
   const useBottomSheet = isPortrait && (isPhone || isTablet);
