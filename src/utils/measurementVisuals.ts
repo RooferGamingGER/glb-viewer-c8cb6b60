@@ -1017,7 +1017,7 @@ function renderHeightMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: false
+    depthTest: true
   });
   
   [point1, point2].forEach((point, index) => {
