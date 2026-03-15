@@ -1667,8 +1667,7 @@ function renderPVModuleGrid(
     // Use material array: textured top + dark sides
     const sideMaterial = new THREE.MeshBasicMaterial({
       color: 0x1a1a2e,
-      ...DEPTH_SETTINGS,
-      depthWrite: false
+      ...pvDepthSettings
     });
 
     // Groups: top=0-5, bottom=6-11, front=12-17, back=18-23, right=24-29, left=30-35
