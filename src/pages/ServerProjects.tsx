@@ -33,10 +33,10 @@ type View = "projects" | "tasks";
 
 const statusIcon = (status: number) => {
   switch (status) {
-    case 40: return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    case 40: return <CheckCircle2 className="w-4 h-4 text-primary" />;
     case 30: return <XCircle className="w-4 h-4 text-destructive" />;
-    case 20: return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
-    case 10: return <Clock className="w-4 h-4 text-yellow-500" />;
+    case 20: return <Loader2 className="w-4 h-4 text-primary animate-spin" />;
+    case 10: return <Clock className="w-4 h-4 text-muted-foreground" />;
     default: return <AlertTriangle className="w-4 h-4 text-muted-foreground" />;
   }
 };
