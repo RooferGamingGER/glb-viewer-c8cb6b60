@@ -300,8 +300,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   step={0.05}
                   value={[measurement.pvModuleInfo.gridOffsetU || 0]}
                   onValueChange={([val]) => {
+                    const updated = { ...measurement.pvModuleInfo!, gridOffsetU: val };
+                    const grid = generatePVModuleGrid(updated, 0);
                     updateMeasurement(measurement.id, {
-                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridOffsetU: val }
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
                     });
                   }}
                   className="flex-1"
@@ -318,8 +320,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   step={0.05}
                   value={[measurement.pvModuleInfo.gridOffsetW || 0]}
                   onValueChange={([val]) => {
+                    const updated = { ...measurement.pvModuleInfo!, gridOffsetW: val };
+                    const grid = generatePVModuleGrid(updated, 0);
                     updateMeasurement(measurement.id, {
-                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridOffsetW: val }
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
                     });
                   }}
                   className="flex-1"
@@ -336,8 +340,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   step={1}
                   value={[measurement.pvModuleInfo.gridRotation || 0]}
                   onValueChange={([val]) => {
+                    const updated = { ...measurement.pvModuleInfo!, gridRotation: val };
+                    const grid = generatePVModuleGrid(updated, 0);
                     updateMeasurement(measurement.id, {
-                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridRotation: val }
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
                     });
                   }}
                   className="flex-1"
@@ -352,8 +358,10 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   size="sm"
                   className="w-full h-6 text-[10px]"
                   onClick={() => {
+                    const updated = { ...measurement.pvModuleInfo!, gridOffsetU: 0, gridOffsetW: 0, gridRotation: 0 };
+                    const grid = generatePVModuleGrid(updated, 0);
                     updateMeasurement(measurement.id, {
-                      pvModuleInfo: { ...measurement.pvModuleInfo!, gridOffsetU: 0, gridOffsetW: 0, gridRotation: 0 }
+                      pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
                     });
                   }}
                 >
