@@ -163,15 +163,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     segmentLabelsRef.current.children.forEach(label => processLabel(label));
   }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible]);
 
-  React.useEffect(() => {
-    if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
-      renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true);
-    }
-  }, [editMeasurementId, movingPointInfo, measurements, enabled]);
+  const isDrawing = activeMode !== 'none';
 
   React.useEffect(() => {
-    renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true);
-  }, [measurements]);
+    if ((editMeasurementId === null && !movingPointInfo) || !enabled) {
+      renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true, isDrawing);
+    }
+  }, [editMeasurementId, movingPointInfo, measurements, enabled, isDrawing]);
+
+  React.useEffect(() => {
+    renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true, isDrawing);
+  }, [measurements, isDrawing]);
 
   React.useEffect(() => {
     renderCurrentPoints(pointsRef.current, linesRef.current, labelsRef.current, currentPoints, activeMode);
@@ -187,17 +189,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       if (clearPreviewGroup) clearPreviewGroup();
       if (clearAddPointIndicators) clearAddPointIndicators();
     } else {
-      renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true);
+      renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true, isDrawing);
       renderEditPoints(editPointsRef.current, measurements, editMeasurementId, editingPointIndex, true);
     }
-  }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators]);
+  }, [enabled, measurements, editMeasurementId, editingPointIndex, clearPreviewGroup, clearAddPointIndicators, isDrawing]);
 
   const handleCancelEditingWithCleanup = () => {
     handleCancelEditing();
     setMovingPointInfo(null);
     if (clearPreviewGroup) clearPreviewGroup();
     if (clearAddPointIndicators) clearAddPointIndicators();
-    renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true);
+    renderMeasurements(measurementsRef.current, labelsRef.current, segmentLabelsRef.current, measurements, true, false);
   };
 
   const isRoofElementMode = !['length', 'height', 'area', 'deductionarea', 'none'].includes(activeMode);
