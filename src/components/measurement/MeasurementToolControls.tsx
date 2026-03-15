@@ -183,8 +183,17 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     variant="ghost"
                     size="sm"
                     className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteMeasurement(m.id); }}
-                    title="Solarfläche löschen"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      // Convert solar back to area instead of deleting
+                      updateMeasurement(m.id, { 
+                        type: 'area', 
+                        pvModuleInfo: undefined, 
+                        pvModuleSpec: undefined, 
+                        powerOutput: undefined 
+                      });
+                    }}
+                    title="PV-Module entfernen (Fläche bleibt erhalten)"
                   >
                     <X className="h-3 w-3" />
                   </Button>
