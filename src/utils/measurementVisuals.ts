@@ -1565,22 +1565,28 @@ function renderPVModuleGrid(
   }
 
   // PV modules with depth testing for proper occlusion
+  const pvDepthSettings = {
+    polygonOffset: true,
+    polygonOffsetFactor: -10,
+    polygonOffsetUnits: -10,
+    depthTest: true,
+    depthWrite: true
+  };
+
   const moduleMaterial = moduleTexture
     ? new THREE.MeshBasicMaterial({
         map: moduleTexture,
         transparent: true,
         opacity: 1,
         side: THREE.DoubleSide,
-        ...DEPTH_SETTINGS,
-        depthWrite: false
+        ...pvDepthSettings
       })
     : new THREE.MeshBasicMaterial({
         color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
         opacity: v.panelOpacity ?? 0.95,
         transparent: true,
         side: THREE.DoubleSide,
-        ...DEPTH_SETTINGS,
-        depthWrite: false
+        ...pvDepthSettings
       });
 
   const MODULE_THICKNESS = 0.025; // 2.5cm thick modules
@@ -1600,7 +1606,7 @@ function renderPVModuleGrid(
       )
       .normalize();
 
-    const OFFSET_DISTANCE = 0.02; // Base offset from roof surface
+    const OFFSET_DISTANCE = 0.05; // Base offset from roof surface (5cm)
 
     // Bottom face corners (on roof surface + small offset)
     const bottomCorners = points.map(p => new THREE.Vector3(
@@ -1661,8 +1667,7 @@ function renderPVModuleGrid(
     // Use material array: textured top + dark sides
     const sideMaterial = new THREE.MeshBasicMaterial({
       color: 0x1a1a2e,
-      ...DEPTH_SETTINGS,
-      depthWrite: false
+      ...pvDepthSettings
     });
 
     // Groups: top=0-5, bottom=6-11, front=12-17, back=18-23, right=24-29, left=30-35
@@ -1674,7 +1679,7 @@ function renderPVModuleGrid(
     geometry.addGroup(30, 6, 1);  // left → side
 
     const mesh = new THREE.Mesh(geometry, [moduleMaterial, sideMaterial]);
-    mesh.renderOrder = 5;
+    mesh.renderOrder = 10;
     mesh.userData = {
       measurementId: measurement.id,
       isPVModule: true,
