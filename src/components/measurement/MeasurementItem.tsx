@@ -92,6 +92,7 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   const [showPVDisclaimer, setShowPVDisclaimer] = useState(false);
   const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
   const [isExpanded, setIsExpanded] = useState(false);
+  const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
 
   const updateSegment = (measurementId: string, segmentId: string, data: Partial<Segment>) => {
     if (!measurement.segments) return;
