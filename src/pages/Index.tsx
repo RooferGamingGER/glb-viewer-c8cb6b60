@@ -17,6 +17,7 @@ import {
   LucideIcon,
   ExternalLink,
   Newspaper,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -244,10 +245,21 @@ const Index = () => {
           <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
             <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
             <FileUpload />
-            <Button onClick={handleStartClick} className="w-full mt-4" size={isMobile ? "sm" : "default"}>
-              <Upload className="mr-2 h-4 w-4" />
-              Viewer öffnen
-            </Button>
+            <div className="flex flex-col gap-2 mt-4">
+              <Button onClick={handleStartClick} className="w-full" size={isMobile ? "sm" : "default"}>
+                <Upload className="mr-2 h-4 w-4" />
+                Viewer öffnen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/server-login")}
+                className="w-full"
+                size={isMobile ? "sm" : "default"}
+              >
+                <Server className="mr-2 h-4 w-4" />
+                Vom Server laden
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -4,12 +4,15 @@ import Index from '@/pages/Index';
 import NotFound from '@/pages/NotFound';
 import Test from '@/pages/Test';
 import Viewer from '@/pages/Viewer';
+import ServerLogin from '@/pages/ServerLogin';
+import ServerProjects from '@/pages/ServerProjects';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
 import { MeasurementProvider } from '@/contexts/MeasurementContext';
 import { TutorialProvider } from '@/contexts/TutorialContext';
+import { WebODMAuthProvider } from '@/lib/auth-context';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 
@@ -19,18 +22,22 @@ function App() {
       <MeasurementProvider>
         <PointSnappingProvider>
           <TutorialProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/viewer" element={<Viewer />} />
-                <Route path="/test" element={<Test />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <Toaster />
-              <SonnerToaster richColors position="top-center" duration={2000} closeButton={false} />
-              <PWAInstallPrompt />
-              <PWAUpdatePrompt />
-            </Router>
+            <WebODMAuthProvider>
+              <Router>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/viewer" element={<Viewer />} />
+                  <Route path="/test" element={<Test />} />
+                  <Route path="/server-login" element={<ServerLogin />} />
+                  <Route path="/server-projects" element={<ServerProjects />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+                <SonnerToaster richColors position="top-center" duration={2000} closeButton={false} />
+                <PWAInstallPrompt />
+                <PWAUpdatePrompt />
+              </Router>
+            </WebODMAuthProvider>
           </TutorialProvider>
         </PointSnappingProvider>
       </MeasurementProvider>
@@ -39,3 +46,4 @@ function App() {
 }
 
 export default App;
+
