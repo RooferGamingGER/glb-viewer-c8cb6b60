@@ -44,7 +44,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   const [showInclination, setShowInclination] = useState(getInclinationPreference());
-  const [showMeasurements, setShowMeasurements] = useState(true);
+  
 
   if (!enabled) return null;
 
