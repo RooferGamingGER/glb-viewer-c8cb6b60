@@ -155,10 +155,11 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
         labelsRef.current, 
         segmentLabelsRef.current, 
         updatedMeasurements, 
-        true
+        true,
+        activeMode !== 'none'
       );
     }
-  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef]);
+  }, [updateAllLabelsVisibility, updateMeasurementMarkers, labelsRef, segmentLabelsRef, measurementsRef, activeMode]);
 
   // Set the update function in the measurements context
   useEffect(() => {
