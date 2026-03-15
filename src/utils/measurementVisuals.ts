@@ -242,14 +242,14 @@ export function renderCurrentPoints(
     const closingMaterial = new THREE.LineDashedMaterial({ 
       color: closingColor,
       linewidth: 3,
-      depthTest: false,
+      ...DEPTH_SETTINGS,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
     });
     const closingLine = new THREE.Line(closingGeometry, closingMaterial);
     closingLine.computeLineDistances();
-    closingLine.renderOrder = 999;
+    closingLine.renderOrder = 10;
     linesRef.add(closingLine);
   }
   
