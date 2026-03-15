@@ -1,73 +1,64 @@
 
-# Occlusion-korrektes Rendering: depthTest aktivieren mit polygonOffset
 
-## Problem
-Mit `depthTest: false` sind alle Messungen, Labels und PV-Module immer sichtbar — auch durch das Modell hindurch (X-Ray). Das ist unnatürlich.
+# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
 
-## Warum der erste Versuch scheiterte
-`polygonOffset` mit `-2/-2` war zu schwach. Außerdem hatten die Y-Offsets (`POINT_Y_OFFSET = 0.01`, `LINE_Y_OFFSET = 0.025`) nicht ausgereicht, um die Geometrie zuverlässig von der Dachfläche abzuheben.
+## Zusammenfassung
 
-## Neuer Ansatz: Stärkere Offsets + höhere Y-Anhebung
+Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
 
-### 1. `src/utils/measurementVisuals.ts` — Alle Materialien
-Überall `depthTest: false` → `depthTest: true` ändern, plus `polygonOffset`:
+## Aenderungen
 
-**Punkte (Spheres):**
-```typescript
-depthTest: true,
-polygonOffset: true,
-polygonOffsetFactor: -4,
-polygonOffsetUnits: -4
-```
-`renderOrder = 10`
+### Datei 1: `src/hooks/use-mobile.tsx`
 
-**Linien:**
-```typescript
-depthTest: true,
-polygonOffset: true,
-polygonOffsetFactor: -4,
-polygonOffsetUnits: -4
-```
-`renderOrder = 10`
+**Was aendert sich:**
+- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
+- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
+- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
 
-**Flächen-Fills (Area, Solar):**
-```typescript
-depthTest: true,
-polygonOffset: true,
-polygonOffsetFactor: -4,
-polygonOffsetUnits: -4
-```
-`renderOrder = 5`
+**Neue Logik `isTouchDevice()`:**
+1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
+2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
+3. `matchMedia('(hover: none)')` -- kein Hover moeglich
+4. User-Agent Regex (android, iphone, ipad, etc.)
 
-**PV-Module:**
-```typescript
-depthTest: true,
-polygonOffset: true,
-polygonOffsetFactor: -4,
-polygonOffsetUnits: -4
-```
-`renderOrder = 5`
+Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
 
-### 2. Y-Offsets erhöhen
-Die bestehenden Offsets sind zu klein für zuverlässige Sichtbarkeit auf Dachflächen:
-```typescript
-const POINT_Y_OFFSET = 0.03;   // war 0.01
-const LINE_Y_OFFSET = 0.04;    // war 0.025
-const LABEL_Y_OFFSET = 0.20;   // war 0.15
-const PV_LINE_Y_OFFSET = 0.05; // war 0.03
+**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+
+### Datei 2: `src/hooks/useScreenOrientation.tsx`
+
+**Was aendert sich:**
+- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
+- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
+- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
+- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+
+**Neue Logik:**
+```text
+isMobileOrTablet = useIsMobile()  // = isTouchDevice()
+isTablet = isMobileOrTablet && Math.min(width, height) > 600
+isPhone  = isMobileOrTablet && !isTablet
 ```
 
-PV-Modul `OFFSET_DISTANCE`: `0.01` → `0.03`
+### Keine Aenderungen noetig in:
+- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
+- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
+- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
+- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
 
-### 3. `src/utils/textSprite.ts` — Labels
-```typescript
-depthTest: true,  // war false
-depthWrite: false  // bleibt
-```
-`renderOrder = 20` (bleibt)
+## Erwartetes Verhalten nach der Aenderung
 
-### 4. Snapping-Indikatoren (`PointSnappingContext.tsx`, `useAddPointIndicators.ts`)
-Hier `depthTest: false` belassen — diese temporären Hilfsanzeigen sollen immer sichtbar sein.
+| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
+|---|---|---|---|---|---|
+| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
+| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
 
-### Zusammenfassung
-~30 Stellen in `measurementVisuals.ts` ändern (jedes `depthTest: false` → `true` + `polygonOffset` hinzufügen), Y-Offsets vergrößern, und in `textSprite.ts` `depthTest: true` setzen. Snapping-Indikatoren bleiben bei `depthTest: false`.
+## Technische Details
+
+- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
+- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
+- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
+- Keine neuen Dependencies noetig
+
