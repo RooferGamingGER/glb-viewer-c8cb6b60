@@ -1666,7 +1666,7 @@ function renderPVModuleGrid(
     mesh.userData = {
       measurementId: measurement.id,
       isPVModule: true,
-      moduleIndex: index
+      moduleIndex: moduleOriginalIndices[index]
     };
     
     measurementsRef.add(mesh);

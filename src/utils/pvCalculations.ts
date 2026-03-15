@@ -533,6 +533,7 @@ export const generatePVModuleGrid = (
       });
 
       modulePoints.push(corners3D);
+      moduleOriginalIndices.push(currentIndex);
 
       // Grid lines for outline visualization
       for (let i = 0; i < 4; i++) {
@@ -543,7 +544,7 @@ export const generatePVModuleGrid = (
 
   console.log(`PV Grid: ${modulePoints.length} modules placed (${cols}×${rows} grid, ${pvInfo.orientation})`);
 
-  return { modulePoints, gridLines };
+  return { modulePoints, moduleOriginalIndices, gridLines };
 };
 
 // ============================================================================
