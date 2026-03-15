@@ -1,64 +1,84 @@
 
 
-# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
+# Server-Projekt-Browser: Fehlerbehebung und Erweiterung
 
-## Zusammenfassung
+## Probleme
 
-Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
+1. **GLB-Fehler**: Der "Im Viewer oeffnen"-Button wird angezeigt obwohl `findGlbAsset` ein Asset findet, das auf dem Server gar nicht als GLB existiert (z.B. ein ZIP das `.glb` enthaelt). Der Blob-URL wird erstellt, aber beim Laden im Viewer schlaegt der Fetch fehl ("Failed to fetch" auf blob: URL).
 
-## Aenderungen
+2. **Fehlende Asset-Downloads**: Aktuell werden nur GLB-Dateien angeboten. Der Benutzer moechte alle verfuegbaren Assets sehen und herunterladen koennen.
 
-### Datei 1: `src/hooks/use-mobile.tsx`
+3. **Keine Drohnenbilder-Vorschau**: Die Aufnahmen eines Tasks sind nicht sichtbar.
 
-**Was aendert sich:**
-- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
-- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
-- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
+## Loesung
 
-**Neue Logik `isTouchDevice()`:**
-1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
-2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
-3. `matchMedia('(hover: none)')` -- kein Hover moeglich
-4. User-Agent Regex (android, iphone, ipad, etc.)
+### 1. GLB-Validierung und Fehlerbehandlung
 
-Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
+**`src/lib/webodm.ts`:**
+- `findGlbAsset()` bleibt, aber `downloadGlbAsBlob()` wird robuster: Pruefen ob die Response tatsaechlich binary/GLB ist (Content-Type oder Groesse > 0), sonst Fehler werfen
+- Neue Funktion `getDownloadableAssets(assets)`: Filtert `available_assets` und gibt nur erlaubte Dateien zurueck. Blacklist: `report.pdf`, `all.zip`
 
-**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+**`src/pages/ServerProjects.tsx`:**
+- "Im Viewer oeffnen" Button nur wenn `findGlbAsset()` ein Ergebnis liefert UND Task-Status === 40 (abgeschlossen)
+- Bessere Fehlermeldung wenn Download fehlschlaegt
 
-### Datei 2: `src/hooks/useScreenOrientation.tsx`
+### 2. Asset-Liste mit Download-Buttons
 
-**Was aendert sich:**
-- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
-- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
-- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
-- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+**`src/pages/ServerProjects.tsx` -- TaskList erweitern:**
+- Unter jedem Task eine Liste der verfuegbaren Assets anzeigen (gefiltert, ohne `report.pdf` und `all.zip`)
+- Jedes Asset bekommt einen Download-Button der die Datei ueber den Proxy laedt und als Browser-Download anbietet
+- Asset-Typen mit passenden Icons (GLB = 3D-Box, Orthofoto = Bild, Punktwolke = Dots, etc.)
 
-**Neue Logik:**
+**`src/lib/webodm.ts` -- Neue Funktionen:**
+- `downloadAssetAsFile(token, projectId, taskId, asset)`: Laedt Asset ueber Proxy und triggert Browser-Download via temporaerem `<a>` Element
+- `EXCLUDED_ASSETS = ['report.pdf', 'all.zip']` -- Blacklist-Konstante
+- `getFilteredAssets(assets)`: Gibt alle Assets zurueck ausser die auf der Blacklist
+
+### 3. Drohnenbilder-Vorschau und Download
+
+**WebODM API-Endpunkte fuer Bilder:**
+- `GET /api/projects/{id}/tasks/{id}/images/` -- Liste aller Bilder mit Thumbnails
+- Bild-URLs koennen direkt als `<img src>` genutzt werden (ueber Proxy)
+
+**`src/lib/webodm.ts` -- Neue Funktionen:**
+- `getTaskImages(token, projectId, taskId)`: Ruft die Bilderliste ab
+- `getImageThumbnailUrl(projectId, taskId, imageFilename)`: Baut den Proxy-Pfad fuer Thumbnails
+
+**`src/pages/ServerProjects.tsx` -- Neuer Bereich "Drohnenaufnahmen":**
+- Klappbarer Bereich unter den Assets
+- Zeigt Bilder als Thumbnail-Grid (via Proxy geladen)
+- Jedes Bild: Vorschau-Thumbnail + Download-Button fuer das Originalbild
+- Lazy-Loading der Thumbnails (nur laden wenn Bereich geoeffnet)
+
+**`supabase/functions/webodm-proxy/index.ts`:**
+- Erweitern um auch `/api/projects/.../images/` Pfade und Thumbnail-Pfade (die als GET mit Query-Parametern kommen) korrekt weiterzuleiten
+- Bild-Responses als Binary zurueckgeben (aehnlich wie Downloads)
+
+### 4. Erweiterte Task-Ansicht (neues Layout)
+
 ```text
-isMobileOrTablet = useIsMobile()  // = isTouchDevice()
-isTablet = isMobileOrTablet && Math.min(width, height) > 600
-isPhone  = isMobileOrTablet && !isTablet
+┌─────────────────────────────────────────────┐
+│ ✓ Task-Name                                 │
+│   Abgeschlossen • 45 Bilder • 1.2 GB       │
+│                                              │
+│   [Im Viewer oeffnen]  (nur wenn GLB da)    │
+│                                              │
+│   ▸ Verfuegbare Dateien (3)                 │
+│     textured_model.glb     [⬇ Download]     │
+│     orthophoto.tif         [⬇ Download]     │
+│     georeferenced_model.laz [⬇ Download]    │
+│                                              │
+│   ▸ Drohnenaufnahmen (45)                   │
+│     [thumb] [thumb] [thumb] [thumb] ...     │
+│     [thumb] [thumb] [thumb] [thumb] ...     │
+└─────────────────────────────────────────────┘
 ```
 
-### Keine Aenderungen noetig in:
-- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
-- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
-- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
-- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
+## Dateien die geaendert werden
 
-## Erwartetes Verhalten nach der Aenderung
-
-| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
-|---|---|---|---|---|---|
-| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
-| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
-
-## Technische Details
-
-- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
-- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
-- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
-- Keine neuen Dependencies noetig
+| Datei | Aenderung |
+|-------|-----------|
+| `src/lib/webodm.ts` | Neue Funktionen: `getFilteredAssets`, `downloadAssetAsFile`, `getTaskImages`, Blacklist-Konstante |
+| `src/pages/ServerProjects.tsx` | TaskList komplett ueberarbeitet: Asset-Liste, Drohnenbilder-Grid, bessere GLB-Validierung |
+| `supabase/functions/webodm-proxy/index.ts` | Erweitern fuer Bild-/Thumbnail-Proxy (Binary-Responses fuer nicht-download Pfade die Bilder liefern) |
 
