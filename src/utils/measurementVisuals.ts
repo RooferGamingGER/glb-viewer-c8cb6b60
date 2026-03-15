@@ -1448,19 +1448,17 @@ function renderRoofElementMeasurement(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: elementColor,
         linewidth: 3,
-        opacity: 0.9,
-        transparent: true
+        depthTest: false
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.renderOrder = 2;
       measurementsRef.add(line);
       
       // Add small sphere at each vertex with minimal Y offset
-      const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+      const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: elementColor,
-        opacity: 0.9,
-        transparent: true
+        depthTest: false
       });
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
       // Place points closer to model surface
