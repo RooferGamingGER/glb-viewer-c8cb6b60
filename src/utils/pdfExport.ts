@@ -1457,6 +1457,13 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     // Berechnungsmethoden
     tocEntries.push({ title: 'Anhang: Berechnungsmethoden', page: currentPage });
+    currentPage++;
+    
+    // Solarplanung
+    const solarMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
+    if (solarMeasurementsForToc.length > 0) {
+      tocEntries.push({ title: `Solarplanung (${solarMeasurementsForToc.length} Flächen)`, page: currentPage });
+    }
     
     tocEntries.forEach(entry => {
       const tocRow = document.createElement('div');
