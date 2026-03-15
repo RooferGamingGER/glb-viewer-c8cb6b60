@@ -55,8 +55,8 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "15.03.2026",
-    text: "Neue Server-Anbindung: Direkt auf drohnenvermessung-server.de einloggen, Projekte & Tasks verwalten, Drohnenbilder einsehen und neue Verarbeitungsaufträge starten – alles ohne die App zu verlassen",
-    link: { url: "https://drohnenvermessung-server.de", label: "Server öffnen" },
+    text: "Kunden von Drohnenvermessung by RooferGaming® können nun Projekte & Tasks verwalten, Drohnenbilder einsehen und neue Verarbeitungsaufträge starten – alles ohne die App zu verlassen",
+    link: { url: "https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/", label: "Jetzt Kunde werden" },
   },
   {
     date: "15.03.2026",
