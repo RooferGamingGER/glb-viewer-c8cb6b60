@@ -354,9 +354,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
 
   return <Dialog>
       <DialogTrigger asChild>
-        <Button className="w-full flex items-center gap-2">
-          <FileDown className="h-4 w-4" />
-          <span>PDF </span>
+        <Button variant="outline" size="sm" className="w-full justify-start text-left">
+          <FileDown className="h-4 w-4 mr-2 shrink-0" />
+          <span>PDF Export</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] fixed max-h-[90vh] overflow-y-auto">

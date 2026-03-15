@@ -112,12 +112,12 @@ const ExportGLBWithMeasurementsButton: React.FC<ExportGLBWithMeasurementsButtonP
     <Button 
       variant="outline" 
       size="sm" 
-      className="w-full"
+      className="w-full justify-start text-left"
       onClick={handleExport}
       disabled={exporting || !canExport}
       title={buttonTitle}
     >
-      <FileDown className="h-4 w-4 mr-2" />
+      <FileDown className="h-4 w-4 mr-2 shrink-0" />
       {exporting ? `Exportiere… ${progress}%` : 'GLB mit Messungen'}
     </Button>
   );
