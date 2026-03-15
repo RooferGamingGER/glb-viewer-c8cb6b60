@@ -72,12 +72,6 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
     smartToast.guidance(v ? 'Punktfang aktiviert' : 'Punktfang deaktiviert');
   };
 
-  const handleToggleInclination = () => {
-    const v = !showInclination;
-    setShowInclination(v);
-    setInclinationPreference(v);
-    smartToast.guidance(v ? 'Neigung Ein (>5°)' : 'Neigung Aus');
-  };
 
   const getContextHint = (): string | null => {
     if (movingPointInfo) return 'Punkt verschieben – klicken zum Platzieren';
