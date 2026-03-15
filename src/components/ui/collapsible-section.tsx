@@ -61,5 +61,6 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
       </CollapsibleContent>
     </Collapsible>
   );
+};
 
 export default CollapsibleSection;
