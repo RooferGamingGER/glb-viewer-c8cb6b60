@@ -201,44 +201,10 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
         </div>
       )}
 
-      {/* Compact measurement list */}
+      {/* Measurement count badge */}
       {measurements.length > 0 && (
-        <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg">
-          <button
-            onClick={() => setShowMeasurements(!showMeasurements)}
-            className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium hover:bg-accent/50 rounded-t-lg"
-          >
-            <span>Messungen ({measurements.length})</span>
-            {showMeasurements ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          {showMeasurements && (
-            <div className="max-h-[200px] overflow-y-auto border-t border-border/30">
-              {measurements.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between px-2 py-1 hover:bg-accent/30 text-xs group"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    {getTypeIcon(m.type)}
-                    <span className="truncate">
-                      {m.label || getMeasurementTypeDisplayName(m.type)}
-                    </span>
-                    <span className="text-muted-foreground font-mono ml-1 whitespace-nowrap">
-                      {formatMeasurementValue(m)}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteMeasurement(m.id)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg px-2 py-1.5">
+          <span className="text-xs text-muted-foreground">{measurements.length} Messung{measurements.length !== 1 ? 'en' : ''}</span>
         </div>
       )}
     </div>
