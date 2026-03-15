@@ -931,7 +931,7 @@ function renderLengthMeasurement(
   const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.CYAN,
-    depthTest: false
+    ...DEPTH_SETTINGS
   });
   
   measurement.points.forEach((point, index) => {
