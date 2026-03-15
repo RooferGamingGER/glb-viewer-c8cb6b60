@@ -272,7 +272,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           length: updatedInfo.userDefinedLength || 0
         } : undefined,
         undefined,
-        useOptimalRectangle
+        useOptimalRectangle,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { 
