@@ -200,7 +200,7 @@ export function renderCurrentPoints(
     const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: pointColor,
-      depthTest: false
+      ...DEPTH_SETTINGS
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.x, point.y + POINT_Y_OFFSET, point.z);
