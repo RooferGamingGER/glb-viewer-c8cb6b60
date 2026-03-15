@@ -193,6 +193,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                 <SolarMeasurementContent
                   measurement={m}
                   updateMeasurement={updateMeasurement}
+                  allMeasurements={measurements}
                 />
               </CollapsibleSection>
             ))}
