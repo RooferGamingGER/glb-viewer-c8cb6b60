@@ -1390,11 +1390,10 @@ function renderRoofElementMeasurement(
     measurementsRef.add(marker);
     
     // Add small sphere at the point for interaction
-    const sphereGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+    const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color: elementColor,
-      opacity: 0.9,
-      transparent: true
+      depthTest: false
     });
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     // Place point closer to model surface
