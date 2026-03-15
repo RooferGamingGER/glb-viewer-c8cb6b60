@@ -1529,39 +1529,24 @@ function renderPVModuleGrid(
   labelsRef: THREE.Group
 ) {
   if (!measurement.pvModuleInfo || measurement.pvModuleInfo.moduleCount <= 0) return;
-  
+
   // Get the base height from the first point (assuming relatively flat roof surface)
   const baseY = measurement.points[0]?.y || 0;
-  
-  // Generate the PV module grid
-  const { modulePoints, moduleOriginalIndices, gridLines } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
-  
-  // Visual defaults and materials (can be overridden via pvModuleInfo.moduleVisuals)
+
+  // Generate the PV module grid (only module surfaces)
+  const { modulePoints, moduleOriginalIndices } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
+
+  // Visual defaults (can be overridden via pvModuleInfo.moduleVisuals)
   const vDefaults = {
-    panelColor: 0x0b1f3a, // deep navy
-    panelOpacity: 0.9,
-    frame: true,
-    frameColor: 0xbfc7cf, // silver
-    frameOpacity: 1,
-    frameLineWidth: 2,
-    cellRows: 12,
-    cellCols: 10,
-    cellLineColor: 0xffffff,
-    cellLineOpacity: 0.25,
-    cellLineWidth: 1,
-    midGapEnabled: true,
-    midGapColor: 0xffffff,
-    midGapOpacity: 0.6,
-    midGapWidth: 2
+    panelColor: 0x0b1f3a,
+    panelOpacity: 0.95,
   } as const;
   const v = { ...vDefaults, ...(measurement.pvModuleInfo?.moduleVisuals || {}) } as any;
-  
-  // Create materials for different elements
+
   // Load module texture
   const textureLoader = new THREE.TextureLoader();
   let moduleTexture: THREE.Texture | null = null;
   try {
-    // Use dynamic import path for the module texture
     const texturePath = new URL('@/assets/moduli_standard.png', import.meta.url).href;
     moduleTexture = textureLoader.load(texturePath);
     moduleTexture.colorSpace = THREE.SRGBColorSpace;
@@ -1571,92 +1556,40 @@ function renderPVModuleGrid(
     console.warn('Could not load PV module texture, falling back to color', e);
   }
 
+  // Keep modules always visible through GLB, and render texture only (no extra line patterns)
   const moduleMaterial = moduleTexture
     ? new THREE.MeshBasicMaterial({
         map: moduleTexture,
-        transparent: false,
-        side: THREE.FrontSide,
+        transparent: true,
+        opacity: 1,
+        side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false
       })
     : new THREE.MeshBasicMaterial({
         color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
-        opacity: v.panelOpacity ?? 0.9,
+        opacity: v.panelOpacity ?? 0.95,
         transparent: true,
-        side: THREE.FrontSide,
+        side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false
       });
-  
-  const frameMaterial = new THREE.LineBasicMaterial({
-    color: (v.frameColor ?? 0xbfc7cf) as any,
-    linewidth: v.frameLineWidth ?? 2,
-    opacity: v.frameOpacity ?? 1,
-    transparent: (v.frameOpacity ?? 1) < 1,
-    depthTest: false
-  });
-  
-  const gridLineMaterial = new THREE.LineBasicMaterial({
-    color: PV_MODULE_COLORS.GRID,
-    linewidth: 3,
-    opacity: 0.8,
-    transparent: true,
-    depthTest: false
-  });
-  
-  const boundaryMaterial = new THREE.LineDashedMaterial({
-    color: PV_MODULE_COLORS.BOUNDARY,
-    dashSize: 0.2,
-    gapSize: 0.1,
-    linewidth: 2,
-    opacity: 0.8,
-    transparent: true,
-    depthTest: false
-  });
-  
-  const availableAreaMaterial = new THREE.LineDashedMaterial({
-    color: PV_MODULE_COLORS.AVAILABLE_AREA,
-    dashSize: 0.1,
-    gapSize: 0.1,
-    linewidth: 2,
-    opacity: 0.8,
-    transparent: true,
-    depthTest: false
-  });
-  
-  // Subtle cell grid lines material
-  const cellLineMaterial = new THREE.LineBasicMaterial({
-    color: (v.cellLineColor ?? PV_MODULE_COLORS.GRID) as any,
-    linewidth: v.cellLineWidth ?? 1,
-    opacity: v.cellLineOpacity ?? 0.25,
-    transparent: true,
-    depthTest: false
-  });
-  
-  // Create module meshes - this is where we're fixing the floating issue
-  modulePoints.forEach((points, index) => {
-    // Instead of projecting to a shape and then setting Y values afterwards,
-    // we'll directly use the 3D coordinates to create a custom BufferGeometry
 
-    // Create a buffer geometry
+  modulePoints.forEach((points, index) => {
     const geometry = new THREE.BufferGeometry();
-    
-    // Define vertices for the module (4 corners, 2 triangles = 6 vertices)
-    // We need to define each vertex for each triangle separately for proper rendering
+
+    // 2 triangles = quad module surface
     const vertices = new Float32Array([
-      // First triangle (bottom-right half of quad)
-      points[0].x, points[0].y, points[0].z, // bottom-left
-      points[1].x, points[1].y, points[1].z, // bottom-right
-      points[3].x, points[3].y, points[3].z, // top-right
-      
-      // Second triangle (top-left half of quad)
-      points[0].x, points[0].y, points[0].z, // bottom-left
-      points[3].x, points[3].y, points[3].z, // top-right
-      points[2].x, points[2].y, points[2].z  // top-left
+      points[0].x, points[0].y, points[0].z,
+      points[1].x, points[1].y, points[1].z,
+      points[3].x, points[3].y, points[3].z,
+
+      points[0].x, points[0].y, points[0].z,
+      points[3].x, points[3].y, points[3].z,
+      points[2].x, points[2].y, points[2].z
     ]);
-    
-    // Add a slight offset along the normal to prevent z-fighting with the roof mesh
-    // Calculate normal from the points (simplified as an approximate)
+
+    // Small offset to avoid z-fighting on roof surface
     const normal = new THREE.Vector3()
       .crossVectors(
         new THREE.Vector3().subVectors(
@@ -1669,146 +1602,50 @@ function renderPVModuleGrid(
         )
       )
       .normalize();
-    
-    // Apply a small offset (0.01 units) along the normal to every vertex
+
     const OFFSET_DISTANCE = 0.01;
     for (let i = 0; i < vertices.length; i += 3) {
       vertices[i] += normal.x * OFFSET_DISTANCE;
       vertices[i + 1] += normal.y * OFFSET_DISTANCE;
       vertices[i + 2] += normal.z * OFFSET_DISTANCE;
     }
-    
-    // Set vertices
+
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    
-    // Add UV coordinates for texture mapping
-    // Corner order from pvCalculations: 0=BL, 1=BR, 2=TR, 3=TL
-    // Triangle 1: points[0](BL), points[1](BR), points[3](TL)
-    // Triangle 2: points[0](BL), points[3](TL), points[2](TR)
+
     const uvs = new Float32Array([
-      // First triangle (BL, BR, TL)
-      0, 0,  // BL
-      1, 0,  // BR
-      0, 1,  // TL
-      // Second triangle (BL, TL, TR)
-      0, 0,  // BL
-      0, 1,  // TL
-      1, 1   // TR
+      0, 0,
+      1, 0,
+      0, 1,
+      0, 0,
+      0, 1,
+      1, 1
     ]);
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-    
-    // Compute vertex normals for proper lighting
     geometry.computeVertexNormals();
-    
-    // Create mesh for the module
+
     const mesh = new THREE.Mesh(geometry, moduleMaterial);
-    mesh.renderOrder = 5;
-    
-    // Store measurement ID in user data
+    mesh.renderOrder = 950;
     mesh.userData = {
       measurementId: measurement.id,
       isPVModule: true,
       moduleIndex: moduleOriginalIndices[index]
     };
-    
     measurementsRef.add(mesh);
-    
-    // Draw subtle cell grid to mimic PV cells
-    const p0 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-    const p1 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
-    const p2 = new THREE.Vector3(points[2].x, points[2].y, points[2].z);
-    const p3 = new THREE.Vector3(points[3].x, points[3].y, points[3].z);
 
-    const edgeWBottom = new THREE.Vector3().subVectors(p1, p0);
-    const edgeWTop = new THREE.Vector3().subVectors(p3, p2);
-    const edgeHLeft = new THREE.Vector3().subVectors(p2, p0);
-    const edgeHRight = new THREE.Vector3().subVectors(p3, p1);
-
-    const cols = (v.cellCols ?? 10); // vertical divisions
-    const rows = (v.cellRows ?? 6);  // horizontal divisions
-
-    // Vertical cell lines (along height)
-    for (let c = 1; c < cols; c++) {
-      const t = c / cols;
-      const start = new THREE.Vector3().copy(p0).add(edgeWBottom.clone().multiplyScalar(t));
-      const end = new THREE.Vector3().copy(p2).add(edgeWTop.clone().multiplyScalar(t));
-      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
-      const line = new THREE.Line(geom, cellLineMaterial);
-      line.renderOrder = 8;
-      measurementsRef.add(line);
-    }
-
-    // Horizontal cell lines (along width)
-    for (let r = 1; r < rows; r++) {
-      const t = r / rows;
-      const start = new THREE.Vector3().copy(p0).add(edgeHLeft.clone().multiplyScalar(t));
-      const end = new THREE.Vector3().copy(p1).add(edgeHRight.clone().multiplyScalar(t));
-      const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
-      const line = new THREE.Line(geom, cellLineMaterial);
-      line.renderOrder = 8;
-      measurementsRef.add(line);
-    }
-    
-    // Add module number label - calculate the actual center of the module
+    // Module number label
     const centerX = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
-    const centerY = (points[0].y + points[1].y + points[2].y + points[3].y) / 4; 
+    const centerY = (points[0].y + points[1].y + points[2].y + points[3].y) / 4;
     const centerZ = (points[0].z + points[1].z + points[2].z + points[3].z) / 4;
-    
-    const moduleCenter = new THREE.Vector3(
-      centerX,
-      centerY + 0.03, // Small offset for visibility
-      centerZ
-    );
-    
-    // Fixed: Convert color number to string using CSS hex format
-    const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true, '#' + PV_MODULE_COLORS.MODULE.toString(16).padStart(6, '0'));
+
+    const moduleCenter = new THREE.Vector3(centerX, centerY + 0.03, centerZ);
+    const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true);
     moduleLabel.userData = {
       measurementId: measurement.id,
       isModuleLabel: true,
       moduleIndex: index
     };
-    
-    // Make module labels smaller
     moduleLabel.userData.isModuleLabel = true;
     moduleLabel.scale.set(0.2, 0.2, 0.2);
-    
     labelsRef.add(moduleLabel);
-  });
-  
-  // Create lines for the grid - using the actual 3D coordinates
-  gridLines.forEach((line, index) => {
-    // First 4 * moduleCount lines are module borders, 
-    // next 4 are boundary lines,
-    // last 4 are available area lines
-    const isBoundary = index >= 4 * modulePoints.length && index < 4 * modulePoints.length + 4;
-    const isAvailableArea = index >= 4 * modulePoints.length + 4;
-    
-    const material = isBoundary ? boundaryMaterial : 
-                    isAvailableArea ? availableAreaMaterial : 
-                    gridLineMaterial;
-    
-    const fromVec = new THREE.Vector3(line.from.x, line.from.y, line.from.z);
-    const toVec = new THREE.Vector3(line.to.x, line.to.y, line.to.z);
-    
-    const points = [fromVec, toVec];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const lineObj = new THREE.Line(geometry, material);
-    
-    // For dashed lines, compute line distances
-    if (isBoundary || isAvailableArea) {
-      lineObj.computeLineDistances();
-    }
-    
-    lineObj.renderOrder = 8;
-    
-    // Store metadata in user data
-    lineObj.userData = {
-      measurementId: measurement.id,
-      isPVGridLine: true,
-      isBoundary,
-      isAvailableArea
-    };
-    
-    measurementsRef.add(lineObj);
   });
 }

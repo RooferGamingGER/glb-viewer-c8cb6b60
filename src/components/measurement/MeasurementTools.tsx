@@ -258,52 +258,45 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     updateAllLabelsVisibility(allLabelsVisible);
   }, [allLabelsVisible, updateAllLabelsVisibility]);
 
-  // Handle label visibility based on edit mode
+  // Handle label visibility based on edit/draw mode
   useEffect(() => {
     if (!labelsRef.current || !segmentLabelsRef.current) return;
-    
-    // Determine if we're in any edit mode
+
     const isEditing = editMeasurementId !== null || movingPointInfo !== null || editingSegmentId !== null;
-    
-    // Process all labels in both groups
-    const processLabel = (label: THREE.Object3D, isSegmentLabel = false) => {
+    const isDrawingMode = activeMode !== 'none';
+
+    const processLabel = (label: THREE.Object3D) => {
       if (!label.userData) return;
-      
+
       // Preview labels are always visible
       if (label.userData.isPreview) {
         label.visible = true;
         return;
       }
-      
-      // During editing, hide all non-preview labels
-      if (isEditing) {
+
+      // During editing OR active drawing mode, hide all non-preview labels
+      if (isEditing || isDrawingMode) {
         label.visible = false;
         return;
       }
-      
-      // When not editing, set visibility based on the measurement's visibility state
+
       const measurementId = label.userData.measurementId;
       if (measurementId) {
         const measurement = measurements.find(m => m.id === measurementId);
-        // Only show label if measurement exists and is visible
         label.visible = measurement?.visible !== false && measurement?.labelVisible !== false;
       } else {
-        // If no measurement ID, default to visible
         label.visible = true;
       }
     };
-    
-    // Process main labels
+
     labelsRef.current.children.forEach(label => {
       processLabel(label);
     });
-    
-    // Process segment labels
+
     segmentLabelsRef.current.children.forEach(label => {
-      processLabel(label, true);
+      processLabel(label);
     });
-    
-  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible, labelsRef, segmentLabelsRef]);
+  }, [editMeasurementId, movingPointInfo, editingSegmentId, measurements, allLabelsVisible, labelsRef, segmentLabelsRef, activeMode]);
 
   // Clean up labels when editing starts and re-render when editing is complete
   useEffect(() => {
