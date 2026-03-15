@@ -218,10 +218,10 @@ export function renderCurrentPoints(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: pointColor,
         linewidth: 3,
-        depthTest: false
+        ...DEPTH_SETTINGS
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.renderOrder = 999;
+      line.renderOrder = 10;
       linesRef.add(line);
     }
   });
