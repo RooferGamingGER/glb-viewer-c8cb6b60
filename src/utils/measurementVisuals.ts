@@ -1083,7 +1083,7 @@ function renderAreaMeasurement(
     const lineMaterial = new THREE.LineBasicMaterial({ 
       color: measurementColor,
       linewidth: 3,
-      depthTest: false
+      depthTest: true
     });
     const line = new THREE.Line(lineGeometry, lineMaterial);
     line.renderOrder = 2;
