@@ -2321,7 +2321,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         specsCol.style.flexShrink = '0';
         
         const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
-        const totalPower = pvInfo.pvMaterials?.totalPower || 0;
+        const modulePower = pvInfo.pvModuleSpec?.power || 425;
+        const totalPower = (activeModules * modulePower) / 1000;
         
         // Module count box
         const moduleBox = document.createElement('div');
