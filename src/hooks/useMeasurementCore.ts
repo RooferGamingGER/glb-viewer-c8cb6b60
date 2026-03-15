@@ -155,17 +155,15 @@ export const useMeasurementCore = () => {
       
       setMeasurements(prev => prev.map(m => {
         if (m.id === measurementId && m.pvModuleInfo) {
+          // Track removed indices instead of filtering arrays (preserves index mapping)
+          const removedIndices = [...(m.pvModuleInfo.removedModuleIndices || [])];
+          if (!removedIndices.includes(moduleIndex)) {
+            removedIndices.push(moduleIndex);
+          }
+          
           const newCount = Math.max(0, m.pvModuleInfo.moduleCount - 1);
           const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
           const area = m.pvModuleInfo.actualArea || 1;
-          
-          // Remove the module corners/positions if they exist
-          const newModuleCorners = m.pvModuleInfo.moduleCorners 
-            ? m.pvModuleInfo.moduleCorners.filter((_, i) => i !== moduleIndex)
-            : undefined;
-          const newModulePositions = m.pvModuleInfo.modulePositions
-            ? m.pvModuleInfo.modulePositions.filter((_, i) => i !== moduleIndex)
-            : undefined;
           
           return {
             ...m,
@@ -173,8 +171,7 @@ export const useMeasurementCore = () => {
               ...m.pvModuleInfo,
               moduleCount: newCount,
               coveragePercent: Math.min((moduleArea / area) * 100, 100),
-              moduleCorners: newModuleCorners,
-              modulePositions: newModulePositions,
+              removedModuleIndices: removedIndices,
             }
           };
         }

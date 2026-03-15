@@ -443,15 +443,17 @@ export const generatePVModuleGrid = (
   roofEdgeSegments?: { from: Point; to: Point }[]
 ): {
   modulePoints: Point[][];
+  moduleOriginalIndices: number[];
   gridLines: { from: Point; to: Point }[];
 } => {
   const modulePoints: Point[][] = [];
+  const moduleOriginalIndices: number[] = [];
   const gridLines: { from: Point; to: Point }[] = [];
 
   const roofPoints = pvInfo.points;
   if (!roofPoints || roofPoints.length < 3) {
     console.warn("Not enough roof points for PV grid generation");
-    return { modulePoints, gridLines };
+    return { modulePoints, moduleOriginalIndices, gridLines };
   }
 
   // Fit plane using all roof points (stable for complex polygons)
@@ -485,6 +487,10 @@ export const generatePVModuleGrid = (
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
+  // Track sequential index for removed module filtering
+  let sequentialIndex = 0;
+  const removedIndices = pvInfo.removedModuleIndices || [];
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cu = startU + c * (mw + spacing);
@@ -511,6 +517,13 @@ export const generatePVModuleGrid = (
         continue; // Skip module — it's outside the roof
       }
 
+      // Skip modules that were removed by user click
+      const currentIndex = sequentialIndex;
+      sequentialIndex++;
+      if (removedIndices.includes(currentIndex)) {
+        continue;
+      }
+
       // Project corners to 3D on the roof plane
       const corners3D: Point[] = corners2D.map(c2 => {
         const p3d = projectTo3D(c2.u, c2.w, centroid, v1, v2, plane, normal);
@@ -520,6 +533,7 @@ export const generatePVModuleGrid = (
       });
 
       modulePoints.push(corners3D);
+      moduleOriginalIndices.push(currentIndex);
 
       // Grid lines for outline visualization
       for (let i = 0; i < 4; i++) {
@@ -530,7 +544,7 @@ export const generatePVModuleGrid = (
 
   console.log(`PV Grid: ${modulePoints.length} modules placed (${cols}×${rows} grid, ${pvInfo.orientation})`);
 
-  return { modulePoints, gridLines };
+  return { modulePoints, moduleOriginalIndices, gridLines };
 };
 
 // ============================================================================
