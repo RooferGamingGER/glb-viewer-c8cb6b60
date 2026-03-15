@@ -130,7 +130,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           size="sm"
           className="w-full h-7 text-xs"
           onClick={() => {
-            const pvModuleInfo = calculatePVModulePlacement(measurement.points);
+            const pvModuleInfo = calculatePVModulePlacement(measurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
             updateMeasurement(measurement.id, { pvModuleInfo });
             toast.success(`PV-Module berechnet: ${pvModuleInfo.moduleCount} Module`);
           }}
