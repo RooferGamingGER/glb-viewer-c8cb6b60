@@ -118,7 +118,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
             pressed={snapEnabled}
             onPressedChange={handleToggleSnap}
             size="sm"
-            className={`h-7 px-2 text-xs gap-1 ${snapEnabled ? 'bg-green-500/20 text-green-700 border-green-500/50' : ''}`}
+            className={`h-7 px-2 text-xs gap-1 border ${snapEnabled ? 'bg-green-500 text-white hover:bg-green-600 border-green-600 data-[state=on]:bg-green-500 data-[state=on]:text-white' : 'border-border/50'}`}
           >
             <Magnet className="h-3 w-3" /> Snap
           </Toggle>
