@@ -54,12 +54,12 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
-    date: "18.03.2026",
-    text: "Kunden können sich direkt mit dem Server verbinden um Drohnenaufnahmen zu prüfen, Daten downloaden, neue Projekte erstellen und vieles mehr",
+    date: "15.03.2026",
+    text: "PDF-Export optimiert: Solarplanung aus Vermessungsbericht entfernt, Dachplan bereinigt und korrigierte Leistungsberechnung",
   },
   {
-    date: "18.03.2026",
-    text: "GLB Modelle können direkt vom Server implementiert werden.",
+    date: "15.03.2026",
+    text: "Dachplan zeigt Solarflächen jetzt neutral ohne PV-Module – klarere Darstellung der Dachbemaßung",
   },
   {
     date: "07.02.2026",
