@@ -118,7 +118,7 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
   const aspectRatio = width / height;
   const baseScale = isPointLabel ? 0.25 : 0.4;
   sprite.scale.set(aspectRatio * baseScale, baseScale, 1);
-  sprite.renderOrder = 100;
+  sprite.renderOrder = 20;
   sprite.userData.isPointLabel = isPointLabel;
   
   return sprite;

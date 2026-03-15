@@ -1,63 +1,64 @@
 
 
-# Fix: Messungen sichtbar halten ohne X-Ray-Effekt
+# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
 
-## Das Problem
-Klassisches 3D-Dilemma: `depthTest: false` → alles schimmert durch (X-Ray). `depthTest: true` → Messungen werden vom Dach verdeckt, auf dem sie liegen. Beides ist falsch.
+## Zusammenfassung
 
-## Lösung: `polygonOffset` + `renderOrder`
+Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
 
-Die richtige Technik für Geometrie die auf einer Oberfläche liegt (Decals/Overlays):
+## Aenderungen
 
-1. **`depthTest: true`** beibehalten — so wird Geometrie hinter dem Modell korrekt verdeckt
-2. **`polygonOffset: true`** mit negativen Werten — verschiebt den Depth-Wert leicht nach vorne, sodass koplanare Geometrie (Linien/Punkte auf der Dachfläche) nicht vom Dach selbst verdeckt wird
-3. **`renderOrder`** erhöhen — stellt sicher dass Messungen nach dem Modell gerendert werden
+### Datei 1: `src/hooks/use-mobile.tsx`
 
-Dies löst beide Seiten: Messungen auf der sichtbaren Dachfläche bleiben sichtbar, aber Messungen auf der Rückseite des Modells werden korrekt verdeckt.
+**Was aendert sich:**
+- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
+- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
+- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
 
-## Änderungen
+**Neue Logik `isTouchDevice()`:**
+1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
+2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
+3. `matchMedia('(hover: none)')` -- kein Hover moeglich
+4. User-Agent Regex (android, iphone, ipad, etc.)
 
-### `src/utils/measurementVisuals.ts`
-Alle Materialien für Punkte, Linien, Flächen-Fills und Dachelemente erweitern:
-```typescript
-// Beispiel für Punkt-Material
-const sphereMaterial = new THREE.MeshBasicMaterial({ 
-  color: pointColor,
-  depthTest: true,
-  polygonOffset: true,
-  polygonOffsetFactor: -2,
-  polygonOffsetUnits: -2
-});
-sphere.renderOrder = 10;
+Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
 
-// Beispiel für Linien-Material  
-const lineMaterial = new THREE.LineBasicMaterial({
-  color: COLORS.CYAN,
-  linewidth: 3,
-  depthTest: true,
-  polygonOffset: true,
-  polygonOffsetFactor: -2,
-  polygonOffsetUnits: -2
-});
-line.renderOrder = 10;
+**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+
+### Datei 2: `src/hooks/useScreenOrientation.tsx`
+
+**Was aendert sich:**
+- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
+- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
+- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
+- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+
+**Neue Logik:**
+```text
+isMobileOrTablet = useIsMobile()  // = isTouchDevice()
+isTablet = isMobileOrTablet && Math.min(width, height) > 600
+isPhone  = isMobileOrTablet && !isTablet
 ```
 
-Betrifft ca. 20 Material-Stellen (Punkte, Linien, gestrichelte Linien, Hit-Areas, Flächen-Fills, Dachelemente).
+### Keine Aenderungen noetig in:
+- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
+- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
+- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
+- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
 
-PV-Module haben bereits `polygonOffset` — deren Werte auf `-2` angleichen (aktuell `-4`).
+## Erwartetes Verhalten nach der Aenderung
 
-### `src/utils/textSprite.ts`
-Labels brauchen kein `polygonOffset` (Sprites haben keine Polygon-Fläche), aber `renderOrder` erhöhen:
-```typescript
-sprite.renderOrder = 20; // Höher als Linien/Punkte
-```
+| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
+|---|---|---|---|---|---|
+| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
+| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
+| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
 
-### Zusammenfassung der Werte
-| Element | depthTest | polygonOffset | Factor/Units | renderOrder |
-|---|---|---|---|---|
-| Punkte (Spheres) | true | true | -2 / -2 | 10 |
-| Linien | true | true | -2 / -2 | 10 |
-| Flächen-Fills | true | true | -2 / -2 | 5 |
-| PV-Module | true | true | -2 / -2 | 5 |
-| Labels (Sprites) | true | — | — | 20 |
+## Technische Details
+
+- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
+- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
+- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
+- Keine neuen Dependencies noetig
 
