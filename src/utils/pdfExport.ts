@@ -1490,12 +1490,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       currentPage++;
     }
     
-    // Solarplanung (before appendix)
-    const solarMeasurementsForToc = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
-    if (solarMeasurementsForToc.length > 0) {
-      tocEntries.push({ title: `Solarplanung (${solarMeasurementsForToc.length} Flächen)`, page: currentPage });
-      currentPage += solarMeasurementsForToc.length;
-    }
+    // Solarplanung removed from PDF export
     
     // Berechnungsmethoden (always last)
     tocEntries.push({ title: 'Anhang: Berechnungsmethoden', page: currentPage });
