@@ -420,23 +420,5 @@ export function formatFileSize(mb: number): string {
 export function isTaskActive(task: Task): boolean {
   return task.status === 10 || task.status === 20;
 }
-  const safe = getFilteredAssets(assets);
-  const candidates = [
-    (a: string) => a === "textured_model.glb",
-    (a: string) => a.endsWith(".glb"),
-  ];
-  for (const match of candidates) {
-    const found = safe.find((a) => match(a.toLowerCase()));
-    if (found) return found;
-  }
-  return null;
-}
-
-export function formatFileSize(mb: number): string {
-  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-  return `${mb.toFixed(0)} MB`;
-}
-
-export function isTaskActive(task: Task): boolean {
   return task.status === 10 || task.status === 20;
 }

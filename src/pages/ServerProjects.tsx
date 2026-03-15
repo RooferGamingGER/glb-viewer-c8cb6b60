@@ -22,6 +22,7 @@ import {
   type Task,
   type ShotsGeoJSON,
 } from "@/lib/webodm";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
