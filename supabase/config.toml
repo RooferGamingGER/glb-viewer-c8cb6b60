@@ -2,3 +2,6 @@ project_id = "bsnytpiojvtpgshbubsb"
 
 [functions.webodm-upload]
 verify_jwt = false
+
+[functions.solar-string-planning]
+verify_jwt = false
