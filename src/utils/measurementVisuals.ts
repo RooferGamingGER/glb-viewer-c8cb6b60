@@ -881,6 +881,15 @@ export function renderMeasurements(
       child.userData.measurementId
     );
   });
+  
+  // PV-Module während des Zeichnens ausblenden
+  if (isDrawing) {
+    measurementsRef.children.forEach(child => {
+      if (child.userData?.isPVModule || child.userData?.isPVGridLine) {
+        child.visible = false;
+      }
+    });
+  }
 }
 
 /**
