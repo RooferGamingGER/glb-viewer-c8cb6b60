@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   formatPVModuleInfo, 
@@ -14,7 +15,7 @@ import {
   extractExclusionZones
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
-import { Zap, ListTodo, Compass } from 'lucide-react';
+import { Zap, ListTodo, Compass, Move, RotateCcw, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SolarMeasurementContentProps {
