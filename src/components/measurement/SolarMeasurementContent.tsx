@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 interface SolarMeasurementContentProps {
   measurement: Measurement;
   updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
+  allMeasurements?: Measurement[];
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
