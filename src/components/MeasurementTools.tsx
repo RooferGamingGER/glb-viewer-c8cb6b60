@@ -50,7 +50,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   autoOpenSidebar = false
 }) => {
   // Sidebar collapsed state - default closed
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
