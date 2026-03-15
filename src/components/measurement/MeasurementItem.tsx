@@ -82,7 +82,8 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
   onEditSegment,
   movingPointInfo,
   handleMoveUp,
-  handleMoveDown
+  handleMoveDown,
+  allMeasurements = []
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
