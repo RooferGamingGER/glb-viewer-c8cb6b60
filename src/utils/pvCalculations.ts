@@ -485,6 +485,10 @@ export const generatePVModuleGrid = (
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
+  // Track sequential index for removed module filtering
+  let sequentialIndex = 0;
+  const removedIndices = pvInfo.removedModuleIndices || [];
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cu = startU + c * (mw + spacing);
@@ -509,6 +513,13 @@ export const generatePVModuleGrid = (
       // Check all corners inside the roof polygon
       if (!isModuleInsidePolygon(worldCorners, roofPoints)) {
         continue; // Skip module — it's outside the roof
+      }
+
+      // Skip modules that were removed by user click
+      const currentIndex = sequentialIndex;
+      sequentialIndex++;
+      if (removedIndices.includes(currentIndex)) {
+        continue;
       }
 
       // Project corners to 3D on the roof plane

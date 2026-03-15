@@ -84,6 +84,7 @@ export interface PVModuleInfo {
   points?: Point[];           // Store the original points used for the solar area calculation
   modulePositions?: Point[];  // Array of position points for each module (center points)
   moduleCorners?: Point[][];  // Array of corner points for each module (4 corners per module)
+  removedModuleIndices?: number[]; // Indices of modules removed by user click
   moduleVisuals?: {           // Visual properties for module rendering
     frameBorder?: number;     // Frame border width in meters
     frameColor?: number;      // Frame color (hex)
