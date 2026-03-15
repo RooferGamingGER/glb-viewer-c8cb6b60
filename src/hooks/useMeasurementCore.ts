@@ -88,7 +88,7 @@ export const useMeasurementCore = () => {
           };
         } else if (m.type === 'pvmodule') {
           const area = calculateArea(newPoints);
-          const moduleInfo = calculatePVModulePlacement(newPoints);
+          const moduleInfo = calculatePVModulePlacement(newPoints, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', extractExclusionZones(measurements));
           const moduleSpec = PV_MODULE_TEMPLATES[0];
           
           const powerInKWp = (moduleInfo.moduleCount * moduleSpec.power) / 1000;
