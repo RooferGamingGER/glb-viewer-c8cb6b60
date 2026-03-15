@@ -1004,7 +1004,7 @@ function renderHeightMeasurement(
   const horizontalLineMaterial = new THREE.LineDashedMaterial({ 
     color: COLORS.CYAN,
     linewidth: 3,
-    depthTest: false,
+    depthTest: true,
     dashSize: 0.1,
     gapSize: 0.05,
   });
