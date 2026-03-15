@@ -1579,14 +1579,16 @@ function renderPVModuleGrid(
     const geometry = new THREE.BufferGeometry();
 
     // 2 triangles = quad module surface
+    // Corner order: 0=BL, 1=BR, 2=TR, 3=TL
+    // Split along diagonal 0-2: Triangle1(BL,BR,TR) + Triangle2(BL,TR,TL)
     const vertices = new Float32Array([
-      points[0].x, points[0].y, points[0].z,
-      points[1].x, points[1].y, points[1].z,
-      points[3].x, points[3].y, points[3].z,
+      points[0].x, points[0].y, points[0].z, // BL
+      points[1].x, points[1].y, points[1].z, // BR
+      points[2].x, points[2].y, points[2].z, // TR
 
-      points[0].x, points[0].y, points[0].z,
-      points[3].x, points[3].y, points[3].z,
-      points[2].x, points[2].y, points[2].z
+      points[0].x, points[0].y, points[0].z, // BL
+      points[2].x, points[2].y, points[2].z, // TR
+      points[3].x, points[3].y, points[3].z  // TL
     ]);
 
     // Small offset to avoid z-fighting on roof surface
@@ -1597,7 +1599,7 @@ function renderPVModuleGrid(
           new THREE.Vector3(points[0].x, points[0].y, points[0].z)
         ),
         new THREE.Vector3().subVectors(
-          new THREE.Vector3(points[2].x, points[2].y, points[2].z),
+          new THREE.Vector3(points[3].x, points[3].y, points[3].z),
           new THREE.Vector3(points[0].x, points[0].y, points[0].z)
         )
       )
@@ -1612,13 +1614,14 @@ function renderPVModuleGrid(
 
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
+    // UVs matching: BL(0,0) BR(1,0) TR(1,1) | BL(0,0) TR(1,1) TL(0,1)
     const uvs = new Float32Array([
-      0, 0,
-      1, 0,
-      0, 1,
-      0, 0,
-      0, 1,
-      1, 1
+      0, 0,  // BL
+      1, 0,  // BR
+      1, 1,  // TR
+      0, 0,  // BL
+      1, 1,  // TR
+      0, 1   // TL
     ]);
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geometry.computeVertexNormals();
