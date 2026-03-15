@@ -25,7 +25,8 @@ interface SolarMeasurementContentProps {
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
-  updateMeasurement 
+  updateMeasurement,
+  allMeasurements = []
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   
