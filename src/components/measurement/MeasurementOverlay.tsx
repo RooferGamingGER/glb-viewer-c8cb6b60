@@ -93,17 +93,6 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   const toolBtnClass = (mode: MeasurementMode) =>
     `h-8 px-2 text-xs gap-1 ${activeMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background/90 hover:bg-accent border border-border/50'}`;
 
-  // Get icon for measurement type
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'length': return <Ruler className="h-3 w-3" />;
-      case 'height': return <ArrowUpDown className="h-3 w-3" />;
-      case 'area': return <Square className="h-3 w-3" />;
-      case 'deductionarea': return <MinusSquare className="h-3 w-3" />;
-      default: return null;
-    }
-  };
-
   return (
     <div className="absolute top-3 left-3 z-20 pointer-events-auto flex flex-col gap-2 max-w-[320px]">
       {/* Tool buttons */}
