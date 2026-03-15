@@ -1458,7 +1458,7 @@ function renderRoofElementMeasurement(
       const sphereGeometry = new THREE.SphereGeometry(POINT_SIZE, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ 
         color: elementColor,
-        depthTest: false
+        depthTest: true
       });
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
       // Place points closer to model surface
