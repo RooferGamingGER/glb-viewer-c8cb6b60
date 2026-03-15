@@ -125,7 +125,8 @@ export function createTextSprite(config: SpriteConfig): THREE.Sprite {
     map: texture,
     transparent: true,
     opacity: opacity,
-    sizeAttenuation: true
+    sizeAttenuation: true,
+    depthTest: false
   });
   
   // Create sprite
