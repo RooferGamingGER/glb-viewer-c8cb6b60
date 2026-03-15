@@ -2231,20 +2231,6 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     if (solarMeasurements.length > 0) {
       for (const solarM of solarMeasurements) {
-        const solarPage = createSolarPlanPage(solarM);
-        container.appendChild(solarPage);
-      }
-    }
-
-    // Add calculation methods appendix (always last)
-    const calculationMethodsSection = createCalculationMethodsSection();
-    container.appendChild(calculationMethodsSection);
-
-    // ============ SOLARPLANUNG PAGE(S) ============
-    const solarMeasurements = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
-    
-    if (solarMeasurements.length > 0) {
-      for (const solarM of solarMeasurements) {
         const pvInfo = solarM.pvModuleInfo!;
         const solarPage = document.createElement('div');
         solarPage.className = 'page-break';
@@ -2392,7 +2378,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           ['Dachfläche', `${roofArea.toFixed(2)} m²`],
           ['Flächennutzung', `${utilization.toFixed(1)}%`],
           ['Leistung', `${totalPower.toFixed(2)} kWp`],
-          ['Ausrichtung', `${pvInfo.roofDirection || '?'}(${pvInfo.roofAzimuth?.toFixed(0) || '?'}°)`],
+          ['Ausrichtung', `${pvInfo.roofDirection || '?'} (${pvInfo.roofAzimuth?.toFixed(0) || '?'}°)`],
           ['Dachneigung', `${pvInfo.roofInclination?.toFixed(0) || '?'}°`],
         ];
         
@@ -2458,18 +2444,19 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           
           matRows.forEach(([label, value]) => {
             const tr = document.createElement('tr');
-            const tdL = document.createElement('td');
-            tdL.style.padding = '2px 5px';
-            tdL.style.borderBottom = '1px solid #eee';
-            tdL.style.fontWeight = 'bold';
-            tdL.style.color = '#555';
-            tdL.textContent = label;
-            tr.appendChild(tdL);
-            const tdV = document.createElement('td');
-            tdV.style.padding = '2px 5px';
-            tdV.style.borderBottom = '1px solid #eee';
-            tdV.textContent = value;
-            tr.appendChild(tdV);
+            const tdLabel = document.createElement('td');
+            tdLabel.style.padding = '2px 5px';
+            tdLabel.style.borderBottom = '1px solid #eee';
+            tdLabel.style.color = '#555';
+            tdLabel.textContent = label;
+            tr.appendChild(tdLabel);
+            
+            const tdVal = document.createElement('td');
+            tdVal.style.padding = '2px 5px';
+            tdVal.style.borderBottom = '1px solid #eee';
+            tdVal.textContent = value;
+            tr.appendChild(tdVal);
+            
             matTable.appendChild(tr);
           });
           
@@ -2480,6 +2467,10 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         container.appendChild(solarPage);
       }
     }
+
+    // Add calculation methods appendix (always last)
+    const calculationMethodsSection = createCalculationMethodsSection();
+    container.appendChild(calculationMethodsSection);
     
     const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
     
