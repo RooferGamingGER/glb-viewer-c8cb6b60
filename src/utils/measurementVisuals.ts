@@ -210,7 +210,7 @@ export function renderCurrentPoints(
       const lineMaterial = new THREE.LineBasicMaterial({ 
         color: pointColor,
         linewidth: 3,
-        depthTest: false
+        depthTest: true
       });
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.renderOrder = 2;
