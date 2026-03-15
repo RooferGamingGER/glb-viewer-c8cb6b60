@@ -69,7 +69,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
       measurement.pvModuleInfo.moduleHeight,
       measurement.pvModuleInfo.edgeDistance,
       measurement.pvModuleInfo.moduleSpacing,
-      dimensions
+      dimensions,
+      undefined, true, 'auto', exclusionZones
     );
     updateMeasurement(measurement.id, {
       pvModuleInfo: {
