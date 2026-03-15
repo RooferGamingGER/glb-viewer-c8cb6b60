@@ -277,7 +277,10 @@ export const useMeasurementCore = () => {
       DEFAULT_EDGE_DISTANCE,
       DEFAULT_MODULE_SPACING,
       undefined,
-      roofEdgeInfo
+      roofEdgeInfo,
+      true,
+      'auto',
+      extractExclusionZones(measurements)
     );
     const moduleSpec = PV_MODULE_TEMPLATES[0];
     
