@@ -234,7 +234,7 @@ export function renderCurrentPoints(
     const closingMaterial = new THREE.LineDashedMaterial({ 
       color: closingColor,
       linewidth: 3,
-      depthTest: false,
+      depthTest: true,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
