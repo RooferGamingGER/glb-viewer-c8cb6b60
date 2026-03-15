@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Sun, 
+  Square,
   ChevronDown
 } from 'lucide-react';
 import { MeasurementMode, Measurement } from '@/types/measurements';
@@ -65,7 +66,6 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
           <AccordionContent className="pb-1">
             <SidebarGroupContent>
               <SidebarMenu>
-                {/* Draw new solar area */}
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={activeMode === 'solar'}
@@ -79,7 +79,6 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
-                {/* Convert existing area to solar */}
                 {areaMeasurements.length > 0 && onConvertAreaToSolar && (
                   <SidebarMenuItem>
                     <DropdownMenu>
@@ -130,8 +129,5 @@ const SolarToolbar: React.FC<SolarToolbarProps> = ({
     </SidebarGroup>
   );
 };
-
-// Need Square icon for dropdown items
-import { Square } from 'lucide-react';
 
 export default SolarToolbar;
