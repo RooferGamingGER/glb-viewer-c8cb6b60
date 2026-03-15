@@ -409,7 +409,7 @@ export function renderEditPoints(
 
     // Add an invisible, larger hit area to make touch selection easier
     const hitGeometry = new THREE.SphereGeometry(size * 1.8, 16, 16);
-    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, depthTest: true });
+    const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0, depthTest: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     const hitSphere = new THREE.Mesh(hitGeometry, hitMaterial);
     hitSphere.position.copy(sphere.position);
     hitSphere.userData = { ...userData };
