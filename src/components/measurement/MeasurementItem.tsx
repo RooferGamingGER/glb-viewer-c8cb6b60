@@ -65,6 +65,7 @@ interface MeasurementItemProps {
   movingPointInfo?: { measurementId: string; pointIndex: number } | null;
   handleMoveUp?: (id: string) => void;
   handleMoveDown?: (id: string) => void;
+  allMeasurements?: Measurement[];
 }
 
 const MeasurementItem: React.FC<MeasurementItemProps> = ({
