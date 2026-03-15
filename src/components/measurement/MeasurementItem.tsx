@@ -242,7 +242,9 @@ const MeasurementItem: React.FC<MeasurementItemProps> = ({
           length: measurement.pvModuleInfo.userDefinedLength || 0
         } : undefined,
         undefined,
-        enabled
+        enabled,
+        'auto',
+        exclusionZones
       );
       
       updateMeasurement(measurement.id, { pvModuleInfo: updatedInfo });
