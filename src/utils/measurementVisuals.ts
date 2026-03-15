@@ -1620,8 +1620,8 @@ function renderPVModuleGrid(
         depthTest: true,
         depthWrite: true,
         polygonOffset: true,
-        polygonOffsetFactor: -4,
-        polygonOffsetUnits: -4
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2
       })
     : new THREE.MeshBasicMaterial({
         color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
@@ -1631,8 +1631,8 @@ function renderPVModuleGrid(
         depthTest: true,
         depthWrite: false,
         polygonOffset: true,
-        polygonOffsetFactor: -4,
-        polygonOffsetUnits: -4
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2
       });
   
   const frameMaterial = new THREE.LineBasicMaterial({
