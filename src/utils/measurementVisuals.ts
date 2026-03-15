@@ -1681,15 +1681,18 @@ function renderPVModuleGrid(
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
     
     // Add UV coordinates for texture mapping
+    // Corner order from pvCalculations: 0=BL, 1=BR, 2=TR, 3=TL
+    // Triangle 1: points[0](BL), points[1](BR), points[3](TL)
+    // Triangle 2: points[0](BL), points[3](TL), points[2](TR)
     const uvs = new Float32Array([
-      // First triangle
-      0, 0,  // bottom-left
-      1, 0,  // bottom-right
-      1, 1,  // top-right
-      // Second triangle
-      0, 0,  // bottom-left
-      1, 1,  // top-right
-      0, 1   // top-left
+      // First triangle (BL, BR, TL)
+      0, 0,  // BL
+      1, 0,  // BR
+      0, 1,  // TL
+      // Second triangle (BL, TL, TR)
+      0, 0,  // BL
+      0, 1,  // TL
+      1, 1   // TR
     ]);
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     
