@@ -118,6 +118,20 @@ const MeasurementToolbar: React.FC<MeasurementToolbarProps> = ({
                 <Magnet className={`h-4 w-4 mr-2 ${!snapEnabled ? 'text-muted-foreground' : ''}`} />
                 Punktfang {snapEnabled ? 'Ein' : 'Aus'}
               </Toggle>
+
+              {/* Inclination Toggle */}
+              <Toggle
+                pressed={showInclination}
+                onPressedChange={handleToggleInclination}
+                size="sm"
+                variant={showInclination ? "customActive" : "outline"}
+                aria-label="Neigung ein/aus"
+                title={showInclination ? "Neigungsanzeige deaktivieren" : "Neigungsanzeige aktivieren"}
+                className={`w-full justify-start mb-4 ${showInclination ? 'bg-blue-500/20 text-blue-600 border-blue-500' : ''}`}
+              >
+                <Mountain className={`h-4 w-4 mr-2 ${!showInclination ? 'text-muted-foreground' : ''}`} />
+                Neigung {showInclination ? 'Ein' : 'Aus'}
+              </Toggle>
               
               {/* Control buttons at the top - Added Eye/EyeOff toggle button */}
               {measurements && measurements.length > 0 && toggleAllLabelsVisibility && (
