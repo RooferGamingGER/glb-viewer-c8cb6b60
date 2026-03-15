@@ -1679,7 +1679,7 @@ function renderPVModuleGrid(
     geometry.addGroup(30, 6, 1);  // left → side
 
     const mesh = new THREE.Mesh(geometry, [moduleMaterial, sideMaterial]);
-    mesh.renderOrder = 5;
+    mesh.renderOrder = 10;
     mesh.userData = {
       measurementId: measurement.id,
       isPVModule: true,
