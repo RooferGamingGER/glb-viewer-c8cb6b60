@@ -116,14 +116,6 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
           >
             <Magnet className="h-3 w-3" /> Snap
           </Toggle>
-          <Toggle
-            pressed={showInclination}
-            onPressedChange={handleToggleInclination}
-            size="sm"
-            className={`h-7 px-2 text-xs gap-1 ${showInclination ? 'bg-blue-500/20 text-blue-700 border-blue-500/50' : ''}`}
-          >
-            <Mountain className="h-3 w-3" /> Neigung
-          </Toggle>
           {measurements.length > 0 && toggleAllLabelsVisibility && (
             <Button variant="ghost" size="sm" className="h-7 px-2" onClick={toggleAllLabelsVisibility} title={allLabelsVisible ? 'Labels aus' : 'Labels ein'}>
               {allLabelsVisible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
