@@ -42,6 +42,7 @@ import {
   calculatePVModulePlacement, 
   calculatePVPower, 
   formatPVModuleInfo,
+  extractExclusionZones,
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
   PV_MODULE_TEMPLATES,
