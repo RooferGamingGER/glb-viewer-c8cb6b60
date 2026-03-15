@@ -226,8 +226,8 @@ export const useMeasurementEvents = (
       }
     }
 
-    // Check for clicks on measurement points - allow direct interaction without edit mode
-    {
+    // Check for clicks on measurement points — only when no drawing tool is active
+    if (activeMode === 'none') {
       const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
       for (const intersect of allSceneIntersects) {
         if (

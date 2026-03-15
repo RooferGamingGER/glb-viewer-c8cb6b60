@@ -1304,7 +1304,7 @@ function renderSolarMeasurement(
       color: measurementColor,
       opacity: 0.3,
       transparent: true,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     });
     
     const mesh = new THREE.Mesh(geometry, fillMaterial);
