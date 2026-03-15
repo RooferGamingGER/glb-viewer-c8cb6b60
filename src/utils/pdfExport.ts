@@ -2368,26 +2368,28 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         specsTable.style.fontSize = '11px';
         specsTable.style.borderCollapse = 'collapse';
         
+        // Calculate area utilization
+        const moduleArea = pvInfo.moduleWidth * pvInfo.moduleHeight * activeModules;
+        const roofArea = solarM.value;
+        const utilization = roofArea > 0 ? (moduleArea / roofArea * 100) : 0;
+        
+        // Calculate grid info
+        const gridCols = pvInfo.gridCols || '?';
+        const gridRows = pvInfo.gridRows || '?';
+        
         const specRows: [string, string][] = [
-          ['Modultyp', pvInfo.pvModuleSpec?.name || 'Standard'],
-          ['Modulmaße', `${(pvInfo.moduleWidth * 100).toFixed(0)} × ${(pvInfo.moduleHeight * 100).toFixed(0)} cm`],
-          ['Leistung/Modul', `${pvInfo.pvModuleSpec?.power || '?'} Wp`],
-          ['Ausrichtung', pvInfo.roofDirection || '?'],
-          ['Azimut', `${pvInfo.roofAzimuth?.toFixed(0) || '?'}°`],
-          ['Dachneigung', `${pvInfo.roofInclination?.toFixed(1) || '?'}°`],
-          ['Dachfläche', `${solarM.value.toFixed(2)} m²`],
+          ['Modulgröße', `${pvInfo.moduleWidth.toFixed(2)} × ${pvInfo.moduleHeight.toFixed(2)} m`],
+          ['Anzahl Module', `${activeModules}`],
+          ['Raster', `${gridCols} × ${gridRows}`],
+          ['Dachfläche', `${roofArea.toFixed(2)} m²`],
+          ['Flächennutzung', `${utilization.toFixed(1)}%`],
+          ['Leistung', `${totalPower.toFixed(2)} kWp`],
+          ['Ausrichtung', `${pvInfo.roofDirection || '?'}(${pvInfo.roofAzimuth?.toFixed(0) || '?'}°)`],
+          ['Dachneigung', `${pvInfo.roofInclination?.toFixed(0) || '?'}°`],
         ];
         
         if (pvInfo.yieldFactor) {
-          specRows.push(['Ertragsfaktor', `${pvInfo.yieldFactor.toFixed(0)} kWh/kWp`]);
-          specRows.push(['Jahresertrag', `${(totalPower * pvInfo.yieldFactor).toFixed(0)} kWh`]);
-        }
-        
-        // Add string info
-        const elec = pvInfo.pvMaterials?.electricalSystem;
-        if (elec) {
-          specRows.push(['Strings', `${elec.stringCount} × ${elec.modulesPerString} Module`]);
-          specRows.push(['Wechselrichter', `${elec.inverterCount}× ${elec.inverterPower} kW`]);
+          specRows.push(['Jahresertrag', `${(totalPower * pvInfo.yieldFactor).toFixed(0)} kWh/Jahr`]);
         }
         
         specRows.forEach(([label, value]) => {
