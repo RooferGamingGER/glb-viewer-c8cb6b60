@@ -1680,6 +1680,19 @@ function renderPVModuleGrid(
     // Set vertices
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
     
+    // Add UV coordinates for texture mapping
+    const uvs = new Float32Array([
+      // First triangle
+      0, 0,  // bottom-left
+      1, 0,  // bottom-right
+      1, 1,  // top-right
+      // Second triangle
+      0, 0,  // bottom-left
+      1, 1,  // top-right
+      0, 1   // top-left
+    ]);
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    
     // Compute vertex normals for proper lighting
     geometry.computeVertexNormals();
     
