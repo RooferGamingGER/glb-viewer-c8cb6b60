@@ -2187,6 +2187,319 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     // Add calculation methods appendix
     const calculationMethodsSection = createCalculationMethodsSection();
     container.appendChild(calculationMethodsSection);
+
+    // ============ SOLARPLANUNG PAGE(S) ============
+    const solarMeasurements = sortedMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo);
+    
+    if (solarMeasurements.length > 0) {
+      // Try to fetch AI string planning
+      let stringPlanTexts: Record<string, string> = {};
+      
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        
+        if (supabaseUrl && supabaseKey) {
+          for (const solarM of solarMeasurements) {
+            const pvInfo = solarM.pvModuleInfo!;
+            const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
+            
+            const moduleLayout = {
+              totalModules: activeModules,
+              roofArea: {
+                azimuth: pvInfo.roofAzimuth || 0,
+                direction: pvInfo.roofDirection || 'unbekannt',
+                inclination: pvInfo.roofInclination || 0,
+                areaM2: solarM.value,
+              },
+              moduleSpec: {
+                name: pvInfo.pvModuleSpec?.name || 'Standard-Modul',
+                width: pvInfo.moduleWidth,
+                height: pvInfo.moduleHeight,
+                power: pvInfo.pvModuleSpec?.power || 400,
+                U_oc: 41.5,  // Typical values for ~400W module
+                U_mpp: 34.5,
+                I_sc: 12.5,
+                I_mpp: 11.6,
+              },
+              inverterSpec: {
+                maxDcVoltage: 600,
+                mppVoltageMin: 150,
+                mppVoltageMax: 500,
+                maxInputCurrent: 25,
+                mppTrackers: 2,
+              },
+              totalPower_kWp: pvInfo.pvMaterials?.totalPower || 0,
+            };
+            
+            try {
+              const resp = await fetch(`${supabaseUrl}/functions/v1/solar-string-planning`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({ moduleLayout }),
+              });
+              
+              if (resp.ok) {
+                const data = await resp.json();
+                if (data.stringPlan) {
+                  stringPlanTexts[solarM.id] = data.stringPlan;
+                }
+              }
+            } catch (aiError) {
+              console.warn('AI string planning failed for measurement:', solarM.id, aiError);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch string planning:', e);
+      }
+      
+      for (const solarM of solarMeasurements) {
+        const pvInfo = solarM.pvModuleInfo!;
+        const solarPage = document.createElement('div');
+        solarPage.className = 'page-break';
+        solarPage.style.pageBreakBefore = 'always';
+        solarPage.style.pageBreakAfter = 'always';
+        solarPage.style.padding = '20px';
+        
+        // Header
+        const solarHeader = document.createElement('div');
+        solarHeader.style.borderBottom = '2px solid #f59e0b';
+        solarHeader.style.paddingBottom = '10px';
+        solarHeader.style.marginBottom = '15px';
+        
+        const solarTitle = document.createElement('h2');
+        solarTitle.style.margin = '0';
+        solarTitle.style.color = '#b45309';
+        solarTitle.textContent = `Solarplanung${solarM.description ? `: ${solarM.description}` : ''}`;
+        solarHeader.appendChild(solarTitle);
+        solarPage.appendChild(solarHeader);
+        
+        // Two-column: Layout image left, specs right
+        const solarContent = document.createElement('div');
+        solarContent.style.display = 'flex';
+        solarContent.style.gap = '20px';
+        solarContent.style.marginBottom = '15px';
+        
+        // Left: Module layout rendering
+        const layoutCol = document.createElement('div');
+        layoutCol.style.flex = '1';
+        layoutCol.style.minWidth = '0';
+        
+        const layoutImage = renderSolarLayout2D(solarM, 500, 400);
+        if (layoutImage) {
+          const img = document.createElement('img');
+          img.src = layoutImage;
+          img.style.width = '100%';
+          img.style.height = 'auto';
+          img.style.maxHeight = '350px';
+          img.style.objectFit = 'contain';
+          img.style.border = '1px solid #e5e7eb';
+          img.style.borderRadius = '8px';
+          layoutCol.appendChild(img);
+        }
+        solarContent.appendChild(layoutCol);
+        
+        // Right: PV specifications
+        const specsCol = document.createElement('div');
+        specsCol.style.width = '220px';
+        specsCol.style.flexShrink = '0';
+        
+        const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
+        const totalPower = pvInfo.pvMaterials?.totalPower || 0;
+        
+        // Module count box
+        const moduleBox = document.createElement('div');
+        moduleBox.style.backgroundColor = '#fef3c7';
+        moduleBox.style.border = '1px solid #f59e0b';
+        moduleBox.style.borderRadius = '8px';
+        moduleBox.style.padding = '12px';
+        moduleBox.style.marginBottom = '10px';
+        moduleBox.style.textAlign = 'center';
+        
+        const moduleLabel = document.createElement('div');
+        moduleLabel.style.fontSize = '11px';
+        moduleLabel.style.color = '#6b7280';
+        moduleLabel.textContent = 'PV-Module';
+        moduleBox.appendChild(moduleLabel);
+        
+        const moduleVal = document.createElement('div');
+        moduleVal.style.fontSize = '22px';
+        moduleVal.style.fontWeight = 'bold';
+        moduleVal.style.color = '#b45309';
+        moduleVal.textContent = `${activeModules}`;
+        moduleBox.appendChild(moduleVal);
+        specsCol.appendChild(moduleBox);
+        
+        // Power box
+        const powerBox = document.createElement('div');
+        powerBox.style.backgroundColor = '#ecfdf5';
+        powerBox.style.border = '1px solid #10b981';
+        powerBox.style.borderRadius = '8px';
+        powerBox.style.padding = '12px';
+        powerBox.style.marginBottom = '10px';
+        powerBox.style.textAlign = 'center';
+        
+        const powerLabel = document.createElement('div');
+        powerLabel.style.fontSize = '11px';
+        powerLabel.style.color = '#6b7280';
+        powerLabel.textContent = 'Gesamtleistung';
+        powerBox.appendChild(powerLabel);
+        
+        const powerVal = document.createElement('div');
+        powerVal.style.fontSize = '22px';
+        powerVal.style.fontWeight = 'bold';
+        powerVal.style.color = '#059669';
+        powerVal.textContent = `${totalPower.toFixed(2)} kWp`;
+        powerBox.appendChild(powerVal);
+        specsCol.appendChild(powerBox);
+        
+        // Specs table
+        const specsTable = document.createElement('table');
+        specsTable.style.width = '100%';
+        specsTable.style.fontSize = '11px';
+        specsTable.style.borderCollapse = 'collapse';
+        
+        const specRows = [
+          ['Modultyp', pvInfo.pvModuleSpec?.name || 'Standard'],
+          ['Modulmaße', `${(pvInfo.moduleWidth * 100).toFixed(0)} × ${(pvInfo.moduleHeight * 100).toFixed(0)} cm`],
+          ['Leistung/Modul', `${pvInfo.pvModuleSpec?.power || '?'} Wp`],
+          ['Ausrichtung', pvInfo.roofDirection || '?'],
+          ['Azimut', `${pvInfo.roofAzimuth?.toFixed(0) || '?'}°`],
+          ['Dachneigung', `${pvInfo.roofInclination?.toFixed(1) || '?'}°`],
+          ['Dachfläche', `${solarM.value.toFixed(2)} m²`],
+        ];
+        
+        if (pvInfo.yieldFactor) {
+          specRows.push(['Ertragsfaktor', `${pvInfo.yieldFactor.toFixed(0)} kWh/kWp`]);
+          specRows.push(['Jahresertrag', `${(totalPower * pvInfo.yieldFactor).toFixed(0)} kWh`]);
+        }
+        
+        specRows.forEach(([label, value]) => {
+          const tr = document.createElement('tr');
+          const tdLabel = document.createElement('td');
+          tdLabel.style.padding = '3px 5px';
+          tdLabel.style.borderBottom = '1px solid #eee';
+          tdLabel.style.color = '#555';
+          tdLabel.style.fontWeight = 'bold';
+          tdLabel.textContent = label;
+          tr.appendChild(tdLabel);
+          
+          const tdVal = document.createElement('td');
+          tdVal.style.padding = '3px 5px';
+          tdVal.style.borderBottom = '1px solid #eee';
+          tdVal.textContent = value;
+          tr.appendChild(tdVal);
+          
+          specsTable.appendChild(tr);
+        });
+        
+        specsCol.appendChild(specsTable);
+        solarContent.appendChild(specsCol);
+        solarPage.appendChild(solarContent);
+        
+        // Materials list
+        if (pvInfo.pvMaterials) {
+          const materialsSection = document.createElement('div');
+          materialsSection.style.marginTop = '10px';
+          materialsSection.style.padding = '12px';
+          materialsSection.style.backgroundColor = '#f9fafb';
+          materialsSection.style.borderRadius = '8px';
+          materialsSection.style.border = '1px solid #e5e7eb';
+          
+          const matTitle = document.createElement('h4');
+          matTitle.style.margin = '0 0 8px 0';
+          matTitle.style.fontSize = '12px';
+          matTitle.style.color = '#374151';
+          matTitle.textContent = 'Materialliste';
+          materialsSection.appendChild(matTitle);
+          
+          const matTable = document.createElement('table');
+          matTable.style.width = '100%';
+          matTable.style.fontSize = '10px';
+          matTable.style.borderCollapse = 'collapse';
+          
+          const mats = pvInfo.pvMaterials;
+          const matRows = [
+            ['Montageschienen', `${mats.mountingSystem.railLength.toFixed(1)} m`],
+            ['Dachhaken', `${mats.mountingSystem.roofHookCount} Stk.`],
+            ['Mittelklemmen', `${mats.mountingSystem.middleClampCount} Stk.`],
+            ['Endklemmen', `${mats.mountingSystem.endClampCount} Stk.`],
+            ['Schienenverbinder', `${mats.mountingSystem.railConnectorCount} Stk.`],
+            ['Stringkabel', `${mats.electricalSystem.stringCableLength.toFixed(1)} m`],
+            ['DC-Hauptkabel', `${mats.electricalSystem.mainCableLength.toFixed(1)} m`],
+            ['Wechselrichter', `${mats.electricalSystem.inverterCount}× ${mats.electricalSystem.inverterPower.toFixed(1)} kW`],
+            ['Strings', `${mats.electricalSystem.stringCount} (je ${mats.electricalSystem.modulesPerString} Module)`],
+          ];
+          
+          matRows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const tdL = document.createElement('td');
+            tdL.style.padding = '2px 5px';
+            tdL.style.borderBottom = '1px solid #eee';
+            tdL.style.fontWeight = 'bold';
+            tdL.style.color = '#555';
+            tdL.textContent = label;
+            tr.appendChild(tdL);
+            const tdV = document.createElement('td');
+            tdV.style.padding = '2px 5px';
+            tdV.style.borderBottom = '1px solid #eee';
+            tdV.textContent = value;
+            tr.appendChild(tdV);
+            matTable.appendChild(tr);
+          });
+          
+          materialsSection.appendChild(matTable);
+          solarPage.appendChild(materialsSection);
+        }
+        
+        container.appendChild(solarPage);
+        
+        // AI String planning page (if available)
+        if (stringPlanTexts[solarM.id]) {
+          const stringPage = document.createElement('div');
+          stringPage.className = 'page-break';
+          stringPage.style.pageBreakBefore = 'always';
+          stringPage.style.pageBreakAfter = 'always';
+          stringPage.style.padding = '20px';
+          
+          const stringHeader = document.createElement('div');
+          stringHeader.style.borderBottom = '2px solid #7c3aed';
+          stringHeader.style.paddingBottom = '10px';
+          stringHeader.style.marginBottom = '15px';
+          
+          const stringTitle = document.createElement('h2');
+          stringTitle.style.margin = '0';
+          stringTitle.style.color = '#6d28d9';
+          stringTitle.textContent = `Stringplanung${solarM.description ? `: ${solarM.description}` : ''}`;
+          stringHeader.appendChild(stringTitle);
+          stringPage.appendChild(stringHeader);
+          
+          const stringContent = document.createElement('div');
+          stringContent.style.fontSize = '11px';
+          stringContent.style.lineHeight = '1.6';
+          stringContent.style.whiteSpace = 'pre-wrap';
+          stringContent.style.fontFamily = 'Arial, sans-serif';
+          stringContent.textContent = stringPlanTexts[solarM.id];
+          stringPage.appendChild(stringContent);
+          
+          const disclaimer = document.createElement('div');
+          disclaimer.style.marginTop = '20px';
+          disclaimer.style.padding = '10px';
+          disclaimer.style.backgroundColor = '#fef3c7';
+          disclaimer.style.borderRadius = '4px';
+          disclaimer.style.fontSize = '9px';
+          disclaimer.style.color = '#92400e';
+          disclaimer.textContent = 'Hinweis: Diese Stringplanung wurde KI-gestützt erstellt und dient als Planungshilfe. Die endgültige Auslegung muss von einem qualifizierten Elektriker geprüft und freigegeben werden.';
+          stringPage.appendChild(disclaimer);
+          
+          container.appendChild(stringPage);
+        }
+      }
+    }
     
     const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
     
