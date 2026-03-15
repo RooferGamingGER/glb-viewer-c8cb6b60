@@ -259,26 +259,7 @@ export const renderSolarLayout2D = (
     ctx.strokeStyle = '#333333';
     ctx.stroke();
 
-    // Draw segment labels on roof edges
-    if (measurement.segments) {
-      for (let i = 0; i < measurement.segments.length; i++) {
-        const seg = measurement.segments[i];
-        const p1Idx = measurement.points.findIndex(p =>
-          p.x === seg.points[0].x && p.y === seg.points[0].y && p.z === seg.points[0].z
-        );
-        const p2Idx = measurement.points.findIndex(p =>
-          p.x === seg.points[1].x && p.y === seg.points[1].y && p.z === seg.points[1].z
-        );
-        if (p1Idx >= 0 && p2Idx >= 0 && p1Idx < roofPoints2D.length && p2Idx < roofPoints2D.length) {
-          const midX = (roofPoints2D[p1Idx].x + roofPoints2D[p2Idx].x) / 2 * width;
-          const midY = (roofPoints2D[p1Idx].y + roofPoints2D[p2Idx].y) / 2 * height;
-          ctx.font = '10px Arial';
-          ctx.fillStyle = '#666666';
-          ctx.textAlign = 'center';
-          ctx.fillText(`${seg.length.toFixed(2)} m`, midX, midY - 5);
-        }
-      }
-    }
+    // No edge dimension labels in solar layout - keep it clean
 
     // Draw PV modules
     if (pvInfo.moduleCorners && pvInfo.moduleCorners.length > 0) {
