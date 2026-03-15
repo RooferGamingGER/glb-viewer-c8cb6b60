@@ -220,6 +220,10 @@ export function renderCurrentPoints(
 
   // Add special final connecting line for area/solar/skylight measurement to close the shape
   if ((activeMode === 'area' || activeMode === 'solar' || activeMode === 'skylight' || activeMode === 'chimney') && currentPoints.length >= 3) {
+    const closingColor = activeMode === 'solar' ? COLORS.SOLAR :
+                         activeMode === 'skylight' ? COLORS.SKYLIGHT :
+                         activeMode === 'chimney' ? COLORS.CHIMNEY :
+                         COLORS.CYAN;
     const firstPoint = currentPoints[0];
     const lastPoint = currentPoints[currentPoints.length - 1];
     const p1 = new THREE.Vector3(lastPoint.x, lastPoint.y + LINE_Y_OFFSET, lastPoint.z);
@@ -227,23 +231,16 @@ export function renderCurrentPoints(
     
     const closingPoints = [p1, p2];
     const closingGeometry = new THREE.BufferGeometry().setFromPoints(closingPoints);
-    // Use a dashed line material with improved visibility
     const closingMaterial = new THREE.LineDashedMaterial({ 
-      color: activeMode === 'solar' ? 0x1EAEDB : // Changed from 0xffaa00 to blue
-             activeMode === 'skylight' ? 0xff8800 :
-             activeMode === 'chimney' ? 0xff0000 :
-             0xffaa00,
-      linewidth: 3, // Increased from 2 for better visibility
-      opacity: 0.9, // Higher opacity
-      transparent: true,
+      color: closingColor,
+      linewidth: 3,
+      depthTest: false,
       scale: 1,
       dashSize: 0.1,
       gapSize: 0.1
     });
     const closingLine = new THREE.Line(closingGeometry, closingMaterial);
-    // Must call computeLineDistances for the dashed line to work
     closingLine.computeLineDistances();
-    // Set high renderOrder to ensure visibility
     closingLine.renderOrder = 2;
     linesRef.add(closingLine);
   }
