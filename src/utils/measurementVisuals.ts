@@ -1565,22 +1565,28 @@ function renderPVModuleGrid(
   }
 
   // PV modules with depth testing for proper occlusion
+  const pvDepthSettings = {
+    polygonOffset: true,
+    polygonOffsetFactor: -10,
+    polygonOffsetUnits: -10,
+    depthTest: true,
+    depthWrite: true
+  };
+
   const moduleMaterial = moduleTexture
     ? new THREE.MeshBasicMaterial({
         map: moduleTexture,
         transparent: true,
         opacity: 1,
         side: THREE.DoubleSide,
-        ...DEPTH_SETTINGS,
-        depthWrite: false
+        ...pvDepthSettings
       })
     : new THREE.MeshBasicMaterial({
         color: (v.panelColor ?? PV_MODULE_COLORS.MODULE) as any,
         opacity: v.panelOpacity ?? 0.95,
         transparent: true,
         side: THREE.DoubleSide,
-        ...DEPTH_SETTINGS,
-        depthWrite: false
+        ...pvDepthSettings
       });
 
   const MODULE_THICKNESS = 0.025; // 2.5cm thick modules
