@@ -1527,7 +1527,7 @@ function renderPVModuleGrid(
   const baseY = measurement.points[0]?.y || 0;
   
   // Generate the PV module grid
-  const { modulePoints, gridLines } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
+  const { modulePoints, moduleOriginalIndices, gridLines } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
   
   // Visual defaults and materials (can be overridden via pvModuleInfo.moduleVisuals)
   const vDefaults = {
