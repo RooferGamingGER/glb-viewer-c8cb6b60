@@ -1764,7 +1764,7 @@ function renderPVModuleGrid(
     
     // Create mesh for the module
     const mesh = new THREE.Mesh(geometry, moduleMaterial);
-    mesh.renderOrder = 1002;
+    mesh.renderOrder = 5;
     
     // Store measurement ID in user data
     mesh.userData = {
