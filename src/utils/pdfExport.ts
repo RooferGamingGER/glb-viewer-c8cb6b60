@@ -666,7 +666,7 @@ const createTableOfContents = (measurements: Measurement[]): HTMLElement => {
   currentPage++;
   
   // Check for regular areas
-  if (measurements.filter(m => m.type === 'area').length > 0) {
+  if (measurements.filter(m => m.type === 'area' || m.type === 'solar').length > 0) {
     const areaRow = document.createElement('tr');
     const areaLabel = document.createElement('td');
     areaLabel.textContent = 'Flächenmessungen';
