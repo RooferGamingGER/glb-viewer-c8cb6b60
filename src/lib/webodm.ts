@@ -420,5 +420,3 @@ export function formatFileSize(mb: number): string {
 export function isTaskActive(task: Task): boolean {
   return task.status === 10 || task.status === 20;
 }
-  return task.status === 10 || task.status === 20;
-}
