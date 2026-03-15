@@ -54,17 +54,17 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "18.03.2026",
+    text: "Kunden können sich direkt mit dem Servr verbinden um Drohnenaufnahmen zu prüfen, Daten downloaden, neue Projekte erstelle und vieles mehr",
+  },
+  {
+    date: "18.03.2026",
+    text: "GLB Modelle können direkt vom Server implementiert werden.",
+  },
+  {
     date: "07.02.2026",
     text: "Export für Flachdächer nach ABS-Plan",
     link: { url: "https://apps.absturzsicherung.de", label: "ABS-Plan öffnen" },
-  },
-  {
-    date: "07.02.2026",
-    text: "Bedienung auf Handy deutlich verbessert und optimiert",
-  },
-  {
-    date: "Januar 2026",
-    text: "Messungen speichern, exportieren & wieder einlesen – Hochformat vollständig unterstützt.",
   },
 ];
 
