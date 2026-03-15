@@ -60,20 +60,20 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ measurements }) => {
           <DialogTitle>Exportieren</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-2 py-2">
-          {/* PDF - uses existing ExportPdfButton which opens its own dialog */}
+          {/* PDF */}
           <ExportPdfButton measurements={measurements} />
           
           {/* CSV */}
-          <Button variant="outline" size="sm" className="w-full justify-start" onClick={exportCSV} disabled={!measurements.length}>
-            <FileText className="h-4 w-4 mr-2" /> CSV Export
+          <Button variant="outline" size="sm" className="w-full justify-start text-left" onClick={exportCSV} disabled={!measurements.length}>
+            <FileText className="h-4 w-4 mr-2 shrink-0" /> CSV Export
           </Button>
 
           {/* GLB with measurements */}
           <ExportGLBWithMeasurementsButton measurements={measurements} />
 
           {/* ABS Export */}
-          <Button variant="outline" size="sm" className="w-full justify-start" onClick={exportABS} disabled={!measurements.length}>
-            <File className="h-4 w-4 mr-2" /> ABS-Export
+          <Button variant="outline" size="sm" className="w-full justify-start text-left" onClick={exportABS} disabled={!measurements.length}>
+            <File className="h-4 w-4 mr-2 shrink-0" /> ABS-Export
           </Button>
 
           {/* Roof plan */}

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
   Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet, Mountain,
-  Eye, EyeOff, X, ChevronDown, ChevronUp, Download
+  Eye, EyeOff, X, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -10,7 +10,6 @@ import { MeasurementMode, Point, Measurement } from '@/types/measurements';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
 import { smartToast } from '@/utils/smartToast';
-import { formatMeasurementValue, getMeasurementTypeDisplayName } from '@/utils/exportUtils';
 import ExportDialog from './ExportDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -44,7 +43,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   const [showInclination, setShowInclination] = useState(getInclinationPreference());
-  const [showMeasurements, setShowMeasurements] = useState(true);
+  
 
   if (!enabled) return null;
 
@@ -93,17 +92,6 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   const contextHint = getContextHint();
   const toolBtnClass = (mode: MeasurementMode) =>
     `h-8 px-2 text-xs gap-1 ${activeMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background/90 hover:bg-accent border border-border/50'}`;
-
-  // Get icon for measurement type
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'length': return <Ruler className="h-3 w-3" />;
-      case 'height': return <ArrowUpDown className="h-3 w-3" />;
-      case 'area': return <Square className="h-3 w-3" />;
-      case 'deductionarea': return <MinusSquare className="h-3 w-3" />;
-      default: return null;
-    }
-  };
 
   return (
     <div className="absolute top-3 left-3 z-20 pointer-events-auto flex flex-col gap-2 max-w-[320px]">
@@ -201,44 +189,10 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
         </div>
       )}
 
-      {/* Compact measurement list */}
+      {/* Measurement count badge */}
       {measurements.length > 0 && (
-        <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg">
-          <button
-            onClick={() => setShowMeasurements(!showMeasurements)}
-            className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium hover:bg-accent/50 rounded-t-lg"
-          >
-            <span>Messungen ({measurements.length})</span>
-            {showMeasurements ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          {showMeasurements && (
-            <div className="max-h-[200px] overflow-y-auto border-t border-border/30">
-              {measurements.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between px-2 py-1 hover:bg-accent/30 text-xs group"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    {getTypeIcon(m.type)}
-                    <span className="truncate">
-                      {m.label || getMeasurementTypeDisplayName(m.type)}
-                    </span>
-                    <span className="text-muted-foreground font-mono ml-1 whitespace-nowrap">
-                      {formatMeasurementValue(m)}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteMeasurement(m.id)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="bg-background/95 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg px-2 py-1.5">
+          <span className="text-xs text-muted-foreground">{measurements.length} Messung{measurements.length !== 1 ? 'en' : ''}</span>
         </div>
       )}
     </div>
