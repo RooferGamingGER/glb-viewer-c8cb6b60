@@ -1682,20 +1682,6 @@ function renderPVModuleGrid(
     };
     measurementsRef.add(mesh);
 
-    // Module number label
-    const centerX = (topCorners[0].x + topCorners[1].x + topCorners[2].x + topCorners[3].x) / 4;
-    const centerY = (topCorners[0].y + topCorners[1].y + topCorners[2].y + topCorners[3].y) / 4;
-    const centerZ = (topCorners[0].z + topCorners[1].z + topCorners[2].z + topCorners[3].z) / 4;
-
-    const moduleCenter = new THREE.Vector3(centerX, centerY + 0.03, centerZ);
-    const moduleLabel = createMeasurementLabel(`${index + 1}`, moduleCenter, true);
-    moduleLabel.userData = {
-      measurementId: measurement.id,
-      isModuleLabel: true,
-      moduleIndex: index
-    };
-    moduleLabel.userData.isModuleLabel = true;
-    moduleLabel.scale.set(0.2, 0.2, 0.2);
-    labelsRef.add(moduleLabel);
+    // Module number labels removed - they caused visual clutter (white bars on modules)
   });
 }
