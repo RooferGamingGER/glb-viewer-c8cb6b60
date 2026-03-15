@@ -51,13 +51,6 @@ import {
   Plus,
   X,
 } from "lucide-react";
-  Loader2,
-  LogOut,
-  Map,
-  MapPin,
-  Database,
-  X,
-} from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
