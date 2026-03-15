@@ -253,10 +253,11 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     }
   );
 
-  // Update visibility when allLabelsVisible changes
+  // Update visibility when allLabelsVisible changes (but never while a tool is active)
   useEffect(() => {
+    if (activeMode !== 'none') return;
     updateAllLabelsVisibility(allLabelsVisible);
-  }, [allLabelsVisible, updateAllLabelsVisibility]);
+  }, [allLabelsVisible, updateAllLabelsVisibility, activeMode]);
 
   // Handle label visibility based on edit/draw mode
   useEffect(() => {

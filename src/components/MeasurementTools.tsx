@@ -121,8 +121,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 
   React.useEffect(() => {
+    if (activeMode !== 'none') return;
     updateAllLabelsVisibility(allLabelsVisible);
-  }, [allLabelsVisible, updateAllLabelsVisibility]);
+  }, [allLabelsVisible, updateAllLabelsVisibility, activeMode]);
 
   // Auto-import embedded measurements from GLB
   React.useEffect(() => {
@@ -210,7 +211,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleToggleAllLabelsVisibility = () => {
     toggleAllLabelsVisibility();
-    updateAllLabelsVisibility(!allLabelsVisible);
+    if (activeMode === 'none') {
+      updateAllLabelsVisibility(!allLabelsVisible);
+    }
   };
 
   // Auto-open sidebar when solar or roof element tool is activated
