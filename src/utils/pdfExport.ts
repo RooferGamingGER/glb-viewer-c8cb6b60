@@ -2291,10 +2291,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         layoutCol.style.flex = '1';
         layoutCol.style.minWidth = '0';
         
-        // Calculate string assignments for coloring
-        const stringAssignments = calculateStringAssignments(pvInfo);
-        
-        const layoutImage = renderSolarLayout2D(solarM, 500, 400, stringAssignments);
+        const layoutImage = renderSolarLayout2D(solarM, 500, 400);
         if (layoutImage) {
           const img = document.createElement('img');
           img.src = layoutImage;
