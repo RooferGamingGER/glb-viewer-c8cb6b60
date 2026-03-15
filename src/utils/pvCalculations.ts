@@ -372,7 +372,8 @@ export const calculatePVModulePlacement = (
     validationMessage?: string;
   },
   findOptimalRectangle: boolean = true,
-  forcedOrientation: 'portrait' | 'landscape' | 'auto' = 'auto'
+  forcedOrientation: 'portrait' | 'landscape' | 'auto' = 'auto',
+  exclusionZones: Point[][] = []
 ): PVModuleInfo => {
   const area = calculatePolygonArea(points);
 
