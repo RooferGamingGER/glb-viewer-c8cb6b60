@@ -27,6 +27,22 @@ const LINE_Y_OFFSET = 0.025; // Slightly higher than points to ensure visibility
 const LABEL_Y_OFFSET = 0.15; // Maintained higher for readability
 const PV_LINE_Y_OFFSET = 0.03; // Slightly higher than regular lines for PV visibility
 
+// Unified color palette (matching reference project)
+const COLORS = {
+  CYAN: 0x00e5ff,        // Standard points & lines
+  ORANGE: 0xffab00,      // Selected/editing points
+  SOLAR: 0x1EAEDB,       // Solar/PV elements
+  SKYLIGHT: 0xff8800,    // Skylight elements
+  CHIMNEY: 0xff0000,     // Chimney elements
+  VENT: 0x00ffff,        // Vent elements
+  HOOK: 0xff00ff,        // Hook elements
+};
+
+// Standard point size
+const POINT_SIZE = 0.05;
+const EDIT_POINT_SIZE = 0.05;
+const EDIT_POINT_SELECTED_SIZE = 0.08;
+
 // PV Module visualization constants
 const PV_MODULE_COLORS = {
   MODULE: 0x33C3F0,        // Sky blue for modules
