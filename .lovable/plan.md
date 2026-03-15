@@ -1,64 +1,33 @@
 
 
-# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
+# Fix: Sichtbarkeit zurückgesetzt, PV-Module durchsichtig, Bearbeitung bei aktivem Zeichentool
 
-## Zusammenfassung
+## 3 Probleme identifiziert
 
-Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
+### Problem 1: Messungen werden nach Ausblenden wieder eingeblendet
+In `useMeasurementInteraction.ts` (Zeile 140-179) gibt es einen `useEffect` der bei jeder Änderung von `enabled` oder `measurements` alle PV-Module durchgeht und deren Material-Properties überschreibt — inklusive `side: THREE.DoubleSide`. Zusätzlich überschreibt `useMeasurementVisibility.ts` bei `updateMeasurementMarkers()` ebenfalls Material-Properties und setzt `DoubleSide`. Diese Funktionen werden bei vielen State-Änderungen getriggert und setzen die Sichtbarkeit effektiv zurück.
 
-## Aenderungen
+**Fix**: Den `useEffect` in `useMeasurementInteraction.ts` (Zeile 140-179) entfernen — er überschreibt die korrekt gesetzten Visibility-States. In `useMeasurementVisibility.ts` die Material-Überschreibungen in `updateMeasurementMarkers` auf reine Sichtbarkeits-Toggles reduzieren (kein Material-Reset mehr).
 
-### Datei 1: `src/hooks/use-mobile.tsx`
+### Problem 2: PV-Module von der anderen Seite sichtbar
+Obwohl `pvModuleRenderer.ts` bereits `FrontSide` nutzt, setzen mehrere Stellen das Material zurück auf `DoubleSide`:
+- `useMeasurementInteraction.ts` Zeile 164: `module.material.side = THREE.DoubleSide`
+- `useMeasurementVisibility.ts` Zeilen 123, 148, 171, 190: `material.side = THREE.DoubleSide`
+- `measurementVisuals.ts` Zeile 1307: Solar-Fill mit `DoubleSide`
 
-**Was aendert sich:**
-- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
-- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
-- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
+**Fix**: Alle `DoubleSide`-Zuweisungen für PV/Solar-Meshes auf `FrontSide` ändern. Die Area-Fill-Meshes für reguläre Flächen können `DoubleSide` behalten, aber Solar/PV-spezifische müssen `FrontSide` sein.
 
-**Neue Logik `isTouchDevice()`:**
-1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
-2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
-3. `matchMedia('(hover: none)')` -- kein Hover moeglich
-4. User-Agent Regex (android, iphone, ipad, etc.)
+### Problem 3: Bearbeitung anderer Flächen bei aktivem Zeichentool
+In `useMeasurementEvents.ts` prüft `processInteraction` bei Klicks auf Messpunkte (Zeile 229-260) und Edit-Punkte (Zeile 172-197) NICHT ob gerade ein Zeichentool aktiv ist (`activeMode !== 'none'`). Dadurch kann ein Klick auf einen bestehenden Punkt den Edit-Modus einer anderen Messung aktivieren, obwohl der User eigentlich einen neuen Punkt setzen will.
 
-Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
+**Fix**: Die Blöcke für Edit-Point-Interaktion und Measurement-Point-Klicks nur ausführen wenn `activeMode === 'none'` (kein Zeichentool aktiv). Wenn ein Tool aktiv ist, sollen Klicks immer als neue Punkte interpretiert werden.
 
-**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+## Dateien
 
-### Datei 2: `src/hooks/useScreenOrientation.tsx`
-
-**Was aendert sich:**
-- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
-- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
-- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
-- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
-
-**Neue Logik:**
-```text
-isMobileOrTablet = useIsMobile()  // = isTouchDevice()
-isTablet = isMobileOrTablet && Math.min(width, height) > 600
-isPhone  = isMobileOrTablet && !isTablet
-```
-
-### Keine Aenderungen noetig in:
-- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
-- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
-- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
-- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
-
-## Erwartetes Verhalten nach der Aenderung
-
-| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
-|---|---|---|---|---|---|
-| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
-| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
-
-## Technische Details
-
-- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
-- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
-- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
-- Keine neuen Dependencies noetig
+| Datei | Änderung |
+|---|---|
+| `src/hooks/useMeasurementInteraction.ts` | `useEffect` für PV-Module (Z.140-179) entfernen |
+| `src/hooks/useMeasurementVisibility.ts` | Material-Resets in `updateMeasurementMarkers` entfernen, nur `visible` toggeln |
+| `src/hooks/useMeasurementEvents.ts` | Edit-Point + Measurement-Point Klick-Blöcke nur bei `activeMode === 'none'` ausführen |
+| `src/utils/measurementVisuals.ts` | Solar-Fill `DoubleSide` → `FrontSide` (Zeile 1307) |
 
