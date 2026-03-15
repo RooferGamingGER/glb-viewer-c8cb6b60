@@ -2396,9 +2396,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           ['Dachneigung', `${pvInfo.roofInclination?.toFixed(0) || '?'}°`],
         ];
         
-        if (pvInfo.yieldFactor) {
-          specRows.push(['Jahresertrag', `${(totalPower * pvInfo.yieldFactor).toFixed(0)} kWh/Jahr`]);
-        }
+        specRows.push(['Jahresertrag', `${(totalPower * (pvInfo.yieldFactor || 950)).toFixed(0)} kWh/Jahr`]);
         
         specRows.forEach(([label, value]) => {
           const tr = document.createElement('tr');
