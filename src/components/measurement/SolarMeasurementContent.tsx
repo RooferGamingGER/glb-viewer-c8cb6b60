@@ -29,6 +29,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   allMeasurements = []
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
   
   useEffect(() => {
     if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
