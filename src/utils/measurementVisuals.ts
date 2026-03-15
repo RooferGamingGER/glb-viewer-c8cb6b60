@@ -374,16 +374,13 @@ export function renderEditPoints(
   measurement.points.forEach((point, index) => {
     const isSelected = index === editingPointIndex;
     
-    // Create a larger, highlighted sphere for editable points
-    const size = isSelected ? 0.1 : 0.08; // Slightly larger for touch
+    const size = isSelected ? EDIT_POINT_SELECTED_SIZE : EDIT_POINT_SIZE;
     const sphereGeometry = new THREE.SphereGeometry(size, 16, 16);
     
-    // Use a bright color for the selected point, different color for others
-    const color = isSelected ? 0xff00ff : 0xffff00;
+    const color = isSelected ? COLORS.ORANGE : COLORS.CYAN;
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
       color,
-      opacity: 0.85,
-      transparent: true
+      depthTest: false
     });
     
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
