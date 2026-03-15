@@ -55,11 +55,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "15.03.2026",
-    text: "PDF-Export optimiert: Solarplanung aus Vermessungsbericht entfernt, Dachplan bereinigt und korrigierte Leistungsberechnung",
+    text: "Neue Server-Anbindung: Direkt auf drohnenvermessung-server.de einloggen, Projekte & Tasks verwalten, Drohnenbilder einsehen und neue Verarbeitungsaufträge starten – alles ohne die App zu verlassen",
+    link: { url: "https://drohnenvermessung-server.de", label: "Server öffnen" },
   },
   {
     date: "15.03.2026",
-    text: "Dachplan zeigt Solarflächen jetzt neutral ohne PV-Module – klarere Darstellung der Dachbemaßung",
+    text: "GLB-Modelle können jetzt direkt vom Server geladen und sofort vermessen werden – kein manueller Download mehr nötig",
+  },
+  {
+    date: "15.03.2026",
+    text: "PDF-Export optimiert: Dachplan bereinigt und korrigierte Leistungsberechnung für PV-Anlagen",
   },
   {
     date: "07.02.2026",
