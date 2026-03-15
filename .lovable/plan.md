@@ -1,64 +1,64 @@
 
 
-# Robuste Geraete-Erkennung: Touch-basiert statt Viewport-basiert
+# Visuelle Verbesserung der Messungs-Darstellung
 
-## Zusammenfassung
+## Vergleich: Referenzprojekt vs. aktuelles Projekt
 
-Aktuell wird ein schmales Desktop-Browserfenster (<= 1024px) faelschlicherweise als Tablet erkannt. Die Loesung: Eine neue `isTouchDevice()`-Funktion, die **Hardware-Signale** (Touch-Punkte, Pointer-Typ, Hover-Faehigkeit) mit dem User-Agent kombiniert. Nur echte Touch-Geraete bekommen die Mobile-UI.
+| Element | Referenzprojekt (besser) | Aktuelles Projekt |
+|---|---|---|
+| **Farben** | Einheitlich Cyan `#00e5ff` fuer Punkte/Linien, Orange `#ffab00` fuer editierte Punkte | Gruen/Blau/Orange je nach Typ, Magenta/Gelb fuer Edit-Punkte |
+| **Labels** | HTML-basiert (`<Html>` aus drei/drei), sauber, `font-mono`, `bg-background/90` | Canvas-basierte Sprites (textSprite.ts), schwerer zu lesen, verschwommen |
+| **Punkt-Groesse** | 0.05 Standard, 0.08 editiert, Hover-Effekt (1.5x Scale) | 0.04 Standard, 0.08/0.1 editiert, kein Hover |
+| **Delete-Button (×)** | Rotes Kreis-Badge direkt am Punkt, mit Bestaetigungs-Dialog | Nicht direkt am Punkt, nur ueber Sidebar |
+| **Insert-Button (+)** | Gruenes Kreis-Badge am Kanten-Mittelpunkt, mit Bestaetigungs-Dialog | 3D-Box-Geometrie Plus-Zeichen, schwer erkennbar |
+| **depthTest** | `false` ueberall -- immer sichtbar | Teilweise `true` -- Punkte/Linien verschwinden hinter dem Modell |
+| **Linien** | Immer `depthTest: false`, dadurch sichtbar | Linien koennen hinter dem Modell verschwinden |
 
-## Aenderungen
+## Geplante Aenderungen
 
-### Datei 1: `src/hooks/use-mobile.tsx`
+### 1. `src/utils/measurementVisuals.ts` -- Visuelle Anpassungen
 
-**Was aendert sich:**
-- Neue exportierte Hilfsfunktion `isTouchDevice()` mit 4 kombinierten Signalen
-- `useIsMobile()` baut darauf auf statt nur auf `matchMedia(max-width)` + UA
-- Rueckgabewert und API bleiben identisch (boolean) -- alle bestehenden Nutzer funktionieren weiter
+**Farben vereinheitlichen:**
+- Punkte und Linien: `#00e5ff` (Cyan) statt Gruen/Blau/Orange pro Typ
+- Edit-Punkte: `#ffab00` (Orange) statt Magenta/Gelb
+- Behalte Typ-spezifische Farben nur fuer Solar (`#1EAEDB`) und Dachelemente
 
-**Neue Logik `isTouchDevice()`:**
-1. `navigator.maxTouchPoints > 0` oder `'ontouchstart' in window`
-2. `matchMedia('(pointer: coarse)')` -- Finger statt Maus
-3. `matchMedia('(hover: none)')` -- kein Hover moeglich
-4. User-Agent Regex (android, iphone, ipad, etc.)
+**depthTest auf `false` setzen:**
+- Alle `LineBasicMaterial`, `LineDashedMaterial` und `MeshBasicMaterial` fuer Punkte bekommen `depthTest: false`
+- Dadurch sind Linien und Punkte immer sichtbar, auch wenn sie geometrisch hinter dem Modell liegen
 
-Ergebnis: `true` wenn UA eindeutig mobil ist ODER mindestens 2 von 3 Hardware-Signalen zutreffen. Alle Abfragen defensiv mit optionalem Chaining (`?.`) und Fallbacks.
+**Punkt-Groesse erhoehen:**
+- Standard-Punkte: 0.05 statt 0.04
+- Punkte bei laufender Messung: 0.05 statt 0.05 (bleibt)
 
-**`useIsMobile()` vereinfacht:** Gibt `isTouchDevice()` zurueck, einmalig berechnet via `useState` + `useEffect`. Reagiert weiterhin auf `orientationchange`.
+### 2. `src/utils/measurementVisuals.ts` -- `renderEditPoints()` verbessern
 
-### Datei 2: `src/hooks/useScreenOrientation.tsx`
+- Edit-Punkte: 0.05 Standard, 0.08 wenn selektiert (statt 0.08/0.1)
+- Farbe: `#00e5ff` normal, `#ffab00` selektiert
+- `depthTest: false` fuer alle Edit-Punkte
+- Hover-Cursor (`pointer`) wird bereits ueber Events in `useMeasurementEvents.ts` gehandhabt
 
-**Was aendert sich:**
-- Entfernung der `TABLET_MAX_WIDTH = 1024` Konstante
-- `isMobileOrTablet` basiert **nur noch auf `isTouchDevice()`** (via `useIsMobile()`), nicht mehr auf Viewport-Breite
-- Phone vs. Tablet Unterscheidung ueber `Math.min(innerWidth, innerHeight) > 600`
-- Kein `windowWidth` State mehr noetig fuer die Geraete-Klassifizierung
+### 3. `src/hooks/useAddPointIndicators.ts` -- "+" Buttons ueberarbeiten
 
-**Neue Logik:**
-```text
-isMobileOrTablet = useIsMobile()  // = isTouchDevice()
-isTablet = isMobileOrTablet && Math.min(width, height) > 600
-isPhone  = isMobileOrTablet && !isTablet
-```
+Statt der 3D-Box-Geometrie Plus-Zeichen: HTML-basierte gruene Kreis-Buttons (wie im Referenzprojekt). Da wir hier kein React Three Fiber nutzen, verwenden wir `CSS2DRenderer` oder alternativ einfach bessere 3D-Sprites.
 
-### Keine Aenderungen noetig in:
-- `MeasurementTools.tsx` -- nutzt `useScreenOrientation()`, bekommt korrekte Werte automatisch
-- `MobileBottomBar.tsx` -- wird nur gerendert wenn `useBottomSheet` true ist
-- `ModelViewer.tsx`, `Index.tsx`, `Test.tsx` etc. -- nutzen `useIsMobile()` dessen API gleich bleibt
-- `sidebar.tsx`, `TabbedMeasurementSidebar.tsx` etc. -- gleiche API
+**Pragmatischer Ansatz:** Die Plus-Symbole als gruene Kreis-Sprites mit "+" Text rendern (ueber `createTextSprite` mit angepasstem Styling), oder die bestehende 3D-Geometrie optisch verbessern:
+- Gruene Kugel statt Box-Plus
+- Groesserer Klick-Bereich
+- `depthTest: false` fuer Sichtbarkeit
 
-## Erwartetes Verhalten nach der Aenderung
+### 4. Labels bleiben Canvas-Sprites
 
-| Geraet | Touch? | Pointer | Hover | UA mobil | Ergebnis |
-|---|---|---|---|---|---|
-| Desktop-PC (schmales Fenster) | Nein | fine | hover | Nein | Desktop-UI (Sidebar) |
-| iPad / Android-Tablet | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| iPhone / Android-Handy | Ja | coarse | none | Ja | Mobile-UI (Bottom-Bar) |
-| Laptop mit Touchscreen | Ja | fine/coarse | hover | Nein | Haengt von Signalen ab -- meist Desktop |
+Das Referenzprojekt nutzt React Three Fiber mit `<Html>` fuer Labels. Unser Projekt nutzt imperativen Three.js-Code ohne R3F. Eine Umstellung auf HTML-Labels wuerde einen `CSS2DRenderer` erfordern, was eine groessere Architektur-Aenderung waere. Die Canvas-Sprites behalten wir bei, verbessern aber die Lesbarkeit durch:
+- Hoeheren Kontrast
+- `depthTest: false` auf allen Label-Sprites
 
-## Technische Details
+### Zusammenfassung der Dateien
 
-- Alle `matchMedia`-Aufrufe mit `?.` und `?? false` abgesichert (SSR-safe)
-- `isTouchDevice()` wird als separate exportierte Funktion bereitgestellt, damit sie auch ausserhalb von React-Hooks nutzbar ist
-- Die Erkennung laeuft einmal beim Mount und aktualisiert sich bei `orientationchange`
-- Keine neuen Dependencies noetig
+| Datei | Aenderung |
+|---|---|
+| `src/utils/measurementVisuals.ts` | Farben auf Cyan/Orange, `depthTest: false` ueberall, Punkt-Groessen anpassen |
+| `src/hooks/useAddPointIndicators.ts` | Plus-Indikatoren als gruene Kugeln mit `depthTest: false`, optisch klarer |
+
+Keine neuen Abhaengigkeiten noetig. Die Aenderungen sind rein visuell und aendern keine Mess-Logik.
 
