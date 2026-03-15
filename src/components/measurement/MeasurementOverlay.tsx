@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
   Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet, Mountain,
-  Eye, EyeOff, X, ChevronDown, ChevronUp, Download
+  Eye, EyeOff, X, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
