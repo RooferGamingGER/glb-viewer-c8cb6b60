@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { MeasurementMode, Measurement as MeasurementType } from '@/types/measurements';
 import { calculatePVModulePlacement } from '@/utils/pvCalculations';
 import { toast } from 'sonner';
+import SolarToolbar from './SolarToolbar';
 import RoofElementsToolbar from './RoofElementsToolbar';
 import SolarMeasurementContent from './SolarMeasurementContent';
 import CollapsibleSection from '@/components/ui/collapsible-section';
