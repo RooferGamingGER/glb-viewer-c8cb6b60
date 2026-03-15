@@ -1603,7 +1603,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     countLabel.textContent = 'Anzahl Teilflächen';
     countBox.appendChild(countLabel);
     
-    const areaMeasurementsForCount = sortedMeasurements.filter(m => m.type === 'area');
+    const areaMeasurementsForCount = sortedMeasurements.filter(m => m.type === 'area' || m.type === 'solar');
     const countValue = document.createElement('div');
     countValue.style.fontSize = '28px';
     countValue.style.fontWeight = 'bold';
