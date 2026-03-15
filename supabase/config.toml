@@ -1,1 +1,4 @@
 project_id = "bsnytpiojvtpgshbubsb"
+
+[functions.webodm-upload]
+verify_jwt = false

@@ -287,6 +287,116 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+// --- Processing Nodes & Presets ---
+
+export interface ProcessingNode {
+  id: number;
+  hostname: string;
+  port: number;
+  label: string;
+  online: boolean;
+}
+
+export interface Preset {
+  id: number;
+  name: string;
+  options: { name: string; value: string }[];
+  created_at: string;
+  system: boolean;
+}
+
+export async function getProcessingNodes(token: string): Promise<ProcessingNode[]> {
+  const res = await proxyFetch("/api/processingnodes/", { token });
+  if (!res.ok) throw new Error("Processing Nodes konnten nicht geladen werden.");
+  return res.json();
+}
+
+export async function getPresets(token: string): Promise<Preset[]> {
+  const res = await proxyFetch("/api/presets/", { token });
+  if (!res.ok) throw new Error("Presets konnten nicht geladen werden.");
+  return res.json();
+}
+
+// --- Task Creation (two-step: create partial → upload images → commit) ---
+
+const UPLOAD_PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-upload`;
+
+export async function createTask(
+  token: string,
+  projectId: number,
+  name: string,
+  images: File[],
+  options?: { name: string; value: string }[],
+  onProgress?: (pct: number) => void,
+  processingNode?: number | null
+): Promise<Task> {
+  // Step 1: Create task in partial mode
+  const createBody: Record<string, string> = {
+    name,
+    partial: "true",
+  };
+  if (processingNode != null) {
+    createBody.processing_node = String(processingNode);
+  }
+  if (options && options.length > 0) {
+    createBody.options = JSON.stringify(options);
+  }
+
+  const createRes = await proxyFetch(`/api/projects/${projectId}/tasks/`, {
+    method: "POST",
+    body: createBody,
+    token,
+  });
+
+  if (!createRes.ok) {
+    const err = await createRes.text();
+    throw new Error(`Task-Erstellung fehlgeschlagen (${createRes.status}). ${err}`);
+  }
+
+  const task: Task = await createRes.json();
+  onProgress?.(5);
+
+  // Step 2: Upload images one by one via upload proxy
+  const uploadPath = `/api/projects/${projectId}/tasks/${task.id}/upload/`;
+  
+  for (let i = 0; i < images.length; i++) {
+    const formData = new FormData();
+    formData.append("images", images[i], images[i].name);
+
+    const uploadRes = await fetch(UPLOAD_PROXY_URL, {
+      method: "POST",
+      headers: {
+        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "x-webodm-token": token,
+        "x-webodm-path": uploadPath,
+      },
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const detail = await uploadRes.text();
+      throw new Error(`Bild-Upload fehlgeschlagen bei ${images[i].name}: ${detail}`);
+    }
+
+    const pct = 5 + Math.round(((i + 1) / images.length) * 85);
+    onProgress?.(pct);
+  }
+
+  // Step 3: Commit task to start processing
+  const commitRes = await proxyFetch(`/api/projects/${projectId}/tasks/${task.id}/commit/`, {
+    method: "POST",
+    token,
+  });
+
+  if (!commitRes.ok) {
+    const detail = await commitRes.text();
+    throw new Error(`Task-Commit fehlgeschlagen: ${detail}`);
+  }
+
+  onProgress?.(100);
+  return task;
+}
+
 // --- Helpers ---
 
 export function findGlbAsset(assets: string[]): string | null {
