@@ -8,6 +8,41 @@ import {
   groupSegmentsByType 
 } from './exportUtils';
 import { renderSolarLayout2D } from './renderPolygon2D';
+import { PVModuleInfo } from '@/types/measurements';
+
+const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'];
+
+/**
+ * Calculates string assignments for PV modules based on electrical system data.
+ */
+const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number, { stringId: string; color: string }> => {
+  const assignments: Record<number, { stringId: string; color: string }> = {};
+  const elec = pvInfo.pvMaterials?.electricalSystem;
+  if (!elec || elec.stringCount === 0) return assignments;
+  
+  const removedSet = new Set(pvInfo.removedModuleIndices || []);
+  const totalModules = pvInfo.moduleCorners?.length || pvInfo.moduleCount || 0;
+  const activeIndices: number[] = [];
+  for (let i = 0; i < totalModules; i++) {
+    if (!removedSet.has(i)) activeIndices.push(i);
+  }
+  
+  const modulesPerStr = elec.modulesPerString;
+  const numStrings = elec.stringCount;
+  
+  for (let s = 0; s < numStrings; s++) {
+    const startIdx = s * modulesPerStr;
+    const endIdx = Math.min(startIdx + modulesPerStr, activeIndices.length);
+    const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+    const stringId = `String S${s + 1}`;
+    
+    for (let m = startIdx; m < endIdx; m++) {
+      assignments[activeIndices[m]] = { stringId, color };
+    }
+  }
+  
+  return assignments;
+};
 
 export interface CoverPageData {
   title: string;
