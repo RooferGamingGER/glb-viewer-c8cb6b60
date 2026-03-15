@@ -196,6 +196,28 @@ export const useMeasurementEvents = (
       }
     }
     
+    // Check for clicks on PV modules — remove module on click
+    if (activeMode === 'none' || activeMode === 'solar') {
+      const allIntersects = raycaster.intersectObjects(scene.children, true);
+      for (const intersect of allIntersects) {
+        const ud = intersect.object.userData;
+        if (ud && (ud.isPVModule || ud.isPVModulePanel)) {
+          const measurementId = ud.measurementId;
+          const moduleIndex = ud.moduleIndex;
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement && measurement.pvModuleInfo && moduleIndex !== undefined) {
+            // Dispatch custom event for PV module removal
+            const removeEvent = new CustomEvent('pvModuleRemoved', {
+              detail: { measurementId, moduleIndex }
+            });
+            document.dispatchEvent(removeEvent);
+            toast.info(`Modul ${moduleIndex + 1} entfernt`, { duration: 1500 });
+            return;
+          }
+        }
+      }
+    }
+
     // Check for clicks on measurement points - allow direct interaction without edit mode
     {
       const allSceneIntersects = raycaster.intersectObjects(scene.children, true);
