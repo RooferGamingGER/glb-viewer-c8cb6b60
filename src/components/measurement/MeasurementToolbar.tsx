@@ -1,15 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Ruler, 
   ArrowUpDown, 
   Square,
-  MinusSquare, // Added new icon for deduction area
+  MinusSquare,
   Trash2,
   Magnet,
   Eye,
-  EyeOff
+  EyeOff,
+  Mountain
 } from 'lucide-react';
+import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
 import { MeasurementMode } from '@/types/measurements';
 import { 
   SidebarGroup,
