@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
 import { 
-  Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet, Mountain,
+  Ruler, ArrowUpDown, Square, MinusSquare, Trash2, Magnet,
   Eye, EyeOff, X, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { MeasurementMode, Point, Measurement } from '@/types/measurements';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
-import { getInclinationPreference, setInclinationPreference } from '@/utils/textSprite';
+
 import { smartToast } from '@/utils/smartToast';
 import ExportDialog from './ExportDialog';
 import {
@@ -42,7 +42,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   handleCancelEditing
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
-  const [showInclination, setShowInclination] = useState(getInclinationPreference());
+  
   
 
   if (!enabled) return null;
@@ -72,12 +72,6 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
     smartToast.guidance(v ? 'Punktfang aktiviert' : 'Punktfang deaktiviert');
   };
 
-  const handleToggleInclination = () => {
-    const v = !showInclination;
-    setShowInclination(v);
-    setInclinationPreference(v);
-    smartToast.guidance(v ? 'Neigung Ein (>5°)' : 'Neigung Aus');
-  };
 
   const getContextHint = (): string | null => {
     if (movingPointInfo) return 'Punkt verschieben – klicken zum Platzieren';
@@ -121,14 +115,6 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
             className={`h-7 px-2 text-xs gap-1 border ${snapEnabled ? 'bg-green-500 text-white hover:bg-green-600 border-green-600 data-[state=on]:bg-green-500 data-[state=on]:text-white' : 'border-border/50'}`}
           >
             <Magnet className="h-3 w-3" /> Snap
-          </Toggle>
-          <Toggle
-            pressed={showInclination}
-            onPressedChange={handleToggleInclination}
-            size="sm"
-            className={`h-7 px-2 text-xs gap-1 ${showInclination ? 'bg-blue-500/20 text-blue-700 border-blue-500/50' : ''}`}
-          >
-            <Mountain className="h-3 w-3" /> Neigung
           </Toggle>
           {measurements.length > 0 && toggleAllLabelsVisibility && (
             <Button variant="ghost" size="sm" className="h-7 px-2" onClick={toggleAllLabelsVisibility} title={allLabelsVisible ? 'Labels aus' : 'Labels ein'}>
