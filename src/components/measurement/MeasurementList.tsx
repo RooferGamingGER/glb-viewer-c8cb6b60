@@ -103,6 +103,7 @@ const MeasurementList: React.FC<MeasurementListProps> = ({
               movingPointInfo={movingPointInfo}
               handleMoveUp={handleMoveMeasurementUp}
               handleMoveDown={handleMoveMeasurementDown}
+              allMeasurements={measurements}
             />
           ))
         ) : (
