@@ -1613,7 +1613,7 @@ function renderPVModuleGrid(
       )
       .normalize();
 
-    const OFFSET_DISTANCE = 0.01;
+    const OFFSET_DISTANCE = 0.03;
     for (let i = 0; i < vertices.length; i += 3) {
       vertices[i] += normal.x * OFFSET_DISTANCE;
       vertices[i + 1] += normal.y * OFFSET_DISTANCE;
