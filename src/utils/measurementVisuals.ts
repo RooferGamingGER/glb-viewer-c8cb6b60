@@ -1606,7 +1606,7 @@ function renderPVModuleGrid(
       )
       .normalize();
 
-    const OFFSET_DISTANCE = 0.02; // Base offset from roof surface
+    const OFFSET_DISTANCE = 0.05; // Base offset from roof surface (5cm)
 
     // Bottom face corners (on roof surface + small offset)
     const bottomCorners = points.map(p => new THREE.Vector3(
