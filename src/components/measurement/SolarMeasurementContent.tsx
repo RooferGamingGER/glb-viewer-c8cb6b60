@@ -423,40 +423,62 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
 
                 {/* E-W Pair Gap slider (only for east-west layout) */}
                 {measurement.pvModuleInfo.flatRoofLayout === 'east-west' && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground w-16">Feldabst.:</span>
-                    <div className="flex gap-1 flex-1">
-                      <Button
-                        variant={measurement.pvModuleInfo.ewPairGap !== 0.60 ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1 h-5 text-[9px]"
-                        onClick={() => {
-                          const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.50 };
-                          const grid = generatePVModuleGrid(updated, 0);
-                          updateMeasurement(measurement.id, {
-                            pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
-                          });
-                        }}
-                      >
-                        50cm
-                      </Button>
-                      <Button
-                        variant={measurement.pvModuleInfo.ewPairGap === 0.60 ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1 h-5 text-[9px]"
-                        onClick={() => {
-                          const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.60 };
-                          const grid = generatePVModuleGrid(updated, 0);
-                          updateMeasurement(measurement.id, {
-                            pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
-                          });
-                        }}
-                      >
-                        60cm
-                      </Button>
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground w-16">Feldabst.:</span>
+                      <div className="flex gap-1 flex-1">
+                        <Button
+                          variant={measurement.pvModuleInfo.ewPairGap !== 0.60 ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-5 text-[9px]"
+                          onClick={() => {
+                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.50 };
+                            const grid = generatePVModuleGrid(updated, 0);
+                            updateMeasurement(measurement.id, {
+                              pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                            });
+                          }}
+                        >
+                          50cm
+                        </Button>
+                        <Button
+                          variant={measurement.pvModuleInfo.ewPairGap === 0.60 ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-5 text-[9px]"
+                          onClick={() => {
+                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.60 };
+                            const grid = generatePVModuleGrid(updated, 0);
+                            updateMeasurement(measurement.id, {
+                              pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                            });
+                          }}
+                        >
+                          60cm
+                        </Button>
+                      </div>
+                      <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.ewPairGap || 0.50).toFixed(2)}m</span>
                     </div>
-                    <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.ewPairGap || 0.50).toFixed(2)}m</span>
-                  </div>
+
+                    {/* Central maintenance path slider */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground w-16">Wartung:</span>
+                      <Slider
+                        min={0.60}
+                        max={1.20}
+                        step={0.05}
+                        value={[measurement.pvModuleInfo.maintenancePathWidth || 0.80]}
+                        onValueChange={([val]) => {
+                          const updated = { ...measurement.pvModuleInfo!, maintenancePathWidth: val };
+                          const grid = generatePVModuleGrid(updated, 0);
+                          updateMeasurement(measurement.id, {
+                            pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                          });
+                        }}
+                        className="flex-1"
+                      />
+                      <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.maintenancePathWidth || 0.80).toFixed(2)}m</span>
+                    </div>
+                  </>
                 )}
               </div>
             )}
