@@ -611,13 +611,32 @@ export const generatePVModuleGrid = (
   const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   const spacing = pvInfo.moduleSpacing || DEFAULT_MODULE_SPACING;
-  const edge = pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
+  const isFlatRoof = pvInfo.roofType === 'flat';
+  const edge = isFlatRoof 
+    ? (pvInfo.flatRoofEdgeDistance || DEFAULT_FLAT_ROOF_EDGE_DISTANCE) 
+    : (pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
+
+  // For flat roofs, row pitch depends on layout
+  let rowPitch: number;
+  if (isFlatRoof) {
+    const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH;
+    if (pvInfo.flatRoofLayout === 'east-west') {
+      // E-W: pairs of modules back-to-back, then maintenance gap
+      const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
+      rowPitch = moduleFootprint * 2 + EW_PAIR_GAP + EW_MAINTENANCE_GAP;
+    } else {
+      // South: full row spacing to avoid shadowing
+      rowPitch = calculateFlatRoofRowSpacing(mh, tiltAngle);
+    }
+  } else {
+    rowPitch = mh + spacing;
+  }
 
   const startU = minU + edge + mw / 2;
   const startW = minW + edge + mh / 2;
 
   const cols = Math.floor((maxU - minU - 2 * edge) / (mw + spacing));
-  const rows = Math.floor((maxW - minW - 2 * edge) / (mh + spacing));
+  const rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
