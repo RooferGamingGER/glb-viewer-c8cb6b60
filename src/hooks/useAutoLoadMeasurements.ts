@@ -1,16 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useURLParam } from '@/hooks/useURLState';
 import { useWebODMAuth } from '@/lib/auth-context';
-import { checkSavedMeasurements } from '@/utils/measurementStorage';
 import { loadMeasurements } from '@/utils/measurementStorage';
 import { Measurement } from '@/types/measurements';
 import { smartToast } from '@/utils/smartToast';
 import { toast } from 'sonner';
 
 /**
- * Hook that checks for saved measurements when the viewer opens with projectId/taskId params.
- * Shows a confirmation toast before loading. If existing measurements are present,
- * offers "Ersetzen" (replace) and "Ergänzen" (append) options.
+ * Hook that directly loads saved measurements when the viewer opens with projectId/taskId params.
+ * Uses a single `load` call instead of check+load to halve latency.
  */
 export function useAutoLoadMeasurements(
   importMeasurements: (list: Measurement[], append?: boolean, linkShared?: boolean) => void,
@@ -37,59 +35,54 @@ export function useAutoLoadMeasurements(
 
     hasChecked.current = true;
 
-    console.log('[AutoLoad] Checking for saved measurements:', { projectId, taskId: taskIdParam, username });
+    console.log('[AutoLoad] Loading measurements directly:', { projectId, taskId: taskIdParam, username });
 
-    const doLoad = (append: boolean) => {
-      loadMeasurements(token, projectId, taskIdParam, username || undefined)
-        .then((loadResult) => {
-          if (loadResult.found && loadResult.measurements && loadResult.measurements.length > 0) {
-            importMeasurements(loadResult.measurements, append, true);
-            smartToast.success(
-              `${loadResult.measurements.length} Messung${loadResult.measurements.length !== 1 ? 'en' : ''} ${append ? 'ergänzt' : 'geladen'}`
-            );
-          }
-        })
-        .catch((err) => {
-          console.warn('[AutoLoad] Load measurements failed:', err);
-          smartToast.error('Laden der Messungen fehlgeschlagen');
-        });
-    };
+    // Single load call — skip the separate check
+    loadMeasurements(token, projectId, taskIdParam, username || undefined)
+      .then((loadResult) => {
+        if (!loadResult.found || !loadResult.measurements || loadResult.measurements.length === 0) {
+          console.log('[AutoLoad] No saved measurements found');
+          return;
+        }
 
-    checkSavedMeasurements(token, projectId, taskIdParam, username || undefined)
-      .then((result) => {
-        console.log('[AutoLoad] Check result:', result);
-        if (!result.exists) return;
-
+        const savedList = loadResult.measurements;
         const hasExisting = existingMeasurements.length > 0;
 
         if (hasExisting) {
-          // User has existing measurements (e.g. from GLB) — offer replace or append
           toast('Gespeicherte Messungen gefunden', {
-            description: 'Es sind bereits Messungen vorhanden. Ersetzen oder ergänzen?',
+            description: `${savedList.length} Messung${savedList.length !== 1 ? 'en' : ''} verfügbar. Ersetzen oder ergänzen?`,
             duration: 20000,
             action: {
               label: 'Ersetzen',
-              onClick: () => doLoad(false),
+              onClick: () => {
+                importMeasurements(savedList, false, true);
+                smartToast.success(`${savedList.length} Messung${savedList.length !== 1 ? 'en' : ''} geladen`);
+              },
             },
             cancel: {
               label: 'Ergänzen',
-              onClick: () => doLoad(true),
+              onClick: () => {
+                importMeasurements(savedList, true, true);
+                smartToast.success(`${savedList.length} Messung${savedList.length !== 1 ? 'en' : ''} ergänzt`);
+              },
             },
           });
         } else {
-          // No existing measurements — just offer to load
           toast('Gespeicherte Messungen gefunden', {
-            description: 'Möchten Sie die gespeicherten Messungen laden?',
+            description: `${savedList.length} Messung${savedList.length !== 1 ? 'en' : ''} verfügbar.`,
             duration: 15000,
             action: {
               label: 'Laden',
-              onClick: () => doLoad(false),
+              onClick: () => {
+                importMeasurements(savedList, false, true);
+                smartToast.success(`${savedList.length} Messung${savedList.length !== 1 ? 'en' : ''} geladen`);
+              },
             },
           });
         }
       })
       .catch((err) => {
-        console.warn('[AutoLoad] Check saved measurements failed:', err);
+        console.warn('[AutoLoad] Load measurements failed:', err);
       });
   }, [isAuthenticated, token, username, projectIdParam, taskIdParam, importMeasurements, existingMeasurements]);
 }

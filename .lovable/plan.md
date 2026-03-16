@@ -1,24 +1,28 @@
 
+# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Schnelleres Laden + PV-Planung mitspeichern
+## Status: Implementiert ✅
 
-### Problem 1: Langsames Laden
-Aktuell werden **zwei sequenzielle API-Calls** gemacht: erst `check` (existiert?), dann nach User-Klick `load`. Jeder Call validiert den WebODM-Token separat (externer HTTP-Request) → doppelte Latenz.
+## Problem
+Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
 
-### Problem 2: PV-Daten unvollständig gespeichert
-Die `pvModuleInfo` wird zwar teilweise serialisiert, aber einige wichtige Felder fehlen: `roofType`, `flatRoofLayout`, `tiltAngle`, `rowSpacing`, `flatRoofEdgeDistance`, `ewPairGap`, `northAngle`, `maintenancePathWidth`, `pvMaterials`, `roofAzimuth`, `roofDirection`, `roofInclination`, `yieldFactor`. Ohne diese kann die PV-Belegung nicht vollständig wiederhergestellt werden.
+## Lösung: `northAngle` Parameter
 
-### Lösung
+### 1. Typ-Erweiterung
+- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
+- 0° = +Z ist Nord (UTM-Standard)
 
-**1. Auto-Load beschleunigen (`useAutoLoadMeasurements.ts`)**
-- Statt `check` + `load` als zwei separate Calls: direkt `load` aufrufen. Wenn nichts gefunden → nichts anzeigen. Wenn gefunden → sofort Toast mit Laden-Option zeigen, Daten sind bereits da.
-- Spart einen kompletten Roundtrip (inkl. WebODM-Token-Validierung).
+### 2. `calculateRoofOrientation(points, northAngle)`
+- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
+- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
 
-**2. Vollständige PV-Serialisierung (`measurementStorage.ts`)**
-- In `serializeMeasurements`: alle fehlenden `pvModuleInfo`-Felder mitserialisieren (roofType, flatRoofLayout, tiltAngle, rowSpacing, flatRoofEdgeDistance, ewPairGap, northAngle, maintenancePathWidth, pvMaterials, roofAzimuth, roofDirection, roofInclination, yieldFactor, moduleVisuals, points).
-- Statt einzelne Felder aufzulisten, einfach `...m.pvModuleInfo` verwenden (alle Felder sind JSON-serialisierbar).
+### 3. `placeModule` South-Tilt
+- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
+- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
 
-### Betroffene Dateien
-- `src/hooks/useAutoLoadMeasurements.ts` — von check+load auf single-load umstellen
-- `src/utils/measurementStorage.ts` — pvModuleInfo vollständig serialisieren
+### 4. UI: Kompass-Slider
+- 0°-359° Slider in SolarMeasurementContent
+- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
+- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
 
+### 5. E-W bleibt grid-relativ (unverändert)
