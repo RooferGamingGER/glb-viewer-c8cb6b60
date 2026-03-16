@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Download, FileText, FileDown, Maximize, File } from 'lucide-react';
+import { Download, FileText, FileDown, Maximize, File, CloudUpload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose
@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import ExportPdfButton from './ExportPdfButton';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import SaveMeasurementsButton from './SaveMeasurementsButton';
 
 interface ExportDialogProps {
   measurements: Measurement[];
