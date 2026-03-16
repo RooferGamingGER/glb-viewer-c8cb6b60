@@ -724,14 +724,13 @@ export const generatePVModuleGrid = (
   const ewPairGap = pvInfo.ewPairGap || DEFAULT_EW_PAIR_GAP;
   if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
     const availW = maxW - minW - 2 * edge;
-    // Each pair takes ewPairWidth. Between pairs: ewPairGap. Every EW_MAINTENANCE_INTERVAL pairs: extra EW_MAINTENANCE_GAP.
+    // Each pair takes ewPairWidth. Between pairs: ewPairGap (walkable maintenance gap at valley).
     let pairCount = 0;
     let usedW = 0;
     while (true) {
       const nextPairW = ewPairWidth;
       const gapAfter = (pairCount > 0) ? ewPairGap : 0;
-      const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_ROW_MAINTENANCE_GAP : 0;
-      const needed = gapAfter + maintenanceGap + nextPairW;
+      const needed = gapAfter + nextPairW;
       if (usedW + needed > availW) break;
       usedW += needed;
       pairCount++;
