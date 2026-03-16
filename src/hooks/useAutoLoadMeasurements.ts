@@ -1,27 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { useURLParam } from '@/hooks/useURLState';
 import { useWebODMAuth } from '@/lib/auth-context';
+import { checkSavedMeasurements } from '@/utils/measurementStorage';
 import { loadMeasurements } from '@/utils/measurementStorage';
 import { Measurement } from '@/types/measurements';
 import { smartToast } from '@/utils/smartToast';
+import { toast } from 'sonner';
 
 /**
- * Hook that auto-loads saved measurements when the viewer opens with projectId/taskId params.
- * Calls importMeasurements when saved data is found.
+ * Hook that checks for saved measurements when the viewer opens with projectId/taskId params.
+ * Shows a confirmation toast before loading.
  */
 export function useAutoLoadMeasurements(
   importMeasurements: (list: Measurement[], append?: boolean, linkShared?: boolean) => void,
   existingMeasurements: Measurement[]
 ) {
-  const { token, isAuthenticated } = useWebODMAuth();
+  const { token, username, isAuthenticated } = useWebODMAuth();
   const projectIdParam = useURLParam('projectId');
   const taskIdParam = useURLParam('taskId');
-  const hasLoaded = useRef(false);
+  const hasChecked = useRef(false);
 
   useEffect(() => {
-    // Only load once, only if we have server context, and no existing measurements
     if (
-      hasLoaded.current ||
+      hasChecked.current ||
       !isAuthenticated ||
       !token ||
       !projectIdParam ||
@@ -34,20 +35,38 @@ export function useAutoLoadMeasurements(
     const projectId = parseInt(projectIdParam, 10);
     if (isNaN(projectId)) return;
 
-    hasLoaded.current = true;
+    hasChecked.current = true;
 
-    loadMeasurements(token, projectId, taskIdParam)
+    checkSavedMeasurements(token, projectId, taskIdParam, username || undefined)
       .then((result) => {
-        if (result.found && result.measurements && result.measurements.length > 0) {
-          importMeasurements(result.measurements, false, true);
-          smartToast.success(
-            `${result.measurements.length} gespeicherte Messung${result.measurements.length !== 1 ? 'en' : ''} geladen`
-          );
-        }
+        if (!result.exists) return;
+
+        // Show confirmation toast
+        toast('Gespeicherte Messungen gefunden', {
+          description: 'Möchten Sie die gespeicherten Messungen laden?',
+          duration: 15000,
+          action: {
+            label: 'Laden',
+            onClick: () => {
+              loadMeasurements(token, projectId, taskIdParam, username || undefined)
+                .then((loadResult) => {
+                  if (loadResult.found && loadResult.measurements && loadResult.measurements.length > 0) {
+                    importMeasurements(loadResult.measurements, false, true);
+                    smartToast.success(
+                      `${loadResult.measurements.length} Messung${loadResult.measurements.length !== 1 ? 'en' : ''} geladen`
+                    );
+                  }
+                })
+                .catch((err) => {
+                  console.warn('Load measurements failed:', err);
+                  smartToast.error('Laden der Messungen fehlgeschlagen');
+                });
+            },
+          },
+        });
       })
       .catch((err) => {
-        // Silently fail - user can manually load
-        console.warn('Auto-load measurements failed:', err);
+        console.warn('Check saved measurements failed:', err);
       });
-  }, [isAuthenticated, token, projectIdParam, taskIdParam, importMeasurements, existingMeasurements.length]);
+  }, [isAuthenticated, token, username, projectIdParam, taskIdParam, importMeasurements, existingMeasurements.length]);
 }
