@@ -307,6 +307,45 @@ const projectTo3D = (
 };
 
 // ============================================================================
+// FLAT ROOF CALCULATIONS
+// ============================================================================
+
+/**
+ * Calculate minimum row spacing for flat roof south-facing layout.
+ * Based on shadow avoidance at winter solstice (Dec 21) noon.
+ * L = h / tan(sunElevation), where h = moduleHeight * sin(tiltAngle)
+ */
+export const calculateFlatRoofRowSpacing = (
+  moduleHeight: number,
+  tiltAngle: number,
+  sunElevation: number = WINTER_SUN_ELEVATION_DE
+): number => {
+  const tiltRad = (tiltAngle * Math.PI) / 180;
+  const sunRad = (sunElevation * Math.PI) / 180;
+  const h = moduleHeight * Math.sin(tiltRad);
+  const shadowLength = h / Math.tan(sunRad);
+  const moduleFootprint = moduleHeight * Math.cos(tiltRad);
+  return moduleFootprint + shadowLength;
+};
+
+/**
+ * Detect if roof is flat based on inclination.
+ */
+export const isRoofFlat = (inclination: number): boolean => {
+  return inclination < FLAT_ROOF_INCLINATION_THRESHOLD;
+};
+
+/**
+ * Get default flat roof configuration values.
+ */
+export const getDefaultFlatRoofConfig = (layout: 'south' | 'east-west' = 'south') => ({
+  roofType: 'flat' as const,
+  flatRoofLayout: layout,
+  tiltAngle: layout === 'south' ? DEFAULT_TILT_ANGLE_SOUTH : DEFAULT_TILT_ANGLE_EW,
+  flatRoofEdgeDistance: DEFAULT_FLAT_ROOF_EDGE_DISTANCE,
+});
+
+// ============================================================================
 // MAIN FUNCTIONS
 // ============================================================================
 
