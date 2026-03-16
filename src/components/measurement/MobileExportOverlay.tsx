@@ -6,7 +6,7 @@ import { generateDetailedCSV, exportMeasurementsToAbsJson } from '@/utils/export
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
-import SaveMeasurementsButton from './SaveMeasurementsButton';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 
