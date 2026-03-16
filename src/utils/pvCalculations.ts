@@ -878,11 +878,7 @@ export const generatePVModuleGrid = (
     for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
       // Gap before this pair (except first)
       if (pairIdx > 0) {
-        currentW += ewPairGap;
-        // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
-        if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
-          currentW += EW_ROW_MAINTENANCE_GAP;
-        }
+        currentW += ewPairGap; // walkable maintenance gap at valley between pairs
       }
       
       // East-module center (first module in pair, lower W side)
