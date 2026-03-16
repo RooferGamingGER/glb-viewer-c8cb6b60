@@ -762,31 +762,44 @@ export const useMeasurementCore = () => {
         smartToast.error(validation.message || 'Ungültiges Polygon');
         return undefined;
       }
-      
+
       const solarArea = calculateArea(points);
       const segments = generateSegments(points);
-      
+      const pvModuleInfo = calculatePVModulePlacement(
+        points,
+        undefined,
+        undefined,
+        DEFAULT_EDGE_DISTANCE,
+        DEFAULT_MODULE_SPACING,
+        undefined,
+        extractRoofEdgeMeasurements(measurements),
+        true,
+        'auto',
+        extractExclusionZones(measurements)
+      );
+
       measurement = {
         id: nanoid(),
-        type: 'solar',
+        type: 'area',
         points: [...points],
         value: solarArea,
         label: formatMeasurement(solarArea, 'area'),
         visible: true,
         labelVisible: allLabelsVisible,
         unit: 'm²',
-        description: '',
+        description: 'Solarplanung',
         segments,
         dimensions: {
           area: solarArea
-        }
+        },
+        pvModuleInfo
       };
-      
+
       setMeasurements(prev => [...prev, measurement]);
       setCurrentPoints([]);
       currentPointsRef.current = [];
       setActiveMode('none');
-      smartToast.success(`Solaranlage-Messung abgeschlossen`);
+      smartToast.success(`Solarplanung abgeschlossen — ${pvModuleInfo.moduleCount} Module`);
     }
     else if (activeMode === 'pvmodule' && points.length >= 4) {
       const polygonArea = calculateArea(points);

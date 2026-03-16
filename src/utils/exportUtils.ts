@@ -350,8 +350,8 @@ export const exportMeasurementsToAbsJson = (
   const heightMeasurement = measurements.find(m => m.type === 'height');
   const baseHeight = heightMeasurement?.value ?? 0; // z.B. 4.09 m wie im Airteam-Modell
 
-  // Erste Flächenmessung als Dachpolygon verwenden (falls vorhanden)
-  const areaMeasurement = measurements.find(m => m.type === 'area' && m.points && m.points.length >= 3) || null;
+  // Erste Flächenmessung als Dachpolygon verwenden (prefer area, fallback legacy solar)
+  const areaMeasurement = getPrimaryRoofAreaMeasurements(measurements).find(m => m.points && m.points.length >= 3) || null;
 
   const vertices: { x: number; y: number; z: number }[] = [];
   const faces: { vertexKeys: number[] }[] = [];
