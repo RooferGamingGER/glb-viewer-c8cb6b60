@@ -81,7 +81,7 @@ const SaveMeasurementsButton: React.FC<SaveMeasurementsButtonProps> = ({
       )}
       {showLabel && (
         <span className="ml-1.5">
-          {saving ? 'Speichern...' : 'Speichern'}
+          {saving ? 'Speichern...' : 'Im DrohnenGLB speichern'}
         </span>
       )}
     </Button>
