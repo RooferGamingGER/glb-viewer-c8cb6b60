@@ -106,8 +106,6 @@ const MobileExportOverlay: React.FC<MobileExportOverlayProps> = ({
             </Button>
 
             <ExportPdfButton measurements={measurements} />
-
-            <SaveMeasurementsButton measurements={measurements} variant="outline" size="sm" className="w-full" />
           </div>
         )}
       </ScrollArea>

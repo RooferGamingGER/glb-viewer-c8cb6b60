@@ -145,6 +145,13 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
           {measurements.length > 0 && (
             <ExportDialog measurements={measurements} />
           )}
+          <SaveMeasurementsButton
+            measurements={measurements}
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+            showLabel={true}
+          />
         </div>
       </div>
 
