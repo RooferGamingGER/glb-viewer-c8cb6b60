@@ -41,8 +41,8 @@ const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
 const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
 const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
 const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
-const DEFAULT_EW_PAIR_GAP = 0.50; // 50cm default gap between adjacent E-W pairs (Reihenabstand)
-const EW_MAINTENANCE_GAP = 0.40; // 40cm maintenance gang between pair groups
+const DEFAULT_EW_PAIR_GAP = 0.03; // 3cm structural gap between adjacent E-W pairs within a group
+const EW_ROW_MAINTENANCE_GAP = 0.80; // 80cm walkable maintenance gap between pair groups
 const EW_MAINTENANCE_INTERVAL = 3; // maintenance gang after every 3rd pair
 const DEFAULT_MAINTENANCE_PATH_WIDTH = 0.80; // 80cm central maintenance corridor
 
