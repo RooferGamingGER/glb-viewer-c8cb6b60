@@ -216,12 +216,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  // Auto-open sidebar when solar or roof element tool is activated
+  // Auto-open sidebar when measurements exist
   React.useEffect(() => {
-    if (isRoofElementMode || activeMode === 'solar') {
-      setSidebarOpen(true);
+    if (measurements.length > 0 && !sidebarOpen) {
+      // Don't auto-open, user controls this
     }
-  }, [activeMode, isRoofElementMode]);
+  }, [measurements.length]);
+
+  // Convert area to solar handler for overlay
+  const handleConvertAreaToSolar = React.useCallback((areaId: string) => {
+    const { calculatePVModulePlacement, extractExclusionZones } = require('@/utils/pvCalculations');
+    const areaMeasurement = measurements.find(m => m.id === areaId);
+    if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
+    const exclusionZones = extractExclusionZones(measurements);
+    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
+    updateMeasurement(areaId, { type: 'solar' as any, pvModuleInfo });
+    smartToast.success(`Fläche in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+  }, [measurements, updateMeasurement]);
 
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
   const useBottomSheet = isPortrait && (isPhone || isTablet);
