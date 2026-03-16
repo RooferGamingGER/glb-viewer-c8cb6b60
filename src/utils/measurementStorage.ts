@@ -16,7 +16,7 @@ interface SavedMeasurementEntry {
 /** Serialize measurements for storage (strip non-serializable data like screenshots) */
 function serializeMeasurements(measurements: Measurement[]) {
   return {
-    version: 1,
+    version: 2,
     savedAt: new Date().toISOString(),
     measurements: measurements.map((m) => ({
       id: m.id,
@@ -38,18 +38,8 @@ function serializeMeasurements(measurements: Measurement[]) {
       relatedMeasurements: m.relatedMeasurements,
       penetrationType: m.penetrationType,
       notes: m.notes,
-      pvModuleInfo: m.pvModuleInfo
-        ? {
-            ...m.pvModuleInfo,
-            modulePositions: m.pvModuleInfo.modulePositions,
-            moduleCorners: m.pvModuleInfo.moduleCorners,
-            removedModuleIndices: m.pvModuleInfo.removedModuleIndices,
-            exclusionZones: m.pvModuleInfo.exclusionZones,
-            gridOffsetU: m.pvModuleInfo.gridOffsetU,
-            gridOffsetW: m.pvModuleInfo.gridOffsetW,
-            gridRotation: m.pvModuleInfo.gridRotation,
-          }
-        : undefined,
+      // Spread all pvModuleInfo fields to preserve complete PV planning state
+      pvModuleInfo: m.pvModuleInfo ? { ...m.pvModuleInfo } : undefined,
       pvModuleSpec: m.pvModuleSpec,
       powerOutput: m.powerOutput,
     })),
