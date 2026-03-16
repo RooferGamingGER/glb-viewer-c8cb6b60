@@ -147,5 +147,6 @@ export interface PVModuleInfo {
   tiltAngle?: number;
   rowSpacing?: number;
   flatRoofEdgeDistance?: number;
+  ewPairGap?: number;
 }
 }
