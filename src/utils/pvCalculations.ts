@@ -668,7 +668,11 @@ export const generatePVModuleGrid = (
 
   // Fit plane using all roof points (stable for complex polygons)
   const { normal, centroid, plane } = fitPlane(roofPoints);
-  const { v1, v2 } = findGridAxes(roofPoints, normal);
+  // For flat roofs, use compass-based grid axes snapped to nearest roof edge
+  const isFlatRoofCheck = pvInfo.roofType === 'flat';
+  const { v1, v2 } = isFlatRoofCheck
+    ? findFlatRoofGridAxes(roofPoints, normal, pvInfo.northAngle || 0, pvInfo.flatRoofLayout || 'south')
+    : findGridAxes(roofPoints, normal);
 
   // Project roof points to 2D
   const pts2D = roofPoints.map(p => {
