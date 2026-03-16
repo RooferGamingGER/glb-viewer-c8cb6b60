@@ -728,24 +728,59 @@ export const generatePVModuleGrid = (
       return { x: p3d.x, y: p3d.y, z: p3d.z };
     });
 
-    // For flat roof modules, apply tilt by raising appropriate edge
+    // For flat roof modules, apply tilt based on actual compass directions
+    // Not grid axes, since v1/v2 may not align with N/S/E/W
     if (tiltInfo && tiltInfo.angle > 0) {
       const tiltRad = (tiltInfo.angle * Math.PI) / 180;
       const liftHeight = mh * Math.sin(tiltRad);
-      // corners: 0=BL(low-u,low-w), 1=BR(high-u,low-w), 2=TR(high-u,high-w), 3=TL(low-u,high-w)
-      // v2/W axis runs from low-w to high-w
+
+      // Compass vectors in Three.js world space: +Z = south, +X = east
+      const southVec = { x: 0, z: 1 };
+      const eastVec = { x: 1, z: 0 };
+
+      // Module edge vectors (world XZ, ignoring Y):
+      // Edge 0→1 runs along v1 (u-axis), Edge 0→3 runs along v2 (w-axis)
+      const edge01 = { x: corners3D[1].x - corners3D[0].x, z: corners3D[1].z - corners3D[0].z };
+      const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
+
       if (tiltInfo.direction === 'south') {
-        // South: back edge (high-w = corners 2,3) raised
-        corners3D[2].y += liftHeight;
-        corners3D[3].y += liftHeight;
+        // South-facing: raise the edge that is most NORTH (opposite of south)
+        // Check if v2 (edge 0→3) points south or north
+        const v2DotSouth = edge03.x * southVec.x + edge03.z * southVec.z;
+        if (v2DotSouth > 0) {
+          // v2 points south → corners 0,1 are the north edge → raise 0,1
+          corners3D[0].y += liftHeight;
+          corners3D[1].y += liftHeight;
+        } else {
+          // v2 points north → corners 2,3 are the north edge → raise 2,3
+          corners3D[2].y += liftHeight;
+          corners3D[3].y += liftHeight;
+        }
       } else if (tiltInfo.direction === 'east') {
-        // East-facing module in A-form: ridge at high-W side → raise corners 2,3
-        corners3D[2].y += liftHeight;
-        corners3D[3].y += liftHeight;
+        // East-facing module: surface faces east → WEST edge is raised (ridge)
+        // Check which edge pair is more "west"
+        const v2DotEast = edge03.x * eastVec.x + edge03.z * eastVec.z;
+        if (v2DotEast > 0) {
+          // v2 points east → corners 0,1 (low-w) are west → raise 0,1
+          corners3D[0].y += liftHeight;
+          corners3D[1].y += liftHeight;
+        } else {
+          // v2 points west → corners 2,3 (high-w) are west → raise 2,3
+          corners3D[2].y += liftHeight;
+          corners3D[3].y += liftHeight;
+        }
       } else if (tiltInfo.direction === 'west') {
-        // West-facing module in A-form: ridge at low-W side → raise corners 0,1
-        corners3D[0].y += liftHeight;
-        corners3D[1].y += liftHeight;
+        // West-facing module: surface faces west → EAST edge is raised (ridge)
+        const v2DotEast = edge03.x * eastVec.x + edge03.z * eastVec.z;
+        if (v2DotEast > 0) {
+          // v2 points east → corners 2,3 (high-w) are east → raise 2,3
+          corners3D[2].y += liftHeight;
+          corners3D[3].y += liftHeight;
+        } else {
+          // v2 points west → corners 0,1 (low-w) are east → raise 0,1
+          corners3D[0].y += liftHeight;
+          corners3D[1].y += liftHeight;
+        }
       }
     }
 
