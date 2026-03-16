@@ -922,7 +922,7 @@ export const generatePVModuleGrid = (
 
   console.log(`PV Grid: ${modulePoints.length} modules placed (${cols}×${rows} grid, ${pvInfo.orientation})`);
 
-  return { modulePoints, moduleOriginalIndices, gridLines };
+  return { modulePoints, moduleOriginalIndices, moduleDirections, gridLines };
 };
 
 // ============================================================================
