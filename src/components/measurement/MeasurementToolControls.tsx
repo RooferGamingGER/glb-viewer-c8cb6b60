@@ -146,14 +146,10 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
     const areaMeasurement = measurements.find(m => m.id === areaId);
     if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
 
-    // Create a solar measurement from the area's points
     const exclusionZones = extractExclusionZones(measurements);
     const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
-    updateMeasurement(areaId, {
-      type: 'solar' as any,
-      pvModuleInfo,
-    });
-    toast.success(`Fläche "${areaMeasurement.label || 'Fläche'}" in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+    updateMeasurement(areaId, { pvModuleInfo });
+    toast.success(`PV-Module auf "${areaMeasurement.label || 'Fläche'}" platziert — ${pvModuleInfo.moduleCount} Module`);
   };
 
   return (
