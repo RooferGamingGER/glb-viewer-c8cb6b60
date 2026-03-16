@@ -732,7 +732,7 @@ export const generatePVModuleGrid = (
     while (true) {
       const nextPairW = ewPairWidth;
       const gapAfter = (pairCount > 0) ? ewPairGap : 0;
-      const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_MAINTENANCE_GAP : 0;
+      const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_ROW_MAINTENANCE_GAP : 0;
       const needed = gapAfter + maintenanceGap + nextPairW;
       if (usedW + needed > availW) break;
       usedW += needed;
