@@ -45,6 +45,9 @@ const EW_PAIR_GAP = 0.05; // 5cm back-to-back gap for E-W pairs
 const EW_MAINTENANCE_GAP = 0.30; // 30cm maintenance gap between E-W pairs
 
 // Exclusion zone safety radius for point elements (vents, hooks) in meters
+// Roof element types that create exclusion zones
+const EXCLUSION_ELEMENT_TYPES = ['chimney', 'skylight', 'deductionarea', 'vent', 'hook', 'other'];
+
 const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
 
 /**
