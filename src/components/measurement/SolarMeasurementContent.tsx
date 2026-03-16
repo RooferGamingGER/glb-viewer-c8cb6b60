@@ -464,7 +464,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
             {/* Compass / North Direction Control */}
             <div className="mt-2 pt-2 border-t space-y-2">
               <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Compass className="h-3 w-3" /> Nordrichtung im Modell
+                <Compass className="h-3 w-3" /> Nordrichtung im Modell <span className="text-[8px] italic">(gilt für alle Solarflächen)</span>
               </Label>
               <div className="flex items-center gap-2">
                 {/* Visual compass rose */}
