@@ -467,28 +467,37 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 <Compass className="h-3 w-3" /> Nordrichtung im Modell <span className="text-[8px] italic">(gilt für alle Solarflächen)</span>
               </Label>
               <div className="flex items-center gap-2">
-                {/* Visual compass rose */}
-                <div className="relative w-14 h-14 flex-shrink-0">
+                {/* Visual compass rose showing detected roof azimuth */}
+                <div className="relative w-16 h-16 flex-shrink-0">
                   <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/30" />
-                  {/* Cardinal labels */}
+                  {/* Cardinal labels - fixed positions */}
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-0.5 text-[8px] font-bold text-destructive">N</span>
                   <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-0.5 text-[8px] text-muted-foreground">S</span>
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-0.5 text-[8px] text-muted-foreground">W</span>
-                  <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-0.5 text-[8px] text-muted-foreground">O</span>
-                  {/* Rotating needle */}
-                  <div
-                    className="absolute inset-0 flex items-center justify-center transition-transform duration-200"
-                    style={{ transform: `rotate(${measurement.pvModuleInfo.northAngle || 0}deg)` }}
-                  >
-                    {/* North half (red) */}
-                    <div className="absolute w-0.5 h-[38%] bg-destructive rounded-full bottom-1/2 left-1/2 -translate-x-1/2 origin-bottom" />
-                    {/* South half (gray) */}
-                    <div className="absolute w-0.5 h-[38%] bg-muted-foreground/40 rounded-full top-1/2 left-1/2 -translate-x-1/2 origin-top" />
-                    {/* Center dot */}
-                    <div className="absolute w-1.5 h-1.5 rounded-full bg-foreground" />
-                  </div>
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 text-[8px] text-muted-foreground">W</span>
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 text-[8px] text-muted-foreground">O</span>
+                  {/* Roof azimuth arrow - shows which direction the roof faces */}
+                  {measurement.pvModuleInfo.roofAzimuth !== undefined && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center transition-transform duration-200"
+                      style={{ transform: `rotate(${measurement.pvModuleInfo.roofAzimuth}deg)` }}
+                    >
+                      {/* Arrow pointing in roof facing direction */}
+                      <div className="absolute w-1 h-[40%] bg-primary/80 rounded-full top-[10%] left-1/2 -translate-x-1/2" />
+                      {/* Arrow head */}
+                      <div className="absolute top-[6%] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-b-[6px] border-l-transparent border-r-transparent border-b-primary/80" />
+                    </div>
+                  )}
+                  {/* Center dot */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground" />
                 </div>
                 <div className="flex-1 space-y-1">
+                  {/* Show detected direction */}
+                  {measurement.pvModuleInfo.roofAzimuth !== undefined && (
+                    <div className="text-[10px] font-medium flex items-center gap-1">
+                      <Sun className="h-3 w-3 text-primary" />
+                      Dach zeigt: {measurement.pvModuleInfo.roofDirection || '?'} ({Math.round(measurement.pvModuleInfo.roofAzimuth)}°)
+                    </div>
+                  )}
                   <Slider
                     min={0}
                     max={359}
@@ -511,8 +520,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                     }}
                   />
                   <div className="flex justify-between text-[9px] text-muted-foreground">
-                    <span>{measurement.pvModuleInfo.northAngle || 0}°</span>
-                    <span>0° = +Z ist Nord (UTM)</span>
+                    <span>Nord-Korrektur: {measurement.pvModuleInfo.northAngle || 0}°</span>
+                    <span>0° = +Z ist Nord</span>
                   </div>
                 </div>
               </div>
