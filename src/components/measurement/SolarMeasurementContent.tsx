@@ -40,9 +40,11 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   useEffect(() => {
     if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
       if (measurement.pvModuleInfo.roofAzimuth === undefined) {
+        const northAngle = measurement.pvModuleInfo.northAngle || 0;
         const updatedPVInfo = updatePVModuleInfoWithOrientation(
           measurement.pvModuleInfo,
-          measurement.points
+          measurement.points,
+          northAngle
         );
         updateMeasurement(measurement.id, { pvModuleInfo: updatedPVInfo });
         toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection} (${Math.round(updatedPVInfo.roofAzimuth || 0)}°)`);
@@ -458,6 +460,40 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 )}
               </div>
             )}
+            
+            {/* Compass / North Direction Control */}
+            <div className="mt-2 pt-2 border-t space-y-2">
+              <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Compass className="h-3 w-3" /> Nordrichtung im Modell
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-6">N</span>
+                <Slider
+                  min={0}
+                  max={359}
+                  step={1}
+                  value={[measurement.pvModuleInfo.northAngle || 0]}
+                  onValueChange={([val]) => {
+                    if (!measurement.pvModuleInfo || !measurement.points) return;
+                    const updatedPVInfo = updatePVModuleInfoWithOrientation(
+                      { ...measurement.pvModuleInfo, northAngle: val },
+                      measurement.points,
+                      val
+                    );
+                    // Re-generate grid for flat roof south tilt direction
+                    const grid = generatePVModuleGrid(updatedPVInfo, 0);
+                    updateMeasurement(measurement.id, {
+                      pvModuleInfo: { ...updatedPVInfo, moduleCount: grid.modulePoints.length }
+                    });
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-[10px] w-10 text-right">{measurement.pvModuleInfo.northAngle || 0}°</span>
+              </div>
+              <p className="text-[9px] text-muted-foreground">
+                0° = +Z ist Nord (UTM-Standard). Bei WebODM-Modellen normalerweise korrekt.
+              </p>
+            </div>
             
             {/* Grid Position & Rotation Controls */}
             <div className="mt-2 pt-2 border-t space-y-2">

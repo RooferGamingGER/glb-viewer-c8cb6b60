@@ -552,7 +552,7 @@ export const calculatePVModulePlacement = (
   };
 
   // Auto-detect flat roof based on inclination
-  const { inclination } = calculateRoofOrientation(points);
+  const { inclination } = calculateRoofOrientation(points, 0);
   if (isRoofFlat(inclination)) {
     const flatConfig = getDefaultFlatRoofConfig('south');
     result.roofType = flatConfig.roofType;
@@ -738,10 +738,12 @@ export const generatePVModuleGrid = (
       const liftHeight = mh * Math.sin(tiltRad);
 
       if (tiltInfo.direction === 'south') {
-        // South-facing: raise the edge that is most NORTH (compass-based)
-        // Corners 0,1 = low-W edge, Corners 2,3 = high-W edge
-        // Check if v2 (w-axis) points south in world space (+Z = south)
-        const southVec = { x: 0, z: 1 };
+        // South-facing: raise the edge that is most NORTH
+        // Use northAngle to compute south vector in model space
+        const na = ((pvInfo.northAngle || 0) * Math.PI) / 180;
+        // South = opposite of North. North = +Z rotated by northAngle.
+        // South vector in XZ: rotate (0, 1) by northAngle+180° = (sin(na+π), cos(na+π)) = (-sin(na), -cos(na))
+        const southVec = { x: -Math.sin(na), z: -Math.cos(na) };
         const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
         const v2DotSouth = edge03.x * southVec.x + edge03.z * southVec.z;
         if (v2DotSouth > 0) {
@@ -1054,7 +1056,7 @@ export const calculateAnnualYield = (
   return totalPower * yieldFactor * locationFactor;
 };
 
-export const calculateRoofOrientation = (points: Point[]): {
+export const calculateRoofOrientation = (points: Point[], northAngle: number = 0): {
   azimuth: number;
   direction: string;
   inclination: number;
@@ -1070,8 +1072,6 @@ export const calculateRoofOrientation = (points: Point[]): {
     const inclination = Math.acos(Math.min(1, Math.abs(normal.y))) * (180 / Math.PI);
 
     // Downslope direction = horizontal projection of the normal
-    // In Three.js: +X = East, +Z = South (camera convention)
-    // Azimuth: 0° = North, 90° = East, 180° = South, 270° = West
     const hx = normal.x;
     const hz = normal.z;
     
@@ -1080,9 +1080,20 @@ export const calculateRoofOrientation = (points: Point[]): {
       return { azimuth: 180, direction: 'S', inclination };
     }
 
-    // atan2(x, -z) gives angle from South=0. We want North=0.
-    // Downslope points in the direction the normal's horizontal component points
-    let azimuth = Math.atan2(hx, -hz) * (180 / Math.PI);
+    // northAngle defines where North is in model coordinates:
+    // 0° = +Z is North (UTM standard after -90° X rotation)
+    // The raw angle from atan2 assumes +Z = some direction.
+    // With northAngle=0: +Z=North, so atan2(hx, hz) gives angle from North (CW).
+    // General: rotate the horizontal normal by -northAngle before computing azimuth.
+    const northRad = (northAngle * Math.PI) / 180;
+    const cosN = Math.cos(northRad);
+    const sinN = Math.sin(northRad);
+    // Rotate horizontal normal by -northAngle around Y axis
+    const rhx = cosN * hx + sinN * hz;
+    const rhz = -sinN * hx + cosN * hz;
+
+    // atan2(rhx, rhz) gives angle from +Z (=North after rotation), CW positive
+    let azimuth = Math.atan2(rhx, rhz) * (180 / Math.PI);
     if (azimuth < 0) azimuth += 360;
 
     // German cardinal directions
@@ -1175,9 +1186,10 @@ export const calculateYieldFactorFromOrientation = (
 
 export const updatePVModuleInfoWithOrientation = (
   pvInfo: PVModuleInfo,
-  points: Point[]
+  points: Point[],
+  northAngle: number = 0
 ): PVModuleInfo => {
-  const { azimuth, direction, inclination } = calculateRoofOrientation(points);
+  const { azimuth, direction, inclination } = calculateRoofOrientation(points, northAngle);
   const yieldFactor = calculateYieldFactorFromOrientation(azimuth, inclination);
 
   return {
@@ -1186,6 +1198,7 @@ export const updatePVModuleInfoWithOrientation = (
     roofDirection: direction,
     roofInclination: inclination,
     yieldFactor,
+    northAngle,
   };
 };
 

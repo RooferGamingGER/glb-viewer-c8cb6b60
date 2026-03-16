@@ -105,6 +105,7 @@ export interface PVModuleInfo {
   rowSpacing?: number;                      // Berechneter Reihenabstand in Metern (nur Anzeige)
   flatRoofEdgeDistance?: number;            // Randabstand bei Flachdach (Standard: 0.50m)
   ewPairGap?: number;                       // Abstand zwischen O/W-Feldern (0.50 oder 0.60m)
+  northAngle?: number;                      // Nordrichtung im Modell in Grad (0 = +Z ist Nord, Standard für UTM-Modelle)
 }
 
 export interface PVModuleSpec {
