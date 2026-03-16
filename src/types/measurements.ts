@@ -99,6 +99,14 @@ export interface PVModuleInfo {
   gridOffsetU?: number;        // Grid offset along primary axis (v1) in meters
   gridOffsetW?: number;        // Grid offset along secondary axis (v2) in meters
   gridRotation?: number;       // Grid rotation in degrees around grid center
+  roofType?: 'pitched' | 'flat';           // Steildach oder Flachdach (auto-erkannt bei < 5°)
+  flatRoofLayout?: 'south' | 'east-west';  // Belegungsvariante bei Flachdach
+  tiltAngle?: number;                       // Aufständerungswinkel in Grad
+  rowSpacing?: number;                      // Berechneter Reihenabstand in Metern (nur Anzeige)
+  flatRoofEdgeDistance?: number;            // Randabstand bei Flachdach (Standard: 0.50m)
+  ewPairGap?: number;                       // Abstand zwischen O/W-Feldern (0.50 oder 0.60m)
+  northAngle?: number;                      // Nordrichtung im Modell in Grad (0 = +Z ist Nord, Standard für UTM-Modelle)
+  maintenancePathWidth?: number;            // Breite des zentralen Wartungsgangs in Metern (Standard: 0.80m)
 }
 
 export interface PVModuleSpec {

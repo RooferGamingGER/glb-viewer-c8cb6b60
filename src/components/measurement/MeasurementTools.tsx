@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { useLayerVisibility, LayerVisibility } from '@/hooks/useLayerVisibility';
 
+
 // Import visualization utilities
 import { 
   renderCurrentPoints, 
@@ -101,8 +102,11 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     allLabelsVisible,
     moveMeasurementUp,
     moveMeasurementDown,
-    setUpdateVisualState
+    setUpdateVisualState,
+    importMeasurements
   } = useMeasurementContext();
+
+  // Auto-load is handled in the root MeasurementTools component
 
   // Three.js object references from context
   const {

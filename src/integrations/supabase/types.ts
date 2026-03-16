@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      saved_measurements: {
+        Row: {
+          created_at: string
+          id: string
+          measurements: Json
+          project_id: number
+          project_name: string | null
+          task_id: string
+          task_name: string | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          measurements: Json
+          project_id: number
+          project_name?: string | null
+          task_id: string
+          task_name?: string | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          measurements?: Json
+          project_id?: number
+          project_name?: string | null
+          task_id?: string
+          task_name?: string | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

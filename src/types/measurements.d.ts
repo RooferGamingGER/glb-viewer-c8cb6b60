@@ -137,4 +137,18 @@ export interface PVModuleInfo {
     midGapOpacity?: number;
     midGapWidth?: number;
   };
+  removedModuleIndices?: number[];
+  exclusionZones?: Point[][];
+  gridOffsetU?: number;
+  gridOffsetW?: number;
+  gridRotation?: number;
+  roofType?: 'pitched' | 'flat';
+  flatRoofLayout?: 'south' | 'east-west';
+  tiltAngle?: number;
+  rowSpacing?: number;
+  flatRoofEdgeDistance?: number;
+  ewPairGap?: number;
+  northAngle?: number;  // North direction in model coordinates (degrees, 0 = +Z is North)
+  maintenancePathWidth?: number;  // Width of central maintenance path in meters (default: 0.80m)
+}
 }

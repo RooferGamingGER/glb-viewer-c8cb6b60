@@ -54,6 +54,18 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "16.03.2026",
+    text: "PV-Planung verbessert: Modulbelegung wird jetzt als Overlay auf der Dachfläche gespeichert – Fläche bleibt in Messliste und allen Exporten erhalten",
+  },
+  {
+    date: "16.03.2026",
+    text: "Schnelleres Laden vom Server: Messungen werden jetzt in einem Schritt geladen statt zwei – spürbar schnellerer Projektstart",
+  },
+  {
+    date: "16.03.2026",
+    text: "PV-Daten vollständig gespeichert: Alle PV-Einstellungen wie Neigung, Wartungswege und Reihenabstand werden beim Speichern komplett übernommen",
+  },
+  {
     date: "15.03.2026",
     text: "Kunden von Drohnenvermessung by RooferGaming® können nun Projekte & Tasks verwalten, Drohnenbilder einsehen und neue Verarbeitungsaufträge starten – alles ohne die App zu verlassen",
     link: { url: "https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/", label: "Jetzt Kunde werden" },
@@ -129,7 +141,7 @@ const ChangelogSection = () => (
       <Newspaper className="w-4 h-4 text-primary" />
       <h3 className="text-sm font-semibold">Neu</h3>
     </div>
-    <ul className="space-y-2">
+    <ul className="space-y-2 max-h-32 overflow-y-auto pr-1">
       {CHANGELOG.map((entry, i) => (
         <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground/70 whitespace-nowrap shrink-0">{entry.date}:</span>

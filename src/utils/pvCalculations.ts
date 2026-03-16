@@ -35,11 +35,20 @@ const RAIL_STANDARD_LENGTH = 3.15;    // Standard rail length in meters
 // Yield constants
 const ANNUAL_YIELD_FACTOR_DEFAULT = 950; // kWh/kWp (Germany average)
 
-// Exclusion zone safety radius for point elements (vents, hooks) in meters
-const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
+// Flat roof constants
+const FLAT_ROOF_INCLINATION_THRESHOLD = 5; // degrees - below this = flat roof
+const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
+const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
+const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
+const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
+const DEFAULT_EW_PAIR_GAP = 0.90; // 90cm walkable maintenance gap between A-frame pairs (valley/lowest point)
+const DEFAULT_MAINTENANCE_PATH_WIDTH = 0.80; // 80cm central maintenance corridor
 
+// Exclusion zone safety radius for point elements (vents, hooks) in meters
 // Roof element types that create exclusion zones
 const EXCLUSION_ELEMENT_TYPES = ['chimney', 'skylight', 'deductionarea', 'vent', 'hook', 'other'];
+
+const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
 
 /**
  * Extract exclusion zones from measurements (roof elements that block PV modules).
@@ -196,6 +205,80 @@ const findGridAxes = (points: Point[], planeNormal: THREE.Vector3): { v1: THREE.
 };
 
 /**
+ * Find optimal grid axes for flat roofs based on compass direction + snap to nearest roof edge.
+ * 
+ * For south layout: v1 = east-west axis (rows run E-W, modules tilt south)
+ * For east-west layout: v1 = north-south axis (A-frame pairs face E and W)
+ * 
+ * The ideal compass axis is then "snapped" to the nearest polygon edge direction
+ * so the grid aligns cleanly with the roof boundary.
+ */
+const findFlatRoofGridAxes = (
+  points: Point[],
+  planeNormal: THREE.Vector3,
+  northAngle: number = 0,
+  layout: 'south' | 'east-west' = 'south'
+): { v1: THREE.Vector3; v2: THREE.Vector3 } => {
+  const naRad = (northAngle * Math.PI) / 180;
+
+  // Ideal v1 direction based on layout:
+  // South layout: modules face south → rows run east-west → v1 = East vector
+  //   East in model coords when northAngle=0 and +Z=North: East = (+X, 0, 0) → general: (cos(na), 0, -sin(na))
+  // E-W layout: A-frame pairs face E+W → columns run north-south → v1 = North vector
+  //   North vector: (-sin(na), 0, -cos(na))... but we want rows along N-S, so v1 = South/North direction
+  let idealV1: THREE.Vector3;
+  if (layout === 'east-west') {
+    // v1 along North-South axis (modules columns run N-S)
+    idealV1 = new THREE.Vector3(-Math.sin(naRad), 0, -Math.cos(naRad));
+  } else {
+    // v1 along East-West axis (module rows run E-W)
+    idealV1 = new THREE.Vector3(Math.cos(naRad), 0, -Math.sin(naRad));
+  }
+
+  // Project ideal v1 into the roof plane
+  idealV1.sub(planeNormal.clone().multiplyScalar(idealV1.dot(planeNormal))).normalize();
+
+  // Collect all polygon edge directions (projected into the plane)
+  const edges: THREE.Vector3[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const edgeV = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    // Project into plane
+    edgeV.sub(planeNormal.clone().multiplyScalar(edgeV.dot(planeNormal)));
+    if (edgeV.length() > 0.01) {
+      edges.push(edgeV.normalize());
+    }
+  }
+
+  if (edges.length === 0) {
+    // Fallback to ideal direction
+    const v2 = new THREE.Vector3().crossVectors(planeNormal, idealV1).normalize();
+    return { v1: idealV1, v2 };
+  }
+
+  // Find the edge whose direction is closest to idealV1 (consider ±180° equivalence)
+  let bestEdge = edges[0];
+  let bestAngle = Infinity;
+
+  for (const edgeDir of edges) {
+    let dot = idealV1.dot(edgeDir);
+    // Edges are bidirectional, so consider both directions
+    const angle = Math.acos(Math.min(1, Math.abs(dot)));
+    if (angle < bestAngle) {
+      bestAngle = angle;
+      // Use the direction that aligns with idealV1 (not opposite)
+      bestEdge = dot >= 0 ? edgeDir.clone() : edgeDir.clone().negate();
+    }
+  }
+
+  const v1 = bestEdge.clone().normalize();
+  const v2 = new THREE.Vector3().crossVectors(planeNormal, v1).normalize();
+
+  return { v1, v2 };
+};
+
+/**
  * Inset a polygon by a given distance (shrink all edges inward).
  * Works in 3D by projecting to 2D, insetting, then projecting back.
  */
@@ -296,6 +379,45 @@ const projectTo3D = (
   
   return p;
 };
+
+// ============================================================================
+// FLAT ROOF CALCULATIONS
+// ============================================================================
+
+/**
+ * Calculate minimum row spacing for flat roof south-facing layout.
+ * Based on shadow avoidance at winter solstice (Dec 21) noon.
+ * L = h / tan(sunElevation), where h = moduleHeight * sin(tiltAngle)
+ */
+export const calculateFlatRoofRowSpacing = (
+  moduleHeight: number,
+  tiltAngle: number,
+  sunElevation: number = WINTER_SUN_ELEVATION_DE
+): number => {
+  const tiltRad = (tiltAngle * Math.PI) / 180;
+  const sunRad = (sunElevation * Math.PI) / 180;
+  const h = moduleHeight * Math.sin(tiltRad);
+  const shadowLength = h / Math.tan(sunRad);
+  const moduleFootprint = moduleHeight * Math.cos(tiltRad);
+  return moduleFootprint + shadowLength;
+};
+
+/**
+ * Detect if roof is flat based on inclination.
+ */
+export const isRoofFlat = (inclination: number): boolean => {
+  return inclination < FLAT_ROOF_INCLINATION_THRESHOLD;
+};
+
+/**
+ * Get default flat roof configuration values.
+ */
+export const getDefaultFlatRoofConfig = (layout: 'south' | 'east-west' = 'south') => ({
+  roofType: 'flat' as const,
+  flatRoofLayout: layout,
+  tiltAngle: layout === 'south' ? DEFAULT_TILT_ANGLE_SOUTH : DEFAULT_TILT_ANGLE_EW,
+  flatRoofEdgeDistance: DEFAULT_FLAT_ROOF_EDGE_DISTANCE,
+});
 
 // ============================================================================
 // MAIN FUNCTIONS
@@ -461,11 +583,12 @@ export const calculatePVModulePlacement = (
   const portrait = tryOrientation(true);
   const landscape = tryOrientation(false);
 
+  // Default to portrait (Hochkant) for pitched roofs — industry standard
   const usePortrait = forcedOrientation === 'portrait'
     ? true
     : forcedOrientation === 'landscape'
       ? false
-      : portrait.count >= landscape.count;
+      : true; // Default: portrait (Hochkant)
 
   const chosen = usePortrait ? portrait : landscape;
   const moduleCount = chosen.count;
@@ -498,7 +621,22 @@ export const calculatePVModulePlacement = (
     pvModuleSpec: PV_MODULE_TEMPLATES[0],
     points: [...points],
     exclusionZones: exclusionZones.length > 0 ? exclusionZones : undefined,
+    roofType: 'pitched',
   };
+
+  // Auto-detect flat roof based on inclination
+  const { inclination } = calculateRoofOrientation(points, 0);
+  if (isRoofFlat(inclination)) {
+    const flatConfig = getDefaultFlatRoofConfig('south');
+    result.roofType = flatConfig.roofType;
+    result.flatRoofLayout = flatConfig.flatRoofLayout;
+    result.tiltAngle = flatConfig.tiltAngle;
+    result.flatRoofEdgeDistance = flatConfig.flatRoofEdgeDistance;
+    result.rowSpacing = calculateFlatRoofRowSpacing(
+      usePortrait ? moduleHeight : moduleWidth,
+      flatConfig.tiltAngle
+    );
+  }
 
   return result;
 };
@@ -514,21 +652,27 @@ export const generatePVModuleGrid = (
 ): {
   modulePoints: Point[][];
   moduleOriginalIndices: number[];
+  moduleDirections: ('east' | 'west' | null)[];
   gridLines: { from: Point; to: Point }[];
 } => {
   const modulePoints: Point[][] = [];
   const moduleOriginalIndices: number[] = [];
+  const moduleDirections: ('east' | 'west' | null)[] = [];
   const gridLines: { from: Point; to: Point }[] = [];
 
   const roofPoints = pvInfo.points;
   if (!roofPoints || roofPoints.length < 3) {
     console.warn("Not enough roof points for PV grid generation");
-    return { modulePoints, moduleOriginalIndices, gridLines };
+    return { modulePoints, moduleOriginalIndices, moduleDirections, gridLines };
   }
 
   // Fit plane using all roof points (stable for complex polygons)
   const { normal, centroid, plane } = fitPlane(roofPoints);
-  const { v1, v2 } = findGridAxes(roofPoints, normal);
+  // For flat roofs, use compass-based grid axes snapped to nearest roof edge
+  const isFlatRoofCheck = pvInfo.roofType === 'flat';
+  const { v1, v2 } = isFlatRoofCheck
+    ? findFlatRoofGridAxes(roofPoints, normal, pvInfo.northAngle || 0, pvInfo.flatRoofLayout || 'south')
+    : findGridAxes(roofPoints, normal);
 
   // Project roof points to 2D
   const pts2D = roofPoints.map(p => {
@@ -547,13 +691,56 @@ export const generatePVModuleGrid = (
   const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   const spacing = pvInfo.moduleSpacing || DEFAULT_MODULE_SPACING;
-  const edge = pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
+  const isFlatRoof = pvInfo.roofType === 'flat';
+  const edge = isFlatRoof 
+    ? (pvInfo.flatRoofEdgeDistance || DEFAULT_FLAT_ROOF_EDGE_DISTANCE) 
+    : (pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
+
+  // For flat roofs, row pitch depends on layout
+  // For E-W: we calculate pair placement manually in the loop, so rowPitch is not used the same way
+  let rowPitch: number;
+  let ewPairWidth: number = 0; // ground footprint of one A-form pair
+  if (isFlatRoof) {
+    const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH;
+    const tiltRad = (tiltAngle * Math.PI) / 180;
+    const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
+    if (pvInfo.flatRoofLayout === 'east-west') {
+      // A-form pair: 2 modules leaning together at the top, no gap at ridge
+      ewPairWidth = 2 * moduleFootprint;
+      // rowPitch not used directly — we iterate pairs manually
+      rowPitch = mh + spacing; // fallback, not actually used for E-W
+    } else {
+      // South: full row spacing to avoid shadowing
+      rowPitch = calculateFlatRoofRowSpacing(mh, tiltAngle);
+    }
+  } else {
+    rowPitch = mh + spacing;
+  }
 
   const startU = minU + edge + mw / 2;
   const startW = minW + edge + mh / 2;
 
   const cols = Math.floor((maxU - minU - 2 * edge) / (mw + spacing));
-  const rows = Math.floor((maxW - minW - 2 * edge) / (mh + spacing));
+  // For E-W: calculate how many pairs fit in the W direction
+  let rows: number;
+  const ewPairGap = pvInfo.ewPairGap || DEFAULT_EW_PAIR_GAP;
+  if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
+    const availW = maxW - minW - 2 * edge;
+    // Each pair takes ewPairWidth. Between pairs: ewPairGap (walkable maintenance gap at valley).
+    let pairCount = 0;
+    let usedW = 0;
+    while (true) {
+      const nextPairW = ewPairWidth;
+      const gapAfter = (pairCount > 0) ? ewPairGap : 0;
+      const needed = gapAfter + nextPairW;
+      if (usedW + needed > availW) break;
+      usedW += needed;
+      pairCount++;
+    }
+    rows = pairCount; // 'rows' here means pairs for E-W
+  } else {
+    rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
+  }
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
@@ -585,69 +772,153 @@ export const generatePVModuleGrid = (
   let sequentialIndex = 0;
   const removedIndices = pvInfo.removedModuleIndices || [];
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cu = startU + c * (mw + spacing);
-      const cw = startW + r * (mh + spacing);
+  // Helper to place a single module at (cu, cw) and return true if placed
+  // Tilt direction types:
+  // 'south' = compass-based (raise north edge)
+  // 'east' = compass-based east-facing (raise west edge)
+  // 'west' = compass-based west-facing (raise east edge)
+  const placeModule = (cu: number, cw: number, tiltInfo?: { angle: number; direction: 'south' | 'east' | 'west' }) => {
+    const rawCorners = [
+      { u: cu - mw / 2, w: cw - mh / 2 },
+      { u: cu + mw / 2, w: cw - mh / 2 },
+      { u: cu + mw / 2, w: cw + mh / 2 },
+      { u: cu - mw / 2, w: cw + mh / 2 },
+    ];
 
-      // Module corners in 2D (v1/v2 space) — before transform
-      const rawCorners = [
-        { u: cu - mw / 2, w: cw - mh / 2 },
-        { u: cu + mw / 2, w: cw - mh / 2 },
-        { u: cu + mw / 2, w: cw + mh / 2 },
-        { u: cu - mw / 2, w: cw + mh / 2 },
-      ];
+    const corners2D = rawCorners.map(c2 => transformPoint(c2.u, c2.w));
 
-      // Apply rotation + offset transform
-      const corners2D = rawCorners.map(c2 => transformPoint(c2.u, c2.w));
+    const worldCorners = corners2D.map(c2 => {
+      const p3d = centroid.clone()
+        .add(v1.clone().multiplyScalar(c2.u))
+        .add(v2.clone().multiplyScalar(c2.w));
+      return { x: p3d.x, z: p3d.z };
+    });
 
-      // Convert to world coords for polygon check
-      const worldCorners = corners2D.map(c2 => {
-        const p3d = centroid.clone()
-          .add(v1.clone().multiplyScalar(c2.u))
-          .add(v2.clone().multiplyScalar(c2.w));
-        return { x: p3d.x, z: p3d.z };
-      });
+    if (!isModuleInsidePolygon(worldCorners, roofPoints)) return;
 
-      // Check all corners inside the roof polygon
-      if (!isModuleInsidePolygon(worldCorners, roofPoints)) {
-        continue; // Skip module — it's outside the roof
+    const exclZones = pvInfo.exclusionZones || [];
+    if (isModuleOverlappingExclusion(worldCorners, exclZones)) return;
+
+    const currentIndex = sequentialIndex;
+    sequentialIndex++;
+    if (removedIndices.includes(currentIndex)) return;
+
+    // Project corners to 3D on the roof plane
+    const corners3D: Point[] = corners2D.map(c2 => {
+      const p3d = projectTo3D(c2.u, c2.w, centroid, v1, v2, plane, normal);
+      p3d.add(normal.clone().multiplyScalar(zFightingOffset));
+      return { x: p3d.x, y: p3d.y, z: p3d.z };
+    });
+
+    // Apply tilt for flat roof modules — all compass-based
+    if (tiltInfo && tiltInfo.angle > 0) {
+      const tiltRad = (tiltInfo.angle * Math.PI) / 180;
+      const liftHeight = mh * Math.sin(tiltRad);
+      const na = ((pvInfo.northAngle || 0) * Math.PI) / 180;
+
+      // Determine which direction should face — compute the relevant compass vector
+      let raiseVec: { x: number; z: number };
+      if (tiltInfo.direction === 'south') {
+        // South-facing: raise north edge. South = (-sin(na), -cos(na))
+        raiseVec = { x: -Math.sin(na), z: -Math.cos(na) };
+      } else if (tiltInfo.direction === 'east') {
+        // East-facing: raise west edge. East = (cos(na), -sin(na)), so West = (-cos(na), sin(na))
+        // We raise the WEST side so module faces EAST
+        raiseVec = { x: -Math.cos(na), z: Math.sin(na) };
+      } else {
+        // West-facing: raise east edge. East = (cos(na), -sin(na))
+        // We raise the EAST side so module faces WEST
+        raiseVec = { x: Math.cos(na), z: -Math.sin(na) };
       }
 
-      // Check exclusion zones (roof elements like chimneys, skylights)
-      const exclusionZones = pvInfo.exclusionZones || [];
-      if (isModuleOverlappingExclusion(worldCorners, exclusionZones)) {
-        continue; // Skip module — it overlaps a roof element
+      // Determine which edge to raise based on dot product with raiseVec
+      const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
+      const dotV2 = edge03.x * raiseVec.x + edge03.z * raiseVec.z;
+      if (dotV2 > 0) {
+        // v2 direction aligns with raise direction → corners 0,1 are on the opposite side → raise 0,1
+        corners3D[0].y += liftHeight;
+        corners3D[1].y += liftHeight;
+      } else {
+        // v2 direction opposes raise direction → corners 2,3 are on the raise side → raise 2,3
+        corners3D[2].y += liftHeight;
+        corners3D[3].y += liftHeight;
       }
+    }
 
-      // Skip modules that were removed by user click
-      const currentIndex = sequentialIndex;
-      sequentialIndex++;
-      if (removedIndices.includes(currentIndex)) {
-        continue;
+    modulePoints.push(corners3D);
+    moduleOriginalIndices.push(currentIndex);
+    moduleDirections.push(tiltInfo?.direction === 'east' ? 'east' : tiltInfo?.direction === 'west' ? 'west' : null);
+
+    for (let i = 0; i < 4; i++) {
+      gridLines.push({ from: corners3D[i], to: corners3D[(i + 1) % 4] });
+    }
+  };
+
+  if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
+    // East-West A-form: pairs of modules leaning together at the top (ridge)
+    // Module A (east-facing): tilted toward east (compass-based)
+    // Module B (west-facing): tilted toward west (compass-based)
+    // Together they form an A/tent shape: /\
+    const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_EW;
+    const tiltRad = (tiltAngle * Math.PI) / 180;
+    const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
+    
+    // Central maintenance path splits the column field into two halves
+    const maintenancePathW = pvInfo.maintenancePathWidth || DEFAULT_MAINTENANCE_PATH_WIDTH;
+    const totalU = maxU - minU - 2 * edge;
+    const halfU = (totalU - maintenancePathW) / 2;
+    const colsLeft = Math.max(0, Math.floor(halfU / (mw + spacing)));
+    const colsRight = Math.max(0, Math.floor(halfU / (mw + spacing)));
+    
+    // Left block: starts at minU + edge
+    const startULeft = minU + edge + mw / 2;
+    // Right block: starts after left block + maintenance path
+    const startURight = startULeft + colsLeft * (mw + spacing) + maintenancePathW;
+    
+    // Place pairs along W direction
+    let currentW = minW + edge + moduleFootprint / 2; // center of first east-module
+    
+    for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
+      // East-module center (first module in pair, lower W side)
+      const cwEast = currentW;
+      // West-module center (second module in pair, higher W side)
+      const cwWest = currentW + moduleFootprint; // no gap at ridge - tops touch
+      
+      // Left block columns
+      for (let c = 0; c < colsLeft; c++) {
+        const cu = startULeft + c * (mw + spacing);
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'west' });
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'east' });
       }
-
-      // Project corners to 3D on the roof plane
-      const corners3D: Point[] = corners2D.map(c2 => {
-        const p3d = projectTo3D(c2.u, c2.w, centroid, v1, v2, plane, normal);
-        // Add z-fighting offset along normal
-        p3d.add(normal.clone().multiplyScalar(zFightingOffset));
-        return { x: p3d.x, y: p3d.y, z: p3d.z };
-      });
-
-      modulePoints.push(corners3D);
-      moduleOriginalIndices.push(currentIndex);
-
-      // Grid lines for outline visualization
-      for (let i = 0; i < 4; i++) {
-        gridLines.push({ from: corners3D[i], to: corners3D[(i + 1) % 4] });
+      // Right block columns
+      for (let c = 0; c < colsRight; c++) {
+        const cu = startURight + c * (mw + spacing);
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'west' });
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'east' });
+      }
+      
+      // Advance to next pair start:
+      // pair depth = 2 * moduleFootprint, then maintenance gap (valley-to-valley edge distance)
+      currentW = cwWest + moduleFootprint + ewPairGap;
+    }
+  } else {
+    // Pitched roof (normal) or flat roof south
+    const tiltInfo = isFlatRoof 
+      ? { angle: pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH, direction: 'south' as const }
+      : undefined;
+    
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cu = startU + c * (mw + spacing);
+        const cw = startW + r * rowPitch;
+        placeModule(cu, cw, tiltInfo);
       }
     }
   }
 
   console.log(`PV Grid: ${modulePoints.length} modules placed (${cols}×${rows} grid, ${pvInfo.orientation})`);
 
-  return { modulePoints, moduleOriginalIndices, gridLines };
+  return { modulePoints, moduleOriginalIndices, moduleDirections, gridLines };
 };
 
 // ============================================================================
@@ -830,8 +1101,11 @@ export const calculatePVPower = (moduleCount: number, powerPerModule: number = 4
 };
 
 export const formatPVModuleInfo = (pvInfo: PVModuleInfo): string => {
-  const orientationText = pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat';
-  return `${pvInfo.moduleCount} Module (${orientationText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
+  const orientationText = pvInfo.orientation === 'portrait' ? 'Hochkant' : 'Quer';
+  const roofText = pvInfo.roofType === 'flat' 
+    ? ` | ${pvInfo.flatRoofLayout === 'east-west' ? 'O/W' : 'Süd'} ${pvInfo.tiltAngle || 25}°`
+    : '';
+  return `${pvInfo.moduleCount} Module (${orientationText}${roofText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
 };
 
 export const calculateTotalPVPower = (measurements: Measurement[]): number => {
@@ -867,7 +1141,7 @@ export const calculateAnnualYield = (
   return totalPower * yieldFactor * locationFactor;
 };
 
-export const calculateRoofOrientation = (points: Point[]): {
+export const calculateRoofOrientation = (points: Point[], northAngle: number = 0): {
   azimuth: number;
   direction: string;
   inclination: number;
@@ -882,20 +1156,29 @@ export const calculateRoofOrientation = (points: Point[]): {
     // Inclination: angle between normal and vertical (Y-axis)
     const inclination = Math.acos(Math.min(1, Math.abs(normal.y))) * (180 / Math.PI);
 
-    // Downslope direction = horizontal projection of the normal
-    // In Three.js: +X = East, +Z = South (camera convention)
-    // Azimuth: 0° = North, 90° = East, 180° = South, 270° = West
-    const hx = normal.x;
-    const hz = normal.z;
+    // Downslope/facing direction = negate horizontal projection (normal points uphill, we want downhill)
+    const hx = -normal.x;
+    const hz = -normal.z;
     
     // If roof is nearly flat, default to South
     if (Math.sqrt(hx * hx + hz * hz) < 0.01) {
       return { azimuth: 180, direction: 'S', inclination };
     }
 
-    // atan2(x, -z) gives angle from South=0. We want North=0.
-    // Downslope points in the direction the normal's horizontal component points
-    let azimuth = Math.atan2(hx, -hz) * (180 / Math.PI);
+    // northAngle defines where North is in model coordinates:
+    // 0° = +Z is North (UTM standard after -90° X rotation)
+    // The raw angle from atan2 assumes +Z = some direction.
+    // With northAngle=0: +Z=North, so atan2(hx, hz) gives angle from North (CW).
+    // General: rotate the horizontal normal by -northAngle before computing azimuth.
+    const northRad = (northAngle * Math.PI) / 180;
+    const cosN = Math.cos(northRad);
+    const sinN = Math.sin(northRad);
+    // Rotate horizontal normal by -northAngle around Y axis
+    const rhx = cosN * hx + sinN * hz;
+    const rhz = -sinN * hx + cosN * hz;
+
+    // atan2(rhx, rhz) gives angle from +Z (=North after rotation), CW positive
+    let azimuth = Math.atan2(rhx, rhz) * (180 / Math.PI);
     if (azimuth < 0) azimuth += 360;
 
     // German cardinal directions
@@ -913,37 +1196,62 @@ export const calculateRoofOrientation = (points: Point[]): {
 // ============================================================================
 
 /**
- * DGS (Deutsche Gesellschaft für Sonnenenergie) correction factors.
- * Reference: 100% = South, 30° tilt = 1000 kWh/kWp in Central Germany.
- * Rows: tilt angles. Columns: orientation categories.
+ * High-resolution PV yield efficiency table.
+ * Source: Detailed irradiation table for Central Germany (~1000 kWh/kWp reference).
+ * Azimuth: -180° to 180° in 10° steps (0° = South, negative = East, positive = West).
+ * Tilt: 0° to 90° in 5° steps.
+ * Values: percentage of maximum yield (100% ≈ South, 35° tilt).
  */
-const DGS_TILT_ANGLES = [0, 15, 30, 45, 60, 90];
-const DGS_TABLE: Record<string, number[]> = {
-  // tilt →               0°     15°    30°    45°    60°    90°
-  'S':                  [0.87,  0.95,  1.00,  0.97,  0.88,  0.55],
-  'SO_SW':              [0.87,  0.93,  0.96,  0.92,  0.82,  0.52],
-  'O_W':                [0.87,  0.88,  0.85,  0.78,  0.67,  0.42],
-  'NO_NW':              [0.87,  0.82,  0.72,  0.60,  0.47,  0.32],
-  'N':                  [0.87,  0.80,  0.65,  0.50,  0.37,  0.25],
-};
+const YIELD_AZIMUTHS = [
+  -180, -170, -160, -150, -140, -130, -120, -110, -100, -90,
+  -80, -70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40,
+  50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180
+];
 
-const REFERENCE_YIELD = 1000; // kWh/kWp at optimal (South, 30°) in Germany
+const YIELD_TILTS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
 
-/**
- * Map azimuth (0-360°) to DGS orientation category
- */
-const azimuthToDGSCategory = (azimuth: number): string => {
-  // Normalize to 0-360
-  const a = ((azimuth % 360) + 360) % 360;
-  // Symmetric: distance from South (180°)
-  const diff = Math.abs(a - 180);
-  
-  if (diff <= 22.5) return 'S';           // 157.5 - 202.5
-  if (diff <= 67.5) return 'SO_SW';       // SO: 112.5-157.5, SW: 202.5-247.5
-  if (diff <= 112.5) return 'O_W';        // O: 67.5-112.5, W: 247.5-292.5
-  if (diff <= 157.5) return 'NO_NW';      // NO: 22.5-67.5, NW: 292.5-337.5
-  return 'N';                              // 0-22.5, 337.5-360
-};
+// Each row = one azimuth, columns = tilt 0°..90° in 5° steps. Values in percent.
+const YIELD_TABLE: number[][] = [
+  /* -180 */ [86.8, 83.0, 78.8, 74.4, 69.9, 65.5, 61.3, 57.1, 53.0, 49.1, 45.5, 42.2, 39.3, 37.1, 35.4, 34.0, 32.6, 31.4, 30.1],
+  /* -170 */ [86.8, 83.1, 78.9, 74.5, 70.1, 65.7, 61.5, 57.3, 53.2, 49.4, 45.8, 42.5, 39.7, 37.6, 35.9, 34.5, 33.1, 31.7, 30.5],
+  /* -160 */ [86.8, 83.3, 79.2, 75.0, 70.6, 66.5, 62.3, 58.2, 54.2, 50.5, 47.0, 43.9, 41.5, 39.5, 37.8, 36.2, 34.7, 33.2, 31.9],
+  /* -150 */ [86.8, 83.6, 79.8, 75.8, 71.7, 67.7, 63.7, 59.8, 56.1, 52.6, 49.4, 46.8, 44.5, 42.5, 40.6, 38.9, 37.2, 35.6, 34.0],
+  /* -140 */ [86.8, 83.8, 80.5, 76.9, 73.2, 69.4, 65.8, 62.2, 58.8, 55.7, 52.9, 50.5, 48.2, 46.1, 44.1, 42.2, 40.4, 38.5, 36.7],
+  /* -130 */ [86.8, 84.3, 81.4, 78.2, 75.0, 71.7, 68.4, 65.3, 62.3, 59.6, 57.0, 54.7, 52.4, 50.2, 48.1, 46.0, 44.0, 41.9, 39.9],
+  /* -120 */ [86.8, 84.8, 82.4, 79.8, 77.1, 74.3, 71.5, 68.9, 66.3, 63.8, 61.5, 59.2, 56.9, 54.7, 52.4, 50.2, 47.9, 45.7, 43.4],
+  /* -110 */ [86.8, 85.4, 83.6, 81.5, 79.4, 76.8, 74.8, 72.7, 70.4, 68.3, 66.1, 63.8, 61.7, 59.4, 57.0, 54.6, 52.1, 49.7, 47.3],
+  /* -100 */ [86.8, 86.0, 84.7, 83.3, 81.7, 80.0, 78.3, 76.5, 74.6, 72.6, 70.6, 68.5, 66.4, 64.1, 61.6, 59.1, 56.6, 53.8, 51.1],
+  /*  -90 */ [86.8, 86.5, 86.0, 85.1, 84.1, 83.0, 81.7, 80.2, 78.7, 77.0, 75.1, 73.1, 70.9, 68.6, 66.1, 63.5, 60.8, 58.0, 55.0],
+  /*  -80 */ [86.8, 87.2, 87.2, 86.9, 86.5, 85.8, 85.0, 83.9, 82.5, 81.1, 79.3, 77.0, 75.3, 72.9, 70.5, 67.7, 64.8, 61.7, 58.6],
+  /*  -70 */ [86.8, 87.8, 88.4, 88.7, 88.7, 88.5, 88.0, 87.3, 86.2, 85.0, 83.3, 81.4, 79.4, 77.0, 74.3, 71.4, 68.5, 66.6, 61.7],
+  /*  -60 */ [86.8, 88.4, 89.5, 90.4, 90.8, 91.0, 90.8, 90.4, 89.8, 88.4, 87.0, 85.2, 82.9, 80.6, 77.9, 74.9, 71.6, 68.2, 64.6],
+  /*  -50 */ [86.8, 88.9, 90.5, 91.8, 92.7, 93.3, 93.4, 93.2, 92.6, 91.5, 90.1, 88.4, 86.3, 83.8, 80.8, 77.8, 74.5, 70.8, 66.9],
+  /*  -40 */ [86.8, 89.3, 91.4, 93.1, 94.3, 95.2, 95.6, 95.5, 95.1, 94.2, 92.9, 91.1, 88.9, 86.5, 83.5, 80.3, 76.7, 72.9, 68.8],
+  /*  -30 */ [86.8, 89.7, 92.1, 94.1, 95.6, 96.7, 97.3, 97.5, 97.1, 96.3, 95.1, 93.4, 91.2, 88.5, 85.5, 82.2, 78.4, 74.3, 70.0],
+  /*  -20 */ [86.8, 90.0, 92.7, 94.9, 96.6, 97.9, 98.6, 98.9, 98.6, 97.9, 96.6, 94.8, 92.6, 90.0, 86.9, 83.4, 79.5, 75.3, 70.8],
+  /*  -10 */ [86.8, 90.1, 93.0, 95.3, 97.2, 98.6, 99.4, 99.7, 99.5, 98.8, 97.6, 95.9, 93.6, 90.9, 87.7, 84.1, 80.1, 75.8, 71.2],
+  /*    0 */ [86.8, 90.2, 93.1, 95.5, 97.4, 98.7, 99.6, 100.0, 99.8, 99.1, 97.9, 96.1, 93.9, 91.1, 88.0, 84.3, 80.4, 75.9, 71.2],
+  /*   10 */ [86.8, 90.1, 93.0, 95.3, 97.2, 98.6, 99.4, 99.7, 99.5, 98.8, 97.6, 95.9, 93.6, 90.9, 87.7, 84.1, 80.1, 75.8, 71.2],
+  /*   20 */ [86.8, 90.0, 92.7, 94.9, 96.6, 97.9, 98.6, 98.9, 98.6, 97.9, 96.6, 94.8, 92.6, 90.0, 86.9, 83.4, 79.5, 75.3, 70.8],
+  /*   30 */ [86.8, 89.7, 92.1, 94.1, 95.6, 96.7, 97.3, 97.5, 97.1, 96.3, 95.1, 93.4, 91.2, 88.5, 85.5, 82.2, 78.4, 74.3, 70.0],
+  /*   40 */ [86.8, 89.3, 91.4, 93.1, 94.3, 95.2, 95.6, 95.5, 95.1, 94.2, 92.9, 91.1, 88.9, 86.5, 83.5, 80.3, 76.7, 72.9, 68.8],
+  /*   50 */ [86.8, 88.9, 90.5, 91.8, 92.7, 93.3, 93.4, 93.2, 92.6, 91.5, 90.1, 88.4, 86.3, 83.8, 80.8, 77.8, 74.5, 70.8, 66.9],
+  /*   60 */ [86.8, 88.4, 89.5, 90.4, 90.8, 91.0, 90.8, 90.4, 89.8, 88.4, 87.0, 85.2, 82.9, 80.6, 77.9, 74.9, 71.6, 68.2, 64.6],
+  /*   70 */ [86.8, 87.8, 88.4, 88.7, 88.7, 88.5, 88.0, 87.3, 86.2, 85.0, 83.3, 81.4, 79.4, 77.0, 74.3, 71.4, 68.5, 66.6, 61.7],
+  /*   80 */ [86.8, 87.2, 87.2, 86.9, 86.5, 85.8, 85.0, 83.9, 82.5, 81.1, 79.3, 77.0, 75.3, 72.9, 70.5, 67.7, 64.8, 61.7, 58.6],
+  /*   90 */ [86.8, 86.5, 86.0, 85.1, 84.1, 83.0, 81.7, 80.2, 78.7, 77.0, 75.1, 73.1, 70.9, 68.6, 66.1, 63.5, 60.8, 58.0, 55.0],
+  /*  100 */ [86.8, 86.0, 84.7, 83.3, 81.7, 80.0, 78.3, 76.5, 74.6, 72.6, 70.6, 68.5, 66.4, 64.1, 61.6, 59.1, 56.6, 53.8, 51.1],
+  /*  110 */ [86.8, 85.4, 83.6, 81.5, 79.4, 76.8, 74.8, 72.7, 70.4, 68.3, 66.1, 63.8, 61.7, 59.4, 57.0, 54.6, 52.1, 49.7, 47.3],
+  /*  120 */ [86.8, 84.8, 82.4, 79.8, 77.1, 74.3, 71.5, 68.9, 66.3, 63.8, 61.5, 59.2, 56.9, 54.7, 52.4, 50.2, 47.9, 45.7, 43.4],
+  /*  130 */ [86.8, 84.3, 81.4, 78.2, 75.0, 71.7, 68.4, 65.3, 62.3, 59.6, 57.0, 54.7, 52.4, 50.2, 48.1, 46.0, 44.0, 41.9, 39.9],
+  /*  140 */ [86.8, 83.8, 80.5, 76.9, 73.2, 69.4, 65.8, 62.2, 58.8, 55.7, 52.9, 50.5, 48.2, 46.1, 44.1, 42.2, 40.4, 38.5, 36.7],
+  /*  150 */ [86.8, 83.6, 79.8, 75.8, 71.7, 67.7, 63.7, 59.8, 56.1, 52.6, 49.4, 46.8, 44.5, 42.5, 40.6, 38.9, 37.2, 35.6, 34.0],
+  /*  160 */ [86.8, 83.3, 79.2, 75.0, 70.6, 66.5, 62.3, 58.2, 54.2, 50.5, 47.0, 43.9, 41.5, 39.5, 37.8, 36.2, 34.7, 33.2, 31.9],
+  /*  170 */ [86.8, 83.1, 78.9, 74.5, 70.1, 65.7, 61.5, 57.3, 53.2, 49.4, 45.8, 42.5, 39.7, 37.6, 35.9, 34.5, 33.1, 31.7, 30.5],
+  /*  180 */ [86.8, 83.0, 78.8, 74.4, 69.9, 65.5, 61.3, 57.1, 53.0, 49.1, 45.5, 42.2, 39.3, 37.1, 35.4, 34.0, 32.6, 31.4, 30.1],
+];
+
+const REFERENCE_YIELD = 1000; // kWh/kWp at optimal in Germany
 
 /**
  * Linear interpolation
@@ -951,46 +1259,64 @@ const azimuthToDGSCategory = (azimuth: number): string => {
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /**
- * Bilinear interpolation in the DGS table for precise yield factor.
- * Returns factor as fraction (0-1) relative to optimal.
+ * Bilinear interpolation in the high-resolution yield table.
+ * @param azimuthSouth Azimuth relative to South: 0° = South, negative = East, positive = West. Range -180..180.
+ * @param tilt Roof tilt in degrees (0 = flat, 90 = vertical).
+ * @returns Yield factor as fraction (0-1).
  */
-const interpolateDGS = (category: string, tilt: number): number => {
-  const factors = DGS_TABLE[category];
-  if (!factors) return 0.87; // fallback: flat roof
-
+const interpolateYieldTable = (azimuthSouth: number, tilt: number): number => {
+  // Clamp inputs
+  const clampedAz = Math.max(-180, Math.min(180, azimuthSouth));
   const clampedTilt = Math.max(0, Math.min(90, tilt));
-  
-  // Find surrounding tilt angles
-  let lowerIdx = 0;
-  for (let i = 0; i < DGS_TILT_ANGLES.length - 1; i++) {
-    if (clampedTilt >= DGS_TILT_ANGLES[i]) lowerIdx = i;
-  }
-  const upperIdx = Math.min(lowerIdx + 1, DGS_TILT_ANGLES.length - 1);
-  
-  if (lowerIdx === upperIdx) return factors[lowerIdx];
-  
-  const t = (clampedTilt - DGS_TILT_ANGLES[lowerIdx]) / (DGS_TILT_ANGLES[upperIdx] - DGS_TILT_ANGLES[lowerIdx]);
-  return lerp(factors[lowerIdx], factors[upperIdx], t);
+
+  // Find azimuth indices (step = 10°)
+  const azIdx = (clampedAz + 180) / 10; // 0..36
+  const azLow = Math.floor(azIdx);
+  const azHigh = Math.min(azLow + 1, YIELD_AZIMUTHS.length - 1);
+  const azT = azIdx - azLow;
+
+  // Find tilt indices (step = 5°)
+  const tiltIdx = clampedTilt / 5; // 0..18
+  const tiltLow = Math.floor(tiltIdx);
+  const tiltHigh = Math.min(tiltLow + 1, YIELD_TILTS.length - 1);
+  const tiltT = tiltIdx - tiltLow;
+
+  // Bilinear interpolation
+  const v00 = YIELD_TABLE[azLow][tiltLow];
+  const v01 = YIELD_TABLE[azLow][tiltHigh];
+  const v10 = YIELD_TABLE[azHigh][tiltLow];
+  const v11 = YIELD_TABLE[azHigh][tiltHigh];
+
+  const top = lerp(v00, v01, tiltT);
+  const bottom = lerp(v10, v11, tiltT);
+  return lerp(top, bottom, azT) / 100; // Convert percent to fraction
 };
 
 /**
  * Calculate yield factor in kWh/kWp based on azimuth and tilt,
- * using DGS correction factors for Germany.
+ * using high-resolution irradiation table for Germany.
+ * @param azimuth Compass azimuth: 0° = North, 90° = East, 180° = South, 270° = West
+ * @param inclination Roof tilt in degrees
  */
 export const calculateYieldFactorFromOrientation = (
   azimuth: number,
   inclination: number
 ): number => {
-  const category = azimuthToDGSCategory(azimuth);
-  const factor = interpolateDGS(category, inclination);
+  // Convert from North-based (0°=N, 180°=S) to South-based (0°=S, -90°=E, 90°=W)
+  let tableAzimuth = ((azimuth % 360) + 360) % 360 - 180; // now -180..180 with 0°=South
+  if (tableAzimuth > 180) tableAzimuth -= 360;
+  if (tableAzimuth < -180) tableAzimuth += 360;
+
+  const factor = interpolateYieldTable(tableAzimuth, inclination);
   return Math.round(REFERENCE_YIELD * factor);
 };
 
 export const updatePVModuleInfoWithOrientation = (
   pvInfo: PVModuleInfo,
-  points: Point[]
+  points: Point[],
+  northAngle: number = 0
 ): PVModuleInfo => {
-  const { azimuth, direction, inclination } = calculateRoofOrientation(points);
+  const { azimuth, direction, inclination } = calculateRoofOrientation(points, northAngle);
   const yieldFactor = calculateYieldFactorFromOrientation(azimuth, inclination);
 
   return {
@@ -999,6 +1325,7 @@ export const updatePVModuleInfoWithOrientation = (
     roofDirection: direction,
     roofInclination: inclination,
     yieldFactor,
+    northAngle,
   };
 };
 
@@ -1006,6 +1333,23 @@ export const calculateAnnualYieldWithOrientation = (
   totalPower: number,
   pvInfo: PVModuleInfo
 ): number => {
+  // For flat roofs, use tilt angle as effective inclination and azimuth based on layout
+  if (pvInfo.roofType === 'flat' && pvInfo.tiltAngle) {
+    const effectiveInclination = pvInfo.tiltAngle;
+    let effectiveAzimuth: number;
+    if (pvInfo.flatRoofLayout === 'east-west') {
+      // Average of east (90°) and west (270°) yields
+      const eastYield = calculateYieldFactorFromOrientation(90, effectiveInclination);
+      const westYield = calculateYieldFactorFromOrientation(270, effectiveInclination);
+      const avgFactor = (eastYield + westYield) / 2;
+      return totalPower * avgFactor;
+    } else {
+      effectiveAzimuth = 180; // South
+    }
+    const factor = calculateYieldFactorFromOrientation(effectiveAzimuth, effectiveInclination);
+    return totalPower * factor;
+  }
+
   const yieldFactor = pvInfo.yieldFactor ||
     (pvInfo.roofAzimuth && pvInfo.roofInclination
       ? calculateYieldFactorFromOrientation(pvInfo.roofAzimuth, pvInfo.roofInclination)

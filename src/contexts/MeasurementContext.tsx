@@ -49,6 +49,9 @@ interface MeasurementContextType {
   // Visual state update function
   setUpdateVisualState: (fn: (updatedMeasurements: Measurement[], labelVisibility: boolean) => void) => void;
   
+  // Import
+  importMeasurements: (list: Measurement[], append?: boolean, linkShared?: boolean) => void;
+  
   // Utilities
   getNearestPointIndex: (points: Point[], point: Point, threshold?: number) => number;
   calculateSegmentLength: (segment: Segment) => number;
