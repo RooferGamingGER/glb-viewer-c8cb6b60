@@ -11,6 +11,7 @@ import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
+import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
 
 // Import visualization utilities
