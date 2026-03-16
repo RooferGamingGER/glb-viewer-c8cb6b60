@@ -552,7 +552,7 @@ export const calculatePVModulePlacement = (
   };
 
   // Auto-detect flat roof based on inclination
-  const { inclination } = calculateRoofOrientation(points);
+  const { inclination } = calculateRoofOrientation(points, 0);
   if (isRoofFlat(inclination)) {
     const flatConfig = getDefaultFlatRoofConfig('south');
     result.roofType = flatConfig.roofType;
