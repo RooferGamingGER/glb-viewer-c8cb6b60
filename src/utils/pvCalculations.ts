@@ -41,9 +41,7 @@ const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
 const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
 const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
 const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
-const DEFAULT_EW_PAIR_GAP = 0.03; // 3cm structural gap between adjacent E-W pairs within a group
-const EW_ROW_MAINTENANCE_GAP = 0.80; // 80cm walkable maintenance gap between pair groups
-const EW_MAINTENANCE_INTERVAL = 3; // maintenance gang after every 3rd pair
+const DEFAULT_EW_PAIR_GAP = 0.40; // 40cm walkable gap between A-frame pairs (valley/lowest point)
 const DEFAULT_MAINTENANCE_PATH_WIDTH = 0.80; // 80cm central maintenance corridor
 
 // Exclusion zone safety radius for point elements (vents, hooks) in meters
@@ -726,14 +724,13 @@ export const generatePVModuleGrid = (
   const ewPairGap = pvInfo.ewPairGap || DEFAULT_EW_PAIR_GAP;
   if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
     const availW = maxW - minW - 2 * edge;
-    // Each pair takes ewPairWidth. Between pairs: ewPairGap. Every EW_MAINTENANCE_INTERVAL pairs: extra EW_MAINTENANCE_GAP.
+    // Each pair takes ewPairWidth. Between pairs: ewPairGap (walkable maintenance gap at valley).
     let pairCount = 0;
     let usedW = 0;
     while (true) {
       const nextPairW = ewPairWidth;
       const gapAfter = (pairCount > 0) ? ewPairGap : 0;
-      const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_ROW_MAINTENANCE_GAP : 0;
-      const needed = gapAfter + maintenanceGap + nextPairW;
+      const needed = gapAfter + nextPairW;
       if (usedW + needed > availW) break;
       usedW += needed;
       pairCount++;
@@ -881,11 +878,7 @@ export const generatePVModuleGrid = (
     for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
       // Gap before this pair (except first)
       if (pairIdx > 0) {
-        currentW += ewPairGap;
-        // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
-        if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
-          currentW += EW_ROW_MAINTENANCE_GAP;
-        }
+        currentW += ewPairGap; // walkable maintenance gap at valley between pairs
       }
       
       // East-module center (first module in pair, lower W side)
