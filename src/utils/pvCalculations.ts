@@ -790,25 +790,25 @@ export const generatePVModuleGrid = (
     for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
       // Gap before this pair (except first)
       if (pairIdx > 0) {
-        currentW += EW_PAIR_GAP;
+        currentW += ewPairGap;
         // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
         if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
           currentW += EW_MAINTENANCE_GAP;
         }
       }
       
-      // East-module center (first module in pair, facing east / front edge at low W)
+      // East-module center (first module in pair, lower W side)
       const cwEast = currentW;
-      // West-module center (second module in pair, facing west / front edge at high W)
+      // West-module center (second module in pair, higher W side)
       const cwWest = currentW + moduleFootprint; // no gap at ridge - tops touch
       
       for (let c = 0; c < cols; c++) {
         const cu = startU + c * (mw + spacing);
         
-        // East-facing module: corners 2,3 (high-W edge = ridge) are raised
-        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
-        // West-facing module: corners 0,1 (low-W edge = ridge) are raised
-        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
+        // East module: raise high-W corners (2,3) toward ridge — grid-relative
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east-grid' });
+        // West module: raise low-W corners (0,1) toward ridge — grid-relative
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west-grid' });
       }
       
       // Advance past this pair
