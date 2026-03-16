@@ -159,14 +159,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-1.5 flex flex-col">
-        {/* Solar planning */}
-        <SolarToolbar 
-          activeMode={activeMode}
-          toggleMeasurementTool={toggleMeasurementTool || (() => {})}
-          editMeasurementId={editMeasurementId}
-          measurements={measurements as any}
-          onConvertAreaToSolar={handleConvertAreaToSolar}
-        />
 
         {/* Solar measurements with full PV content */}
         {solarMeasurements.length > 0 && (
