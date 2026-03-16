@@ -287,7 +287,139 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               <div className="font-medium">
                 {annualYield.toFixed(0)} kWh/Jahr
               </div>
+              
+              {/* Flat roof specific display */}
+              {measurement.pvModuleInfo.roofType === 'flat' && (
+                <>
+                  <div className="text-muted-foreground">Dachtyp:</div>
+                  <div className="font-medium text-amber-600">Flachdach</div>
+                  
+                  <div className="text-muted-foreground">Belegung:</div>
+                  <div>{measurement.pvModuleInfo.flatRoofLayout === 'east-west' ? 'Ost-West' : 'Süd-Aufständerung'}</div>
+                  
+                  <div className="text-muted-foreground">Aufständerung:</div>
+                  <div>{measurement.pvModuleInfo.tiltAngle || 25}°</div>
+                  
+                  {measurement.pvModuleInfo.rowSpacing && measurement.pvModuleInfo.flatRoofLayout === 'south' && (
+                    <>
+                      <div className="text-muted-foreground">Reihenabstand:</div>
+                      <div>{measurement.pvModuleInfo.rowSpacing.toFixed(2)} m</div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
+
+            {/* Flat Roof Controls */}
+            {measurement.pvModuleInfo.roofType === 'flat' && (
+              <div className="mt-2 pt-2 border-t space-y-2">
+                <Alert className="py-2">
+                  <Info className="h-3 w-3" />
+                  <AlertDescription className="text-[10px]">
+                    Flachdach erkannt (Neigung &lt; 5°) – Aufständerung erforderlich
+                  </AlertDescription>
+                </Alert>
+
+                {/* Layout toggle */}
+                <div className="flex items-center gap-1">
+                  <Label className="text-[10px] text-muted-foreground w-16">Layout:</Label>
+                  <div className="flex gap-1 flex-1">
+                    <Button
+                      variant={measurement.pvModuleInfo.flatRoofLayout !== 'east-west' ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1 h-6 text-[10px]"
+                      onClick={() => {
+                        const updated = {
+                          ...measurement.pvModuleInfo!,
+                          flatRoofLayout: 'south' as const,
+                          tiltAngle: 25,
+                          rowSpacing: calculateFlatRoofRowSpacing(
+                            measurement.pvModuleInfo!.orientation === 'portrait' 
+                              ? measurement.pvModuleInfo!.moduleHeight 
+                              : measurement.pvModuleInfo!.moduleWidth,
+                            25
+                          ),
+                        };
+                        const grid = generatePVModuleGrid(updated, 0);
+                        updateMeasurement(measurement.id, {
+                          pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                        });
+                      }}
+                    >
+                      <Sun className="h-3 w-3 mr-0.5" /> Süd
+                    </Button>
+                    <Button
+                      variant={measurement.pvModuleInfo.flatRoofLayout === 'east-west' ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1 h-6 text-[10px]"
+                      onClick={() => {
+                        const updated = {
+                          ...measurement.pvModuleInfo!,
+                          flatRoofLayout: 'east-west' as const,
+                          tiltAngle: 12,
+                          rowSpacing: undefined,
+                        };
+                        const grid = generatePVModuleGrid(updated, 0);
+                        updateMeasurement(measurement.id, {
+                          pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                        });
+                      }}
+                    >
+                      <ArrowLeftRight className="h-3 w-3 mr-0.5" /> O/W
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tilt angle slider */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-16">Neigung:</span>
+                  <Slider
+                    min={5}
+                    max={35}
+                    step={1}
+                    value={[measurement.pvModuleInfo.tiltAngle || 25]}
+                    onValueChange={([val]) => {
+                      const mh = measurement.pvModuleInfo!.orientation === 'portrait' 
+                        ? measurement.pvModuleInfo!.moduleHeight 
+                        : measurement.pvModuleInfo!.moduleWidth;
+                      const updated = {
+                        ...measurement.pvModuleInfo!,
+                        tiltAngle: val,
+                        rowSpacing: measurement.pvModuleInfo!.flatRoofLayout === 'south'
+                          ? calculateFlatRoofRowSpacing(mh, val)
+                          : undefined,
+                      };
+                      const grid = generatePVModuleGrid(updated, 0);
+                      updateMeasurement(measurement.id, {
+                        pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                      });
+                    }}
+                    className="flex-1"
+                  />
+                  <span className="text-[10px] w-8 text-right">{measurement.pvModuleInfo.tiltAngle || 25}°</span>
+                </div>
+
+                {/* Edge distance slider */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-16">Rand:</span>
+                  <Slider
+                    min={0.30}
+                    max={1.00}
+                    step={0.05}
+                    value={[measurement.pvModuleInfo.flatRoofEdgeDistance || 0.50]}
+                    onValueChange={([val]) => {
+                      const updated = { ...measurement.pvModuleInfo!, flatRoofEdgeDistance: val };
+                      const grid = generatePVModuleGrid(updated, 0);
+                      updateMeasurement(measurement.id, {
+                        pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                      });
+                    }}
+                    className="flex-1"
+                  />
+                  <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.flatRoofEdgeDistance || 0.50).toFixed(2)}m</span>
+                </div>
+              </div>
+            )}
             
             {/* Grid Position & Rotation Controls */}
             <div className="mt-2 pt-2 border-t space-y-2">
