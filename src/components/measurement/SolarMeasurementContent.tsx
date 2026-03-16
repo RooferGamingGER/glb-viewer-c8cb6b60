@@ -13,11 +13,15 @@ import {
   calculateAnnualYieldWithOrientation,
   updatePVModuleInfoWithOrientation,
   extractExclusionZones,
-  generatePVModuleGrid
+  generatePVModuleGrid,
+  calculateFlatRoofRowSpacing,
+  isRoofFlat,
+  getDefaultFlatRoofConfig
 } from '@/utils/pvCalculations';
 import PVModuleSelect from './PVModuleSelect';
-import { Zap, ListTodo, Compass, Move, RotateCcw, RotateCw } from 'lucide-react';
+import { Zap, ListTodo, Compass, Move, RotateCcw, RotateCw, Info, Sun, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SolarMeasurementContentProps {
   measurement: Measurement;
