@@ -44,6 +44,7 @@ const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Ge
 const DEFAULT_EW_PAIR_GAP = 0.50; // 50cm default gap between adjacent E-W pairs (Reihenabstand)
 const EW_MAINTENANCE_GAP = 0.40; // 40cm maintenance gang between pair groups
 const EW_MAINTENANCE_INTERVAL = 3; // maintenance gang after every 3rd pair
+const DEFAULT_MAINTENANCE_PATH_WIDTH = 0.80; // 80cm central maintenance corridor
 
 // Exclusion zone safety radius for point elements (vents, hooks) in meters
 // Roof element types that create exclusion zones
