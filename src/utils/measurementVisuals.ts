@@ -1542,7 +1542,7 @@ function renderPVModuleGrid(
   const baseY = measurement.points[0]?.y || 0;
 
   // Generate the PV module grid (only module surfaces)
-  const { modulePoints, moduleOriginalIndices } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
+  const { modulePoints, moduleOriginalIndices, moduleDirections } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
 
   // Visual defaults (can be overridden via pvModuleInfo.moduleVisuals)
   const vDefaults = {
@@ -1671,10 +1671,14 @@ function renderPVModuleGrid(
     });
 
     // Groups: top=0-5, bottom=6-11, front=12-17, back=18-23, right=24-29, left=30-35
+    const dir = moduleDirections[index];
     geometry.addGroup(0, 6, 0);   // top → textured
     geometry.addGroup(6, 6, 1);   // bottom → side
-    geometry.addGroup(12, 6, 1);  // front → side
-    geometry.addGroup(18, 6, 1);  // back → side
+    // For E/W pairs: hide the ridge-side face to prevent z-fighting
+    // 'east' modules have their back face (indices 18-23) at the ridge
+    // 'west' modules have their front face (indices 12-17) at the ridge
+    geometry.addGroup(12, dir === 'west' ? 0 : 6, 1);  // front → hide for west
+    geometry.addGroup(18, dir === 'east' ? 0 : 6, 1);  // back → hide for east
     geometry.addGroup(24, 6, 1);  // right → side
     geometry.addGroup(30, 6, 1);  // left → side
 

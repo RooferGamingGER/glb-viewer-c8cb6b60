@@ -652,16 +652,18 @@ export const generatePVModuleGrid = (
 ): {
   modulePoints: Point[][];
   moduleOriginalIndices: number[];
+  moduleDirections: ('east' | 'west' | null)[];
   gridLines: { from: Point; to: Point }[];
 } => {
   const modulePoints: Point[][] = [];
   const moduleOriginalIndices: number[] = [];
+  const moduleDirections: ('east' | 'west' | null)[] = [];
   const gridLines: { from: Point; to: Point }[] = [];
 
   const roofPoints = pvInfo.points;
   if (!roofPoints || roofPoints.length < 3) {
     console.warn("Not enough roof points for PV grid generation");
-    return { modulePoints, moduleOriginalIndices, gridLines };
+    return { modulePoints, moduleOriginalIndices, moduleDirections, gridLines };
   }
 
   // Fit plane using all roof points (stable for complex polygons)
@@ -845,6 +847,7 @@ export const generatePVModuleGrid = (
 
     modulePoints.push(corners3D);
     moduleOriginalIndices.push(currentIndex);
+    moduleDirections.push(tiltInfo?.direction === 'east' ? 'east' : tiltInfo?.direction === 'west' ? 'west' : null);
 
     for (let i = 0; i < 4; i++) {
       gridLines.push({ from: corners3D[i], to: corners3D[(i + 1) % 4] });
@@ -919,7 +922,7 @@ export const generatePVModuleGrid = (
 
   console.log(`PV Grid: ${modulePoints.length} modules placed (${cols}×${rows} grid, ${pvInfo.orientation})`);
 
-  return { modulePoints, moduleOriginalIndices, gridLines };
+  return { modulePoints, moduleOriginalIndices, moduleDirections, gridLines };
 };
 
 // ============================================================================
