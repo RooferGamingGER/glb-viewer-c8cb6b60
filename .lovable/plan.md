@@ -1,41 +1,55 @@
 
-# PV-Belegung: Hochkant-Standard & Flachdach-Unterstützung
 
-## Status: Implementiert ✅
+## Plan: E-W Modulausrichtung korrigieren & Wartungswege implementieren
 
-## Änderungen
+### Problem 1: Identische Ausrichtung bei Süd und O/W
 
-### 1. Typ-Erweiterung (`src/types/measurements.ts`)
-- `roofType`, `flatRoofLayout`, `tiltAngle`, `rowSpacing`, `flatRoofEdgeDistance` zu PVModuleInfo hinzugefügt
+Die aktuelle Logik nutzt für **beide** Layouts (Süd und O/W) eine Kompass-basierte Eckpunkt-Anhebung. Das ist für Süd korrekt (Nordkante anheben), aber für O/W **falsch**. Bei O/W muss die Neigung **relativ zur Paar-Geometrie** sein (innere Kanten zum First hin anheben), nicht nach Himmelsrichtung.
 
-### 2. Standard-Orientierung auf Hochkant (`src/utils/pvCalculations.ts`)
-- Auto-Modus wählt jetzt immer Portrait (Hochkant) als Standard
-- PVModuleSelect zeigt "Hochkant (Standard)" / "Quer" / "Auto"
+**Aktuelle Logik (falsch für O/W):**
+- Ost-Modul: Prüft Kompass → hebt "West-Kante" an
+- West-Modul: Prüft Kompass → hebt "Ost-Kante" an
+- → Auf einem Dach wo v2 nicht Ost-West ausgerichtet ist, werden gleiche Kanten angehoben
 
-### 3. Flachdach-Erkennung & Berechnung
-- `isRoofFlat()`: Erkennt Flachdach bei Neigung < 5°
-- `calculateFlatRoofRowSpacing()`: L = h/tan(15°) für Wintersonnenwende-Abstand
-- `getDefaultFlatRoofConfig()`: Standard-Werte (25° Süd, 12° O/W, 50cm Rand)
-- `calculatePVModulePlacement` setzt automatisch Flachdach-Werte
+**Korrekte Logik:**
+- Ost-Modul (vorne im Paar, niedrigeres W): Corners 2,3 anheben (high-W = Richtung First/Mitte)
+- West-Modul (hinten im Paar, höheres W): Corners 0,1 anheben (low-W = Richtung First/Mitte)
+- → Rein Grid-relativ, kein Kompass nötig. Die Module neigen sich immer zueinander.
 
-### 4. Grid-Generierung für Flachdach
-- **Süd**: Reihen mit berechnetem Reihenabstand, Hinterkante angehoben
-- **Ost-West (A-Form / Zelt-Struktur)**:
-  - Module paarweise als A-Form: Oberkanten treffen sich am First (Ridge)
-  - Ost-Modul: Corners 2,3 (high-W = Ridge) angehoben
-  - West-Modul: Corners 0,1 (low-W = Ridge) angehoben
-  - Paarbreite = 2 × moduleFootprint (kein Spalt am First)
-  - EW_PAIR_GAP = 5cm zwischen Paaren
-  - EW_MAINTENANCE_GAP = 40cm Wartungsgang alle 3 Paare
-  - Iterative Paar-Platzierung statt fester rowPitch-Berechnung
+### Problem 2: Fehlende Wartungswege
 
-### 5. Ertragsberechnung
-- Flachdach nutzt tiltAngle als effektive Neigung
-- O/W: Durchschnitt aus Ost- und West-Ertragsfaktor
+User möchte: Fester Abstand (umschaltbar 50/60cm) nach jedem O/W-Feld **plus** periodisch ein breiterer Wartungsgang.
 
-### 6. UI-Steuerung (`SolarMeasurementContent.tsx`)
-- Flachdach-Banner mit Info-Alert
-- Layout-Toggle: Süd / O/W
-- Slider: Aufständerungswinkel (5°-35°)
-- Slider: Randabstand (30-100cm)
-- Reihenabstand-Anzeige für Süd-Variante
+### Änderungen in `src/utils/pvCalculations.ts`
+
+**1. E-W Tilt-Logik in `placeModule` korrigieren:**
+- Neuer Tilt-Direction-Typ: `'south' | 'east-grid' | 'west-grid'`
+- `'east-grid'`: Hebt immer Corners 2,3 an (high-W, keine Kompass-Prüfung)
+- `'west-grid'`: Hebt immer Corners 0,1 an (low-W, keine Kompass-Prüfung)
+- `'south'`: Bleibt wie bisher (Kompass-basiert, Nordkante anheben)
+
+**2. Konstanten anpassen:**
+- `EW_PAIR_GAP` → Standardwert 0.50, aber jetzt konfigurierbar über `PVModuleInfo`
+- `EW_MAINTENANCE_GAP = 0.40` bleibt
+- `EW_MAINTENANCE_INTERVAL = 3` bleibt
+- Neues Feld in PVModuleInfo: `ewPairGap?: number` (50 oder 60cm, Standard 50)
+
+**3. E-W Aufrufe ändern:**
+```
+placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east-grid' });
+placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west-grid' });
+```
+
+### Änderungen in `src/types/measurements.ts`
+
+- Neues Feld: `ewPairGap?: number` in PVModuleInfo (Standard 0.50m)
+
+### Änderungen in `src/components/measurement/SolarMeasurementContent.tsx`
+
+- Neuer Slider für E-W Feldabstand (50-60cm) bei O/W Layout, nur sichtbar wenn `flatRoofLayout === 'east-west'`
+
+### Zusammenfassung
+- **Kern-Fix**: E-W Module nutzen Grid-relative Neigung statt Kompass → A-Form entsteht immer korrekt
+- **Süd** bleibt Kompass-basiert (Nordkante anheben)
+- **Wartungswege**: Fester Abstand (50/60cm wählbar) nach jedem Feld + periodischer Wartungsgang alle 3 Felder
+
