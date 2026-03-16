@@ -547,6 +547,22 @@ export const calculatePVModulePlacement = (
     pvModuleSpec: PV_MODULE_TEMPLATES[0],
     points: [...points],
     exclusionZones: exclusionZones.length > 0 ? exclusionZones : undefined,
+    roofType: 'pitched',
+  };
+
+  // Auto-detect flat roof based on inclination
+  const { inclination } = calculateRoofOrientation(points);
+  if (isRoofFlat(inclination)) {
+    const flatConfig = getDefaultFlatRoofConfig('south');
+    result.roofType = flatConfig.roofType;
+    result.flatRoofLayout = flatConfig.flatRoofLayout;
+    result.tiltAngle = flatConfig.tiltAngle;
+    result.flatRoofEdgeDistance = flatConfig.flatRoofEdgeDistance;
+    result.rowSpacing = calculateFlatRoofRowSpacing(
+      usePortrait ? moduleHeight : moduleWidth,
+      flatConfig.tiltAngle
+    );
+  }
   };
 
   return result;
