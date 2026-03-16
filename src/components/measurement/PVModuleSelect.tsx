@@ -242,9 +242,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                 <SelectValue placeholder="Orientierung" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="portrait">Hochkant (Standard)</SelectItem>
+                <SelectItem value="landscape">Quer</SelectItem>
                 <SelectItem value="auto">Auto</SelectItem>
-                <SelectItem value="portrait">Hochformat</SelectItem>
-                <SelectItem value="landscape">Querformat</SelectItem>
               </SelectContent>
             </Select>
           </div>
