@@ -464,7 +464,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
             {/* Compass / North Direction Control */}
             <div className="mt-2 pt-2 border-t space-y-2">
               <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Compass className="h-3 w-3" /> Nordrichtung im Modell
+                <Compass className="h-3 w-3" /> Nordrichtung im Modell <span className="text-[8px] italic">(gilt für alle Solarflächen)</span>
               </Label>
               <div className="flex items-center gap-2">
                 {/* Visual compass rose */}
@@ -495,16 +495,19 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                     step={1}
                     value={[measurement.pvModuleInfo.northAngle || 0]}
                     onValueChange={([val]) => {
-                      if (!measurement.pvModuleInfo || !measurement.points) return;
-                      const updatedPVInfo = updatePVModuleInfoWithOrientation(
-                        { ...measurement.pvModuleInfo, northAngle: val },
-                        measurement.points,
-                        val
-                      );
-                      const grid = generatePVModuleGrid(updatedPVInfo, 0);
-                      updateMeasurement(measurement.id, {
-                        pvModuleInfo: { ...updatedPVInfo, moduleCount: grid.modulePoints.length }
-                      });
+                      // Apply northAngle to ALL solar measurements
+                      const solarMeasurements = allMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo && m.points && m.points.length >= 3);
+                      for (const sm of solarMeasurements) {
+                        const updatedPVInfo = updatePVModuleInfoWithOrientation(
+                          { ...sm.pvModuleInfo!, northAngle: val },
+                          sm.points,
+                          val
+                        );
+                        const grid = generatePVModuleGrid(updatedPVInfo, 0);
+                        updateMeasurement(sm.id, {
+                          pvModuleInfo: { ...updatedPVInfo, moduleCount: grid.modulePoints.length }
+                        });
+                      }
                     }}
                   />
                   <div className="flex justify-between text-[9px] text-muted-foreground">
