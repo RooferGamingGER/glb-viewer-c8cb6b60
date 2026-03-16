@@ -884,7 +884,7 @@ export const generatePVModuleGrid = (
         currentW += ewPairGap;
         // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
         if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
-          currentW += EW_MAINTENANCE_GAP;
+          currentW += EW_ROW_MAINTENANCE_GAP;
         }
       }
       
