@@ -467,32 +467,52 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 <Compass className="h-3 w-3" /> Nordrichtung im Modell
               </Label>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground w-6">N</span>
-                <Slider
-                  min={0}
-                  max={359}
-                  step={1}
-                  value={[measurement.pvModuleInfo.northAngle || 0]}
-                  onValueChange={([val]) => {
-                    if (!measurement.pvModuleInfo || !measurement.points) return;
-                    const updatedPVInfo = updatePVModuleInfoWithOrientation(
-                      { ...measurement.pvModuleInfo, northAngle: val },
-                      measurement.points,
-                      val
-                    );
-                    // Re-generate grid for flat roof south tilt direction
-                    const grid = generatePVModuleGrid(updatedPVInfo, 0);
-                    updateMeasurement(measurement.id, {
-                      pvModuleInfo: { ...updatedPVInfo, moduleCount: grid.modulePoints.length }
-                    });
-                  }}
-                  className="flex-1"
-                />
-                <span className="text-[10px] w-10 text-right">{measurement.pvModuleInfo.northAngle || 0}°</span>
+                {/* Visual compass rose */}
+                <div className="relative w-14 h-14 flex-shrink-0">
+                  <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/30" />
+                  {/* Cardinal labels */}
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-0.5 text-[8px] font-bold text-destructive">N</span>
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-0.5 text-[8px] text-muted-foreground">S</span>
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-0.5 text-[8px] text-muted-foreground">W</span>
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-0.5 text-[8px] text-muted-foreground">O</span>
+                  {/* Rotating needle */}
+                  <div
+                    className="absolute inset-0 flex items-center justify-center transition-transform duration-200"
+                    style={{ transform: `rotate(${measurement.pvModuleInfo.northAngle || 0}deg)` }}
+                  >
+                    {/* North half (red) */}
+                    <div className="absolute w-0.5 h-[38%] bg-destructive rounded-full bottom-1/2 left-1/2 -translate-x-1/2 origin-bottom" />
+                    {/* South half (gray) */}
+                    <div className="absolute w-0.5 h-[38%] bg-muted-foreground/40 rounded-full top-1/2 left-1/2 -translate-x-1/2 origin-top" />
+                    {/* Center dot */}
+                    <div className="absolute w-1.5 h-1.5 rounded-full bg-foreground" />
+                  </div>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Slider
+                    min={0}
+                    max={359}
+                    step={1}
+                    value={[measurement.pvModuleInfo.northAngle || 0]}
+                    onValueChange={([val]) => {
+                      if (!measurement.pvModuleInfo || !measurement.points) return;
+                      const updatedPVInfo = updatePVModuleInfoWithOrientation(
+                        { ...measurement.pvModuleInfo, northAngle: val },
+                        measurement.points,
+                        val
+                      );
+                      const grid = generatePVModuleGrid(updatedPVInfo, 0);
+                      updateMeasurement(measurement.id, {
+                        pvModuleInfo: { ...updatedPVInfo, moduleCount: grid.modulePoints.length }
+                      });
+                    }}
+                  />
+                  <div className="flex justify-between text-[9px] text-muted-foreground">
+                    <span>{measurement.pvModuleInfo.northAngle || 0}°</span>
+                    <span>0° = +Z ist Nord (UTM)</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-[9px] text-muted-foreground">
-                0° = +Z ist Nord (UTM-Standard). Bei WebODM-Modellen normalerweise korrekt.
-              </p>
             </div>
             
             {/* Grid Position & Rotation Controls */}
