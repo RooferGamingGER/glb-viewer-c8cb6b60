@@ -11,6 +11,7 @@ import { useMeasurementCleanup } from '@/hooks/useMeasurementCleanup';
 import { useMeasurementVisibility } from '@/hooks/useMeasurementVisibility';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
+import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
 
 // Import visualization utilities
@@ -216,12 +217,17 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  // Auto-open sidebar when solar or roof element tool is activated
-  React.useEffect(() => {
-    if (isRoofElementMode || activeMode === 'solar') {
-      setSidebarOpen(true);
-    }
-  }, [activeMode, isRoofElementMode]);
+  // No auto-open sidebar logic needed — user controls sidebar
+
+  // Convert area to solar handler for overlay
+  const handleConvertAreaToSolar = React.useCallback((areaId: string) => {
+    const areaMeasurement = measurements.find(m => m.id === areaId);
+    if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
+    const exclusionZones = extractExclusionZones(measurements);
+    const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
+    updateMeasurement(areaId, { type: 'solar' as any, pvModuleInfo });
+    smartToast.success(`Fläche in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+  }, [measurements, updateMeasurement]);
 
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
   const useBottomSheet = isPortrait && (isPhone || isTablet);
@@ -303,6 +309,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
           allLabelsVisible={allLabelsVisible}
           handleCancelEditing={handleCancelEditingWithCleanup}
+          updateMeasurement={updateMeasurement}
+          onConvertAreaToSolar={handleConvertAreaToSolar}
         />
       )}
 
@@ -329,7 +337,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           >
             {/* Close button */}
             <div className="flex items-center justify-between p-2 border-b border-border/30">
-              <span className="text-xs font-medium text-muted-foreground">Details</span>
+              <span className="text-xs font-medium text-muted-foreground">Messungen</span>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSidebarOpen(false)}>
                 <PanelRight className="h-3.5 w-3.5" />
               </Button>

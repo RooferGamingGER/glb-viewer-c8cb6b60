@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { MeasurementMode, Measurement as MeasurementType, Segment } from '@/types/measurements';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { toast } from 'sonner';
-import SolarToolbar from './SolarToolbar';
-import RoofElementsToolbar from './RoofElementsToolbar';
 import SolarMeasurementContent from './SolarMeasurementContent';
 import CollapsibleSection from '@/components/ui/collapsible-section';
 import { Ruler, ArrowUpDown, Square, MinusSquare, X, ChevronDown, Pencil, Check, Sun } from 'lucide-react';
@@ -161,14 +159,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   return (
     <ScrollArea className="flex-1 h-full">
       <div className="p-1.5 flex flex-col">
-        {/* Solar planning */}
-        <SolarToolbar 
-          activeMode={activeMode}
-          toggleMeasurementTool={toggleMeasurementTool || (() => {})}
-          editMeasurementId={editMeasurementId}
-          measurements={measurements as any}
-          onConvertAreaToSolar={handleConvertAreaToSolar}
-        />
 
         {/* Solar measurements with full PV content */}
         {solarMeasurements.length > 0 && (
@@ -211,13 +201,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           </div>
         )}
         
-        {/* Roof elements */}
-        <RoofElementsToolbar 
-          activeMode={activeMode}
-          toggleMeasurementTool={toggleMeasurementTool || (() => {})}
-          editMeasurementId={editMeasurementId}
-        />
-
         {/* Compact measurement list */}
         {otherMeasurements.length > 0 && (
           <CollapsibleSection title={`Messungen (${otherMeasurements.length})`} defaultOpen={true}>

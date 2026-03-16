@@ -21,13 +21,14 @@ export function useAutoLoadMeasurements(
   const hasChecked = useRef(false);
 
   useEffect(() => {
+    // Don't block on existingMeasurements — user may have embedded measurements in GLB
+    // but still want to load newer saved ones from the server
     if (
       hasChecked.current ||
       !isAuthenticated ||
       !token ||
       !projectIdParam ||
-      !taskIdParam ||
-      existingMeasurements.length > 0
+      !taskIdParam
     ) {
       return;
     }
@@ -37,8 +38,11 @@ export function useAutoLoadMeasurements(
 
     hasChecked.current = true;
 
+    console.log('[AutoLoad] Checking for saved measurements:', { projectId, taskId: taskIdParam, username });
+
     checkSavedMeasurements(token, projectId, taskIdParam, username || undefined)
       .then((result) => {
+        console.log('[AutoLoad] Check result:', result);
         if (!result.exists) return;
 
         // Show confirmation toast
@@ -58,7 +62,7 @@ export function useAutoLoadMeasurements(
                   }
                 })
                 .catch((err) => {
-                  console.warn('Load measurements failed:', err);
+                  console.warn('[AutoLoad] Load measurements failed:', err);
                   smartToast.error('Laden der Messungen fehlgeschlagen');
                 });
             },
@@ -66,7 +70,7 @@ export function useAutoLoadMeasurements(
         });
       })
       .catch((err) => {
-        console.warn('Check saved measurements failed:', err);
+        console.warn('[AutoLoad] Check saved measurements failed:', err);
       });
-  }, [isAuthenticated, token, username, projectIdParam, taskIdParam, importMeasurements, existingMeasurements.length]);
+  }, [isAuthenticated, token, username, projectIdParam, taskIdParam, importMeasurements]);
 }
