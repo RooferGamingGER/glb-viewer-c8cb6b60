@@ -618,13 +618,18 @@ export const generatePVModuleGrid = (
     : (pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
 
   // For flat roofs, row pitch depends on layout
+  // For E-W: we calculate pair placement manually in the loop, so rowPitch is not used the same way
   let rowPitch: number;
+  let ewPairWidth: number = 0; // ground footprint of one A-form pair
   if (isFlatRoof) {
     const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH;
+    const tiltRad = (tiltAngle * Math.PI) / 180;
+    const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
     if (pvInfo.flatRoofLayout === 'east-west') {
-      // E-W: pairs of modules back-to-back, then maintenance gap
-      const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
-      rowPitch = moduleFootprint * 2 + EW_PAIR_GAP + EW_MAINTENANCE_GAP;
+      // A-form pair: 2 modules leaning together at the top, no gap at ridge
+      ewPairWidth = 2 * moduleFootprint;
+      // rowPitch not used directly — we iterate pairs manually
+      rowPitch = mh + spacing; // fallback, not actually used for E-W
     } else {
       // South: full row spacing to avoid shadowing
       rowPitch = calculateFlatRoofRowSpacing(mh, tiltAngle);
@@ -637,7 +642,27 @@ export const generatePVModuleGrid = (
   const startW = minW + edge + mh / 2;
 
   const cols = Math.floor((maxU - minU - 2 * edge) / (mw + spacing));
-  const rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
+  // For E-W: calculate how many pairs fit in the W direction
+  let rows: number;
+  if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
+    const availW = maxW - minW - 2 * edge;
+    // Each pair takes ewPairWidth. Between pairs: EW_PAIR_GAP. Every EW_MAINTENANCE_INTERVAL pairs: extra EW_MAINTENANCE_GAP.
+    // Binary search / iterative count for how many pairs fit
+    let pairCount = 0;
+    let usedW = 0;
+    while (true) {
+      const nextPairW = ewPairWidth;
+      const gapAfter = (pairCount > 0) ? EW_PAIR_GAP : 0;
+      const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_MAINTENANCE_GAP : 0;
+      const needed = gapAfter + maintenanceGap + nextPairW;
+      if (usedW + needed > availW) break;
+      usedW += needed;
+      pairCount++;
+    }
+    rows = pairCount; // 'rows' here means pairs for E-W
+  } else {
+    rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
+  }
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
