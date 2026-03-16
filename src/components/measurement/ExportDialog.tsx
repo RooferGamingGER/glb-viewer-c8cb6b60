@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import ExportPdfButton from './ExportPdfButton';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
-import SaveMeasurementsButton from './SaveMeasurementsButton';
+
 
 interface ExportDialogProps {
   measurements: Measurement[];
@@ -79,14 +79,6 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ measurements }) => {
 
           {/* Roof plan */}
           <GenerateRoofPlanButton measurements={measurements} />
-
-          {/* Save to DrohnenGLB server */}
-          <SaveMeasurementsButton 
-            measurements={measurements} 
-            variant="outline" 
-            size="sm" 
-            className="w-full justify-start text-left" 
-          />
         </div>
         <DialogClose asChild>
           <Button variant="outline" className="w-full mt-2">Schließen</Button>

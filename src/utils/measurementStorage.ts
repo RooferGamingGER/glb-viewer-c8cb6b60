@@ -41,7 +41,6 @@ function serializeMeasurements(measurements: Measurement[]) {
       pvModuleInfo: m.pvModuleInfo
         ? {
             ...m.pvModuleInfo,
-            // Strip visual-only data that can be regenerated
             modulePositions: m.pvModuleInfo.modulePositions,
             moduleCorners: m.pvModuleInfo.moduleCorners,
             removedModuleIndices: m.pvModuleInfo.removedModuleIndices,
@@ -62,7 +61,6 @@ async function callEdgeFunction(body: Record<string, unknown>) {
     body,
   });
   if (error) throw new Error(error.message || "Edge function error");
-  // The function may return error in the body with non-200 status
   if (data?.error) {
     const err = new Error(data.message || data.error);
     (err as any).code = data.error;
@@ -79,12 +77,14 @@ export async function saveMeasurements(
   taskId: string,
   measurements: Measurement[],
   taskName?: string,
-  projectName?: string
+  projectName?: string,
+  username?: string
 ): Promise<{ id: string; updated_at: string }> {
   const serialized = serializeMeasurements(measurements);
   return callEdgeFunction({
     action: "save",
     token,
+    username, // send as fallback for edge function
     project_id: projectId,
     task_id: taskId,
     task_name: taskName,
@@ -97,16 +97,17 @@ export async function saveMeasurements(
 export async function loadMeasurements(
   token: string,
   projectId: number,
-  taskId: string
+  taskId: string,
+  username?: string
 ): Promise<{ found: boolean; measurements?: Measurement[]; updated_at?: string }> {
   const data = await callEdgeFunction({
     action: "load",
     token,
+    username,
     project_id: projectId,
     task_id: taskId,
   });
   if (!data.found) return { found: false };
-  // Extract measurements from the stored format
   const stored = data.measurements;
   const list: Measurement[] = stored?.measurements || [];
   return { found: true, measurements: list, updated_at: data.updated_at };
@@ -116,11 +117,13 @@ export async function loadMeasurements(
 export async function checkSavedMeasurements(
   token: string,
   projectId: number,
-  taskId: string
+  taskId: string,
+  username?: string
 ): Promise<{ exists: boolean; updated_at: string | null }> {
   return callEdgeFunction({
     action: "check",
     token,
+    username,
     project_id: projectId,
     task_id: taskId,
   });
@@ -128,11 +131,13 @@ export async function checkSavedMeasurements(
 
 /** List all saved measurements for the current user */
 export async function listSavedMeasurements(
-  token: string
+  token: string,
+  username?: string
 ): Promise<{ items: SavedMeasurementEntry[]; count: number }> {
   return callEdgeFunction({
     action: "list",
     token,
+    username,
   });
 }
 
@@ -140,11 +145,13 @@ export async function listSavedMeasurements(
 export async function deleteSavedMeasurements(
   token: string,
   projectId: number,
-  taskId: string
+  taskId: string,
+  username?: string
 ): Promise<void> {
   await callEdgeFunction({
     action: "delete",
     token,
+    username,
     project_id: projectId,
     task_id: taskId,
   });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PhotoGps } from "@/utils/exifGps";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -41,9 +41,7 @@ export default function TaskBoundaryMap({ photos, onBoundaryChange }: Props) {
           shapeOptions: { color: "#3b82f6", weight: 2, fillOpacity: 0.1 },
         },
         polyline: false,
-        rectangle: {
-          shapeOptions: { color: "#3b82f6", weight: 2, fillOpacity: 0.1 },
-        },
+        rectangle: false,
         circle: false,
         circlemarker: false,
         marker: false,
@@ -88,6 +86,7 @@ export default function TaskBoundaryMap({ photos, onBoundaryChange }: Props) {
         fillColor: "#3b82f6",
         fillOpacity: 0.7,
         weight: 1,
+        interactive: false,
       }).addTo(map);
       markers.push(m);
     });
@@ -129,7 +128,7 @@ export default function TaskBoundaryMap({ photos, onBoundaryChange }: Props) {
         style={{ height: 320 }}
       />
       <p className="text-xs text-muted-foreground">
-        Zeichne ein Polygon oder Rechteck, um den Verarbeitungsbereich einzugrenzen. Ohne Zeichnung wird der gesamte Bereich verarbeitet.
+        Zeichne ein Polygon, um den Verarbeitungsbereich einzugrenzen. Ohne Zeichnung wird der gesamte Bereich verarbeitet.
       </p>
     </div>
   );

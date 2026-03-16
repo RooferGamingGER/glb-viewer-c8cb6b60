@@ -6,7 +6,7 @@ import { generateDetailedCSV, exportMeasurementsToAbsJson } from '@/utils/export
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
 import ExportPdfButton from './ExportPdfButton';
-import SaveMeasurementsButton from './SaveMeasurementsButton';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -106,8 +106,6 @@ const MobileExportOverlay: React.FC<MobileExportOverlayProps> = ({
             </Button>
 
             <ExportPdfButton measurements={measurements} />
-
-            <SaveMeasurementsButton measurements={measurements} variant="outline" size="sm" className="w-full" />
           </div>
         )}
       </ScrollArea>
