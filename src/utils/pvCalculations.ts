@@ -847,6 +847,7 @@ export const generatePVModuleGrid = (
 
     modulePoints.push(corners3D);
     moduleOriginalIndices.push(currentIndex);
+    moduleDirections.push(tiltInfo?.direction === 'east' ? 'east' : tiltInfo?.direction === 'west' ? 'west' : null);
 
     for (let i = 0; i < 4; i++) {
       gridLines.push({ from: corners3D[i], to: corners3D[(i + 1) % 4] });
