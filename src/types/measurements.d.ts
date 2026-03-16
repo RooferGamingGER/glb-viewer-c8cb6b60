@@ -149,5 +149,6 @@ export interface PVModuleInfo {
   flatRoofEdgeDistance?: number;
   ewPairGap?: number;
   northAngle?: number;  // North direction in model coordinates (degrees, 0 = +Z is North)
+  maintenancePathWidth?: number;  // Width of central maintenance path in meters (default: 0.80m)
 }
 }
