@@ -425,38 +425,52 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                 {measurement.pvModuleInfo.flatRoofLayout === 'east-west' && (
                   <>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground w-16">Feldabst.:</span>
+                      <span className="text-[10px] text-muted-foreground w-16">Wartungsw.:</span>
                       <div className="flex gap-1 flex-1">
                         <Button
-                          variant={measurement.pvModuleInfo.ewPairGap !== 0.60 ? 'default' : 'outline'}
+                          variant={measurement.pvModuleInfo.ewPairGap === 0.80 ? 'default' : 'outline'}
                           size="sm"
                           className="flex-1 h-5 text-[9px]"
                           onClick={() => {
-                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.50 };
+                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.80 };
                             const grid = generatePVModuleGrid(updated, 0);
                             updateMeasurement(measurement.id, {
                               pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
                             });
                           }}
                         >
-                          50cm
+                          80cm
                         </Button>
                         <Button
-                          variant={measurement.pvModuleInfo.ewPairGap === 0.60 ? 'default' : 'outline'}
+                          variant={measurement.pvModuleInfo.ewPairGap === 0.90 ? 'default' : 'outline'}
                           size="sm"
                           className="flex-1 h-5 text-[9px]"
                           onClick={() => {
-                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.60 };
+                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.90 };
                             const grid = generatePVModuleGrid(updated, 0);
                             updateMeasurement(measurement.id, {
                               pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
                             });
                           }}
                         >
-                          60cm
+                          90cm
+                        </Button>
+                        <Button
+                          variant={measurement.pvModuleInfo.ewPairGap === 1.00 ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-5 text-[9px]"
+                          onClick={() => {
+                            const updated = { ...measurement.pvModuleInfo!, ewPairGap: 1.00 };
+                            const grid = generatePVModuleGrid(updated, 0);
+                            updateMeasurement(measurement.id, {
+                              pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                            });
+                          }}
+                        >
+                          100cm
                         </Button>
                       </div>
-                      <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.ewPairGap || 0.50).toFixed(2)}m</span>
+                      <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.ewPairGap || 0.90).toFixed(2)}m</span>
                     </div>
 
                     {/* Central maintenance path slider */}
