@@ -314,6 +314,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           toggleAllLabelsVisibility={handleToggleAllLabelsVisibility}
           allLabelsVisible={allLabelsVisible}
           handleCancelEditing={handleCancelEditingWithCleanup}
+          updateMeasurement={updateMeasurement}
+          onConvertAreaToSolar={handleConvertAreaToSolar}
         />
       )}
 
