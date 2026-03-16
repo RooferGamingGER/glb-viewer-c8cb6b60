@@ -563,7 +563,6 @@ export const calculatePVModulePlacement = (
       flatConfig.tiltAngle
     );
   }
-  };
 
   return result;
 };
