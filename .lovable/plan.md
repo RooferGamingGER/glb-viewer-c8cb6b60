@@ -20,8 +20,14 @@
 
 ### 4. Grid-Generierung für Flachdach
 - **Süd**: Reihen mit berechnetem Reihenabstand, Hinterkante angehoben
-- **Ost-West**: Modulpaare Rücken an Rücken (5cm Paarabstand, 30cm Wartungsgang)
-- 3D-Tilt: Ecken werden in Y-Richtung angehoben basierend auf Kippwinkel
+- **Ost-West (A-Form / Zelt-Struktur)**:
+  - Module paarweise als A-Form: Oberkanten treffen sich am First (Ridge)
+  - Ost-Modul: Corners 2,3 (high-W = Ridge) angehoben
+  - West-Modul: Corners 0,1 (low-W = Ridge) angehoben
+  - Paarbreite = 2 × moduleFootprint (kein Spalt am First)
+  - EW_PAIR_GAP = 5cm zwischen Paaren
+  - EW_MAINTENANCE_GAP = 40cm Wartungsgang alle 3 Paare
+  - Iterative Paar-Platzierung statt fester rowPitch-Berechnung
 
 ### 5. Ertragsberechnung
 - Flachdach nutzt tiltAngle als effektive Neigung
