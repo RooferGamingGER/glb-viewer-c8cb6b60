@@ -509,11 +509,12 @@ export const calculatePVModulePlacement = (
   const portrait = tryOrientation(true);
   const landscape = tryOrientation(false);
 
+  // Default to portrait (Hochkant) for pitched roofs — industry standard
   const usePortrait = forcedOrientation === 'portrait'
     ? true
     : forcedOrientation === 'landscape'
       ? false
-      : portrait.count >= landscape.count;
+      : true; // Default: portrait (Hochkant)
 
   const chosen = usePortrait ? portrait : landscape;
   const moduleCount = chosen.count;
