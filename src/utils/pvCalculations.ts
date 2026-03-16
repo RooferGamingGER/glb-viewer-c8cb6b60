@@ -1123,6 +1123,23 @@ export const calculateAnnualYieldWithOrientation = (
   totalPower: number,
   pvInfo: PVModuleInfo
 ): number => {
+  // For flat roofs, use tilt angle as effective inclination and azimuth based on layout
+  if (pvInfo.roofType === 'flat' && pvInfo.tiltAngle) {
+    const effectiveInclination = pvInfo.tiltAngle;
+    let effectiveAzimuth: number;
+    if (pvInfo.flatRoofLayout === 'east-west') {
+      // Average of east (90°) and west (270°) yields
+      const eastYield = calculateYieldFactorFromOrientation(90, effectiveInclination);
+      const westYield = calculateYieldFactorFromOrientation(270, effectiveInclination);
+      const avgFactor = (eastYield + westYield) / 2;
+      return totalPower * avgFactor;
+    } else {
+      effectiveAzimuth = 180; // South
+    }
+    const factor = calculateYieldFactorFromOrientation(effectiveAzimuth, effectiveInclination);
+    return totalPower * factor;
+  }
+
   const yieldFactor = pvInfo.yieldFactor ||
     (pvInfo.roofAzimuth && pvInfo.roofInclination
       ? calculateYieldFactorFromOrientation(pvInfo.roofAzimuth, pvInfo.roofInclination)
