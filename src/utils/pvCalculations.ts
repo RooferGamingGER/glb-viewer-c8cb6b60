@@ -898,8 +898,8 @@ export const generatePVModuleGrid = (
       // Right block columns
       for (let c = 0; c < colsRight; c++) {
         const cu = startURight + c * (mw + spacing);
-        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
-        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'west' });
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'east' });
       }
       
       // Advance past this pair
