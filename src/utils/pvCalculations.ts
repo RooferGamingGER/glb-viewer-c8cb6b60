@@ -35,11 +35,17 @@ const RAIL_STANDARD_LENGTH = 3.15;    // Standard rail length in meters
 // Yield constants
 const ANNUAL_YIELD_FACTOR_DEFAULT = 950; // kWh/kWp (Germany average)
 
+// Flat roof constants
+const FLAT_ROOF_INCLINATION_THRESHOLD = 5; // degrees - below this = flat roof
+const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
+const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
+const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
+const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
+const EW_PAIR_GAP = 0.05; // 5cm back-to-back gap for E-W pairs
+const EW_MAINTENANCE_GAP = 0.30; // 30cm maintenance gap between E-W pairs
+
 // Exclusion zone safety radius for point elements (vents, hooks) in meters
 const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
-
-// Roof element types that create exclusion zones
-const EXCLUSION_ELEMENT_TYPES = ['chimney', 'skylight', 'deductionarea', 'vent', 'hook', 'other'];
 
 /**
  * Extract exclusion zones from measurements (roof elements that block PV modules).
