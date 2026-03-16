@@ -137,4 +137,15 @@ export interface PVModuleInfo {
     midGapOpacity?: number;
     midGapWidth?: number;
   };
+  removedModuleIndices?: number[];
+  exclusionZones?: Point[][];
+  gridOffsetU?: number;
+  gridOffsetW?: number;
+  gridRotation?: number;
+  roofType?: 'pitched' | 'flat';
+  flatRoofLayout?: 'south' | 'east-west';
+  tiltAngle?: number;
+  rowSpacing?: number;
+  flatRoofEdgeDistance?: number;
+}
 }
