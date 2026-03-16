@@ -157,7 +157,16 @@ const ServerProjects = () => {
       const taskName = task.name || `Task ${task.id.slice(0, 8)}`;
       const projectName = project.name || `Projekt ${project.id}`;
       const fileName = `${projectName} – ${taskName}`;
-      navigate(`/viewer?fileUrl=${encodeURIComponent(blobUrl)}&fileName=${encodeURIComponent(fileName)}&rotateModel=true`);
+      const params = new URLSearchParams({
+        fileUrl: blobUrl,
+        fileName,
+        rotateModel: 'true',
+        projectId: String(project.id),
+        taskId: task.id,
+        taskName,
+        projectName,
+      });
+      navigate(`/viewer?${params.toString()}`);
     } catch (err: any) {
       toast.error(err.message || "GLB-Download fehlgeschlagen");
     } finally {
