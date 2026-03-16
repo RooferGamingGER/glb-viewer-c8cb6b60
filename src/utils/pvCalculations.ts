@@ -41,8 +41,9 @@ const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
 const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
 const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
 const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
-const EW_PAIR_GAP = 0.05; // 5cm back-to-back gap for E-W pairs
-const EW_MAINTENANCE_GAP = 0.30; // 30cm maintenance gap between E-W pairs
+const EW_PAIR_GAP = 0.05; // 5cm gap between adjacent E-W pairs
+const EW_MAINTENANCE_GAP = 0.40; // 40cm maintenance gang between pair groups
+const EW_MAINTENANCE_INTERVAL = 3; // maintenance gang after every 3rd pair
 
 // Exclusion zone safety radius for point elements (vents, hooks) in meters
 // Roof element types that create exclusion zones
@@ -617,13 +618,18 @@ export const generatePVModuleGrid = (
     : (pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
 
   // For flat roofs, row pitch depends on layout
+  // For E-W: we calculate pair placement manually in the loop, so rowPitch is not used the same way
   let rowPitch: number;
+  let ewPairWidth: number = 0; // ground footprint of one A-form pair
   if (isFlatRoof) {
     const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH;
+    const tiltRad = (tiltAngle * Math.PI) / 180;
+    const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
     if (pvInfo.flatRoofLayout === 'east-west') {
-      // E-W: pairs of modules back-to-back, then maintenance gap
-      const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
-      rowPitch = moduleFootprint * 2 + EW_PAIR_GAP + EW_MAINTENANCE_GAP;
+      // A-form pair: 2 modules leaning together at the top, no gap at ridge
+      ewPairWidth = 2 * moduleFootprint;
+      // rowPitch not used directly — we iterate pairs manually
+      rowPitch = mh + spacing; // fallback, not actually used for E-W
     } else {
       // South: full row spacing to avoid shadowing
       rowPitch = calculateFlatRoofRowSpacing(mh, tiltAngle);
@@ -636,7 +642,27 @@ export const generatePVModuleGrid = (
   const startW = minW + edge + mh / 2;
 
   const cols = Math.floor((maxU - minU - 2 * edge) / (mw + spacing));
-  const rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
+  // For E-W: calculate how many pairs fit in the W direction
+  let rows: number;
+  if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
+    const availW = maxW - minW - 2 * edge;
+    // Each pair takes ewPairWidth. Between pairs: EW_PAIR_GAP. Every EW_MAINTENANCE_INTERVAL pairs: extra EW_MAINTENANCE_GAP.
+    // Binary search / iterative count for how many pairs fit
+    let pairCount = 0;
+    let usedW = 0;
+    while (true) {
+      const nextPairW = ewPairWidth;
+      const gapAfter = (pairCount > 0) ? EW_PAIR_GAP : 0;
+      const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_MAINTENANCE_GAP : 0;
+      const needed = gapAfter + maintenanceGap + nextPairW;
+      if (usedW + needed > availW) break;
+      usedW += needed;
+      pairCount++;
+    }
+    rows = pairCount; // 'rows' here means pairs for E-W
+  } else {
+    rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
+  }
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
@@ -702,23 +728,24 @@ export const generatePVModuleGrid = (
       return { x: p3d.x, y: p3d.y, z: p3d.z };
     });
 
-    // For flat roof modules, apply tilt by raising the back edge
+    // For flat roof modules, apply tilt by raising appropriate edge
     if (tiltInfo && tiltInfo.angle > 0) {
       const tiltRad = (tiltInfo.angle * Math.PI) / 180;
       const liftHeight = mh * Math.sin(tiltRad);
-      // corners: 0=BL, 1=BR, 2=TR, 3=TL (in v2 direction = "row" direction)
-      // For south: back edge (higher w) is raised → corners 2,3
-      // For east: right edge raised → corners 1,2
-      // For west: left edge raised → corners 0,3
+      // corners: 0=BL(low-u,low-w), 1=BR(high-u,low-w), 2=TR(high-u,high-w), 3=TL(low-u,high-w)
+      // v2/W axis runs from low-w to high-w
       if (tiltInfo.direction === 'south') {
+        // South: back edge (high-w = corners 2,3) raised
         corners3D[2].y += liftHeight;
         corners3D[3].y += liftHeight;
       } else if (tiltInfo.direction === 'east') {
-        corners3D[1].y += liftHeight;
+        // East-facing module in A-form: ridge at high-W side → raise corners 2,3
         corners3D[2].y += liftHeight;
-      } else if (tiltInfo.direction === 'west') {
-        corners3D[0].y += liftHeight;
         corners3D[3].y += liftHeight;
+      } else if (tiltInfo.direction === 'west') {
+        // West-facing module in A-form: ridge at low-W side → raise corners 0,1
+        corners3D[0].y += liftHeight;
+        corners3D[1].y += liftHeight;
       }
     }
 
@@ -731,21 +758,44 @@ export const generatePVModuleGrid = (
   };
 
   if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
-    // East-West: pairs of modules per row, back-to-back
+    // East-West A-form: pairs of modules leaning together at the top (ridge)
+    // Module A (east-facing): front edge on roof, back edge raised toward ridge
+    // Module B (west-facing): front edge on roof, back edge raised toward ridge
+    // Together they form an A/tent shape: /\
     const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_EW;
-    const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
+    const tiltRad = (tiltAngle * Math.PI) / 180;
+    const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
+    const liftHeight = mh * Math.sin(tiltRad); // ridge height
     
-    for (let r = 0; r < rows; r++) {
-      const rowBaseW = startW + r * rowPitch;
+    // Place pairs along W direction
+    let currentW = minW + edge + moduleFootprint / 2; // center of first east-module
+    
+    for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
+      // Gap before this pair (except first)
+      if (pairIdx > 0) {
+        currentW += EW_PAIR_GAP;
+        // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
+        if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
+          currentW += EW_MAINTENANCE_GAP;
+        }
+      }
+      
+      // East-module center (first module in pair, facing east / front edge at low W)
+      const cwEast = currentW;
+      // West-module center (second module in pair, facing west / front edge at high W)
+      const cwWest = currentW + moduleFootprint; // no gap at ridge - tops touch
+      
       for (let c = 0; c < cols; c++) {
         const cu = startU + c * (mw + spacing);
-        // East-facing module (first of pair)
-        const cwEast = rowBaseW;
+        
+        // East-facing module: corners 2,3 (high-W edge = ridge) are raised
         placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
-        // West-facing module (second of pair, back-to-back)
-        const cwWest = rowBaseW + moduleFootprint + EW_PAIR_GAP;
+        // West-facing module: corners 0,1 (low-W edge = ridge) are raised
         placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
       }
+      
+      // Advance past this pair
+      currentW = cwWest + moduleFootprint / 2;
     }
   } else {
     // Pitched roof (normal) or flat roof south
