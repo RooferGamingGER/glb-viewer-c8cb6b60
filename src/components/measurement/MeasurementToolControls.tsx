@@ -211,13 +211,6 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
           </div>
         )}
         
-        {/* Roof elements */}
-        <RoofElementsToolbar 
-          activeMode={activeMode}
-          toggleMeasurementTool={toggleMeasurementTool || (() => {})}
-          editMeasurementId={editMeasurementId}
-        />
-
         {/* Compact measurement list */}
         {otherMeasurements.length > 0 && (
           <CollapsibleSection title={`Messungen (${otherMeasurements.length})`} defaultOpen={true}>
