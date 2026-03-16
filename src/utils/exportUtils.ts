@@ -95,7 +95,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
  */
 export const calculateTotalArea = (measurements: Measurement[]): number => {
   const totalRegularArea = measurements
-    .filter(m => m.type === 'area' || m.type === 'solar')
+    .filter(m => m.type === 'area')
     .reduce((sum, m) => sum + m.value, 0);
     
   return totalRegularArea;
