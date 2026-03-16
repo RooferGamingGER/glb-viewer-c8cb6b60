@@ -9,8 +9,6 @@ import { toast } from 'sonner';
 import SolarMeasurementContent from './SolarMeasurementContent';
 import CollapsibleSection from '@/components/ui/collapsible-section';
 import { Ruler, ArrowUpDown, Square, MinusSquare, X, ChevronDown, Pencil, Check, Sun } from 'lucide-react';
-import CollapsibleSection from '@/components/ui/collapsible-section';
-import { Ruler, ArrowUpDown, Square, MinusSquare, X, ChevronDown, Pencil, Check, Sun } from 'lucide-react';
 import { formatMeasurementValue, getMeasurementTypeDisplayName } from '@/utils/exportUtils';
 import {
   Select,
