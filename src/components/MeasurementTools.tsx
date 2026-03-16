@@ -76,6 +76,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     moveMeasurementUp, moveMeasurementDown, importMeasurements
   } = useMeasurements();
 
+  // Auto-load saved measurements from server
+  useAutoLoadMeasurements(importMeasurements, measurements);
+
   // Three.js object references
   const {
     pointsRef, linesRef, measurementsRef, editPointsRef, labelsRef, segmentLabelsRef

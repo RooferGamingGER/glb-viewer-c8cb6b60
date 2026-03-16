@@ -106,8 +106,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     importMeasurements
   } = useMeasurementContext();
 
-  // Auto-load saved measurements from server
-  useAutoLoadMeasurements(importMeasurements, measurements);
+  // Auto-load is handled in the root MeasurementTools component
 
   // Three.js object references from context
   const {
