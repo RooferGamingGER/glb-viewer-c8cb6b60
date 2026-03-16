@@ -337,7 +337,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           >
             {/* Close button */}
             <div className="flex items-center justify-between p-2 border-b border-border/30">
-              <span className="text-xs font-medium text-muted-foreground">Details</span>
+              <span className="text-xs font-medium text-muted-foreground">Messungen</span>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSidebarOpen(false)}>
                 <PanelRight className="h-3.5 w-3.5" />
               </Button>
