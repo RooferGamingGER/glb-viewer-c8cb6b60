@@ -141,7 +141,7 @@ const ChangelogSection = () => (
       <Newspaper className="w-4 h-4 text-primary" />
       <h3 className="text-sm font-semibold">Neu</h3>
     </div>
-    <ul className="space-y-2">
+    <ul className="space-y-2 max-h-32 overflow-y-auto pr-1">
       {CHANGELOG.map((entry, i) => (
         <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground/70 whitespace-nowrap shrink-0">{entry.date}:</span>
