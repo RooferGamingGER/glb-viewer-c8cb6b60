@@ -418,6 +418,44 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                   />
                   <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.flatRoofEdgeDistance || 0.50).toFixed(2)}m</span>
                 </div>
+
+                {/* E-W Pair Gap slider (only for east-west layout) */}
+                {measurement.pvModuleInfo.flatRoofLayout === 'east-west' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground w-16">Feldabst.:</span>
+                    <div className="flex gap-1 flex-1">
+                      <Button
+                        variant={measurement.pvModuleInfo.ewPairGap !== 0.60 ? 'default' : 'outline'}
+                        size="sm"
+                        className="flex-1 h-5 text-[9px]"
+                        onClick={() => {
+                          const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.50 };
+                          const grid = generatePVModuleGrid(updated, 0);
+                          updateMeasurement(measurement.id, {
+                            pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                          });
+                        }}
+                      >
+                        50cm
+                      </Button>
+                      <Button
+                        variant={measurement.pvModuleInfo.ewPairGap === 0.60 ? 'default' : 'outline'}
+                        size="sm"
+                        className="flex-1 h-5 text-[9px]"
+                        onClick={() => {
+                          const updated = { ...measurement.pvModuleInfo!, ewPairGap: 0.60 };
+                          const grid = generatePVModuleGrid(updated, 0);
+                          updateMeasurement(measurement.id, {
+                            pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                          });
+                        }}
+                      >
+                        60cm
+                      </Button>
+                    </div>
+                    <span className="text-[10px] w-10 text-right">{(measurement.pvModuleInfo.ewPairGap || 0.50).toFixed(2)}m</span>
+                  </div>
+                )}
               </div>
             )}
             

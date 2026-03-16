@@ -104,6 +104,7 @@ export interface PVModuleInfo {
   tiltAngle?: number;                       // Aufständerungswinkel in Grad
   rowSpacing?: number;                      // Berechneter Reihenabstand in Metern (nur Anzeige)
   flatRoofEdgeDistance?: number;            // Randabstand bei Flachdach (Standard: 0.50m)
+  ewPairGap?: number;                       // Abstand zwischen O/W-Feldern (0.50 oder 0.60m)
 }
 
 export interface PVModuleSpec {

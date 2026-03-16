@@ -41,7 +41,7 @@ const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
 const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
 const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
 const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
-const EW_PAIR_GAP = 0.50; // 50cm gap between adjacent E-W pairs (Reihenabstand)
+const DEFAULT_EW_PAIR_GAP = 0.50; // 50cm default gap between adjacent E-W pairs (Reihenabstand)
 const EW_MAINTENANCE_GAP = 0.40; // 40cm maintenance gang between pair groups
 const EW_MAINTENANCE_INTERVAL = 3; // maintenance gang after every 3rd pair
 
@@ -644,15 +644,15 @@ export const generatePVModuleGrid = (
   const cols = Math.floor((maxU - minU - 2 * edge) / (mw + spacing));
   // For E-W: calculate how many pairs fit in the W direction
   let rows: number;
+  const ewPairGap = pvInfo.ewPairGap || DEFAULT_EW_PAIR_GAP;
   if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
     const availW = maxW - minW - 2 * edge;
-    // Each pair takes ewPairWidth. Between pairs: EW_PAIR_GAP. Every EW_MAINTENANCE_INTERVAL pairs: extra EW_MAINTENANCE_GAP.
-    // Binary search / iterative count for how many pairs fit
+    // Each pair takes ewPairWidth. Between pairs: ewPairGap. Every EW_MAINTENANCE_INTERVAL pairs: extra EW_MAINTENANCE_GAP.
     let pairCount = 0;
     let usedW = 0;
     while (true) {
       const nextPairW = ewPairWidth;
-      const gapAfter = (pairCount > 0) ? EW_PAIR_GAP : 0;
+      const gapAfter = (pairCount > 0) ? ewPairGap : 0;
       const maintenanceGap = (pairCount > 0 && pairCount % EW_MAINTENANCE_INTERVAL === 0) ? EW_MAINTENANCE_GAP : 0;
       const needed = gapAfter + maintenanceGap + nextPairW;
       if (usedW + needed > availW) break;
@@ -695,7 +695,11 @@ export const generatePVModuleGrid = (
   const removedIndices = pvInfo.removedModuleIndices || [];
 
   // Helper to place a single module at (cu, cw) and return true if placed
-  const placeModule = (cu: number, cw: number, tiltInfo?: { angle: number; direction: 'south' | 'east' | 'west' }) => {
+  // Tilt direction types:
+  // 'south' = compass-based (raise north edge)
+  // 'east-grid' = grid-relative, raise high-W corners (2,3) toward ridge
+  // 'west-grid' = grid-relative, raise low-W corners (0,1) toward ridge
+  const placeModule = (cu: number, cw: number, tiltInfo?: { angle: number; direction: 'south' | 'east-grid' | 'west-grid' }) => {
     const rawCorners = [
       { u: cu - mw / 2, w: cw - mh / 2 },
       { u: cu + mw / 2, w: cw - mh / 2 },
@@ -728,59 +732,37 @@ export const generatePVModuleGrid = (
       return { x: p3d.x, y: p3d.y, z: p3d.z };
     });
 
-    // For flat roof modules, apply tilt based on actual compass directions
-    // Not grid axes, since v1/v2 may not align with N/S/E/W
+    // Apply tilt for flat roof modules
     if (tiltInfo && tiltInfo.angle > 0) {
       const tiltRad = (tiltInfo.angle * Math.PI) / 180;
       const liftHeight = mh * Math.sin(tiltRad);
 
-      // Compass vectors in Three.js world space: +Z = south, +X = east
-      const southVec = { x: 0, z: 1 };
-      const eastVec = { x: 1, z: 0 };
-
-      // Module edge vectors (world XZ, ignoring Y):
-      // Edge 0→1 runs along v1 (u-axis), Edge 0→3 runs along v2 (w-axis)
-      const edge01 = { x: corners3D[1].x - corners3D[0].x, z: corners3D[1].z - corners3D[0].z };
-      const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
-
       if (tiltInfo.direction === 'south') {
-        // South-facing: raise the edge that is most NORTH (opposite of south)
-        // Check if v2 (edge 0→3) points south or north
+        // South-facing: raise the edge that is most NORTH (compass-based)
+        // Corners 0,1 = low-W edge, Corners 2,3 = high-W edge
+        // Check if v2 (w-axis) points south in world space (+Z = south)
+        const southVec = { x: 0, z: 1 };
+        const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
         const v2DotSouth = edge03.x * southVec.x + edge03.z * southVec.z;
         if (v2DotSouth > 0) {
-          // v2 points south → corners 0,1 are the north edge → raise 0,1
+          // v2 points south → corners 0,1 are north → raise them
           corners3D[0].y += liftHeight;
           corners3D[1].y += liftHeight;
         } else {
-          // v2 points north → corners 2,3 are the north edge → raise 2,3
+          // v2 points north → corners 2,3 are north → raise them
           corners3D[2].y += liftHeight;
           corners3D[3].y += liftHeight;
         }
-      } else if (tiltInfo.direction === 'east') {
-        // East-facing module: surface faces east → WEST edge is raised (ridge)
-        // Check which edge pair is more "west"
-        const v2DotEast = edge03.x * eastVec.x + edge03.z * eastVec.z;
-        if (v2DotEast > 0) {
-          // v2 points east → corners 0,1 (low-w) are west → raise 0,1
-          corners3D[0].y += liftHeight;
-          corners3D[1].y += liftHeight;
-        } else {
-          // v2 points west → corners 2,3 (high-w) are west → raise 2,3
-          corners3D[2].y += liftHeight;
-          corners3D[3].y += liftHeight;
-        }
-      } else if (tiltInfo.direction === 'west') {
-        // West-facing module: surface faces west → EAST edge is raised (ridge)
-        const v2DotEast = edge03.x * eastVec.x + edge03.z * eastVec.z;
-        if (v2DotEast > 0) {
-          // v2 points east → corners 2,3 (high-w) are east → raise 2,3
-          corners3D[2].y += liftHeight;
-          corners3D[3].y += liftHeight;
-        } else {
-          // v2 points west → corners 0,1 (low-w) are east → raise 0,1
-          corners3D[0].y += liftHeight;
-          corners3D[1].y += liftHeight;
-        }
+      } else if (tiltInfo.direction === 'east-grid') {
+        // East module in A-pair: raise HIGH-W edge (corners 2,3) toward ridge center
+        // This is purely grid-relative — no compass needed
+        corners3D[2].y += liftHeight;
+        corners3D[3].y += liftHeight;
+      } else if (tiltInfo.direction === 'west-grid') {
+        // West module in A-pair: raise LOW-W edge (corners 0,1) toward ridge center
+        // This is purely grid-relative — no compass needed
+        corners3D[0].y += liftHeight;
+        corners3D[1].y += liftHeight;
       }
     }
 
@@ -808,25 +790,25 @@ export const generatePVModuleGrid = (
     for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
       // Gap before this pair (except first)
       if (pairIdx > 0) {
-        currentW += EW_PAIR_GAP;
+        currentW += ewPairGap;
         // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
         if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
           currentW += EW_MAINTENANCE_GAP;
         }
       }
       
-      // East-module center (first module in pair, facing east / front edge at low W)
+      // East-module center (first module in pair, lower W side)
       const cwEast = currentW;
-      // West-module center (second module in pair, facing west / front edge at high W)
+      // West-module center (second module in pair, higher W side)
       const cwWest = currentW + moduleFootprint; // no gap at ridge - tops touch
       
       for (let c = 0; c < cols; c++) {
         const cu = startU + c * (mw + spacing);
         
-        // East-facing module: corners 2,3 (high-W edge = ridge) are raised
-        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
-        // West-facing module: corners 0,1 (low-W edge = ridge) are raised
-        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
+        // East module: raise high-W corners (2,3) toward ridge — grid-relative
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east-grid' });
+        // West module: raise low-W corners (0,1) toward ridge — grid-relative
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west-grid' });
       }
       
       // Advance past this pair
