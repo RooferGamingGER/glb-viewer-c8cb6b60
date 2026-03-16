@@ -879,11 +879,6 @@ export const generatePVModuleGrid = (
     let currentW = minW + edge + moduleFootprint / 2; // center of first east-module
     
     for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
-      // Gap before this pair (except first)
-      if (pairIdx > 0) {
-        currentW += ewPairGap; // walkable maintenance gap at valley between pairs
-      }
-      
       // East-module center (first module in pair, lower W side)
       const cwEast = currentW;
       // West-module center (second module in pair, higher W side)
@@ -902,8 +897,9 @@ export const generatePVModuleGrid = (
         placeModule(cu, cwWest, { angle: tiltAngle, direction: 'east' });
       }
       
-      // Advance past this pair
-      currentW = cwWest + moduleFootprint / 2;
+      // Advance to next pair start:
+      // pair depth = 2 * moduleFootprint, then maintenance gap (valley-to-valley edge distance)
+      currentW = cwWest + moduleFootprint + ewPairGap;
     }
   } else {
     // Pitched roof (normal) or flat roof south
