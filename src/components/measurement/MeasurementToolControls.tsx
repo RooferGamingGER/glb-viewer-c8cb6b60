@@ -139,7 +139,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
 
   const isExpandableType = (type: string) => ['area', 'deductionarea', 'solar'].includes(type);
 
-  const solarMeasurements = measurements.filter(m => m.type === 'solar');
+  const solarMeasurements = measurements.filter(m => m.type === 'solar' || (m.type === 'area' && m.pvModuleInfo));
   const otherMeasurements = measurements.filter(m => m.type !== 'solar');
 
   const handleConvertAreaToSolar = (areaId: string) => {
