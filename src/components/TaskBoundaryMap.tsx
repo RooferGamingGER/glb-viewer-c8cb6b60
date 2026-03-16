@@ -55,12 +55,12 @@ export default function TaskBoundaryMap({ photos, onBoundaryChange }: Props) {
     });
     map.addControl(drawControl);
 
-    map.on(L.Draw.Event.CREATED, (e: any) => {
+    map.on("draw:created" as any, (e: any) => {
       drawnItems.clearLayers();
       drawnItems.addLayer(e.layer);
     });
 
-    map.on(L.Draw.Event.DELETED, () => {
+    map.on("draw:deleted" as any, () => {
       // handled in the interval below
     });
 
