@@ -292,7 +292,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
               {measurement.pvModuleInfo.roofType === 'flat' && (
                 <>
                   <div className="text-muted-foreground">Dachtyp:</div>
-                  <div className="font-medium text-amber-600">Flachdach</div>
+                  <div className="font-medium text-primary">Flachdach</div>
                   
                   <div className="text-muted-foreground">Belegung:</div>
                   <div>{measurement.pvModuleInfo.flatRoofLayout === 'east-west' ? 'Ost-West' : 'Süd-Aufständerung'}</div>
