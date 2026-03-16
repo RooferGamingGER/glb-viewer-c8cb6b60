@@ -13,6 +13,7 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
+import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
 
 // Import visualization utilities
 import { 
