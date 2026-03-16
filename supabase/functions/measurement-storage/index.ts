@@ -23,13 +23,21 @@ interface RequestBody {
 /** Validate WebODM token and return the username */
 async function validateWebODMToken(token: string): Promise<string | null> {
   try {
+    console.log("Validating WebODM token against:", `${WEBODM_BASE}/api/users/current/`);
     const res = await fetch(`${WEBODM_BASE}/api/users/current/`, {
       headers: { Authorization: `JWT ${token}` },
     });
-    if (!res.ok) return null;
+    console.log("WebODM validation response status:", res.status);
+    if (!res.ok) {
+      const text = await res.text();
+      console.log("WebODM validation failed:", text);
+      return null;
+    }
     const user = await res.json();
+    console.log("WebODM user:", user?.username);
     return user?.username || null;
-  } catch {
+  } catch (err) {
+    console.error("WebODM validation error:", err);
     return null;
   }
 }
