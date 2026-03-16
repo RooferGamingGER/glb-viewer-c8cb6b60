@@ -1,28 +1,30 @@
 
-# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Status: Implementiert ✅
+## Fix: Azimut ist 180° invertiert
 
-## Problem
-Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
+### Ursache
+`fitPlane()` erzwingt `normal.y > 0` (Zeile 173). Dadurch zeigt die Horizontalprojektion der Normalen **bergauf** (weg von der Dachneigung), nicht **bergab** (Richtung in die das Dach "schaut").
 
-## Lösung: `northAngle` Parameter
+Für ein Süd-Dach: Normale zeigt nach oben+nord → Horizontalprojektion = Nord → Azimut ≈ 0° (N) statt ≈ 180° (S).
 
-### 1. Typ-Erweiterung
-- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
-- 0° = +Z ist Nord (UTM-Standard)
+### Fix (1 Zeile)
+In `calculateRoofOrientation()` in `src/utils/pvCalculations.ts`, die Horizontalkomponenten **negieren** um von "uphill" auf "downhill/facing" umzurechnen:
 
-### 2. `calculateRoofOrientation(points, northAngle)`
-- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
-- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
+```typescript
+// Zeile 1075-1076 ändern von:
+const hx = normal.x;
+const hz = normal.z;
 
-### 3. `placeModule` South-Tilt
-- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
-- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
+// zu:
+const hx = -normal.x;
+const hz = -normal.z;
+```
 
-### 4. UI: Kompass-Slider
-- 0°-359° Slider in SolarMeasurementContent
-- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
-- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
+Das ist alles. Die Rotation um `northAngle`, die `atan2`-Berechnung und die Himmelsrichtungs-Zuordnung bleiben unverändert korrekt — sie arbeiten nur jetzt mit dem richtigen Vektor (Gefällerichtung statt Steigungsrichtung).
 
-### 5. E-W bleibt grid-relativ (unverändert)
+### Auswirkung
+- Süd-Dach → zeigt jetzt S (~180°) statt N (~0°)
+- Alle anderen Richtungen ebenfalls korrekt invertiert
+- Ertragsfaktor-Berechnung stimmt dann auch (Süd = höchster Ertrag)
+- `placeModule` South-Tilt bleibt korrekt (nutzt eigenen Süd-Vektor aus `northAngle`)
+
