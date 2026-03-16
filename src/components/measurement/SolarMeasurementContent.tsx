@@ -40,9 +40,11 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
   useEffect(() => {
     if (measurement.pvModuleInfo && measurement.points && measurement.points.length >= 3) {
       if (measurement.pvModuleInfo.roofAzimuth === undefined) {
+        const northAngle = measurement.pvModuleInfo.northAngle || 0;
         const updatedPVInfo = updatePVModuleInfoWithOrientation(
           measurement.pvModuleInfo,
-          measurement.points
+          measurement.points,
+          northAngle
         );
         updateMeasurement(measurement.id, { pvModuleInfo: updatedPVInfo });
         toast.success(`Dachausrichtung erkannt: ${updatedPVInfo.roofDirection} (${Math.round(updatedPVInfo.roofAzimuth || 0)}°)`);
