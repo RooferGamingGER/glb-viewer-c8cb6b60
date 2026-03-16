@@ -11,6 +11,7 @@ import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { useLayerVisibility, LayerVisibility } from '@/hooks/useLayerVisibility';
+import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
 
 // Import visualization utilities
 import { 
