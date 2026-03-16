@@ -728,23 +728,24 @@ export const generatePVModuleGrid = (
       return { x: p3d.x, y: p3d.y, z: p3d.z };
     });
 
-    // For flat roof modules, apply tilt by raising the back edge
+    // For flat roof modules, apply tilt by raising appropriate edge
     if (tiltInfo && tiltInfo.angle > 0) {
       const tiltRad = (tiltInfo.angle * Math.PI) / 180;
       const liftHeight = mh * Math.sin(tiltRad);
-      // corners: 0=BL, 1=BR, 2=TR, 3=TL (in v2 direction = "row" direction)
-      // For south: back edge (higher w) is raised → corners 2,3
-      // For east: right edge raised → corners 1,2
-      // For west: left edge raised → corners 0,3
+      // corners: 0=BL(low-u,low-w), 1=BR(high-u,low-w), 2=TR(high-u,high-w), 3=TL(low-u,high-w)
+      // v2/W axis runs from low-w to high-w
       if (tiltInfo.direction === 'south') {
+        // South: back edge (high-w = corners 2,3) raised
         corners3D[2].y += liftHeight;
         corners3D[3].y += liftHeight;
       } else if (tiltInfo.direction === 'east') {
-        corners3D[1].y += liftHeight;
+        // East-facing module in A-form: ridge at high-W side → raise corners 2,3
         corners3D[2].y += liftHeight;
-      } else if (tiltInfo.direction === 'west') {
-        corners3D[0].y += liftHeight;
         corners3D[3].y += liftHeight;
+      } else if (tiltInfo.direction === 'west') {
+        // West-facing module in A-form: ridge at low-W side → raise corners 0,1
+        corners3D[0].y += liftHeight;
+        corners3D[1].y += liftHeight;
       }
     }
 
