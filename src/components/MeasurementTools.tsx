@@ -13,6 +13,7 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
+import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
 
 // Import visualization utilities
 import { 
@@ -74,6 +75,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     cancelEditing, updateMeasurementPoint, allLabelsVisible,
     moveMeasurementUp, moveMeasurementDown, importMeasurements
   } = useMeasurements();
+
+  // Auto-load saved measurements from server
+  useAutoLoadMeasurements(importMeasurements, measurements);
 
   // Three.js object references
   const {

@@ -32,15 +32,18 @@ async function validateWebODMToken(token: string, clientUsername?: string): Prom
 
     if (res.ok) {
       const text = await res.text();
-      console.log("WebODM response body:", text);
       try {
-        const user = JSON.parse(text);
-        // Try multiple paths for username
-        const name = user?.username || user?.user?.username || user?.name || user?.email;
-        if (name) {
-          console.log("Resolved username:", name);
-          return String(name);
+        const parsed = JSON.parse(text);
+        // If it's an object (not array), extract username directly
+        if (parsed && !Array.isArray(parsed)) {
+          const name = parsed?.username || parsed?.user?.username || parsed?.name || parsed?.email;
+          if (name) {
+            console.log("Resolved username from /api/users/current/:", name);
+            return String(name);
+          }
         }
+        // If array, skip — fallback below will validate token
+        console.log("Response was array or no username field, using fallback");
       } catch {
         // not JSON
       }

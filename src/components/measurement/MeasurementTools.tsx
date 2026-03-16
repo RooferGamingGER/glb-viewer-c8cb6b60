@@ -11,7 +11,7 @@ import { useMeasurementState } from '@/hooks/useMeasurementState';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { useLayerVisibility, LayerVisibility } from '@/hooks/useLayerVisibility';
-import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
+
 
 // Import visualization utilities
 import { 
@@ -106,8 +106,7 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
     importMeasurements
   } = useMeasurementContext();
 
-  // Auto-load saved measurements from server
-  useAutoLoadMeasurements(importMeasurements, measurements);
+  // Auto-load is handled in the root MeasurementTools component
 
   // Three.js object references from context
   const {

@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 
 /**
  * Hook that checks for saved measurements when the viewer opens with projectId/taskId params.
- * Shows a confirmation toast before loading.
+ * Shows a confirmation toast before loading. If existing measurements are present,
+ * offers "Ersetzen" (replace) and "Ergänzen" (append) options.
  */
 export function useAutoLoadMeasurements(
   importMeasurements: (list: Measurement[], append?: boolean, linkShared?: boolean) => void,
@@ -21,8 +22,6 @@ export function useAutoLoadMeasurements(
   const hasChecked = useRef(false);
 
   useEffect(() => {
-    // Don't block on existingMeasurements — user may have embedded measurements in GLB
-    // but still want to load newer saved ones from the server
     if (
       hasChecked.current ||
       !isAuthenticated ||
@@ -40,37 +39,57 @@ export function useAutoLoadMeasurements(
 
     console.log('[AutoLoad] Checking for saved measurements:', { projectId, taskId: taskIdParam, username });
 
+    const doLoad = (append: boolean) => {
+      loadMeasurements(token, projectId, taskIdParam, username || undefined)
+        .then((loadResult) => {
+          if (loadResult.found && loadResult.measurements && loadResult.measurements.length > 0) {
+            importMeasurements(loadResult.measurements, append, true);
+            smartToast.success(
+              `${loadResult.measurements.length} Messung${loadResult.measurements.length !== 1 ? 'en' : ''} ${append ? 'ergänzt' : 'geladen'}`
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn('[AutoLoad] Load measurements failed:', err);
+          smartToast.error('Laden der Messungen fehlgeschlagen');
+        });
+    };
+
     checkSavedMeasurements(token, projectId, taskIdParam, username || undefined)
       .then((result) => {
         console.log('[AutoLoad] Check result:', result);
         if (!result.exists) return;
 
-        // Show confirmation toast
-        toast('Gespeicherte Messungen gefunden', {
-          description: 'Möchten Sie die gespeicherten Messungen laden?',
-          duration: 15000,
-          action: {
-            label: 'Laden',
-            onClick: () => {
-              loadMeasurements(token, projectId, taskIdParam, username || undefined)
-                .then((loadResult) => {
-                  if (loadResult.found && loadResult.measurements && loadResult.measurements.length > 0) {
-                    importMeasurements(loadResult.measurements, false, true);
-                    smartToast.success(
-                      `${loadResult.measurements.length} Messung${loadResult.measurements.length !== 1 ? 'en' : ''} geladen`
-                    );
-                  }
-                })
-                .catch((err) => {
-                  console.warn('[AutoLoad] Load measurements failed:', err);
-                  smartToast.error('Laden der Messungen fehlgeschlagen');
-                });
+        const hasExisting = existingMeasurements.length > 0;
+
+        if (hasExisting) {
+          // User has existing measurements (e.g. from GLB) — offer replace or append
+          toast('Gespeicherte Messungen gefunden', {
+            description: 'Es sind bereits Messungen vorhanden. Ersetzen oder ergänzen?',
+            duration: 20000,
+            action: {
+              label: 'Ersetzen',
+              onClick: () => doLoad(false),
             },
-          },
-        });
+            cancel: {
+              label: 'Ergänzen',
+              onClick: () => doLoad(true),
+            },
+          });
+        } else {
+          // No existing measurements — just offer to load
+          toast('Gespeicherte Messungen gefunden', {
+            description: 'Möchten Sie die gespeicherten Messungen laden?',
+            duration: 15000,
+            action: {
+              label: 'Laden',
+              onClick: () => doLoad(false),
+            },
+          });
+        }
       })
       .catch((err) => {
         console.warn('[AutoLoad] Check saved measurements failed:', err);
       });
-  }, [isAuthenticated, token, username, projectIdParam, taskIdParam, importMeasurements]);
+  }, [isAuthenticated, token, username, projectIdParam, taskIdParam, importMeasurements, existingMeasurements]);
 }

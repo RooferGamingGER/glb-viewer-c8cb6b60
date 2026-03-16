@@ -1,31 +1,70 @@
 
+# PV-Anlage verschieben & drehen im 3D-Viewer
 
-## Plan: Fix Measurement Auto-Load + UI Improvements
+## Überblick
+Die PV-Modulanlage soll direkt im 3D-Viewer per Drag verschoben und per Rotation-Handle gedreht werden können. Die Rotation erfolgt um den Mittelpunkt des Modul-Grids.
 
-### Problem 1: Auto-Load Never Fires (Root Cause)
-The Viewer renders `src/components/MeasurementTools.tsx` (root). The `useAutoLoadMeasurements` hook is only called in `src/components/measurement/MeasurementTools.tsx` which is **never mounted by the Viewer**. The hook simply runs in the wrong file.
+## Datenmodell-Erweiterung
 
-**Fix:** Add `useAutoLoadMeasurements` call to `src/components/MeasurementTools.tsx` (the root component that ModelViewer actually uses).
+### `PVModuleInfo` (src/types/measurements.ts)
+Neue Felder:
+```typescript
+gridOffsetU?: number;    // Verschiebung entlang der Hauptachse (v1) in Metern
+gridOffsetW?: number;    // Verschiebung entlang der Nebenachse (v2) in Metern
+gridRotation?: number;   // Rotation in Grad um den Grid-Mittelpunkt
+```
 
-### Problem 2: Load Dialog — Replace vs Append
-When both GLB-embedded measurements AND server-saved measurements exist, the user wants to choose.
+## Änderungen
 
-**Fix:** Update `useAutoLoadMeasurements` to show a toast/dialog with two actions:
-- **"Ersetzen"** — replaces all measurements (`append: false`)
-- **"Ergänzen"** — appends to existing (`append: true`)
+### 1. Type-Erweiterung (`src/types/measurements.ts`)
+- `gridOffsetU`, `gridOffsetW`, `gridRotation` zu `PVModuleInfo` hinzufügen
 
-### Problem 3: Edge Function Username Resolution
-`/api/users/current/` returns an array of ALL users, not the current user. The code falls back to `/api/projects/` which works but is wasteful (downloads full user list first).
+### 2. Grid-Generierung (`src/utils/pvCalculations.ts` → `generatePVModuleGrid`)
+- Nach Berechnung der Module-Positionen im 2D-Raum (u/w), vor der Projektion nach 3D:
+  1. Grid-Mittelpunkt berechnen (Durchschnitt aller Modul-Zentren)
+  2. Rotation um diesen Mittelpunkt anwenden (cos/sin Transform)
+  3. Offset (gridOffsetU, gridOffsetW) addieren
+- Module die nach Transform außerhalb des Dachpolygons liegen werden weiterhin gefiltert
 
-**Fix:** In the edge function, check if the response is an array. If so, skip to fallback immediately. Also try the WebODM endpoint `/api/users/?format=json` with the token to find the authenticated user, or just rely on the fallback path directly (it's already working).
+### 3. Interaktions-Modus (`src/hooks/usePVGridInteraction.ts` – NEU)
+Neuer Hook der PV-Grid Drag & Rotate handhabt:
 
-### Changes
+**Drag (Verschieben):**
+- Klick auf ein PV-Modul → Grid wird "ausgewählt" (visueller Highlight)
+- Drag → Raycaster berechnet Intersection mit Dachfläche → Delta in u/w-Koordinaten → `gridOffsetU/W` aktualisieren
+- Modul-Grid wird in Echtzeit neu gerendert
 
-1. **`src/components/MeasurementTools.tsx`** — Add `useAutoLoadMeasurements(importMeasurements, measurements)` import and call
+**Rotate (Drehen):**
+- Wenn Grid ausgewählt: Ein Rotations-Handle (kleiner Kreis/Pfeil) am Rand des Grids
+- Drag am Handle → Winkel zum Grid-Mittelpunkt berechnen → `gridRotation` aktualisieren
+- Alternative: Zwei-Finger-Geste auf Touch-Geräten
 
-2. **`src/hooks/useAutoLoadMeasurements.ts`** — Update the load toast to offer two buttons: "Ersetzen" and "Ergänzen" when `existingMeasurements.length > 0`, or just "Laden" when no existing measurements
+**State-Management:**
+- `selectedPVGridId: string | null` – aktuell ausgewählte Solarfläche
+- `isDraggingPVGrid: boolean`
+- `isRotatingPVGrid: boolean`
+- Bei Änderung: `updateMeasurement()` mit neuen gridOffset/Rotation-Werten aufrufen
 
-3. **`supabase/functions/measurement-storage/index.ts`** — Optimize `validateWebODMToken`: if response is array, skip to fallback immediately; remove redundant parsing
+### 4. Visuelle Handles (`src/utils/measurementVisuals.ts`)
+- Wenn ein PV-Grid ausgewählt ist:
+  - Blaue Umrandung um das gesamte Grid
+  - Rotations-Handle (kleiner Kreis) an einer Ecke des Grids
+  - Move-Cursor beim Hovern über Module
 
-4. **Remove duplicate hook call** from `src/components/measurement/MeasurementTools.tsx` (the unused one) to avoid confusion
+### 5. Integration in bestehende Measurement-Events
+- `useMeasurementEvents.ts` oder `useMeasurementInteraction.ts`: 
+  - PV-Grid Klick-Erkennung (userData.isPVModule → Grid auswählen)
+  - Drag-Events weiterleiten an `usePVGridInteraction`
+  - ESC oder Klick außerhalb → Grid deselektieren
 
+## Implementierungsreihenfolge
+1. Type-Erweiterung (PVModuleInfo)
+2. generatePVModuleGrid mit Offset/Rotation
+3. usePVGridInteraction Hook
+4. Visuelle Handles
+5. Integration in Event-System
+
+## Technische Details
+- Die Transformation passiert im 2D u/w-Koordinatensystem (vor der 3D-Projektion), damit die Module korrekt auf der Dachfläche bleiben
+- Rotation: Standard 2D-Rotation `u' = cos(θ)*(u-cu) - sin(θ)*(w-cw) + cu`, `w' = sin(θ)*(u-cu) + cos(θ)*(w-cw) + cw`
+- Module die nach Transform außerhalb liegen werden automatisch ausgeblendet (bestehende Polygon-Clipping-Logik)
