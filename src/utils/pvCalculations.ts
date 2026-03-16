@@ -757,21 +757,44 @@ export const generatePVModuleGrid = (
   };
 
   if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
-    // East-West: pairs of modules per row, back-to-back
+    // East-West A-form: pairs of modules leaning together at the top (ridge)
+    // Module A (east-facing): front edge on roof, back edge raised toward ridge
+    // Module B (west-facing): front edge on roof, back edge raised toward ridge
+    // Together they form an A/tent shape: /\
     const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_EW;
-    const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
+    const tiltRad = (tiltAngle * Math.PI) / 180;
+    const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
+    const liftHeight = mh * Math.sin(tiltRad); // ridge height
     
-    for (let r = 0; r < rows; r++) {
-      const rowBaseW = startW + r * rowPitch;
+    // Place pairs along W direction
+    let currentW = minW + edge + moduleFootprint / 2; // center of first east-module
+    
+    for (let pairIdx = 0; pairIdx < rows; pairIdx++) {
+      // Gap before this pair (except first)
+      if (pairIdx > 0) {
+        currentW += EW_PAIR_GAP;
+        // Maintenance gang every EW_MAINTENANCE_INTERVAL pairs
+        if (pairIdx % EW_MAINTENANCE_INTERVAL === 0) {
+          currentW += EW_MAINTENANCE_GAP;
+        }
+      }
+      
+      // East-module center (first module in pair, facing east / front edge at low W)
+      const cwEast = currentW;
+      // West-module center (second module in pair, facing west / front edge at high W)
+      const cwWest = currentW + moduleFootprint; // no gap at ridge - tops touch
+      
       for (let c = 0; c < cols; c++) {
         const cu = startU + c * (mw + spacing);
-        // East-facing module (first of pair)
-        const cwEast = rowBaseW;
+        
+        // East-facing module: corners 2,3 (high-W edge = ridge) are raised
         placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
-        // West-facing module (second of pair, back-to-back)
-        const cwWest = rowBaseW + moduleFootprint + EW_PAIR_GAP;
+        // West-facing module: corners 0,1 (low-W edge = ridge) are raised
         placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
       }
+      
+      // Advance past this pair
+      currentW = cwWest + moduleFootprint / 2;
     }
   } else {
     // Pitched roof (normal) or flat roof south
