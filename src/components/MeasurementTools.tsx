@@ -217,12 +217,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  // Auto-open sidebar when measurements exist
-  React.useEffect(() => {
-    if (measurements.length > 0 && !sidebarOpen) {
-      // Don't auto-open, user controls this
-    }
-  }, [measurements.length]);
+  // No auto-open sidebar logic needed — user controls sidebar
 
   // Convert area to solar handler for overlay
   const handleConvertAreaToSolar = React.useCallback((areaId: string) => {
