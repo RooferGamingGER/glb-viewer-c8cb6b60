@@ -223,8 +223,8 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
     }
   });
   
-  // Calculate net area (regular areas - deduction areas)
-  const regularAreas = measurements.filter(m => m.type === 'area');
+  // Calculate net area (prefer area, fallback legacy solar)
+  const regularAreas = getPrimaryRoofAreaMeasurements(measurements);
   const deductionAreas = measurements.filter(m => m.type === 'deductionarea');
   
   if (regularAreas.length > 0 && deductionAreas.length > 0) {
