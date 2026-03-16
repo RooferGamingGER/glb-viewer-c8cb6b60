@@ -698,9 +698,9 @@ export const generatePVModuleGrid = (
   // Helper to place a single module at (cu, cw) and return true if placed
   // Tilt direction types:
   // 'south' = compass-based (raise north edge)
-  // 'east-grid' = grid-relative, raise high-W corners (2,3) toward ridge
-  // 'west-grid' = grid-relative, raise low-W corners (0,1) toward ridge
-  const placeModule = (cu: number, cw: number, tiltInfo?: { angle: number; direction: 'south' | 'east-grid' | 'west-grid' }) => {
+  // 'east' = compass-based east-facing (raise west edge)
+  // 'west' = compass-based west-facing (raise east edge)
+  const placeModule = (cu: number, cw: number, tiltInfo?: { angle: number; direction: 'south' | 'east' | 'west' }) => {
     const rawCorners = [
       { u: cu - mw / 2, w: cw - mh / 2 },
       { u: cu + mw / 2, w: cw - mh / 2 },
@@ -733,39 +733,38 @@ export const generatePVModuleGrid = (
       return { x: p3d.x, y: p3d.y, z: p3d.z };
     });
 
-    // Apply tilt for flat roof modules
+    // Apply tilt for flat roof modules — all compass-based
     if (tiltInfo && tiltInfo.angle > 0) {
       const tiltRad = (tiltInfo.angle * Math.PI) / 180;
       const liftHeight = mh * Math.sin(tiltRad);
+      const na = ((pvInfo.northAngle || 0) * Math.PI) / 180;
 
+      // Determine which direction should face — compute the relevant compass vector
+      let raiseVec: { x: number; z: number };
       if (tiltInfo.direction === 'south') {
-        // South-facing: raise the edge that is most NORTH
-        // Use northAngle to compute south vector in model space
-        const na = ((pvInfo.northAngle || 0) * Math.PI) / 180;
-        // South = opposite of North. North = +Z rotated by northAngle.
-        // South vector in XZ: rotate (0, 1) by northAngle+180° = (sin(na+π), cos(na+π)) = (-sin(na), -cos(na))
-        const southVec = { x: -Math.sin(na), z: -Math.cos(na) };
-        const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
-        const v2DotSouth = edge03.x * southVec.x + edge03.z * southVec.z;
-        if (v2DotSouth > 0) {
-          // v2 points south → corners 0,1 are north → raise them
-          corners3D[0].y += liftHeight;
-          corners3D[1].y += liftHeight;
-        } else {
-          // v2 points north → corners 2,3 are north → raise them
-          corners3D[2].y += liftHeight;
-          corners3D[3].y += liftHeight;
-        }
-      } else if (tiltInfo.direction === 'east-grid') {
-        // East module in A-pair: raise HIGH-W edge (corners 2,3) toward ridge center
-        // This is purely grid-relative — no compass needed
-        corners3D[2].y += liftHeight;
-        corners3D[3].y += liftHeight;
-      } else if (tiltInfo.direction === 'west-grid') {
-        // West module in A-pair: raise LOW-W edge (corners 0,1) toward ridge center
-        // This is purely grid-relative — no compass needed
+        // South-facing: raise north edge. South = (-sin(na), -cos(na))
+        raiseVec = { x: -Math.sin(na), z: -Math.cos(na) };
+      } else if (tiltInfo.direction === 'east') {
+        // East-facing: raise west edge. East = (cos(na), -sin(na)), so West = (-cos(na), sin(na))
+        // We raise the WEST side so module faces EAST
+        raiseVec = { x: -Math.cos(na), z: Math.sin(na) };
+      } else {
+        // West-facing: raise east edge. East = (cos(na), -sin(na))
+        // We raise the EAST side so module faces WEST
+        raiseVec = { x: Math.cos(na), z: -Math.sin(na) };
+      }
+
+      // Determine which edge to raise based on dot product with raiseVec
+      const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
+      const dotV2 = edge03.x * raiseVec.x + edge03.z * raiseVec.z;
+      if (dotV2 > 0) {
+        // v2 direction aligns with raise direction → corners 0,1 are on the opposite side → raise 0,1
         corners3D[0].y += liftHeight;
         corners3D[1].y += liftHeight;
+      } else {
+        // v2 direction opposes raise direction → corners 2,3 are on the raise side → raise 2,3
+        corners3D[2].y += liftHeight;
+        corners3D[3].y += liftHeight;
       }
     }
 
