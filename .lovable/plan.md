@@ -1,28 +1,26 @@
 
-# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Status: Implementiert ✅
+## Fix: E/W-Module von V-Form auf A-Form umstellen
 
-## Problem
-Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
+### Problem
+Die Module werden aktuell in **V-Form** (`\_/`) statt **A-Form** (`/\`) platziert. Das bedeutet:
+- Die **niedrigen** Kanten treffen sich in der Mitte (statt die hohen)
+- Der Wartungsweg liegt am **Hochpunkt** statt am Tiefpunkt (Tal)
+- Das ist das Gegenteil des Referenzbilds
 
-## Lösung: `northAngle` Parameter
+### Ursache
+In der Platzierungsschleife (Zeile 895-896) werden die Richtungen falsch zugeordnet:
+- Erstes Modul (niedrigerer W-Wert) bekommt `direction: 'east'` → hebt Westkante an
+- Zweites Modul (höherer W-Wert) bekommt `direction: 'west'` → hebt Ostkante an
+- Beide heben die **äußeren** Kanten an → V-Form
 
-### 1. Typ-Erweiterung
-- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
-- 0° = +Z ist Nord (UTM-Standard)
+### Lösung (`src/utils/pvCalculations.ts`)
 
-### 2. `calculateRoofOrientation(points, northAngle)`
-- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
-- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
+**Richtungen tauschen** in den `placeModule`-Aufrufen (Zeilen 895-896, 901-902):
+- Erstes Modul: `direction: 'west'` (hebt Ostkante = innere Kante an → zum Partner hin)
+- Zweites Modul: `direction: 'east'` (hebt Westkante = innere Kante an → zum Partner hin)
 
-### 3. `placeModule` South-Tilt
-- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
-- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
+Dadurch treffen sich die **hohen** Kanten in der Mitte → A-Form (`/\`), und der freie Wartungsweg liegt korrekt am Tiefpunkt zwischen den Paaren.
 
-### 4. UI: Kompass-Slider
-- 0°-359° Slider in SolarMeasurementContent
-- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
-- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
+Eine einzeilige Änderung pro Platzierungsblock (4 Zeilen total). Keine Änderungen an der Tilt-Berechnung oder den Abständen nötig.
 
-### 5. E-W bleibt grid-relativ (unverändert)
