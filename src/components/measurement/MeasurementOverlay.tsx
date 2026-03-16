@@ -11,6 +11,7 @@ import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 import { smartToast } from '@/utils/smartToast';
 import ExportDialog from './ExportDialog';
+import SaveMeasurementsButton from './SaveMeasurementsButton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
@@ -142,6 +143,9 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
           )}
           {measurements.length > 0 && (
             <ExportDialog measurements={measurements} />
+          )}
+          {measurements.length > 0 && (
+            <SaveMeasurementsButton measurements={measurements} size="sm" variant="ghost" showLabel={false} className="h-7 px-2" />
           )}
         </div>
       </div>
