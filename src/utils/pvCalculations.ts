@@ -738,10 +738,12 @@ export const generatePVModuleGrid = (
       const liftHeight = mh * Math.sin(tiltRad);
 
       if (tiltInfo.direction === 'south') {
-        // South-facing: raise the edge that is most NORTH (compass-based)
-        // Corners 0,1 = low-W edge, Corners 2,3 = high-W edge
-        // Check if v2 (w-axis) points south in world space (+Z = south)
-        const southVec = { x: 0, z: 1 };
+        // South-facing: raise the edge that is most NORTH
+        // Use northAngle to compute south vector in model space
+        const na = ((pvInfo.northAngle || 0) * Math.PI) / 180;
+        // South = opposite of North. North = +Z rotated by northAngle.
+        // South vector in XZ: rotate (0, 1) by northAngle+180° = (sin(na+π), cos(na+π)) = (-sin(na), -cos(na))
+        const southVec = { x: -Math.sin(na), z: -Math.cos(na) };
         const edge03 = { x: corners3D[3].x - corners3D[0].x, z: corners3D[3].z - corners3D[0].z };
         const v2DotSouth = edge03.x * southVec.x + edge03.z * southVec.z;
         if (v2DotSouth > 0) {
