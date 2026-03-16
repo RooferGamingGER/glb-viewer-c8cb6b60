@@ -652,10 +652,12 @@ export const generatePVModuleGrid = (
 ): {
   modulePoints: Point[][];
   moduleOriginalIndices: number[];
+  moduleDirections: ('east' | 'west' | null)[];
   gridLines: { from: Point; to: Point }[];
 } => {
   const modulePoints: Point[][] = [];
   const moduleOriginalIndices: number[] = [];
+  const moduleDirections: ('east' | 'west' | null)[] = [];
   const gridLines: { from: Point; to: Point }[] = [];
 
   const roofPoints = pvInfo.points;
