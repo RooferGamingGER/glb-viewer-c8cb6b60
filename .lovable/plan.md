@@ -1,70 +1,99 @@
 
-# PV-Anlage verschieben & drehen im 3D-Viewer
 
-## Überblick
-Die PV-Modulanlage soll direkt im 3D-Viewer per Drag verschoben und per Rotation-Handle gedreht werden können. Die Rotation erfolgt um den Mittelpunkt des Modul-Grids.
+## Plan: PV-Belegung erweitern – Hochkant-Standard & Flachdach-Unterstützung
 
-## Datenmodell-Erweiterung
+### Problemstellung
 
-### `PVModuleInfo` (src/types/measurements.ts)
-Neue Felder:
+1. **Steildach – Montagerichtung**: Aktuell wählt der Algorithmus automatisch die Orientierung mit den meisten Modulen (`auto`), was oft Querformat (landscape) ergibt. In der Praxis werden PV-Module auf Steildächern jedoch **standardmäßig hochkant (portrait)** montiert. Die Quermontage soll weiterhin als Option verfügbar bleiben.
+
+2. **Flachdach – Aufständerung**: Wenn die erkannte Dachneigung < 5° beträgt, soll das Tool automatisch erkennen, dass es sich um ein Flachdach handelt, und dem Nutzer zwei Belegungsvarianten anbieten:
+   - **Süd-Aufständerung** (alle Module nach Süden geneigt, mit Reihenabstand gegen Verschattung)
+   - **Ost-West-Aufständerung** (Module Rücken an Rücken in A-Form, maximale Flächennutzung)
+
+---
+
+### Änderung 1: Datenmodell (`src/types/measurements.ts`)
+
+Neue Felder in `PVModuleInfo`:
 ```typescript
-gridOffsetU?: number;    // Verschiebung entlang der Hauptachse (v1) in Metern
-gridOffsetW?: number;    // Verschiebung entlang der Nebenachse (v2) in Metern
-gridRotation?: number;   // Rotation in Grad um den Grid-Mittelpunkt
+roofType?: 'pitched' | 'flat';           // Steildach oder Flachdach (auto-erkannt bei < 5°)
+flatRoofLayout?: 'south' | 'east-west';  // Belegungsvariante bei Flachdach
+tiltAngle?: number;                       // Aufständerungswinkel in Grad
+rowSpacing?: number;                      // Berechneter Reihenabstand (nur Anzeige)
+flatRoofEdgeDistance?: number;            // Randabstand bei Flachdach (Standard: 0.50m für Windlast)
 ```
 
-## Änderungen
+---
 
-### 1. Type-Erweiterung (`src/types/measurements.ts`)
-- `gridOffsetU`, `gridOffsetW`, `gridRotation` zu `PVModuleInfo` hinzufügen
+### Änderung 2: Standard-Orientierung auf Hochkant (`src/utils/pvCalculations.ts`)
 
-### 2. Grid-Generierung (`src/utils/pvCalculations.ts` → `generatePVModuleGrid`)
-- Nach Berechnung der Module-Positionen im 2D-Raum (u/w), vor der Projektion nach 3D:
-  1. Grid-Mittelpunkt berechnen (Durchschnitt aller Modul-Zentren)
-  2. Rotation um diesen Mittelpunkt anwenden (cos/sin Transform)
-  3. Offset (gridOffsetU, gridOffsetW) addieren
-- Module die nach Transform außerhalb des Dachpolygons liegen werden weiterhin gefiltert
+- **`calculatePVModulePlacement`**: Wenn `forcedOrientation === 'auto'`, wird jetzt **portrait bevorzugt** (statt "mehr Module gewinnt"). Nur bei expliziter Wahl von `'landscape'` wird Querformat verwendet.
+- Die bestehende Auto-Logik (`portrait.count >= landscape.count`) wird durch `portrait` als Default ersetzt.
 
-### 3. Interaktions-Modus (`src/hooks/usePVGridInteraction.ts` – NEU)
-Neuer Hook der PV-Grid Drag & Rotate handhabt:
+---
 
-**Drag (Verschieben):**
-- Klick auf ein PV-Modul → Grid wird "ausgewählt" (visueller Highlight)
-- Drag → Raycaster berechnet Intersection mit Dachfläche → Delta in u/w-Koordinaten → `gridOffsetU/W` aktualisieren
-- Modul-Grid wird in Echtzeit neu gerendert
+### Änderung 3: Flachdach-Erkennung und Berechnung (`src/utils/pvCalculations.ts`)
 
-**Rotate (Drehen):**
-- Wenn Grid ausgewählt: Ein Rotations-Handle (kleiner Kreis/Pfeil) am Rand des Grids
-- Drag am Handle → Winkel zum Grid-Mittelpunkt berechnen → `gridRotation` aktualisieren
-- Alternative: Zwei-Finger-Geste auf Touch-Geräten
+**Neue Funktion: `calculateFlatRoofRowSpacing`**
+```
+h = moduleHeight × sin(tiltAngle)
+L = h / tan(sunElevation)        // sunElevation ≈ 15° (Deutschland, 21. Dez)
+Reihenabstand = moduleHeight × cos(tiltAngle) + L
+```
 
-**State-Management:**
-- `selectedPVGridId: string | null` – aktuell ausgewählte Solarfläche
-- `isDraggingPVGrid: boolean`
-- `isRotatingPVGrid: boolean`
-- Bei Änderung: `updateMeasurement()` mit neuen gridOffset/Rotation-Werten aufrufen
+**Erweiterte `generatePVModuleGrid`**:
+- Prüft `roofType === 'flat'` 
+- **Süd-Variante**: Module in Reihen mit berechnetem Reihenabstand. Modulbreite entlang v1, Reihen entlang v2 mit Abstand `rowSpacing`.
+- **Ost-West-Variante**: Modulpaare Rücken an Rücken (Paarabstand ~5cm), zwischen Paaren ~30cm Wartungsgang. Doppelte Flächennutzung gegenüber Süd.
+- Randabstand `flatRoofEdgeDistance` (Standard 50cm statt 30cm)
 
-### 4. Visuelle Handles (`src/utils/measurementVisuals.ts`)
-- Wenn ein PV-Grid ausgewählt ist:
-  - Blaue Umrandung um das gesamte Grid
-  - Rotations-Handle (kleiner Kreis) an einer Ecke des Grids
-  - Move-Cursor beim Hovern über Module
+**Erweiterte `calculatePVModulePlacement`**:
+- Erkennt automatisch Flachdach wenn `roofInclination < 5°`
+- Setzt `roofType: 'flat'` und Standard-Werte für `tiltAngle` (25° bei Süd, 12° bei O/W)
 
-### 5. Integration in bestehende Measurement-Events
-- `useMeasurementEvents.ts` oder `useMeasurementInteraction.ts`: 
-  - PV-Grid Klick-Erkennung (userData.isPVModule → Grid auswählen)
-  - Drag-Events weiterleiten an `usePVGridInteraction`
-  - ESC oder Klick außerhalb → Grid deselektieren
+---
 
-## Implementierungsreihenfolge
-1. Type-Erweiterung (PVModuleInfo)
-2. generatePVModuleGrid mit Offset/Rotation
-3. usePVGridInteraction Hook
-4. Visuelle Handles
-5. Integration in Event-System
+### Änderung 4: 3D-Darstellung (`src/utils/pvModuleRenderer.ts`)
 
-## Technische Details
-- Die Transformation passiert im 2D u/w-Koordinatensystem (vor der 3D-Projektion), damit die Module korrekt auf der Dachfläche bleiben
-- Rotation: Standard 2D-Rotation `u' = cos(θ)*(u-cu) - sin(θ)*(w-cw) + cu`, `w' = sin(θ)*(u-cu) + cos(θ)*(w-cw) + cw`
-- Module die nach Transform außerhalb liegen werden automatisch ausgeblendet (bestehende Polygon-Clipping-Logik)
+- **`createDetailedPVModuleMesh`**: Neuer Parameter `tiltAngle` und `tiltDirection`
+- Bei Flachdach-Modulen: Nach der Ausrichtung zur Dachfläche wird eine zusätzliche Rotation um die lokale Kippachse angewendet
+  - Süd: Hinterkante angehoben um `moduleHeight × sin(tiltAngle)`
+  - Ost-West: Abwechselnd +tiltAngle / -tiltAngle
+
+---
+
+### Änderung 5: UI (`src/components/measurement/SolarMeasurementContent.tsx`)
+
+Neuer Bereich oberhalb der bestehenden Übersicht:
+
+**Bei erkanntem Flachdach (Neigung < 5°):**
+- Info-Banner: "Flachdach erkannt – Aufständerung erforderlich"
+- Toggle: **Süd-Aufständerung** / **Ost-West-Aufständerung**
+- Slider: Aufständerungswinkel (5°–35°, Standard je nach Variante)
+- Anzeige: Berechneter Reihenabstand (nur lesen)
+- Slider: Randabstand (30–100cm, Standard 50cm)
+
+**Bei Steildach:**
+- Orientierung-Toggle zeigt jetzt drei Optionen: **Hochkant** (Standard) / **Quer** / **Auto**
+- "Hochkant" ist vorausgewählt
+
+**Ertragsberechnung:**
+- Bei Flachdach wird der `tiltAngle` als effektive Dachneigung für die Ertragsberechnung verwendet (da reale Dachneigung ~0°)
+
+---
+
+### Änderung 6: Orientierungs-Steuerung (`src/components/measurement/PVModuleSelect.tsx`)
+
+- `onOrientationChange` Callback: Standard-Wert auf `'portrait'` statt `'auto'`
+- UI-Labels: "Hochkant" statt "Portrait", "Quer" statt "Landscape"
+
+---
+
+### Implementierungsreihenfolge
+1. Typ-Erweiterung (PVModuleInfo)
+2. Standard-Orientierung auf Hochkant umstellen
+3. Flachdach-Erkennung + Reihenabstandsformel
+4. Grid-Generierung für Flachdach (Süd + O/W)
+5. 3D-Rendering mit Aufständerung
+6. UI-Steuerung in SolarMeasurementContent
+
