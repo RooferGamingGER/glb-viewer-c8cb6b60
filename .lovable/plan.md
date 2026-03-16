@@ -1,36 +1,28 @@
 
+# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Fläche darf nicht durch Solar ersetzt werden
+## Status: Implementiert ✅
 
-### Problem
-Wenn eine Fläche in eine Solarfläche umgewandelt wird, ändert der Code den `type` von `'area'` auf `'solar'`. Dadurch verschwindet die Fläche aus der Messungsliste (`otherMeasurements = measurements.filter(m => m.type !== 'solar')`) und wird nur noch als Solarfläche angezeigt. Die eigentliche Flächenmessung geht verloren.
+## Problem
+Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
 
-### Lösung: PV-Daten als Overlay statt Typ-Ersetzung
+## Lösung: `northAngle` Parameter
 
-Die Fläche behält ihren Typ `area`. PV-Daten werden als zusätzliche Eigenschaft (`pvModuleInfo`) auf der bestehenden Fläche gespeichert, ohne den Typ zu ändern.
+### 1. Typ-Erweiterung
+- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
+- 0° = +Z ist Nord (UTM-Standard)
 
-**Betroffene Dateien und Änderungen:**
+### 2. `calculateRoofOrientation(points, northAngle)`
+- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
+- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
 
-1. **`src/components/MeasurementTools.tsx`** (~Zeile 232)
-   - `handleConvertAreaToSolar`: Statt `type: 'solar' as any` nur `pvModuleInfo` setzen, Typ bleibt `area`
+### 3. `placeModule` South-Tilt
+- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
+- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
 
-2. **`src/components/measurement/MeasurementToolControls.tsx`** (~Zeile 142-153)
-   - `handleConvertAreaToSolar`: Gleiche Korrektur — kein Typ-Wechsel
-   - `solarMeasurements` Filter ändern auf: `m.type === 'area' && m.pvModuleInfo` (Flächen mit PV-Daten)
-   - `otherMeasurements` Filter ändern auf: `m.type !== 'solar' && !(m.type === 'area' && m.pvModuleInfo)` ODER besser: Flächen mit PV-Daten in **beiden** Listen anzeigen (einmal als Fläche in der Messliste, einmal als Solar-Content)
+### 4. UI: Kompass-Slider
+- 0°-359° Slider in SolarMeasurementContent
+- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
+- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
 
-3. **`src/components/measurement/MeasurementToolControls.tsx`** (~Zeile 170)
-   - PV-Entfernen-Button: Statt `type: 'area'` setzen (unnötig da Typ schon `area` ist), nur `pvModuleInfo: undefined` setzen
-
-4. **`src/utils/exportUtils.ts`**
-   - ABS-Export: Flächen mit `pvModuleInfo` sind bereits `type === 'area'`, keine Extra-Logik nötig — die vorherige `|| m.type === 'solar'` Erweiterung kann entfernt werden
-
-5. **`src/components/measurement/SolarToolbar.tsx`**
-   - Solar-Zeichentool (`mode === 'solar'`): Neue Solar-Zeichnungen erzeugen weiterhin `type: 'solar'` — das ist OK für direkt gezeichnete Solarflächen. Alternativ auch hier auf `type: 'area'` + `pvModuleInfo` umstellen für Konsistenz.
-
-### Ergebnis
-- Fläche bleibt immer als Fläche in der Messliste sichtbar
-- PV-Planung wird als Zusatzinfo auf der Fläche dargestellt
-- ABS-Export funktioniert ohne Sonderbehandlung
-- PV-Daten können jederzeit entfernt werden, Fläche bleibt unverändert
-
+### 5. E-W bleibt grid-relativ (unverändert)

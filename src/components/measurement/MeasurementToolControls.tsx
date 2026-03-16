@@ -139,21 +139,17 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
 
   const isExpandableType = (type: string) => ['area', 'deductionarea', 'solar'].includes(type);
 
-  const solarMeasurements = measurements.filter(m => m.type === 'solar');
+  const solarMeasurements = measurements.filter(m => m.type === 'solar' || (m.type === 'area' && m.pvModuleInfo));
   const otherMeasurements = measurements.filter(m => m.type !== 'solar');
 
   const handleConvertAreaToSolar = (areaId: string) => {
     const areaMeasurement = measurements.find(m => m.id === areaId);
     if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
 
-    // Create a solar measurement from the area's points
     const exclusionZones = extractExclusionZones(measurements);
     const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
-    updateMeasurement(areaId, {
-      type: 'solar' as any,
-      pvModuleInfo,
-    });
-    toast.success(`Fläche "${areaMeasurement.label || 'Fläche'}" in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+    updateMeasurement(areaId, { pvModuleInfo });
+    toast.success(`PV-Module auf "${areaMeasurement.label || 'Fläche'}" platziert — ${pvModuleInfo.moduleCount} Module`);
   };
 
   return (
@@ -175,15 +171,12 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      // Convert solar back to area — remove PV data
-                      const cleaned: Partial<Measurement> = { 
-                        type: 'area' as const, 
+                      // Remove PV data, keep area type intact
+                      updateMeasurement(m.id, { 
                         pvModuleInfo: undefined as any, 
                         pvModuleSpec: undefined as any, 
                         powerOutput: undefined as any 
-                      };
-                      // Use functional update to strip PV fields
-                      updateMeasurement(m.id, cleaned);
+                      });
                     }}
                     title="PV-Module entfernen (Fläche bleibt erhalten)"
                   >

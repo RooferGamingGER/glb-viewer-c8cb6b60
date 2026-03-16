@@ -229,8 +229,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
     const exclusionZones = extractExclusionZones(measurements);
     const pvModuleInfo = calculatePVModulePlacement(areaMeasurement.points, undefined, undefined, undefined, undefined, undefined, undefined, true, 'auto', exclusionZones);
-    updateMeasurement(areaId, { type: 'solar' as any, pvModuleInfo });
-    smartToast.success(`Fläche in Solarfläche umgewandelt — ${pvModuleInfo.moduleCount} Module`);
+    updateMeasurement(areaId, { pvModuleInfo });
+    smartToast.success(`PV-Module auf Fläche platziert — ${pvModuleInfo.moduleCount} Module`);
   }, [measurements, updateMeasurement]);
 
   const { isPortrait, isTablet, isPhone } = useScreenOrientation();
