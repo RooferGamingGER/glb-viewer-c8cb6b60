@@ -91,28 +91,33 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
 };
 
 /**
+ * Prefer explicit area measurements. Fallback to legacy solar measurements when no area exists.
+ */
+const getPrimaryRoofAreaMeasurements = (measurements: Measurement[]): Measurement[] => {
+  const areaMeasurements = measurements.filter(m => m.type === 'area');
+  if (areaMeasurements.length > 0) return areaMeasurements;
+  return measurements.filter(m => m.type === 'solar');
+};
+
+/**
  * Calculates the total area from an array of measurements
  */
 export const calculateTotalArea = (measurements: Measurement[]): number => {
-  const totalRegularArea = measurements
-    .filter(m => m.type === 'area')
+  return getPrimaryRoofAreaMeasurements(measurements)
     .reduce((sum, m) => sum + m.value, 0);
-    
-  return totalRegularArea;
 };
 
 /**
  * Calculates the net total area (regular areas minus deduction areas)
  */
 export const calculateNetTotalArea = (measurements: Measurement[]): number => {
-  const totalRegularArea = measurements
-    .filter(m => m.type === 'area')
+  const totalRegularArea = getPrimaryRoofAreaMeasurements(measurements)
     .reduce((sum, m) => sum + m.value, 0);
-    
+
   const totalDeductionArea = measurements
     .filter(m => m.type === 'deductionarea')
     .reduce((sum, m) => sum + m.value, 0);
-    
+
   return Math.max(0, totalRegularArea - totalDeductionArea);
 };
 
@@ -218,8 +223,8 @@ export const getRoofElementsSummary = (measurements: Measurement[]): Record<stri
     }
   });
   
-  // Calculate net area (regular areas - deduction areas)
-  const regularAreas = measurements.filter(m => m.type === 'area');
+  // Calculate net area (prefer area, fallback legacy solar)
+  const regularAreas = getPrimaryRoofAreaMeasurements(measurements);
   const deductionAreas = measurements.filter(m => m.type === 'deductionarea');
   
   if (regularAreas.length > 0 && deductionAreas.length > 0) {
@@ -345,8 +350,8 @@ export const exportMeasurementsToAbsJson = (
   const heightMeasurement = measurements.find(m => m.type === 'height');
   const baseHeight = heightMeasurement?.value ?? 0; // z.B. 4.09 m wie im Airteam-Modell
 
-  // Erste Flächenmessung als Dachpolygon verwenden (falls vorhanden)
-  const areaMeasurement = measurements.find(m => m.type === 'area' && m.points && m.points.length >= 3) || null;
+  // Erste Flächenmessung als Dachpolygon verwenden (prefer area, fallback legacy solar)
+  const areaMeasurement = getPrimaryRoofAreaMeasurements(measurements).find(m => m.points && m.points.length >= 3) || null;
 
   const vertices: { x: number; y: number; z: number }[] = [];
   const faces: { vertexKeys: number[] }[] = [];

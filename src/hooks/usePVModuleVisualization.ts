@@ -16,9 +16,9 @@ export const usePVModuleVisualization = (
   measurements: Measurement[],
   options: PVVisualizationOptions = { showModules: true, moduleOpacity: 0.9, showLabels: true }
 ) => {
-  // Get all PV related measurements (solar and pvmodule types)
+  // Get all PV related measurements (legacy solar, pvmodule and area overlays with pvModuleInfo)
   const pvMeasurements = measurements.filter(
-    m => (m.type === 'solar' || m.type === 'pvmodule') && m.pvModuleInfo
+    m => (m.type === 'solar' || m.type === 'pvmodule' || m.type === 'area') && !!m.pvModuleInfo
   );
   
   // Get total module count across all PV areas

@@ -540,8 +540,8 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                     step={1}
                     value={[measurement.pvModuleInfo.northAngle || 0]}
                     onValueChange={([val]) => {
-                      // Apply northAngle to ALL solar measurements
-                      const solarMeasurements = allMeasurements.filter(m => m.type === 'solar' && m.pvModuleInfo && m.points && m.points.length >= 3);
+                      // Apply northAngle to all PV-relevant roof measurements
+                      const solarMeasurements = allMeasurements.filter(m => (m.type === 'solar' || m.type === 'area') && m.pvModuleInfo && m.points && m.points.length >= 3);
                       for (const sm of solarMeasurements) {
                         const updatedPVInfo = updatePVModuleInfoWithOrientation(
                           { ...sm.pvModuleInfo!, northAngle: val },
