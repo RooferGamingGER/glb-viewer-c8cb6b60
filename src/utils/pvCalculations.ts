@@ -778,13 +778,24 @@ export const generatePVModuleGrid = (
 
   if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
     // East-West A-form: pairs of modules leaning together at the top (ridge)
-    // Module A (east-facing): front edge on roof, back edge raised toward ridge
-    // Module B (west-facing): front edge on roof, back edge raised toward ridge
+    // Module A (east-facing): tilted toward east (compass-based)
+    // Module B (west-facing): tilted toward west (compass-based)
     // Together they form an A/tent shape: /\
     const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_EW;
     const tiltRad = (tiltAngle * Math.PI) / 180;
     const moduleFootprint = mh * Math.cos(tiltRad); // ground projection of one tilted module
-    const liftHeight = mh * Math.sin(tiltRad); // ridge height
+    
+    // Central maintenance path splits the column field into two halves
+    const maintenancePathW = pvInfo.maintenancePathWidth || DEFAULT_MAINTENANCE_PATH_WIDTH;
+    const totalU = maxU - minU - 2 * edge;
+    const halfU = (totalU - maintenancePathW) / 2;
+    const colsLeft = Math.max(0, Math.floor(halfU / (mw + spacing)));
+    const colsRight = Math.max(0, Math.floor(halfU / (mw + spacing)));
+    
+    // Left block: starts at minU + edge
+    const startULeft = minU + edge + mw / 2;
+    // Right block: starts after left block + maintenance path
+    const startURight = startULeft + colsLeft * (mw + spacing) + maintenancePathW;
     
     // Place pairs along W direction
     let currentW = minW + edge + moduleFootprint / 2; // center of first east-module
@@ -804,13 +815,17 @@ export const generatePVModuleGrid = (
       // West-module center (second module in pair, higher W side)
       const cwWest = currentW + moduleFootprint; // no gap at ridge - tops touch
       
-      for (let c = 0; c < cols; c++) {
-        const cu = startU + c * (mw + spacing);
-        
-        // East module: raise high-W corners (2,3) toward ridge — grid-relative
-        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east-grid' });
-        // West module: raise low-W corners (0,1) toward ridge — grid-relative
-        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west-grid' });
+      // Left block columns
+      for (let c = 0; c < colsLeft; c++) {
+        const cu = startULeft + c * (mw + spacing);
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
+      }
+      // Right block columns
+      for (let c = 0; c < colsRight; c++) {
+        const cu = startURight + c * (mw + spacing);
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
       }
       
       // Advance past this pair
