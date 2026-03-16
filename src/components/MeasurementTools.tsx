@@ -226,7 +226,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Convert area to solar handler for overlay
   const handleConvertAreaToSolar = React.useCallback((areaId: string) => {
-    const { calculatePVModulePlacement, extractExclusionZones } = require('@/utils/pvCalculations');
     const areaMeasurement = measurements.find(m => m.id === areaId);
     if (!areaMeasurement || !areaMeasurement.points || areaMeasurement.points.length < 3) return;
     const exclusionZones = extractExclusionZones(measurements);
