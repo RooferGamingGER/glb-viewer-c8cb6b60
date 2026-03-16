@@ -1186,9 +1186,10 @@ export const calculateYieldFactorFromOrientation = (
 
 export const updatePVModuleInfoWithOrientation = (
   pvInfo: PVModuleInfo,
-  points: Point[]
+  points: Point[],
+  northAngle: number = 0
 ): PVModuleInfo => {
-  const { azimuth, direction, inclination } = calculateRoofOrientation(points);
+  const { azimuth, direction, inclination } = calculateRoofOrientation(points, northAngle);
   const yieldFactor = calculateYieldFactorFromOrientation(azimuth, inclination);
 
   return {
@@ -1197,6 +1198,7 @@ export const updatePVModuleInfoWithOrientation = (
     roofDirection: direction,
     roofInclination: inclination,
     yieldFactor,
+    northAngle,
   };
 };
 
