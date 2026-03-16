@@ -1,99 +1,35 @@
 
+# PV-Belegung: Hochkant-Standard & Flachdach-Unterstützung
 
-## Plan: PV-Belegung erweitern – Hochkant-Standard & Flachdach-Unterstützung
+## Status: Implementiert ✅
 
-### Problemstellung
+## Änderungen
 
-1. **Steildach – Montagerichtung**: Aktuell wählt der Algorithmus automatisch die Orientierung mit den meisten Modulen (`auto`), was oft Querformat (landscape) ergibt. In der Praxis werden PV-Module auf Steildächern jedoch **standardmäßig hochkant (portrait)** montiert. Die Quermontage soll weiterhin als Option verfügbar bleiben.
+### 1. Typ-Erweiterung (`src/types/measurements.ts`)
+- `roofType`, `flatRoofLayout`, `tiltAngle`, `rowSpacing`, `flatRoofEdgeDistance` zu PVModuleInfo hinzugefügt
 
-2. **Flachdach – Aufständerung**: Wenn die erkannte Dachneigung < 5° beträgt, soll das Tool automatisch erkennen, dass es sich um ein Flachdach handelt, und dem Nutzer zwei Belegungsvarianten anbieten:
-   - **Süd-Aufständerung** (alle Module nach Süden geneigt, mit Reihenabstand gegen Verschattung)
-   - **Ost-West-Aufständerung** (Module Rücken an Rücken in A-Form, maximale Flächennutzung)
+### 2. Standard-Orientierung auf Hochkant (`src/utils/pvCalculations.ts`)
+- Auto-Modus wählt jetzt immer Portrait (Hochkant) als Standard
+- PVModuleSelect zeigt "Hochkant (Standard)" / "Quer" / "Auto"
 
----
+### 3. Flachdach-Erkennung & Berechnung
+- `isRoofFlat()`: Erkennt Flachdach bei Neigung < 5°
+- `calculateFlatRoofRowSpacing()`: L = h/tan(15°) für Wintersonnenwende-Abstand
+- `getDefaultFlatRoofConfig()`: Standard-Werte (25° Süd, 12° O/W, 50cm Rand)
+- `calculatePVModulePlacement` setzt automatisch Flachdach-Werte
 
-### Änderung 1: Datenmodell (`src/types/measurements.ts`)
+### 4. Grid-Generierung für Flachdach
+- **Süd**: Reihen mit berechnetem Reihenabstand, Hinterkante angehoben
+- **Ost-West**: Modulpaare Rücken an Rücken (5cm Paarabstand, 30cm Wartungsgang)
+- 3D-Tilt: Ecken werden in Y-Richtung angehoben basierend auf Kippwinkel
 
-Neue Felder in `PVModuleInfo`:
-```typescript
-roofType?: 'pitched' | 'flat';           // Steildach oder Flachdach (auto-erkannt bei < 5°)
-flatRoofLayout?: 'south' | 'east-west';  // Belegungsvariante bei Flachdach
-tiltAngle?: number;                       // Aufständerungswinkel in Grad
-rowSpacing?: number;                      // Berechneter Reihenabstand (nur Anzeige)
-flatRoofEdgeDistance?: number;            // Randabstand bei Flachdach (Standard: 0.50m für Windlast)
-```
+### 5. Ertragsberechnung
+- Flachdach nutzt tiltAngle als effektive Neigung
+- O/W: Durchschnitt aus Ost- und West-Ertragsfaktor
 
----
-
-### Änderung 2: Standard-Orientierung auf Hochkant (`src/utils/pvCalculations.ts`)
-
-- **`calculatePVModulePlacement`**: Wenn `forcedOrientation === 'auto'`, wird jetzt **portrait bevorzugt** (statt "mehr Module gewinnt"). Nur bei expliziter Wahl von `'landscape'` wird Querformat verwendet.
-- Die bestehende Auto-Logik (`portrait.count >= landscape.count`) wird durch `portrait` als Default ersetzt.
-
----
-
-### Änderung 3: Flachdach-Erkennung und Berechnung (`src/utils/pvCalculations.ts`)
-
-**Neue Funktion: `calculateFlatRoofRowSpacing`**
-```
-h = moduleHeight × sin(tiltAngle)
-L = h / tan(sunElevation)        // sunElevation ≈ 15° (Deutschland, 21. Dez)
-Reihenabstand = moduleHeight × cos(tiltAngle) + L
-```
-
-**Erweiterte `generatePVModuleGrid`**:
-- Prüft `roofType === 'flat'` 
-- **Süd-Variante**: Module in Reihen mit berechnetem Reihenabstand. Modulbreite entlang v1, Reihen entlang v2 mit Abstand `rowSpacing`.
-- **Ost-West-Variante**: Modulpaare Rücken an Rücken (Paarabstand ~5cm), zwischen Paaren ~30cm Wartungsgang. Doppelte Flächennutzung gegenüber Süd.
-- Randabstand `flatRoofEdgeDistance` (Standard 50cm statt 30cm)
-
-**Erweiterte `calculatePVModulePlacement`**:
-- Erkennt automatisch Flachdach wenn `roofInclination < 5°`
-- Setzt `roofType: 'flat'` und Standard-Werte für `tiltAngle` (25° bei Süd, 12° bei O/W)
-
----
-
-### Änderung 4: 3D-Darstellung (`src/utils/pvModuleRenderer.ts`)
-
-- **`createDetailedPVModuleMesh`**: Neuer Parameter `tiltAngle` und `tiltDirection`
-- Bei Flachdach-Modulen: Nach der Ausrichtung zur Dachfläche wird eine zusätzliche Rotation um die lokale Kippachse angewendet
-  - Süd: Hinterkante angehoben um `moduleHeight × sin(tiltAngle)`
-  - Ost-West: Abwechselnd +tiltAngle / -tiltAngle
-
----
-
-### Änderung 5: UI (`src/components/measurement/SolarMeasurementContent.tsx`)
-
-Neuer Bereich oberhalb der bestehenden Übersicht:
-
-**Bei erkanntem Flachdach (Neigung < 5°):**
-- Info-Banner: "Flachdach erkannt – Aufständerung erforderlich"
-- Toggle: **Süd-Aufständerung** / **Ost-West-Aufständerung**
-- Slider: Aufständerungswinkel (5°–35°, Standard je nach Variante)
-- Anzeige: Berechneter Reihenabstand (nur lesen)
-- Slider: Randabstand (30–100cm, Standard 50cm)
-
-**Bei Steildach:**
-- Orientierung-Toggle zeigt jetzt drei Optionen: **Hochkant** (Standard) / **Quer** / **Auto**
-- "Hochkant" ist vorausgewählt
-
-**Ertragsberechnung:**
-- Bei Flachdach wird der `tiltAngle` als effektive Dachneigung für die Ertragsberechnung verwendet (da reale Dachneigung ~0°)
-
----
-
-### Änderung 6: Orientierungs-Steuerung (`src/components/measurement/PVModuleSelect.tsx`)
-
-- `onOrientationChange` Callback: Standard-Wert auf `'portrait'` statt `'auto'`
-- UI-Labels: "Hochkant" statt "Portrait", "Quer" statt "Landscape"
-
----
-
-### Implementierungsreihenfolge
-1. Typ-Erweiterung (PVModuleInfo)
-2. Standard-Orientierung auf Hochkant umstellen
-3. Flachdach-Erkennung + Reihenabstandsformel
-4. Grid-Generierung für Flachdach (Süd + O/W)
-5. 3D-Rendering mit Aufständerung
-6. UI-Steuerung in SolarMeasurementContent
-
+### 6. UI-Steuerung (`SolarMeasurementContent.tsx`)
+- Flachdach-Banner mit Info-Alert
+- Layout-Toggle: Süd / O/W
+- Slider: Aufständerungswinkel (5°-35°)
+- Slider: Randabstand (30-100cm)
+- Reihenabstand-Anzeige für Süd-Variante

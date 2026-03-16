@@ -35,11 +35,20 @@ const RAIL_STANDARD_LENGTH = 3.15;    // Standard rail length in meters
 // Yield constants
 const ANNUAL_YIELD_FACTOR_DEFAULT = 950; // kWh/kWp (Germany average)
 
-// Exclusion zone safety radius for point elements (vents, hooks) in meters
-const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
+// Flat roof constants
+const FLAT_ROOF_INCLINATION_THRESHOLD = 5; // degrees - below this = flat roof
+const DEFAULT_FLAT_ROOF_EDGE_DISTANCE = 0.50; // 50cm for wind load ballast
+const DEFAULT_TILT_ANGLE_SOUTH = 25; // degrees for south-facing tilt
+const DEFAULT_TILT_ANGLE_EW = 12; // degrees for east-west tilt
+const WINTER_SUN_ELEVATION_DE = 15; // degrees - sun elevation Dec 21 noon in Germany
+const EW_PAIR_GAP = 0.05; // 5cm back-to-back gap for E-W pairs
+const EW_MAINTENANCE_GAP = 0.30; // 30cm maintenance gap between E-W pairs
 
+// Exclusion zone safety radius for point elements (vents, hooks) in meters
 // Roof element types that create exclusion zones
 const EXCLUSION_ELEMENT_TYPES = ['chimney', 'skylight', 'deductionarea', 'vent', 'hook', 'other'];
+
+const POINT_ELEMENT_SAFETY_RADIUS = 0.30; // 30cm
 
 /**
  * Extract exclusion zones from measurements (roof elements that block PV modules).
@@ -298,6 +307,45 @@ const projectTo3D = (
 };
 
 // ============================================================================
+// FLAT ROOF CALCULATIONS
+// ============================================================================
+
+/**
+ * Calculate minimum row spacing for flat roof south-facing layout.
+ * Based on shadow avoidance at winter solstice (Dec 21) noon.
+ * L = h / tan(sunElevation), where h = moduleHeight * sin(tiltAngle)
+ */
+export const calculateFlatRoofRowSpacing = (
+  moduleHeight: number,
+  tiltAngle: number,
+  sunElevation: number = WINTER_SUN_ELEVATION_DE
+): number => {
+  const tiltRad = (tiltAngle * Math.PI) / 180;
+  const sunRad = (sunElevation * Math.PI) / 180;
+  const h = moduleHeight * Math.sin(tiltRad);
+  const shadowLength = h / Math.tan(sunRad);
+  const moduleFootprint = moduleHeight * Math.cos(tiltRad);
+  return moduleFootprint + shadowLength;
+};
+
+/**
+ * Detect if roof is flat based on inclination.
+ */
+export const isRoofFlat = (inclination: number): boolean => {
+  return inclination < FLAT_ROOF_INCLINATION_THRESHOLD;
+};
+
+/**
+ * Get default flat roof configuration values.
+ */
+export const getDefaultFlatRoofConfig = (layout: 'south' | 'east-west' = 'south') => ({
+  roofType: 'flat' as const,
+  flatRoofLayout: layout,
+  tiltAngle: layout === 'south' ? DEFAULT_TILT_ANGLE_SOUTH : DEFAULT_TILT_ANGLE_EW,
+  flatRoofEdgeDistance: DEFAULT_FLAT_ROOF_EDGE_DISTANCE,
+});
+
+// ============================================================================
 // MAIN FUNCTIONS
 // ============================================================================
 
@@ -461,11 +509,12 @@ export const calculatePVModulePlacement = (
   const portrait = tryOrientation(true);
   const landscape = tryOrientation(false);
 
+  // Default to portrait (Hochkant) for pitched roofs — industry standard
   const usePortrait = forcedOrientation === 'portrait'
     ? true
     : forcedOrientation === 'landscape'
       ? false
-      : portrait.count >= landscape.count;
+      : true; // Default: portrait (Hochkant)
 
   const chosen = usePortrait ? portrait : landscape;
   const moduleCount = chosen.count;
@@ -498,7 +547,22 @@ export const calculatePVModulePlacement = (
     pvModuleSpec: PV_MODULE_TEMPLATES[0],
     points: [...points],
     exclusionZones: exclusionZones.length > 0 ? exclusionZones : undefined,
+    roofType: 'pitched',
   };
+
+  // Auto-detect flat roof based on inclination
+  const { inclination } = calculateRoofOrientation(points);
+  if (isRoofFlat(inclination)) {
+    const flatConfig = getDefaultFlatRoofConfig('south');
+    result.roofType = flatConfig.roofType;
+    result.flatRoofLayout = flatConfig.flatRoofLayout;
+    result.tiltAngle = flatConfig.tiltAngle;
+    result.flatRoofEdgeDistance = flatConfig.flatRoofEdgeDistance;
+    result.rowSpacing = calculateFlatRoofRowSpacing(
+      usePortrait ? moduleHeight : moduleWidth,
+      flatConfig.tiltAngle
+    );
+  }
 
   return result;
 };
@@ -547,13 +611,32 @@ export const generatePVModuleGrid = (
   const mw = pvInfo.orientation === 'portrait' ? pvInfo.moduleWidth : pvInfo.moduleHeight;
   const mh = pvInfo.orientation === 'portrait' ? pvInfo.moduleHeight : pvInfo.moduleWidth;
   const spacing = pvInfo.moduleSpacing || DEFAULT_MODULE_SPACING;
-  const edge = pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE;
+  const isFlatRoof = pvInfo.roofType === 'flat';
+  const edge = isFlatRoof 
+    ? (pvInfo.flatRoofEdgeDistance || DEFAULT_FLAT_ROOF_EDGE_DISTANCE) 
+    : (pvInfo.edgeDistance || DEFAULT_EDGE_DISTANCE);
+
+  // For flat roofs, row pitch depends on layout
+  let rowPitch: number;
+  if (isFlatRoof) {
+    const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH;
+    if (pvInfo.flatRoofLayout === 'east-west') {
+      // E-W: pairs of modules back-to-back, then maintenance gap
+      const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
+      rowPitch = moduleFootprint * 2 + EW_PAIR_GAP + EW_MAINTENANCE_GAP;
+    } else {
+      // South: full row spacing to avoid shadowing
+      rowPitch = calculateFlatRoofRowSpacing(mh, tiltAngle);
+    }
+  } else {
+    rowPitch = mh + spacing;
+  }
 
   const startU = minU + edge + mw / 2;
   const startW = minW + edge + mh / 2;
 
   const cols = Math.floor((maxU - minU - 2 * edge) / (mw + spacing));
-  const rows = Math.floor((maxW - minW - 2 * edge) / (mh + spacing));
+  const rows = Math.floor((maxW - minW - 2 * edge) / rowPitch);
 
   const zFightingOffset = 0.015; // 1.5cm above roof surface
 
@@ -585,62 +668,96 @@ export const generatePVModuleGrid = (
   let sequentialIndex = 0;
   const removedIndices = pvInfo.removedModuleIndices || [];
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cu = startU + c * (mw + spacing);
-      const cw = startW + r * (mh + spacing);
+  // Helper to place a single module at (cu, cw) and return true if placed
+  const placeModule = (cu: number, cw: number, tiltInfo?: { angle: number; direction: 'south' | 'east' | 'west' }) => {
+    const rawCorners = [
+      { u: cu - mw / 2, w: cw - mh / 2 },
+      { u: cu + mw / 2, w: cw - mh / 2 },
+      { u: cu + mw / 2, w: cw + mh / 2 },
+      { u: cu - mw / 2, w: cw + mh / 2 },
+    ];
 
-      // Module corners in 2D (v1/v2 space) — before transform
-      const rawCorners = [
-        { u: cu - mw / 2, w: cw - mh / 2 },
-        { u: cu + mw / 2, w: cw - mh / 2 },
-        { u: cu + mw / 2, w: cw + mh / 2 },
-        { u: cu - mw / 2, w: cw + mh / 2 },
-      ];
+    const corners2D = rawCorners.map(c2 => transformPoint(c2.u, c2.w));
 
-      // Apply rotation + offset transform
-      const corners2D = rawCorners.map(c2 => transformPoint(c2.u, c2.w));
+    const worldCorners = corners2D.map(c2 => {
+      const p3d = centroid.clone()
+        .add(v1.clone().multiplyScalar(c2.u))
+        .add(v2.clone().multiplyScalar(c2.w));
+      return { x: p3d.x, z: p3d.z };
+    });
 
-      // Convert to world coords for polygon check
-      const worldCorners = corners2D.map(c2 => {
-        const p3d = centroid.clone()
-          .add(v1.clone().multiplyScalar(c2.u))
-          .add(v2.clone().multiplyScalar(c2.w));
-        return { x: p3d.x, z: p3d.z };
-      });
+    if (!isModuleInsidePolygon(worldCorners, roofPoints)) return;
 
-      // Check all corners inside the roof polygon
-      if (!isModuleInsidePolygon(worldCorners, roofPoints)) {
-        continue; // Skip module — it's outside the roof
+    const exclZones = pvInfo.exclusionZones || [];
+    if (isModuleOverlappingExclusion(worldCorners, exclZones)) return;
+
+    const currentIndex = sequentialIndex;
+    sequentialIndex++;
+    if (removedIndices.includes(currentIndex)) return;
+
+    // Project corners to 3D on the roof plane
+    const corners3D: Point[] = corners2D.map(c2 => {
+      const p3d = projectTo3D(c2.u, c2.w, centroid, v1, v2, plane, normal);
+      p3d.add(normal.clone().multiplyScalar(zFightingOffset));
+      return { x: p3d.x, y: p3d.y, z: p3d.z };
+    });
+
+    // For flat roof modules, apply tilt by raising the back edge
+    if (tiltInfo && tiltInfo.angle > 0) {
+      const tiltRad = (tiltInfo.angle * Math.PI) / 180;
+      const liftHeight = mh * Math.sin(tiltRad);
+      // corners: 0=BL, 1=BR, 2=TR, 3=TL (in v2 direction = "row" direction)
+      // For south: back edge (higher w) is raised → corners 2,3
+      // For east: right edge raised → corners 1,2
+      // For west: left edge raised → corners 0,3
+      if (tiltInfo.direction === 'south') {
+        corners3D[2].y += liftHeight;
+        corners3D[3].y += liftHeight;
+      } else if (tiltInfo.direction === 'east') {
+        corners3D[1].y += liftHeight;
+        corners3D[2].y += liftHeight;
+      } else if (tiltInfo.direction === 'west') {
+        corners3D[0].y += liftHeight;
+        corners3D[3].y += liftHeight;
       }
+    }
 
-      // Check exclusion zones (roof elements like chimneys, skylights)
-      const exclusionZones = pvInfo.exclusionZones || [];
-      if (isModuleOverlappingExclusion(worldCorners, exclusionZones)) {
-        continue; // Skip module — it overlaps a roof element
+    modulePoints.push(corners3D);
+    moduleOriginalIndices.push(currentIndex);
+
+    for (let i = 0; i < 4; i++) {
+      gridLines.push({ from: corners3D[i], to: corners3D[(i + 1) % 4] });
+    }
+  };
+
+  if (isFlatRoof && pvInfo.flatRoofLayout === 'east-west') {
+    // East-West: pairs of modules per row, back-to-back
+    const tiltAngle = pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_EW;
+    const moduleFootprint = mh * Math.cos((tiltAngle * Math.PI) / 180);
+    
+    for (let r = 0; r < rows; r++) {
+      const rowBaseW = startW + r * rowPitch;
+      for (let c = 0; c < cols; c++) {
+        const cu = startU + c * (mw + spacing);
+        // East-facing module (first of pair)
+        const cwEast = rowBaseW;
+        placeModule(cu, cwEast, { angle: tiltAngle, direction: 'east' });
+        // West-facing module (second of pair, back-to-back)
+        const cwWest = rowBaseW + moduleFootprint + EW_PAIR_GAP;
+        placeModule(cu, cwWest, { angle: tiltAngle, direction: 'west' });
       }
-
-      // Skip modules that were removed by user click
-      const currentIndex = sequentialIndex;
-      sequentialIndex++;
-      if (removedIndices.includes(currentIndex)) {
-        continue;
-      }
-
-      // Project corners to 3D on the roof plane
-      const corners3D: Point[] = corners2D.map(c2 => {
-        const p3d = projectTo3D(c2.u, c2.w, centroid, v1, v2, plane, normal);
-        // Add z-fighting offset along normal
-        p3d.add(normal.clone().multiplyScalar(zFightingOffset));
-        return { x: p3d.x, y: p3d.y, z: p3d.z };
-      });
-
-      modulePoints.push(corners3D);
-      moduleOriginalIndices.push(currentIndex);
-
-      // Grid lines for outline visualization
-      for (let i = 0; i < 4; i++) {
-        gridLines.push({ from: corners3D[i], to: corners3D[(i + 1) % 4] });
+    }
+  } else {
+    // Pitched roof (normal) or flat roof south
+    const tiltInfo = isFlatRoof 
+      ? { angle: pvInfo.tiltAngle || DEFAULT_TILT_ANGLE_SOUTH, direction: 'south' as const }
+      : undefined;
+    
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cu = startU + c * (mw + spacing);
+        const cw = startW + r * rowPitch;
+        placeModule(cu, cw, tiltInfo);
       }
     }
   }
@@ -830,8 +947,11 @@ export const calculatePVPower = (moduleCount: number, powerPerModule: number = 4
 };
 
 export const formatPVModuleInfo = (pvInfo: PVModuleInfo): string => {
-  const orientationText = pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat';
-  return `${pvInfo.moduleCount} Module (${orientationText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
+  const orientationText = pvInfo.orientation === 'portrait' ? 'Hochkant' : 'Quer';
+  const roofText = pvInfo.roofType === 'flat' 
+    ? ` | ${pvInfo.flatRoofLayout === 'east-west' ? 'O/W' : 'Süd'} ${pvInfo.tiltAngle || 25}°`
+    : '';
+  return `${pvInfo.moduleCount} Module (${orientationText}${roofText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
 };
 
 export const calculateTotalPVPower = (measurements: Measurement[]): number => {
@@ -1006,6 +1126,23 @@ export const calculateAnnualYieldWithOrientation = (
   totalPower: number,
   pvInfo: PVModuleInfo
 ): number => {
+  // For flat roofs, use tilt angle as effective inclination and azimuth based on layout
+  if (pvInfo.roofType === 'flat' && pvInfo.tiltAngle) {
+    const effectiveInclination = pvInfo.tiltAngle;
+    let effectiveAzimuth: number;
+    if (pvInfo.flatRoofLayout === 'east-west') {
+      // Average of east (90°) and west (270°) yields
+      const eastYield = calculateYieldFactorFromOrientation(90, effectiveInclination);
+      const westYield = calculateYieldFactorFromOrientation(270, effectiveInclination);
+      const avgFactor = (eastYield + westYield) / 2;
+      return totalPower * avgFactor;
+    } else {
+      effectiveAzimuth = 180; // South
+    }
+    const factor = calculateYieldFactorFromOrientation(effectiveAzimuth, effectiveInclination);
+    return totalPower * factor;
+  }
+
   const yieldFactor = pvInfo.yieldFactor ||
     (pvInfo.roofAzimuth && pvInfo.roofInclination
       ? calculateYieldFactorFromOrientation(pvInfo.roofAzimuth, pvInfo.roofInclination)

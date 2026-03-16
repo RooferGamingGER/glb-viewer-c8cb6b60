@@ -76,7 +76,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   const [useOptimalRectangle, setUseOptimalRectangle] = useState<boolean>(true);
   const [moduleWidthInput, setModuleWidthInput] = useState<number>(pvModuleInfo?.moduleWidth || 1.14);
   const [moduleHeightInput, setModuleHeightInput] = useState<number>(pvModuleInfo?.moduleHeight || 1.77);
-  const [orientationMode, setOrientationMode] = useState<'auto' | 'portrait' | 'landscape'>('auto');
+  const [orientationMode, setOrientationMode] = useState<'auto' | 'portrait' | 'landscape'>(
+    pvModuleInfo?.orientation === 'landscape' ? 'landscape' : 'portrait'
+  );
   
   const handleModuleSelect = (value: string) => {
     const selectedModuleSpec = PV_MODULE_TEMPLATES.find(m => m.name === value) || PV_MODULE_TEMPLATES[0];
@@ -240,9 +242,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                 <SelectValue placeholder="Orientierung" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="portrait">Hochkant (Standard)</SelectItem>
+                <SelectItem value="landscape">Quer</SelectItem>
                 <SelectItem value="auto">Auto</SelectItem>
-                <SelectItem value="portrait">Hochformat</SelectItem>
-                <SelectItem value="landscape">Querformat</SelectItem>
               </SelectContent>
             </Select>
           </div>
