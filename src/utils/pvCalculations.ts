@@ -947,8 +947,11 @@ export const calculatePVPower = (moduleCount: number, powerPerModule: number = 4
 };
 
 export const formatPVModuleInfo = (pvInfo: PVModuleInfo): string => {
-  const orientationText = pvInfo.orientation === 'portrait' ? 'Hochformat' : 'Querformat';
-  return `${pvInfo.moduleCount} Module (${orientationText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
+  const orientationText = pvInfo.orientation === 'portrait' ? 'Hochkant' : 'Quer';
+  const roofText = pvInfo.roofType === 'flat' 
+    ? ` | ${pvInfo.flatRoofLayout === 'east-west' ? 'O/W' : 'Süd'} ${pvInfo.tiltAngle || 25}°`
+    : '';
+  return `${pvInfo.moduleCount} Module (${orientationText}${roofText}), ${pvInfo.coveragePercent.toFixed(1)}% Abdeckung`;
 };
 
 export const calculateTotalPVPower = (measurements: Measurement[]): number => {
