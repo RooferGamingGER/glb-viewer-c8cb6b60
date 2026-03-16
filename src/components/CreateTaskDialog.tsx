@@ -9,8 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, X, Loader2, CheckCircle2, AlertCircle, Server } from "lucide-react";
+import { Upload, X, Loader2, CheckCircle2, AlertCircle, Server, Map, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { extractGpsFromImages, type PhotoGps } from "@/utils/exifGps";
+import { lazy, Suspense } from "react";
+
+const TaskBoundaryMap = lazy(() => import("@/components/TaskBoundaryMap"));
 
 interface Props {
   open: boolean;
@@ -20,7 +24,7 @@ interface Props {
   onTaskCreated: () => void;
 }
 
-type UploadState = "idle" | "uploading" | "done" | "error";
+type DialogStep = "config" | "extracting_gps" | "boundary" | "uploading" | "done" | "error";
 
 export default function CreateTaskDialog({ open, onOpenChange, projectId, projectName, onTaskCreated }: Props) {
   const { token } = useWebODMAuth();
@@ -28,7 +32,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
 
   const [name, setName] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [state, setState] = useState<UploadState>("idle");
+  const [step, setStep] = useState<DialogStep>("config");
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const [nodes, setNodes] = useState<ProcessingNode[]>([]);
@@ -37,6 +41,10 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
   const [presets, setPresets] = useState<Preset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<string>("default");
   const [presetsLoading, setPresetsLoading] = useState(false);
+
+  // Boundary state
+  const [gpsPhotos, setGpsPhotos] = useState<PhotoGps[]>([]);
+  const [boundary, setBoundary] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !token) return;
@@ -61,16 +69,18 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
   const reset = useCallback(() => {
     setName("");
     setFiles([]);
-    setState("idle");
+    setStep("config");
     setProgress(0);
     setErrorMsg("");
+    setGpsPhotos([]);
+    setBoundary(null);
   }, []);
 
   const handleClose = useCallback((val: boolean) => {
-    if (state === "uploading") return;
+    if (step === "uploading" || step === "extracting_gps") return;
     if (!val) reset();
     onOpenChange(val);
-  }, [state, reset, onOpenChange]);
+  }, [step, reset, onOpenChange]);
 
   const handleFiles = useCallback((newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -101,75 +111,141 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     return () => { thumbnails.forEach(t => URL.revokeObjectURL(t.url)); };
   }, [thumbnails]);
 
-  const handleSubmit = useCallback(async () => {
+  // Step: Extract GPS and go to boundary map
+  const handleNextToBoundary = useCallback(async () => {
+    if (files.length < 2) return;
+    setStep("extracting_gps");
+
+    try {
+      const photos = await extractGpsFromImages(files);
+      setGpsPhotos(photos);
+
+      if (photos.length === 0) {
+        // No GPS data → skip map, go straight to upload
+        toast.info("Keine GPS-Daten in den Bildern gefunden. Karte wird übersprungen.");
+        handleStartUpload();
+        return;
+      }
+
+      setStep("boundary");
+    } catch {
+      toast.error("Fehler beim Lesen der GPS-Daten.");
+      setStep("config");
+    }
+  }, [files]);
+
+  const buildOptions = useCallback(() => {
+    const fallbackOptions = [
+      { name: "auto-boundary", value: "true" },
+      { name: "auto-boundary-distance", value: "5" },
+      { name: "dem-gapfill-steps", value: "3" },
+      { name: "dsm", value: "true" },
+      { name: "dtm", value: "true" },
+      { name: "mesh-octree-depth", value: "11" },
+      { name: "mesh-size", value: "200000" },
+      { name: "min-num-features", value: "10000" },
+      { name: "optimize-disk-space", value: "true" },
+      { name: "pc-classify", value: "true" },
+      { name: "pc-quality", value: "high" },
+      { name: "skip-report", value: "true" },
+    ];
+
+    let options = fallbackOptions;
+    if (selectedPreset !== "default") {
+      const preset = presets.find(p => String(p.id) === selectedPreset);
+      if (preset) options = [...preset.options];
+    }
+
+    // If user drew a boundary, replace auto-boundary with explicit boundary
+    if (boundary) {
+      options = options.filter(o => o.name !== "auto-boundary" && o.name !== "auto-boundary-distance");
+      options.push({ name: "boundary", value: boundary });
+    }
+
+    return options;
+  }, [selectedPreset, presets, boundary]);
+
+  const handleStartUpload = useCallback(async () => {
     if (!token || files.length < 2) return;
 
-    setState("uploading");
+    setStep("uploading");
     setProgress(0);
     setErrorMsg("");
 
     try {
-      const fallbackOptions = [
-        { name: "auto-boundary", value: "true" },
-        { name: "auto-boundary-distance", value: "5" },
-        { name: "dem-gapfill-steps", value: "3" },
-        { name: "dsm", value: "true" },
-        { name: "dtm", value: "true" },
-        { name: "mesh-octree-depth", value: "11" },
-        { name: "mesh-size", value: "200000" },
-        { name: "min-num-features", value: "10000" },
-        { name: "optimize-disk-space", value: "true" },
-        { name: "pc-classify", value: "true" },
-        { name: "pc-quality", value: "high" },
-        { name: "skip-report", value: "true" },
-      ];
-
-      let options = fallbackOptions;
-      if (selectedPreset !== "default") {
-        const preset = presets.find(p => String(p.id) === selectedPreset);
-        if (preset) options = preset.options;
-      }
-
+      const options = buildOptions();
       const nodeId = selectedNode !== "auto" ? Number(selectedNode) : null;
       await createTask(token, projectId, name || `Task ${new Date().toLocaleDateString("de")}`, files, options, (pct) => {
         setProgress(pct);
       }, nodeId);
-      setState("done");
+      setStep("done");
       toast.success("Task erstellt – die Verarbeitung wurde gestartet.");
       onTaskCreated();
       setTimeout(() => handleClose(false), 1500);
     } catch (err) {
-      setState("error");
+      setStep("error");
       setErrorMsg(err instanceof Error ? err.message : "Unbekannter Fehler");
     }
-  }, [token, files, name, projectId, selectedPreset, presets, selectedNode, onTaskCreated, handleClose]);
+  }, [token, files, name, projectId, selectedNode, buildOptions, onTaskCreated, handleClose]);
+
+  const handleBoundaryChange = useCallback((geojson: string | null) => {
+    setBoundary(geojson);
+  }, []);
+
+  const isUploading = step === "uploading";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg bg-card border-border max-h-[85vh] flex flex-col">
+      <DialogContent className={`bg-card border-border max-h-[85vh] flex flex-col ${step === "boundary" ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
         <DialogHeader>
-          <DialogTitle>Neuer Task</DialogTitle>
+          <DialogTitle>
+            {step === "boundary" ? "Verarbeitungsbereich" : "Neuer Task"}
+          </DialogTitle>
           <DialogDescription>
-            Drohnenaufnahmen in <span className="font-medium text-foreground">{projectName}</span> hochladen und verarbeiten lassen.
+            {step === "boundary" ? (
+              <>
+                {gpsPhotos.length} Foto-Positionen auf der Karte. Optional einen Zuschnittbereich zeichnen.
+              </>
+            ) : (
+              <>
+                Drohnenaufnahmen in <span className="font-medium text-foreground">{projectName}</span> hochladen und verarbeiten lassen.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        {state === "done" ? (
+        {step === "done" ? (
           <div className="flex flex-col items-center gap-3 py-8">
             <CheckCircle2 className="h-12 w-12 text-emerald-500" />
             <p className="text-sm font-medium">Task erfolgreich erstellt!</p>
             <p className="text-xs text-muted-foreground">Die Verarbeitung wird automatisch gestartet.</p>
           </div>
-        ) : state === "error" ? (
+        ) : step === "error" ? (
           <div className="flex flex-col items-center gap-3 py-8">
             <AlertCircle className="h-12 w-12 text-destructive" />
             <p className="text-sm font-medium text-destructive">Fehler bei der Erstellung</p>
             <p className="text-xs text-muted-foreground max-w-sm text-center">{errorMsg}</p>
-            <Button variant="outline" size="sm" onClick={() => setState("idle")}>
+            <Button variant="outline" size="sm" onClick={() => setStep("config")}>
               Erneut versuchen
             </Button>
           </div>
+        ) : step === "extracting_gps" ? (
+          <div className="flex flex-col items-center gap-3 py-8">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">GPS-Daten werden aus {files.length} Bildern gelesen…</p>
+          </div>
+        ) : step === "boundary" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              <TaskBoundaryMap photos={gpsPhotos} onBoundaryChange={handleBoundaryChange} />
+            </Suspense>
+          </div>
         ) : (
+          /* step === "config" */
           <div className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1">
             {/* Task name */}
             <div className="space-y-2">
@@ -179,7 +255,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                 placeholder="z.B. Dachvermessung Hauptgebäude"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                disabled={state === "uploading"}
+                disabled={isUploading}
               />
             </div>
 
@@ -192,7 +268,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                   Knoten werden geladen…
                 </div>
               ) : nodes.length > 0 ? (
-                <Select value={selectedNode} onValueChange={setSelectedNode} disabled={state === "uploading"}>
+                <Select value={selectedNode} onValueChange={setSelectedNode} disabled={isUploading}>
                   <SelectTrigger>
                     <SelectValue placeholder="Knoten wählen" />
                   </SelectTrigger>
@@ -225,7 +301,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                   Profile werden geladen…
                 </div>
               ) : (
-                <Select value={selectedPreset} onValueChange={setSelectedPreset} disabled={state === "uploading"}>
+                <Select value={selectedPreset} onValueChange={setSelectedPreset} disabled={isUploading}>
                   <SelectTrigger>
                     <SelectValue placeholder="Profil wählen" />
                   </SelectTrigger>
@@ -250,7 +326,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                     <span className="text-xs text-muted-foreground">
                       {files.length} Bilder · {totalSizeMB.toFixed(0)} MB
                     </span>
-                    {state !== "uploading" && (
+                    {!isUploading && (
                       <Button variant="ghost" size="sm" onClick={() => setFiles([])} className="text-xs text-muted-foreground h-6 px-1.5">
                         Alle entfernen
                       </Button>
@@ -263,7 +339,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                 <div
                   onDrop={handleDrop}
                   onDragOver={e => e.preventDefault()}
-                  onClick={() => state !== "uploading" && fileInputRef.current?.click()}
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
                   className="relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-6 cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/5"
                 >
                   <Upload className="h-8 w-8 text-muted-foreground" />
@@ -279,13 +355,13 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                 <div
                   onDrop={handleDrop}
                   onDragOver={e => e.preventDefault()}
-                  className={`rounded-lg border-2 border-dashed border-primary/30 p-2 transition-colors ${state === "uploading" ? "pointer-events-none opacity-60" : ""}`}
+                  className={`rounded-lg border-2 border-dashed border-primary/30 p-2 transition-colors ${isUploading ? "pointer-events-none opacity-60" : ""}`}
                 >
                   <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5 max-h-36 overflow-y-auto pr-0.5">
                     {thumbnails.map(({ file, url }, i) => (
                       <div key={`${file.name}-${i}`} className="group relative aspect-square rounded-md overflow-hidden bg-secondary/30">
                         <img src={url} alt={file.name} className="h-full w-full object-cover" />
-                        {state !== "uploading" && (
+                        {!isUploading && (
                           <button
                             onClick={() => removeFile(i)}
                             className="absolute top-0.5 right-0.5 rounded-full bg-background/80 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
@@ -300,7 +376,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
                         <span className="text-xs text-muted-foreground font-medium">+{files.length - MAX_THUMBNAILS}</span>
                       </div>
                     )}
-                    {state !== "uploading" && (
+                    {!isUploading && (
                       <button
                         onClick={() => fileInputRef.current?.click()}
                         className="aspect-square rounded-md border-2 border-dashed border-border flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/5"
@@ -323,8 +399,8 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
               />
             </div>
 
-            {/* Upload progress */}
-            {state === "uploading" && (
+            {/* Upload progress (shown when uploading without boundary step) */}
+            {step === "uploading" && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
@@ -339,27 +415,49 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
           </div>
         )}
 
-        {state !== "done" && state !== "error" && (
+        {/* Upload progress for boundary step */}
+        {step === "uploading" && (
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Wird hochgeladen…
+              </span>
+              <span className="font-medium">{progress}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        )}
+
+        {/* Footer buttons */}
+        {step === "config" && (
           <DialogFooter>
-            <Button variant="ghost" onClick={() => handleClose(false)} disabled={state === "uploading"}>
+            <Button variant="ghost" onClick={() => handleClose(false)}>
               Abbrechen
             </Button>
             <Button
-              onClick={handleSubmit}
-              disabled={files.length < 2 || state === "uploading"}
+              onClick={handleNextToBoundary}
+              disabled={files.length < 2}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {state === "uploading" ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Hochladen…
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Task erstellen
-                </>
-              )}
+              <Map className="mr-2 h-4 w-4" />
+              Weiter – Bereich wählen
+            </Button>
+          </DialogFooter>
+        )}
+
+        {step === "boundary" && (
+          <DialogFooter className="flex-row justify-between sm:justify-between">
+            <Button variant="ghost" onClick={() => setStep("config")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Zurück
+            </Button>
+            <Button
+              onClick={handleStartUpload}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {boundary ? "Mit Zuschnitt starten" : "Ohne Zuschnitt starten"}
             </Button>
           </DialogFooter>
         )}
