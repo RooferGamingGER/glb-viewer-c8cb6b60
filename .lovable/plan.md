@@ -1,70 +1,58 @@
 
-# PV-Anlage verschieben & drehen im 3D-Viewer
 
-## Überblick
-Die PV-Modulanlage soll direkt im 3D-Viewer per Drag verschoben und per Rotation-Handle gedreht werden können. Die Rotation erfolgt um den Mittelpunkt des Modul-Grids.
+## Plan: Fix Measurement Storage, UI Repositioning, Map Fixes
 
-## Datenmodell-Erweiterung
+### 3 Problems to solve
 
-### `PVModuleInfo` (src/types/measurements.ts)
-Neue Felder:
-```typescript
-gridOffsetU?: number;    // Verschiebung entlang der Hauptachse (v1) in Metern
-gridOffsetW?: number;    // Verschiebung entlang der Nebenachse (v2) in Metern
-gridRotation?: number;   // Rotation in Grad um den Grid-Mittelpunkt
-```
+**Problem 1: Edge Function returns error (username is `undefined`)**
+The logs show `WebODM validation response status: 200` but `WebODM user: undefined`. The `/api/users/current/` endpoint returns 200 but the response JSON doesn't have a top-level `username` field. The WebODM Django REST API likely wraps the user differently. Fix: log the full response body to diagnose, and also try common WebODM patterns like checking `user.user?.username` or `user[0]?.username`. As a robust fallback, also try `/api/projects/` to validate the token and accept the client-provided username only if the token is valid for any authenticated endpoint.
 
-## Änderungen
+**Problem 2: Move "Speichern" out of Export → own button with confirmation popup**
+- Desktop: Add a standalone "Speichern" button next to the Export button in MeasurementOverlay
+- Mobile: Add a 4th button "Speichern" to MobileBottomBar (4-column grid)
+- Both: Clicking opens a small confirmation dialog explaining that measurements will be saved to DrohnenGLB and can be reloaded later. Only after confirmation does the save execute.
+- Remove SaveMeasurementsButton from ExportDialog and MobileExportOverlay
 
-### 1. Type-Erweiterung (`src/types/measurements.ts`)
-- `gridOffsetU`, `gridOffsetW`, `gridRotation` zu `PVModuleInfo` hinzufügen
+**Problem 3: TaskBoundaryMap fixes**
+- Remove `rectangle` drawing tool, keep only `polygon`
+- Make photo markers non-interactive (`interactive: false`) so they don't interfere with polygon drawing
+- Update hint text accordingly
 
-### 2. Grid-Generierung (`src/utils/pvCalculations.ts` → `generatePVModuleGrid`)
-- Nach Berechnung der Module-Positionen im 2D-Raum (u/w), vor der Projektion nach 3D:
-  1. Grid-Mittelpunkt berechnen (Durchschnitt aller Modul-Zentren)
-  2. Rotation um diesen Mittelpunkt anwenden (cos/sin Transform)
-  3. Offset (gridOffsetU, gridOffsetW) addieren
-- Module die nach Transform außerhalb des Dachpolygons liegen werden weiterhin gefiltert
+**Problem 4: Auto-load → confirmation-based**
+- Change `useAutoLoadMeasurements` to show a toast/dialog asking "Gespeicherte Messungen gefunden – laden?" with a confirm button, instead of loading automatically.
 
-### 3. Interaktions-Modus (`src/hooks/usePVGridInteraction.ts` – NEU)
-Neuer Hook der PV-Grid Drag & Rotate handhabt:
+---
 
-**Drag (Verschieben):**
-- Klick auf ein PV-Modul → Grid wird "ausgewählt" (visueller Highlight)
-- Drag → Raycaster berechnet Intersection mit Dachfläche → Delta in u/w-Koordinaten → `gridOffsetU/W` aktualisieren
-- Modul-Grid wird in Echtzeit neu gerendert
+### Technical Changes
 
-**Rotate (Drehen):**
-- Wenn Grid ausgewählt: Ein Rotations-Handle (kleiner Kreis/Pfeil) am Rand des Grids
-- Drag am Handle → Winkel zum Grid-Mittelpunkt berechnen → `gridRotation` aktualisieren
-- Alternative: Zwei-Finger-Geste auf Touch-Geräten
+#### 1. Edge Function `measurement-storage/index.ts`
+- In `validateWebODMToken`: log `JSON.stringify(user)` to see full response
+- Try multiple field paths: `user?.username`, `user?.user?.username`, `user?.[0]?.username`
+- If all fail but status is 200, fall back to validating token via `/api/projects/` (returns 200 if authenticated) and accept the username passed from the client (add `username` to request body as fallback)
 
-**State-Management:**
-- `selectedPVGridId: string | null` – aktuell ausgewählte Solarfläche
-- `isDraggingPVGrid: boolean`
-- `isRotatingPVGrid: boolean`
-- Bei Änderung: `updateMeasurement()` mit neuen gridOffset/Rotation-Werten aufrufen
+#### 2. `SaveMeasurementsButton.tsx` → `SaveMeasurementsDialog.tsx`
+- Rename/refactor to include an `AlertDialog` confirmation step
+- Button click opens dialog: "Messdaten im DrohnenGLB sichern? Die Messungen werden gespeichert und können beim nächsten Öffnen dieses Tasks wieder eingelesen werden."
+- On confirm: execute save logic
 
-### 4. Visuelle Handles (`src/utils/measurementVisuals.ts`)
-- Wenn ein PV-Grid ausgewählt ist:
-  - Blaue Umrandung um das gesamte Grid
-  - Rotations-Handle (kleiner Kreis) an einer Ecke des Grids
-  - Move-Cursor beim Hovern über Module
+#### 3. `MeasurementOverlay.tsx` (Desktop)
+- Add the save button in the toggles row, next to Export (visible only when server context exists)
+- Remove import/usage of SaveMeasurementsButton from ExportDialog
 
-### 5. Integration in bestehende Measurement-Events
-- `useMeasurementEvents.ts` oder `useMeasurementInteraction.ts`: 
-  - PV-Grid Klick-Erkennung (userData.isPVModule → Grid auswählen)
-  - Drag-Events weiterleiten an `usePVGridInteraction`
-  - ESC oder Klick außerhalb → Grid deselektieren
+#### 4. `MobileBottomBar.tsx`
+- Add 4th button "Speichern" (CloudUpload icon) → triggers save confirmation
+- Change grid from `grid-cols-3` to `grid-cols-4`
+- Only show when server context (projectId/taskId) exists; otherwise keep 3 columns
 
-## Implementierungsreihenfolge
-1. Type-Erweiterung (PVModuleInfo)
-2. generatePVModuleGrid mit Offset/Rotation
-3. usePVGridInteraction Hook
-4. Visuelle Handles
-5. Integration in Event-System
+#### 5. `ExportDialog.tsx` and `MobileExportOverlay.tsx`
+- Remove SaveMeasurementsButton from both
 
-## Technische Details
-- Die Transformation passiert im 2D u/w-Koordinatensystem (vor der 3D-Projektion), damit die Module korrekt auf der Dachfläche bleiben
-- Rotation: Standard 2D-Rotation `u' = cos(θ)*(u-cu) - sin(θ)*(w-cw) + cu`, `w' = sin(θ)*(u-cu) + cos(θ)*(w-cw) + cw`
-- Module die nach Transform außerhalb liegen werden automatisch ausgeblendet (bestehende Polygon-Clipping-Logik)
+#### 6. `TaskBoundaryMap.tsx`
+- Remove `rectangle` from draw options (set `rectangle: false`)
+- Add `interactive: false` to CircleMarker options
+- Update hint text to mention only polygon
+
+#### 7. `useAutoLoadMeasurements.ts`
+- Instead of calling `importMeasurements` directly, show a confirmation toast with action button
+- Only import after user clicks "Laden"
+
