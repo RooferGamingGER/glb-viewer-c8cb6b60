@@ -1071,9 +1071,9 @@ export const calculateRoofOrientation = (points: Point[], northAngle: number = 0
     // Inclination: angle between normal and vertical (Y-axis)
     const inclination = Math.acos(Math.min(1, Math.abs(normal.y))) * (180 / Math.PI);
 
-    // Downslope direction = horizontal projection of the normal
-    const hx = normal.x;
-    const hz = normal.z;
+    // Downslope/facing direction = negate horizontal projection (normal points uphill, we want downhill)
+    const hx = -normal.x;
+    const hz = -normal.z;
     
     // If roof is nearly flat, default to South
     if (Math.sqrt(hx * hx + hz * hz) < 0.01) {
