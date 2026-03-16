@@ -148,5 +148,6 @@ export interface PVModuleInfo {
   rowSpacing?: number;
   flatRoofEdgeDistance?: number;
   ewPairGap?: number;
+  northAngle?: number;  // North direction in model coordinates (degrees, 0 = +Z is North)
 }
 }
