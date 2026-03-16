@@ -207,6 +207,80 @@ const findGridAxes = (points: Point[], planeNormal: THREE.Vector3): { v1: THREE.
 };
 
 /**
+ * Find optimal grid axes for flat roofs based on compass direction + snap to nearest roof edge.
+ * 
+ * For south layout: v1 = east-west axis (rows run E-W, modules tilt south)
+ * For east-west layout: v1 = north-south axis (A-frame pairs face E and W)
+ * 
+ * The ideal compass axis is then "snapped" to the nearest polygon edge direction
+ * so the grid aligns cleanly with the roof boundary.
+ */
+const findFlatRoofGridAxes = (
+  points: Point[],
+  planeNormal: THREE.Vector3,
+  northAngle: number = 0,
+  layout: 'south' | 'east-west' = 'south'
+): { v1: THREE.Vector3; v2: THREE.Vector3 } => {
+  const naRad = (northAngle * Math.PI) / 180;
+
+  // Ideal v1 direction based on layout:
+  // South layout: modules face south → rows run east-west → v1 = East vector
+  //   East in model coords when northAngle=0 and +Z=North: East = (+X, 0, 0) → general: (cos(na), 0, -sin(na))
+  // E-W layout: A-frame pairs face E+W → columns run north-south → v1 = North vector
+  //   North vector: (-sin(na), 0, -cos(na))... but we want rows along N-S, so v1 = South/North direction
+  let idealV1: THREE.Vector3;
+  if (layout === 'east-west') {
+    // v1 along North-South axis (modules columns run N-S)
+    idealV1 = new THREE.Vector3(-Math.sin(naRad), 0, -Math.cos(naRad));
+  } else {
+    // v1 along East-West axis (module rows run E-W)
+    idealV1 = new THREE.Vector3(Math.cos(naRad), 0, -Math.sin(naRad));
+  }
+
+  // Project ideal v1 into the roof plane
+  idealV1.sub(planeNormal.clone().multiplyScalar(idealV1.dot(planeNormal))).normalize();
+
+  // Collect all polygon edge directions (projected into the plane)
+  const edges: THREE.Vector3[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const edgeV = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    // Project into plane
+    edgeV.sub(planeNormal.clone().multiplyScalar(edgeV.dot(planeNormal)));
+    if (edgeV.length() > 0.01) {
+      edges.push(edgeV.normalize());
+    }
+  }
+
+  if (edges.length === 0) {
+    // Fallback to ideal direction
+    const v2 = new THREE.Vector3().crossVectors(planeNormal, idealV1).normalize();
+    return { v1: idealV1, v2 };
+  }
+
+  // Find the edge whose direction is closest to idealV1 (consider ±180° equivalence)
+  let bestEdge = edges[0];
+  let bestAngle = Infinity;
+
+  for (const edgeDir of edges) {
+    let dot = idealV1.dot(edgeDir);
+    // Edges are bidirectional, so consider both directions
+    const angle = Math.acos(Math.min(1, Math.abs(dot)));
+    if (angle < bestAngle) {
+      bestAngle = angle;
+      // Use the direction that aligns with idealV1 (not opposite)
+      bestEdge = dot >= 0 ? edgeDir.clone() : edgeDir.clone().negate();
+    }
+  }
+
+  const v1 = bestEdge.clone().normalize();
+  const v2 = new THREE.Vector3().crossVectors(planeNormal, v1).normalize();
+
+  return { v1, v2 };
+};
+
+/**
  * Inset a polygon by a given distance (shrink all edges inward).
  * Works in 3D by projecting to 2D, insetting, then projecting back.
  */
@@ -594,7 +668,11 @@ export const generatePVModuleGrid = (
 
   // Fit plane using all roof points (stable for complex polygons)
   const { normal, centroid, plane } = fitPlane(roofPoints);
-  const { v1, v2 } = findGridAxes(roofPoints, normal);
+  // For flat roofs, use compass-based grid axes snapped to nearest roof edge
+  const isFlatRoofCheck = pvInfo.roofType === 'flat';
+  const { v1, v2 } = isFlatRoofCheck
+    ? findFlatRoofGridAxes(roofPoints, normal, pvInfo.northAngle || 0, pvInfo.flatRoofLayout || 'south')
+    : findGridAxes(roofPoints, normal);
 
   // Project roof points to 2D
   const pts2D = roofPoints.map(p => {
