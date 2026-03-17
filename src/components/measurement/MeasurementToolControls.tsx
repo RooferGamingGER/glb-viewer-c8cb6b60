@@ -58,6 +58,7 @@ interface MeasurementToolControlsProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   showMeasurementList?: boolean;
+  onMaterialListChange?: (list: CompleteMaterialList | null) => void;
 }
 
 const getTypeIcon = (type: string) => {
