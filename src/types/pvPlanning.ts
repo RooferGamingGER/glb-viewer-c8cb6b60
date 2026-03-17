@@ -146,13 +146,11 @@ export const INVERTER_DATABASE: InverterSpec[] = [
 export interface MaterialItem {
   id: string;
   category: 'module' | 'mounting' | 'electrical' | 'roofing' | 'safety' | 'misc';
-  manufacturer?: string;      // Hersteller (z.B. "Braas", "Bauder")
-  articleNumber?: string;     // Artikelnummer
-  description: string;        // Bezeichnung
-  unit: string;               // Einheit (Stk., m, m², kg)
+  manufacturer?: string;
+  articleNumber?: string;
+  description: string;
+  unit: string;
   quantity: number;
-  pricePerUnit?: number;      // EUR netto
-  totalPrice?: number;        // EUR netto
   notes?: string;
 }
 
