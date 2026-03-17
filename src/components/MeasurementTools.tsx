@@ -54,6 +54,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 }) => {
   // Sidebar collapsed state - default closed
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  // Shared material list state for PDF export
+  const [sharedMaterialList, setSharedMaterialList] = useState<CompleteMaterialList | null>(null);
 
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
