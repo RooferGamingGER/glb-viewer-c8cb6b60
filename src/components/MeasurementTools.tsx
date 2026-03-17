@@ -86,6 +86,31 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Auto-load saved measurements from server
   useAutoLoadMeasurements(importMeasurements, measurements);
 
+  // Expose current measurements globally for share creation in Viewer
+  React.useEffect(() => {
+    (window as any).__currentMeasurements = measurements;
+    return () => {
+      delete (window as any).__currentMeasurements;
+    };
+  }, [measurements]);
+
+  // Import measurements provided by share mode (set by Viewer)
+  React.useEffect(() => {
+    const sharedRaw = (window as any).__sharedMeasurements;
+    if (!enabled || !sharedRaw) return;
+
+    const sharedList = Array.isArray(sharedRaw)
+      ? sharedRaw
+      : Array.isArray(sharedRaw?.measurements)
+        ? sharedRaw.measurements
+        : [];
+
+    if (sharedList.length === 0 || (scene as any)?.userData?._sharedMeasurementsImported) return;
+
+    importMeasurements(sharedList as any[], false, true);
+    (scene as any).userData._sharedMeasurementsImported = true;
+  }, [enabled, scene, importMeasurements]);
+
   // Three.js object references
   const {
     pointsRef, linesRef, measurementsRef, editPointsRef, labelsRef, segmentLabelsRef

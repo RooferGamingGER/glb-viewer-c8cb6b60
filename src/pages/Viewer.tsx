@@ -236,7 +236,11 @@ const Viewer = () => {
       project_id: parseInt(projectId, 10),
       task_id: taskId,
       file_name: fileName,
-      measurements: serializeMeasurementsForShare((window as any).__currentMeasurements || []),
+      measurements: serializeMeasurementsForShare(
+        Array.isArray((window as any).__currentMeasurements)
+          ? (window as any).__currentMeasurements
+          : []
+      ),
       created_by: authUsername || 'unknown',
     };
   }, [fileName, authToken, activeServer, authUsername]);
