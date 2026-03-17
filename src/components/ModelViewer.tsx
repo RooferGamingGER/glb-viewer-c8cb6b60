@@ -449,6 +449,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [measurementToolsEverEnabled] = useState(true);
   
   const { measurements } = useMeasurements();
+  const sunSimulation = useSunSimulation();
 
   // Enhanced URL resolution with retry capability
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
