@@ -59,6 +59,7 @@ export const normalizeSegmentType = (type: string): string => {
 
 const Viewer = () => {
   const navigate = useNavigate();
+  const { token: authToken, activeServer, username: authUsername } = useWebODMAuth();
   
   const [isFullscreen, setIsFullscreen] = useState(true);
   const { showTutorial, setShowTutorial } = useTutorial();
