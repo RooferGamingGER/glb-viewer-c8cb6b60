@@ -28,14 +28,12 @@ import { ExportPdfMaterialTab } from './ExportPdfButtonPatch';
 interface ExportPdfButtonProps {
   measurements: Measurement[];
   measurementGroups?: THREE.Group[];
-  stringPlan?: StringPlan | null;
   materialList?: CompleteMaterialList | null;
 }
 
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   measurements,
   measurementGroups,
-  stringPlan: externalStringPlan,
   materialList: externalMaterialList,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
