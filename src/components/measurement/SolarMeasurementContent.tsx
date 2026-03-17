@@ -28,12 +28,14 @@ interface SolarMeasurementContentProps {
   measurement: Measurement;
   updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
   allMeasurements?: Measurement[];
+  onMaterialListChange?: (list: import('@/types/pvPlanning').CompleteMaterialList | null) => void;
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
   updateMeasurement,
-  allMeasurements = []
+  allMeasurements = [],
+  onMaterialListChange
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
