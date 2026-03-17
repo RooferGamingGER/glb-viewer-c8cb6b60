@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import SolarPlanningExtension from './SolarMeasurementContentExtension';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
