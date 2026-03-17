@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const ServerLogin = () => {
   const navigate = useNavigate();
-  const { addSession, setActiveServer, isAuthenticated, logout } = useWebODMAuth();
+  const { replaceSessions, setActiveServer, isAuthenticated } = useWebODMAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
