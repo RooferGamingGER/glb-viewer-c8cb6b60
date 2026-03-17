@@ -65,7 +65,7 @@ const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({ simulation }) =
       {/* Header with on/off toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sun className="h-4 w-4 text-amber-500" />
+          <Sun className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Sonnensimulation</span>
         </div>
         <Button
