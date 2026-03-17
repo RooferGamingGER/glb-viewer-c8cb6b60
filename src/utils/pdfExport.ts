@@ -2401,6 +2401,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       container.appendChild(inverterPage);
     }
 
+    if (lengthMeasurements.length > 0) {
       const lengthSection = document.createElement('div');
       lengthSection.className = 'page-break';
       
