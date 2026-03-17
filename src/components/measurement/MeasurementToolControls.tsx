@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MeasurementMode, Measurement as MeasurementType, Segment } from '@/types/measurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { toast } from 'sonner';
 import SolarMeasurementContent from './SolarMeasurementContent';
