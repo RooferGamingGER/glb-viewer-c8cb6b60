@@ -157,14 +157,16 @@ export const useMeasurementCore = () => {
       setMeasurements(prev => prev.map(m => {
         if (m.id === measurementId && m.pvModuleInfo) {
           // Track removed indices instead of filtering arrays (preserves index mapping)
-          const removedIndices = [...(m.pvModuleInfo.removedModuleIndices || [])];
-          if (!removedIndices.includes(moduleIndex)) {
+          const previousRemoved = m.pvModuleInfo.removedModuleIndices || [];
+          const removedIndices = [...previousRemoved];
+          const wasAlreadyRemoved = removedIndices.includes(moduleIndex);
+          if (!wasAlreadyRemoved) {
             removedIndices.push(moduleIndex);
           }
-          
-          // moduleCount should reflect active modules; removedModuleIndices tracks which are removed
-          const totalSlots = m.pvModuleInfo.moduleCorners?.length || m.pvModuleInfo.modulePositions?.length || m.pvModuleInfo.moduleCount || 0;
-          const newCount = Math.max(0, totalSlots - removedIndices.length);
+
+          // Keep count stable: derive original total from current active + previously removed
+          const originalTotal = m.pvModuleInfo.moduleCount + previousRemoved.length;
+          const newCount = Math.max(0, originalTotal - removedIndices.length);
           const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
           const area = m.pvModuleInfo.actualArea || 1;
           

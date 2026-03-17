@@ -1553,8 +1553,7 @@ function renderPVModuleGrid(
   // Persist moduleCorners for PDF export / 2D rendering
   if (
     modulePoints.length > 0 &&
-    (!measurement.pvModuleInfo.moduleCorners ||
-      measurement.pvModuleInfo.moduleCorners.length !== modulePoints.length)
+    (!measurement.pvModuleInfo.moduleCorners || measurement.pvModuleInfo.moduleCorners.length === 0)
   ) {
     (measurement.pvModuleInfo as any).moduleCorners = modulePoints;
     (measurement.pvModuleInfo as any).modulePositions = modulePoints.map(corners => ({
