@@ -2318,74 +2318,89 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         sectionTitle.textContent = `PV-Fläche ${idx + 1}${m.description ? `: ${m.description}` : ''}`;
         sectionDiv.appendChild(sectionTitle);
 
-        if (elec && elec.stringCount > 0) {
+        // Always calculate string assignments (works without inverter now)
+        const stringAssignmentsForPage = calculateStringAssignments(pv);
+
+        if (Object.keys(stringAssignmentsForPage).length === 0) {
+          const noData = document.createElement('div');
+          noData.style.fontSize = '12px';
+          noData.style.color = '#9ca3af';
+          noData.style.fontStyle = 'italic';
+          noData.textContent = 'Keine Module vorhanden.';
+          sectionDiv.appendChild(noData);
+        } else {
+          // Aggregate strings
+          const stringMap = new Map<string, { color: string; moduleIndices: number[] }>();
+          Object.entries(stringAssignmentsForPage).forEach(([idxStr, { stringId, color }]) => {
+            if (!stringMap.has(stringId)) stringMap.set(stringId, { color, moduleIndices: [] });
+            stringMap.get(stringId)!.moduleIndices.push(Number(idxStr));
+          });
+
+          const voc = (pv.pvModuleSpec as any)?.voc ?? 41.8;
+          const modulePower = pv.pvModuleSpec?.power ?? 425;
+
           // String table
           const table = document.createElement('table');
           table.style.width = '100%';
           table.style.borderCollapse = 'collapse';
-          table.style.fontSize = '12px';
+          table.style.fontSize = '11px';
           table.style.marginBottom = '10px';
 
           const thead = document.createElement('thead');
-          const headerRow = document.createElement('tr');
-          ['String', 'Module', 'Spannung (Voc)', 'Strom (Isc)', 'MPPT'].forEach(col => {
-            const th = document.createElement('th');
-            th.style.backgroundColor = '#eff6ff';
-            th.style.border = '1px solid #d1d5db';
-            th.style.padding = '6px 8px';
-            th.style.textAlign = 'left';
-            th.style.fontWeight = '600';
-            th.textContent = col;
-            headerRow.appendChild(th);
-          });
-          thead.appendChild(headerRow);
+          thead.innerHTML = `<tr style="background:#1d4ed8;color:#fff;">
+            <th style="padding:5px 8px;text-align:left;width:24px;"></th>
+            <th style="padding:5px 8px;text-align:left;">String</th>
+            <th style="padding:5px 8px;text-align:right;">Anzahl Module</th>
+            <th style="padding:5px 8px;text-align:right;">Spannung (Voc)</th>
+            <th style="padding:5px 8px;text-align:right;">DC-Leistung</th>
+            <th style="padding:5px 8px;text-align:left;">Module (Nr.)</th>
+          </tr>`;
           table.appendChild(thead);
 
           const tbody = document.createElement('tbody');
-          const mpptCount = 2; // typical dual-MPPT
-          for (let s = 0; s < elec.stringCount; s++) {
-            const tr = document.createElement('tr');
-            const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+          let rowIdx = 0;
 
-            const tdId = document.createElement('td');
-            tdId.style.border = '1px solid #d1d5db';
-            tdId.style.padding = '5px 8px';
-            tdId.style.fontWeight = '600';
-            tdId.style.color = color;
-            tdId.textContent = `S${s + 1}`;
-            tr.appendChild(tdId);
-
-            const tdMod = document.createElement('td');
-            tdMod.style.border = '1px solid #d1d5db';
-            tdMod.style.padding = '5px 8px';
-            tdMod.textContent = `${elec.modulesPerString}`;
-            tr.appendChild(tdMod);
-
-            const tdVoc = document.createElement('td');
-            tdVoc.style.border = '1px solid #d1d5db';
-            tdVoc.style.padding = '5px 8px';
-            tdVoc.textContent = `${(elec.modulesPerString * MODULE_VOC).toFixed(1)} V`;
-            tr.appendChild(tdVoc);
-
-            const tdIsc = document.createElement('td');
-            tdIsc.style.border = '1px solid #d1d5db';
-            tdIsc.style.padding = '5px 8px';
-            tdIsc.textContent = `${MODULE_ISC.toFixed(1)} A`;
-            tr.appendChild(tdIsc);
-
-            const tdMppt = document.createElement('td');
-            tdMppt.style.border = '1px solid #d1d5db';
-            tdMppt.style.padding = '5px 8px';
-            tdMppt.textContent = `MPPT ${(s % mpptCount) + 1}`;
-            tr.appendChild(tdMppt);
-
-            tbody.appendChild(tr);
+          // Build active index list for numbering
+          const removedSet = new Set(pv.removedModuleIndices || []);
+          const totalSlots = pv.moduleCorners?.length || pv.modulePositions?.length || pv.moduleCount || 0;
+          const allActive: number[] = [];
+          for (let i = 0; i < totalSlots; i++) {
+            if (!removedSet.has(i)) allActive.push(i);
           }
+
+          stringMap.forEach(({ color, moduleIndices }, stringId) => {
+            const sortedIndices = [...moduleIndices].sort((a, b) => a - b);
+            const moduleCount = sortedIndices.length;
+            const vocTotal = (voc * moduleCount).toFixed(0);
+            const powerDC = ((modulePower * moduleCount) / 1000).toFixed(2);
+
+            const moduleNumbers = sortedIndices
+              .map(idx => allActive.indexOf(idx) + 1)
+              .filter(n => n > 0)
+              .join(', ');
+
+            const tr = document.createElement('tr');
+            tr.style.background = rowIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
+            tr.innerHTML = `
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">
+                <div style="width:14px;height:14px;background:${color};border-radius:2px;"></div>
+              </td>
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${stringId}</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${moduleCount}</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${vocTotal} V</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${powerDC} kWp</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:10px;">M${moduleNumbers}</td>
+            `;
+            tbody.appendChild(tr);
+            rowIdx++;
+          });
+
           table.appendChild(tbody);
           sectionDiv.appendChild(table);
 
-          // Inverter recommendation
-          if (elec.inverterPower > 0) {
+          // Inverter recommendation if configured
+          const elecSys = pv.pvMaterials?.electricalSystem;
+          if (elecSys && elecSys.inverterPower > 0) {
             const invBox = document.createElement('div');
             invBox.style.backgroundColor = '#fef3c7';
             invBox.style.border = '1px solid #f59e0b';
@@ -2401,18 +2416,16 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
 
             const invDetail = document.createElement('span');
             invDetail.style.color = '#78350f';
-            invDetail.textContent = `${elec.inverterPower.toFixed(1)} kW, ${elec.inverterCount}× Wechselrichter, ${elec.stringCount} Strings`;
+            invDetail.textContent = `${elecSys.inverterPower.toFixed(1)} kW, ${elecSys.inverterCount}× Wechselrichter, ${elecSys.stringCount} Strings`;
             invBox.appendChild(invDetail);
 
             sectionDiv.appendChild(invBox);
+          } else {
+            const hint = document.createElement('p');
+            hint.style.cssText = 'font-size:9px;color:#94a3b8;margin-top:6px;';
+            hint.textContent = `* Automatische Stringaufteilung (kein Wechselrichter konfiguriert). Berechnung: max. ${Math.floor(1000 / voc)} Module/String bei Voc = ${voc.toFixed(1)} V, Systemspannung 1000 V DC.`;
+            sectionDiv.appendChild(hint);
           }
-        } else {
-          const noData = document.createElement('div');
-          noData.style.fontSize = '12px';
-          noData.style.color = '#9ca3af';
-          noData.style.fontStyle = 'italic';
-          noData.textContent = 'Keine Stringplanung verfügbar – Wechselrichter noch nicht konfiguriert.';
-          sectionDiv.appendChild(noData);
         }
 
         inverterPage.appendChild(sectionDiv);
