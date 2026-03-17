@@ -17,7 +17,7 @@ const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed'
 /**
  * Calculates string assignments for PV modules based on electrical system data.
  */
-const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number, { stringId: string; color: string }> => {
+export const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number, { stringId: string; color: string }> => {
   const assignments: Record<number, { stringId: string; color: string }> = {};
   const elec = pvInfo.pvMaterials?.electricalSystem;
   if (!elec || elec.stringCount === 0) return assignments;

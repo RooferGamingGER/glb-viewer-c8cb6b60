@@ -182,6 +182,7 @@ export interface Measurement {
   notes?: string;        // Additional notes for the measurement
   screenshot?: string;   // Base64 data URL of measurement screenshot for PDF export
   polygon2D?: string;    // Base64 data URL of 2D polygon rendering for PDF export
+  pvSolarLayout?: string; // Pre-rendered base64 solar layout for PDF export
   
   customScreenshots?: string[];  // Array of base64 data URLs for custom screenshots
   
