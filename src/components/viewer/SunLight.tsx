@@ -14,6 +14,7 @@ interface SunLightProps {
   position: THREE.Vector3;
   intensity: number;
   ambientIntensity: number;
+  elevation: number; // Sun elevation in degrees, used for shadow frustum sizing
 }
 
 const materialBackups = new WeakMap<THREE.Mesh, THREE.Material | THREE.Material[]>();
