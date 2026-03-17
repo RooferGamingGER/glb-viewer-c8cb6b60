@@ -397,6 +397,7 @@ const ModelCanvas = React.memo(({
             position={sunSimulation.sunLightPosition}
             intensity={sunSimulation.sunIntensity}
             ambientIntensity={sunSimulation.ambientIntensity}
+            elevation={sunSimulation.sunElevation}
           />
         )}
         <Model 

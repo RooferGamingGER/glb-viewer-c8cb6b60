@@ -156,7 +156,7 @@ const SunLight: React.FC<SunLightProps> = ({ active, position, intensity, ambien
       light.shadow.map = null as any;
     }
     gl.shadowMap.needsUpdate = true;
-  }, [scene, targetObject, getShadowMapSize, gl]);
+  }, [scene, targetObject, getShadowMapSize, gl, elevation]);
 
   useEffect(() => {
     if (!active) {

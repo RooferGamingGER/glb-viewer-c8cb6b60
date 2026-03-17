@@ -175,6 +175,8 @@ export function useSunSimulation(): SunSimulationState {
     }
   }, [mode]);
 
+  const sunElevation = solarPosition?.elevation ?? 45;
+
   return {
     mode, setMode,
     latitude, longitude, setLatitude, setLongitude,
@@ -188,6 +190,7 @@ export function useSunSimulation(): SunSimulationState {
     sunIntensity,
     ambientIntensity,
     sunriseHours, sunsetHours,
+    sunElevation,
     northAngle, setNorthAngle
   };
 }
