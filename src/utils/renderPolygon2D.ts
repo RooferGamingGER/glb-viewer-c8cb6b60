@@ -68,7 +68,8 @@ export const projectPointsTo2D = (points: Point[]): Point2D[] => {
   for (const point of raw2D) {
     // Add a padding of 10%
     const x = (point.x - minX) / (maxRange * 1.2) + 0.1;
-    const y = (point.y - minY) / (maxRange * 1.2) + 0.1;
+    // Flip Y:Canvas Y grows downward, 3D world Y grows upward → Traufe unten, First oben
+    const y = (maxY - point.y) / (maxRange * 1.2) + 0.1;
     projected2D.push({ x, y });
   }
   
