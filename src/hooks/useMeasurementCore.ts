@@ -165,9 +165,31 @@ export const useMeasurementCore = () => {
             removedIndices.push(moduleIndex);
           }
 
-          // Keep count stable: derive original total from current active + previously removed
-          const originalTotal = m.pvModuleInfo.moduleCount + previousRemoved.length;
-          const newCount = Math.max(0, originalTotal - removedIndices.length);
+          // Rebuild full slot count independent of current filtered visuals/state
+          let totalSlots = m.pvModuleInfo.moduleCount + previousRemoved.length;
+          let repairedModuleCorners = m.pvModuleInfo.moduleCorners;
+          let repairedModulePositions = m.pvModuleInfo.modulePositions;
+
+          try {
+            const fullGrid = generatePVModuleGrid(
+              { ...m.pvModuleInfo, removedModuleIndices: [] },
+              m.points[0]?.y || 0
+            );
+
+            if (fullGrid.modulePoints.length > 0) {
+              totalSlots = fullGrid.modulePoints.length;
+              repairedModuleCorners = fullGrid.modulePoints;
+              repairedModulePositions = fullGrid.modulePoints.map(corners => ({
+                x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+                y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+                z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
+              }));
+            }
+          } catch (e) {
+            console.warn('PV full-grid reconstruction failed during module removal', e);
+          }
+
+          const newCount = Math.max(0, totalSlots - removedIndices.length);
           const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
           const area = m.pvModuleInfo.actualArea || 1;
           
@@ -175,6 +197,8 @@ export const useMeasurementCore = () => {
             ...m,
             pvModuleInfo: {
               ...m.pvModuleInfo,
+              moduleCorners: repairedModuleCorners,
+              modulePositions: repairedModulePositions,
               moduleCount: newCount,
               coveragePercent: Math.min((moduleArea / area) * 100, 100),
               removedModuleIndices: removedIndices,
