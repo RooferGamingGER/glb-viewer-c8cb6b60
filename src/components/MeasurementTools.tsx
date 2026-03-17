@@ -15,6 +15,7 @@ import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCal
 import { smartToast } from '@/utils/smartToast';
 import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
 import { CompleteMaterialList } from '@/types/pvPlanning';
+import { SunSimulationState } from '@/hooks/useSunSimulation';
 
 // Import visualization utilities
 import { 
