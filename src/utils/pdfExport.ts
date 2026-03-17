@@ -9,6 +9,12 @@ import {
 } from './exportUtils';
 import { renderSolarLayout2D } from './renderPolygon2D';
 import { PVModuleInfo } from '@/types/measurements';
+import { StringPlan, CompleteMaterialList } from '@/types/pvPlanning';
+import {
+  createStringPlanPage,
+  createMaterialListPage,
+  createPVLayoutPageWithStrings,
+} from './pvPdfExtensions';
 
 const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'];
 
@@ -1061,7 +1067,7 @@ const createNotesPage = (notes: string): HTMLElement => {
 /**
  * Export measurements to PDF with cover page
  */
-export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save'): Promise<boolean | Blob> => {
+export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save', stringPlan?: StringPlan, materialList?: CompleteMaterialList): Promise<boolean | Blob> => {
   try {
     const sortedMeasurements = measurements.sort((a, b) => {
       const typeOrder: Record<string, number> = {
@@ -2221,8 +2227,26 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     }
     
-    // ============ SOLARPLANUNG PAGE(S) - before appendix ============
-    // Solarplanung pages removed from PDF export
+    // ============ SOLARPLANUNG / STRINGPLAN / MATERIALLISTE ============
+    const pvInfoMap = new Map<string, PVModuleInfo>();
+    sortedMeasurements.forEach(m => {
+      if (m.pvModuleInfo) pvInfoMap.set(m.id, m.pvModuleInfo);
+    });
+
+    if (stringPlan && pvInfoMap.size > 0) {
+      const pvLayoutPage = createPVLayoutPageWithStrings(pvInfoMap, sortedMeasurements, stringPlan);
+      container.appendChild(pvLayoutPage);
+      const stringPlanPage = createStringPlanPage(stringPlan, pvInfoMap, sortedMeasurements);
+      container.appendChild(stringPlanPage);
+    }
+
+    if (materialList) {
+      const materialPage = createMaterialListPage(materialList, {
+        projectNumber: coverData?.projectNumber,
+        address: coverData?.projectAddress,
+      });
+      container.appendChild(materialPage);
+    }
 
     // Add calculation methods appendix (always last)
     const calculationMethodsSection = createCalculationMethodsSection();

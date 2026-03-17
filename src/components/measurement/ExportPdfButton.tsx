@@ -22,15 +22,21 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { saveAs } from 'file-saver';
+import { StringPlan, CompleteMaterialList } from '@/types/pvPlanning';
+import { ExportPdfStringPlanTab, ExportPdfMaterialTab } from './ExportPdfButtonPatch';
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
   measurementGroups?: THREE.Group[];
+  stringPlan?: StringPlan | null;
+  materialList?: CompleteMaterialList | null;
 }
 
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   measurements,
-  measurementGroups
+  measurementGroups,
+  stringPlan: externalStringPlan,
+  materialList: externalMaterialList,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -40,6 +46,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
   const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const [pdfOpenMode, setPdfOpenMode] = useState<'open' | 'download'>('open');
+  const [includeStringPlan, setIncludeStringPlan] = useState(true);
+  const [includeMaterialList, setIncludeMaterialList] = useState(true);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const {
     scene,
@@ -313,7 +321,13 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
       const provisionalTab = pdfOpenMode === 'open' ? window.open('', '_blank') : null;
 
-      const result = await exportMeasurementsToPdf(measurementsWithVisuals, coverDataWithLogo, 'blob');
+      const result = await exportMeasurementsToPdf(
+        measurementsWithVisuals,
+        coverDataWithLogo,
+        'blob',
+        includeStringPlan && externalStringPlan ? externalStringPlan : undefined,
+        includeMaterialList && externalMaterialList ? externalMaterialList : undefined,
+      );
       setExportProgress(100);
 
       if (result instanceof Blob) {
@@ -368,14 +382,16 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="info">Berichtsinfos</TabsTrigger>
-            <TabsTrigger value="preview">
+          <TabsList className="grid grid-cols-5 mb-4">
+            <TabsTrigger value="info" className="text-xs">Berichtsinfos</TabsTrigger>
+            <TabsTrigger value="preview" className="text-xs">
               Messungen ({measurements.length})
             </TabsTrigger>
-            {hasCustomScreenshots && <TabsTrigger value="screenshots">
+            {hasCustomScreenshots && <TabsTrigger value="screenshots" className="text-xs">
                 Screenshots ({screenshotCount})
               </TabsTrigger>}
+            <TabsTrigger value="stringplan" className="text-xs">Stringplan</TabsTrigger>
+            <TabsTrigger value="material" className="text-xs">Material</TabsTrigger>
           </TabsList>
           
           <TabsContent value="info">
@@ -621,6 +637,22 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
                 </CardContent>
               </Card>
             </TabsContent>}
+
+          <TabsContent value="stringplan">
+            <ExportPdfStringPlanTab
+              stringPlan={externalStringPlan ?? null}
+              includeStringPlan={includeStringPlan}
+              onIncludeStringPlanChange={setIncludeStringPlan}
+            />
+          </TabsContent>
+
+          <TabsContent value="material">
+            <ExportPdfMaterialTab
+              materialList={externalMaterialList ?? null}
+              includeMaterialList={includeMaterialList}
+              onIncludeMaterialListChange={setIncludeMaterialList}
+            />
+          </TabsContent>
         </Tabs>
         
         {isExporting && <div className="mt-4">

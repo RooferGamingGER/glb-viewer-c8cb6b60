@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import SolarPlanningExtension from './SolarMeasurementContentExtension';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -706,6 +707,19 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Extended PV Planning: Inverter, String, Material */}
+      <SolarPlanningExtension
+        pvInfoMap={(() => {
+          const map = new Map<string, import('@/types/measurements').PVModuleInfo>();
+          if (measurement.pvModuleInfo) map.set(measurement.id, measurement.pvModuleInfo);
+          allMeasurements.filter(m => m.pvModuleInfo && m.id !== measurement.id).forEach(m => {
+            map.set(m.id, m.pvModuleInfo!);
+          });
+          return map;
+        })()}
+        measurements={allMeasurements.length > 0 ? allMeasurements : [measurement]}
+      />
     </div>
   );
 };
