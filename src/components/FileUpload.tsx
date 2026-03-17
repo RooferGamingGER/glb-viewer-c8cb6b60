@@ -222,18 +222,9 @@ const FileUpload: React.FC = () => {
               <AlertDescription>{fileError}</AlertDescription>
             </Alert>}
 
-          <div className="flex flex-col items-center gap-2 mt-4" onClick={handleSwitchClick}>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
-              <span className="text-sm">
-                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®" : "Fremdanbieter"}
-              </span>
-            </label>
+          <div className="flex flex-col items-center gap-2 mt-4">
             <span className="text-xs text-muted-foreground">
-              {rotateModel 
-                ? "Für RooferGaming-Modelle ist die Eturnity-Konvertierung verfügbar."
-                : "Für Fremdanbieter-Modelle ist keine Eturnity-Konvertierung verfügbar."
-              }
+              Modell von Drohnenvermessung by RooferGaming® · Eturnity-Konvertierung verfügbar
             </span>
           </div>
 

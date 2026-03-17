@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWebODMAuth } from "@/lib/auth-context";
+import { useWebODMAuth, SERVERS } from "@/lib/auth-context";
 import { authenticate } from "@/lib/webodm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const ServerLogin = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useWebODMAuth();
+  const { addSession, setActiveServer, isAuthenticated, logout } = useWebODMAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,9 +26,49 @@ const ServerLogin = () => {
 
     setLoading(true);
     try {
-      const token = await authenticate(username.trim(), password);
-      login(token, username.trim());
-      toast.success("Erfolgreich angemeldet");
+      // Try both servers in parallel
+      const results = await Promise.allSettled(
+        SERVERS.map(async (srv) => {
+          const token = await authenticate(username.trim(), password, srv.url);
+          return { server: srv.url, token, username: username.trim(), label: srv.label };
+        })
+      );
+
+      const successfulSessions = results
+        .filter((r): r is PromiseFulfilledResult<{ server: string; token: string; username: string; label: string }> =>
+          r.status === "fulfilled"
+        )
+        .map((r) => r.value);
+
+      if (successfulSessions.length === 0) {
+        // Get error from first attempt
+        const firstError = results[0];
+        const errMsg = firstError.status === "rejected"
+          ? (firstError.reason?.message || "Anmeldung fehlgeschlagen")
+          : "Anmeldung fehlgeschlagen";
+        toast.error(errMsg);
+        return;
+      }
+
+      // Clear old sessions first, then add new ones
+      logout();
+
+      // Small delay to let state clear
+      await new Promise((r) => setTimeout(r, 50));
+
+      for (const session of successfulSessions) {
+        addSession(session);
+      }
+
+      // Set first successful server as active
+      setActiveServer(successfulSessions[0].server);
+
+      if (successfulSessions.length > 1) {
+        toast.success(`Angemeldet auf ${successfulSessions.length} Servern`);
+      } else {
+        toast.success("Erfolgreich angemeldet");
+      }
+
       navigate("/server-projects", { replace: true });
     } catch (err: any) {
       toast.error(err.message || "Anmeldung fehlgeschlagen");
@@ -46,7 +86,7 @@ const ServerLogin = () => {
           </div>
           <h1 className="text-xl font-bold">Server-Anmeldung</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Melden Sie sich bei drohnenvermessung-server.de an
+            Anmeldung bei Drohnenvermessung-Servern
           </p>
         </div>
 
