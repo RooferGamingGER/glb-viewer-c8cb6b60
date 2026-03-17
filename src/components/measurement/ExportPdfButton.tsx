@@ -378,7 +378,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="info" className="text-xs">Berichtsinfos</TabsTrigger>
             <TabsTrigger value="preview" className="text-xs">
               Messungen ({measurements.length})
@@ -386,7 +386,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             {hasCustomScreenshots && <TabsTrigger value="screenshots" className="text-xs">
                 Screenshots ({screenshotCount})
               </TabsTrigger>}
-            <TabsTrigger value="stringplan" className="text-xs">Stringplan</TabsTrigger>
             <TabsTrigger value="material" className="text-xs">Material</TabsTrigger>
           </TabsList>
           
