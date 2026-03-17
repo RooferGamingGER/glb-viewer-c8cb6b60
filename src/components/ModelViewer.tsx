@@ -9,6 +9,8 @@ import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
+import SunLight from '@/components/viewer/SunLight';
+import { useSunSimulation } from '@/hooks/useSunSimulation';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
