@@ -243,7 +243,7 @@ const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({ simulation }) =
                 <div className="font-mono">{solarPosition.dayLengthHours.toFixed(1)} h</div>
               </div>
               {solarPosition.elevation <= 0 && (
-                <div className="text-[10px] text-amber-500 font-medium mt-1">
+                <div className="text-[10px] text-destructive font-medium mt-1">
                   ☽ Sonne unter dem Horizont
                 </div>
               )}
