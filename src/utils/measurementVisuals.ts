@@ -1550,6 +1550,20 @@ function renderPVModuleGrid(
   // Generate the PV module grid (only module surfaces)
   const { modulePoints, moduleOriginalIndices, moduleDirections } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
 
+  // Persist moduleCorners for PDF export / 2D rendering
+  if (
+    modulePoints.length > 0 &&
+    (!measurement.pvModuleInfo.moduleCorners ||
+      measurement.pvModuleInfo.moduleCorners.length !== modulePoints.length)
+  ) {
+    (measurement.pvModuleInfo as any).moduleCorners = modulePoints;
+    (measurement.pvModuleInfo as any).modulePositions = modulePoints.map(corners => ({
+      x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+      y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+      z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
+    }));
+  }
+
   // Visual defaults (can be overridden via pvModuleInfo.moduleVisuals)
   const vDefaults = {
     panelColor: 0x0b1f3a,

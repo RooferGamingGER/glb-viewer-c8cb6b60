@@ -638,6 +638,22 @@ export const calculatePVModulePlacement = (
     );
   }
 
+  // Populate moduleCorners + modulePositions at creation time for PDF export
+  try {
+    const grid = generatePVModuleGrid(result, 0);
+    if (grid.modulePoints.length > 0) {
+      result.moduleCorners = grid.modulePoints;
+      result.modulePositions = grid.modulePoints.map(corners => ({
+        x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+        y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+        z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
+      }));
+      result.moduleCount = grid.modulePoints.length;
+    }
+  } catch (e) {
+    console.warn('calculatePVModulePlacement: Grid-Generierung fehlgeschlagen', e);
+  }
+
   return result;
 };
 
