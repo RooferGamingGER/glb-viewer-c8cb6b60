@@ -1,6 +1,7 @@
 /**
- * SunLight — Controllable directional light for sun simulation
- * Manages shadow mapping, frustum, and mesh shadow settings
+ * SunLight — Sole light source for sun simulation
+ * Removes envMaps from materials so only our directional light illuminates the scene.
+ * Manages shadow mapping, frustum, and mesh shadow settings.
  */
 
 import React, { useRef, useEffect, useCallback } from 'react';
@@ -14,6 +15,9 @@ interface SunLightProps {
   ambientIntensity: number;
   target?: THREE.Vector3;
 }
+
+// Store original envMaps so we can restore them
+const savedEnvMaps = new WeakMap<THREE.Material, THREE.Texture | null>();
 
 const SunLight: React.FC<SunLightProps> = ({
   active,
@@ -43,6 +47,41 @@ const SunLight: React.FC<SunLightProps> = ({
     gl.shadowMap.needsUpdate = true;
   }, [active, gl]);
 
+  // Strip envMap from all materials when active (GLB models bake lighting via envMap)
+  // This ensures only our directional light controls brightness & shadows
+  useEffect(() => {
+    if (!active) return;
+
+    const strippedMaterials: THREE.MeshStandardMaterial[] = [];
+
+    scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach((mat) => {
+          if (mat instanceof THREE.MeshStandardMaterial && mat.envMap) {
+            savedEnvMaps.set(mat, mat.envMap);
+            mat.envMap = null;
+            mat.envMapIntensity = 0;
+            mat.needsUpdate = true;
+            strippedMaterials.push(mat);
+          }
+        });
+      }
+    });
+
+    return () => {
+      // Restore envMaps when deactivated
+      strippedMaterials.forEach((mat) => {
+        const saved = savedEnvMaps.get(mat);
+        if (saved !== undefined) {
+          mat.envMap = saved;
+          mat.envMapIntensity = 1;
+          mat.needsUpdate = true;
+        }
+      });
+    };
+  }, [active, scene]);
+
   // Enable castShadow/receiveShadow on all model meshes
   useEffect(() => {
     if (!active) return;
@@ -60,15 +99,6 @@ const SunLight: React.FC<SunLightProps> = ({
         if (!isMeasurement) {
           obj.castShadow = true;
           obj.receiveShadow = true;
-          // Ensure material responds to shadows
-          if (obj.material) {
-            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-            mats.forEach(m => {
-              if (m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial) {
-                m.needsUpdate = true;
-              }
-            });
-          }
           meshes.push(obj);
         }
       }
@@ -76,7 +106,7 @@ const SunLight: React.FC<SunLightProps> = ({
 
     return () => {
       meshes.forEach((obj) => {
-        if (obj.parent) { // still in scene
+        if (obj.parent) {
           obj.castShadow = false;
           obj.receiveShadow = false;
         }
@@ -122,7 +152,7 @@ const SunLight: React.FC<SunLightProps> = ({
     const mapSize = getShadowMapSize();
     light.shadow.mapSize.set(mapSize, mapSize);
     light.shadow.bias = -0.001;
-    light.shadow.normalBias = 0.02;
+    light.shadow.normalBias = 0.05;
 
     // Force shadow map regeneration
     if (light.shadow.map) {
@@ -134,28 +164,25 @@ const SunLight: React.FC<SunLightProps> = ({
     frustumConfiguredRef.current = true;
   }, [active, scene, gl, getShadowMapSize]);
 
-  // Configure frustum once when activated or when meshes are ready
+  // Configure frustum once when activated
   useEffect(() => {
     if (!active) {
       frustumConfiguredRef.current = false;
       return;
     }
-    // Delay slightly to ensure model meshes are loaded
+    // Delay to ensure model meshes are loaded
     const timer = setTimeout(() => configureShadowCamera(), 500);
     return () => clearTimeout(timer);
   }, [active, configureShadowCamera]);
 
-  // Update light position and intensity each frame
+  // Update light each frame
   useFrame(() => {
     if (!active || !directionalRef.current) return;
 
     const light = directionalRef.current;
-
-    // Update position (directly, not lerp — more responsive)
     light.position.copy(position);
     light.intensity = intensity;
 
-    // Reconfigure frustum if not yet done (model may have loaded late)
     if (!frustumConfiguredRef.current) {
       configureShadowCamera();
     }
@@ -176,7 +203,6 @@ const SunLight: React.FC<SunLightProps> = ({
         castShadow
         color={0xfff4e0}
       />
-      {/* Add the light target to the scene */}
       {directionalRef.current && (
         <primitive object={directionalRef.current.target} />
       )}
