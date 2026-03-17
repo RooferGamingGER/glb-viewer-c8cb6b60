@@ -1897,7 +1897,7 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         areaPage.style.pageBreakInside = 'avoid';
 
         // ========== SOLAR-SPECIFIC PAGE ==========
-        if (measurement.type === 'solar' && measurement.pvModuleInfo) {
+        if ((measurement.type === 'solar' || measurement.pvModuleInfo) && measurement.pvModuleInfo) {
           solarIndex++;
           const pvInfo = measurement.pvModuleInfo;
           const spec = pvInfo.pvModuleSpec || measurement.pvModuleSpec;
