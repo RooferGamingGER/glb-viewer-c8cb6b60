@@ -94,6 +94,7 @@ export function WebODMAuthProvider({ children }: { children: ReactNode }) {
         activeServer: activeSession?.server || null,
         setActiveServer,
         addSession,
+        replaceSessions,
         login,
         logout,
         isAuthenticated: sessions.length > 0,
