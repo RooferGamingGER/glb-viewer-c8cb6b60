@@ -382,14 +382,16 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="info">Berichtsinfos</TabsTrigger>
-            <TabsTrigger value="preview">
+          <TabsList className="grid grid-cols-5 mb-4">
+            <TabsTrigger value="info" className="text-xs">Berichtsinfos</TabsTrigger>
+            <TabsTrigger value="preview" className="text-xs">
               Messungen ({measurements.length})
             </TabsTrigger>
-            {hasCustomScreenshots && <TabsTrigger value="screenshots">
+            {hasCustomScreenshots && <TabsTrigger value="screenshots" className="text-xs">
                 Screenshots ({screenshotCount})
               </TabsTrigger>}
+            <TabsTrigger value="stringplan" className="text-xs">Stringplan</TabsTrigger>
+            <TabsTrigger value="material" className="text-xs">Material</TabsTrigger>
           </TabsList>
           
           <TabsContent value="info">
