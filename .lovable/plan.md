@@ -1,103 +1,47 @@
 
-# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Status: Implementiert ✅
+# Plan: Fix PV Module Count & 2D Orientation in PDF
 
-## Problem
-Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
+## Bug 1: Module Count Mismatch (Doppelte Subtraktion)
 
-## Lösung: `northAngle` Parameter
+**Root Cause**: When a module is removed (`pvModuleRemoved` event in `useMeasurementCore.ts` line 165), `moduleCount` is decremented by 1 AND the index is added to `removedModuleIndices`. After removing 2 modules from a 15-module grid: `moduleCount = 13`, `removedModuleIndices.length = 2`.
 
-### 1. Typ-Erweiterung
-- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
-- 0° = +Z ist Nord (UTM-Standard)
+The PDF rendering then double-subtracts:
+- `renderSolarLayout2D` line 391: `activeModules = moduleCount - removedModuleIndices.length = 13 - 2 = 11` (wrong)
+- `pdfExport.ts` line 2137: `totalKWp = moduleCount * power / 1000` uses 13 (correct)
 
-### 2. `calculateRoofOrientation(points, northAngle)`
-- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
-- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
+So the plan header says "11 Module" while the info card says "13". The drawing also skips modules incorrectly because the `removedIndices` set filters them out, but `moduleCount` is already reduced.
 
-### 3. `placeModule` South-Tilt
-- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
-- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
+**Fix**: Everywhere that calculates active module count, use `moduleCount` directly — it already represents the active count. Remove the subtraction of `removedModuleIndices.length`.
 
-### 4. UI: Kompass-Slider
-- 0°-359° Slider in SolarMeasurementContent
-- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
-- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
+### Files to change:
+- **`src/utils/renderPolygon2D.ts` line 391**: Change `activeModules` to just use `pvInfo.moduleCount`
+- **`src/utils/pdfExport.ts`**: Audit all occurrences where `moduleCount - removedModuleIndices.length` is used and fix to use `moduleCount` directly
 
-### 5. E-W bleibt grid-relativ (unverändert)
+## Bug 2: 2D Drawing Orientation (Traufe nicht unten)
 
----
+**Root Cause**: `projectPointsTo2D` creates a 2D coordinate system from the first two polygon points as X-axis. This is arbitrary — it depends on which point the user drew first. The Y-flip `(maxY - point.y)` flips the projected Y, not the 3D world Y. So the eave can end up anywhere.
 
-# Sonnensimulation — Tages- & Jahresverlauf
+**Fix**: After projecting to 2D, rotate the entire 2D point set so that the eave edge (lowest 3D Y points) maps to the bottom of the canvas. The approach:
 
-## Status: Implementiert ✅
+1. Identify the eave: the polygon edge with the lowest average 3D Y-coordinate
+2. After 2D projection, find the corresponding 2D edge
+3. Calculate the rotation needed to place that edge horizontally at the bottom
+4. Apply rotation to all projected points (polygon + module corners)
 
-## Neue Dateien
-- `src/utils/sunPosition.ts` — SPA-Algorithmus (NREL-basiert), azimuth/elevation/sunrise/sunset
-- `src/hooks/useSunSimulation.ts` — State & Animation (day/year mode, playback)
-- `src/components/viewer/SunLight.tsx` — DirectionalLight mit dynamischer Shadow-Map
-- `src/components/measurement/SunSimulationPanel.tsx` — UI mit Tages-/Jahres-Tabs
+### Implementation in `renderPolygon2D.ts`:
 
-## Geänderte Dateien
-- `src/components/ModelViewer.tsx` — SunLight-Komponente im Canvas, Default-Lights dimmen bei Simulation
-- `src/components/MeasurementTools.tsx` — SunSimulation-State durchleiten, Panel in Sidebar
-- `src/components/measurement/MeasurementTools.tsx` — Props erweitert für sunSimulation
+Create a new function `projectPointsTo2DWithEaveDown(points: Point[])` that:
+1. Calls existing projection to get raw 2D coordinates
+2. Finds the eave edge (lowest avg Y in 3D)
+3. Calculates the angle of that edge in 2D space
+4. Rotates all points so the eave edge becomes horizontal
+5. Re-normalizes to 0–1 range with the eave at the bottom
 
-## Features
-- Tagesverlauf: Datepicker, Time-Slider (Sonnenaufgang↔Sonnenuntergang), Play/Pause
-- Jahresverlauf: Monats-Slider, 12:00 Uhr fest, Play-Animation
-- Schnellauswahl: Equinox & Solstice (21.3 / 21.6 / 23.9 / 21.12)
-- Sonnenstand-Info: Azimut, Elevation, Tageslänge, Kompass-Richtung
-- Standort: Auto GPS oder manuell (Default: 51.1°N, 10.4°E)
-- Shadow-Map: dynamisch 1024 (Mobile) bis 2048 (Desktop)
-- Keine externe API — komplett clientseitig/offline
+Update `renderSolarLayout2D` to use this new projection for both the roof polygon and module corners, ensuring consistent orientation.
 
----
+### Summary of changes:
+1. **`src/utils/renderPolygon2D.ts`**: Add eave-oriented projection function; use it in `renderSolarLayout2D` and `renderPolygon2D`
+2. **`src/utils/renderPolygon2D.ts` line 391**: Fix `activeModules` calculation
+3. **`src/utils/pdfExport.ts`**: Fix all `moduleCount` calculations to not double-subtract removals
 
-# Lücke 4: PV-Modulkatalog & Montagesysteme
-
-## Status: Implementiert ✅
-
-### Neue Dateien
-- `src/data/germanPVCatalog.ts` — 12 PV-Module (Solarwatt, Heckert, IBC, Energetica, Meyer Burger, Aleo, JA Solar, LONGi) + 20 Montagesysteme (Steildach/Flachdach/Gründach)
-- Erweiterte Spezifikationen: Voc, Isc, Vmpp, Impp, Gewicht, Rahmenfarbe, Zelltyp, Garantie, Temp-Koeffizient
-
-### Geänderte Dateien
-- `src/components/measurement/PVModuleSelect.tsx` — Filter nach Hersteller/Zelltyp, gruppierte Anzeige
-
----
-
-# Lücke 3: PVGIS Ertragsprognose
-
-## Status: Implementiert ✅
-
-### Neue Dateien
-- `src/utils/pvGisData.ts` — 24 GHI-Stützpunkte für Deutschland, IDW-Interpolation, PVGIS-basierte Ertragsberechnung
-
-### Geänderte Dateien
-- `src/utils/pvCalculations.ts` — `calculateAnnualYieldWithOrientation` erweitert um optionale GPS-Koordinaten, nutzt PVGIS-Daten wenn verfügbar
-
----
-
-# Lücke 2: Verschattungs-Heatmap
-
-## Status: Implementiert ✅
-
-### Neue Dateien
-- `src/utils/pvShadowAnalysis.ts` — Raycasting-basierte Jahresverschattung, Heatmap-Rendering (grün→gelb→rot), Reset-Funktion
-
-### Geänderte Dateien
-- `src/components/measurement/SunSimulationPanel.tsx` — Heatmap-UI: Button, Progress-Bar, Farbskala-Legende
-- `src/components/MeasurementTools.tsx` — Heatmap-State und Handler (`handleRunHeatmap`, `handleClearHeatmap`)
-
----
-
-# Lücke 1: PDF-Export Teile 3+4
-
-## Status: Implementiert ✅
-
-### Geänderte Dateien
-- `src/utils/pdfExport.ts` — `calculateStringAssignments` exportiert für Pre-Rendering
-- `src/types/measurements.ts` — `pvSolarLayout?: string` Feld hinzugefügt
-- `src/components/measurement/ExportPdfButton.tsx` — Pre-Rendering von Solar-Layouts vor PDF-Export
