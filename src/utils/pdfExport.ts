@@ -2226,18 +2226,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       if (m.pvModuleInfo) pvInfoMap.set(m.id, m.pvModuleInfo);
     });
 
-    if (stringPlan && pvInfoMap.size > 0) {
-      const pvLayoutPage = createPVLayoutPageWithStrings(pvInfoMap, sortedMeasurements, stringPlan);
-      container.appendChild(pvLayoutPage);
-      const stringPlanPage = createStringPlanPage(stringPlan, pvInfoMap, sortedMeasurements);
-      container.appendChild(stringPlanPage);
-    }
-
     if (materialList) {
-      const materialPage = createMaterialListPage(materialList, {
-        projectNumber: coverData?.projectNumber,
-        address: coverData?.projectAddress,
-      });
+      const materialPage = createMaterialListPageInline(materialList);
       container.appendChild(materialPage);
     }
 
