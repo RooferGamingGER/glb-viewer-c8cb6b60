@@ -2210,8 +2210,197 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
         container.appendChild(areaPage);
       });
     }
-    
-    if (lengthMeasurements.length > 0) {
+
+    // ========== INVERTER / ELECTRICAL PLANNING PAGE ==========
+    const solarMeasurementsForPV = sortedMeasurements.filter(
+      m => (m.type === 'solar' || m.pvModuleInfo) && m.pvModuleInfo
+    );
+
+    if (solarMeasurementsForPV.length > 0) {
+      const inverterPage = document.createElement('div');
+      inverterPage.className = 'page-break';
+      inverterPage.style.pageBreakBefore = 'always';
+      inverterPage.style.pageBreakAfter = 'always';
+      inverterPage.style.pageBreakInside = 'avoid';
+
+      // Header
+      const invHeader = document.createElement('div');
+      invHeader.style.borderBottom = '2px solid #3b82f6';
+      invHeader.style.paddingBottom = '10px';
+      invHeader.style.marginBottom = '20px';
+      const invTitle = document.createElement('h2');
+      invTitle.style.margin = '0';
+      invTitle.style.color = '#1e40af';
+      invTitle.textContent = 'Elektroplanung & Wechselrichter';
+      invHeader.appendChild(invTitle);
+      inverterPage.appendChild(invHeader);
+
+      // Summary box
+      let totalDCkWp = 0;
+      let totalYield = 0;
+      solarMeasurementsForPV.forEach(m => {
+        const pv = m.pvModuleInfo!;
+        const spec = pv.pvModuleSpec || m.pvModuleSpec;
+        const power = spec?.power || 425;
+        const kWp = (pv.moduleCount * power) / 1000;
+        totalDCkWp += kWp;
+        totalYield += calculateAnnualYieldWithOrientation(kWp, pv);
+      });
+
+      const summaryBox = document.createElement('div');
+      summaryBox.style.backgroundColor = '#f3f4f6';
+      summaryBox.style.borderRadius = '8px';
+      summaryBox.style.padding = '16px';
+      summaryBox.style.marginBottom = '20px';
+      summaryBox.style.display = 'flex';
+      summaryBox.style.gap = '24px';
+      summaryBox.style.justifyContent = 'center';
+
+      const summaryItems: { label: string; value: string }[] = [
+        { label: 'Gesamtleistung DC', value: `${totalDCkWp.toFixed(1)} kWp` },
+        { label: 'Gesamtjahresertrag', value: `${Math.round(totalYield).toLocaleString('de-DE')} kWh/Jahr` },
+        { label: 'Anzahl PV-Flächen', value: `${solarMeasurementsForPV.length}` },
+      ];
+
+      summaryItems.forEach(item => {
+        const cell = document.createElement('div');
+        cell.style.textAlign = 'center';
+        const lbl = document.createElement('div');
+        lbl.style.fontSize = '11px';
+        lbl.style.color = '#6b7280';
+        lbl.style.marginBottom = '4px';
+        lbl.textContent = item.label;
+        cell.appendChild(lbl);
+        const val = document.createElement('div');
+        val.style.fontSize = '20px';
+        val.style.fontWeight = 'bold';
+        val.style.color = '#1e40af';
+        val.textContent = item.value;
+        cell.appendChild(val);
+        summaryBox.appendChild(cell);
+      });
+      inverterPage.appendChild(summaryBox);
+
+      // Per-surface string planning tables
+      const MODULE_VOC = 41.5;
+      const MODULE_ISC = 11.0;
+
+      solarMeasurementsForPV.forEach((m, idx) => {
+        const pv = m.pvModuleInfo!;
+        const elec = pv.pvMaterials?.electricalSystem;
+
+        const sectionDiv = document.createElement('div');
+        sectionDiv.style.marginBottom = '20px';
+
+        const sectionTitle = document.createElement('h4');
+        sectionTitle.style.margin = '0 0 8px 0';
+        sectionTitle.style.color = '#374151';
+        sectionTitle.textContent = `PV-Fläche ${idx + 1}${m.description ? `: ${m.description}` : ''}`;
+        sectionDiv.appendChild(sectionTitle);
+
+        if (elec && elec.stringCount > 0) {
+          // String table
+          const table = document.createElement('table');
+          table.style.width = '100%';
+          table.style.borderCollapse = 'collapse';
+          table.style.fontSize = '12px';
+          table.style.marginBottom = '10px';
+
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          ['String', 'Module', 'Spannung (Voc)', 'Strom (Isc)', 'MPPT'].forEach(col => {
+            const th = document.createElement('th');
+            th.style.backgroundColor = '#eff6ff';
+            th.style.border = '1px solid #d1d5db';
+            th.style.padding = '6px 8px';
+            th.style.textAlign = 'left';
+            th.style.fontWeight = '600';
+            th.textContent = col;
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          const mpptCount = 2; // typical dual-MPPT
+          for (let s = 0; s < elec.stringCount; s++) {
+            const tr = document.createElement('tr');
+            const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+
+            const tdId = document.createElement('td');
+            tdId.style.border = '1px solid #d1d5db';
+            tdId.style.padding = '5px 8px';
+            tdId.style.fontWeight = '600';
+            tdId.style.color = color;
+            tdId.textContent = `S${s + 1}`;
+            tr.appendChild(tdId);
+
+            const tdMod = document.createElement('td');
+            tdMod.style.border = '1px solid #d1d5db';
+            tdMod.style.padding = '5px 8px';
+            tdMod.textContent = `${elec.modulesPerString}`;
+            tr.appendChild(tdMod);
+
+            const tdVoc = document.createElement('td');
+            tdVoc.style.border = '1px solid #d1d5db';
+            tdVoc.style.padding = '5px 8px';
+            tdVoc.textContent = `${(elec.modulesPerString * MODULE_VOC).toFixed(1)} V`;
+            tr.appendChild(tdVoc);
+
+            const tdIsc = document.createElement('td');
+            tdIsc.style.border = '1px solid #d1d5db';
+            tdIsc.style.padding = '5px 8px';
+            tdIsc.textContent = `${MODULE_ISC.toFixed(1)} A`;
+            tr.appendChild(tdIsc);
+
+            const tdMppt = document.createElement('td');
+            tdMppt.style.border = '1px solid #d1d5db';
+            tdMppt.style.padding = '5px 8px';
+            tdMppt.textContent = `MPPT ${(s % mpptCount) + 1}`;
+            tr.appendChild(tdMppt);
+
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+          sectionDiv.appendChild(table);
+
+          // Inverter recommendation
+          if (elec.inverterPower > 0) {
+            const invBox = document.createElement('div');
+            invBox.style.backgroundColor = '#fef3c7';
+            invBox.style.border = '1px solid #f59e0b';
+            invBox.style.borderRadius = '6px';
+            invBox.style.padding = '10px 14px';
+            invBox.style.fontSize = '12px';
+
+            const invLabel = document.createElement('span');
+            invLabel.style.fontWeight = '600';
+            invLabel.style.color = '#b45309';
+            invLabel.textContent = 'Empfohlener Wechselrichter: ';
+            invBox.appendChild(invLabel);
+
+            const invDetail = document.createElement('span');
+            invDetail.style.color = '#78350f';
+            invDetail.textContent = `${elec.inverterPower.toFixed(1)} kW, ${elec.inverterCount}× Wechselrichter, ${elec.stringCount} Strings`;
+            invBox.appendChild(invDetail);
+
+            sectionDiv.appendChild(invBox);
+          }
+        } else {
+          const noData = document.createElement('div');
+          noData.style.fontSize = '12px';
+          noData.style.color = '#9ca3af';
+          noData.style.fontStyle = 'italic';
+          noData.textContent = 'Keine Stringplanung verfügbar – Wechselrichter noch nicht konfiguriert.';
+          sectionDiv.appendChild(noData);
+        }
+
+        inverterPage.appendChild(sectionDiv);
+      });
+
+      container.appendChild(inverterPage);
+    }
+
       const lengthSection = document.createElement('div');
       lengthSection.className = 'page-break';
       
