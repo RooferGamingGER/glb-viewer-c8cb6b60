@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
 import { useRequiredURLParam, useURLParam } from '@/hooks/useURLState';
@@ -9,6 +9,9 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
+import ShareDialog from '@/components/measurement/ShareDialog';
+import { getShareInfo, getModelProxyUrl, type CreateShareParams } from '@/utils/shareView';
+import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { 
   AlertDialog,
   AlertDialogAction,
