@@ -30,7 +30,7 @@ const ServerLogin = () => {
       const results = await Promise.allSettled(
         SERVERS.map(async (srv) => {
           const token = await authenticate(username.trim(), password, srv.url);
-          return { server: srv.url, token, username: username.trim(), label: srv.label };
+          return { server: srv.url as string, token, username: username.trim(), label: srv.label as string };
         })
       );
 
