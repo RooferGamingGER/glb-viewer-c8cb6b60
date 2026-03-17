@@ -269,12 +269,21 @@ const Index = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate("/server-login")}
+                onClick={() => navigate("/server-login?server=0")}
                 className="w-full"
                 size={isMobile ? "sm" : "default"}
               >
                 <Server className="mr-2 h-4 w-4" />
                 Vom Server laden
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/server-login?server=1")}
+                className="w-full"
+                size={isMobile ? "sm" : "default"}
+              >
+                <Server className="mr-2 h-4 w-4" />
+                Von Digitab laden
               </Button>
             </div>
           </div>
