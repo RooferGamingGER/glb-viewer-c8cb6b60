@@ -388,7 +388,7 @@ export const renderSolarLayout2D = (
       const allModulePoints: Point[] = [];
       pvInfo.moduleCorners.forEach(corners => corners.forEach(c => allModulePoints.push(c)));
       const allPoints = [...measurement.points, ...allModulePoints];
-      const allProjected = projectPointsTo2D(allPoints);
+      const allProjected = projectPointsTo2DWithEaveDown(allPoints, measurement.points.length);
       const roofCount = measurement.points.length;
 
       let cornerIdx = roofCount;
