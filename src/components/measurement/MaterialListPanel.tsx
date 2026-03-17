@@ -104,6 +104,13 @@ const PITCHED_SYSTEMS: { value: PitchedRoofSystem; label: string; manufacturer: 
   { value: 'k2_systems_cross', label: 'Cross-Roof', manufacturer: 'K2 Systems' },
   { value: 'mounting_systems_msr', label: 'MSR', manufacturer: 'Mounting Systems' },
   { value: 'schletter_fm_ez', label: 'FM EZ', manufacturer: 'Schletter' },
+  { value: 'schletter_group_rapid', label: 'Rapid', manufacturer: 'Schletter Group' },
+  { value: 'renusol_rs', label: 'RS Steildach', manufacturer: 'Renusol' },
+  { value: 'sl_rack_sr_30', label: 'SR 30', manufacturer: 'SL Rack' },
+  { value: 'altec_pv_pro', label: 'PV Pro', manufacturer: 'Altec' },
+  { value: 'novotegra_baywre', label: 'Novotegra', manufacturer: 'BayWa r.e.' },
+  { value: 'profiness_solar', label: 'Solar', manufacturer: 'Profiness' },
+  { value: 'diconal_steildach', label: 'Steildach', manufacturer: 'Diconal' },
   { value: 'generic_hook_rail', label: 'Generisch (Haken+Schiene)', manufacturer: 'Generisch' },
 ];
 
@@ -114,6 +121,13 @@ const FLAT_SYSTEMS: { value: FlatRoofSystem; label: string; manufacturer: string
   { value: 'renusol_cs60', label: 'CS60', manufacturer: 'Renusol' },
   { value: 'schletter_freeform', label: 'FreeForm', manufacturer: 'Schletter' },
   { value: 'mounting_systems_mpk', label: 'MPK', manufacturer: 'Mounting Systems' },
+  { value: 'sl_rack_fr_10', label: 'FR 10', manufacturer: 'SL Rack' },
+  { value: 'altec_flat_alu', label: 'Flat Alu', manufacturer: 'Altec' },
+  { value: 'novotegra_flat', label: 'Flat', manufacturer: 'Novotegra (BayWa r.e.)' },
+  { value: 'profiness_flat', label: 'Flat', manufacturer: 'Profiness' },
+  { value: 'diconal_flachdach', label: 'Flachdach', manufacturer: 'Diconal' },
+  { value: 'ekv_nord_flat', label: 'Flachdach', manufacturer: 'EKV-NORD' },
+  { value: 'sflex_flat', label: 'Flachdach', manufacturer: 'sflex' },
   { value: 'conergy_ts', label: 'Top System', manufacturer: 'Conergy' },
   { value: 'generic_ballast', label: 'Generisch (Ballast)', manufacturer: 'Generisch' },
 ];
@@ -126,6 +140,9 @@ const GREEN_SYSTEMS: { value: GreenRoofSystem; label: string; manufacturer: stri
   { value: 'optigruen_type_f', label: 'Typ F + PV', manufacturer: 'Optigrün' },
   { value: 'laumanns_greenroof', label: 'Gründach-Solar', manufacturer: 'Laumanns' },
   { value: 'soprema_pavatex', label: 'Pavatex integriert', manufacturer: 'Soprema' },
+  { value: 'bauder_solardach', label: 'Solardach (Bitumen)', manufacturer: 'Bauder' },
+  { value: 'optigruen_intensive', label: 'Intensiv + PV', manufacturer: 'Optigrün' },
+  { value: 'bmi_solar_green', label: 'Solar Gründach', manufacturer: 'BMI' },
   { value: 'generic_green_ballast', label: 'Generisch (Gründach)', manufacturer: 'Generisch' },
 ];
 
