@@ -11,7 +11,7 @@ import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
 import ShareDialog from '@/components/measurement/ShareDialog';
-import { getShareInfo, getModelProxyUrl, type CreateShareParams } from '@/utils/shareView';
+import { getShareInfo, getModelProxyUrl, serializeMeasurementsForShare, type CreateShareParams } from '@/utils/shareView';
 import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { 
   AlertDialog,
@@ -237,7 +237,7 @@ const Viewer = () => {
       project_id: parseInt(projectId, 10),
       task_id: taskId,
       file_name: fileName,
-      measurements: (window as any).__currentMeasurements || [],
+      measurements: serializeMeasurementsForShare((window as any).__currentMeasurements || []),
       created_by: authUsername || 'unknown',
     };
   }, [fileName, authToken, activeServer, authUsername]);

@@ -1,4 +1,34 @@
+import { Measurement } from "@/types/measurements";
+
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/share-view`;
+
+/** Serialize measurements for sharing – converts THREE.Vector3 to plain objects and preserves all fields */
+export function serializeMeasurementsForShare(measurements: Measurement[]): unknown[] {
+  return measurements.map((m) => ({
+    id: m.id,
+    type: m.type,
+    points: m.points.map((p: any) => ({ x: +p.x, y: +p.y, z: +p.z })),
+    value: m.value,
+    label: m.label,
+    visible: m.visible,
+    labelVisible: m.labelVisible,
+    unit: m.unit,
+    description: m.description,
+    segments: m.segments,
+    inclination: m.inclination,
+    color: m.color,
+    subType: m.subType,
+    dimensions: m.dimensions,
+    position: m.position,
+    count: m.count,
+    relatedMeasurements: m.relatedMeasurements,
+    penetrationType: m.penetrationType,
+    notes: m.notes,
+    pvModuleInfo: m.pvModuleInfo ? { ...m.pvModuleInfo } : undefined,
+    pvModuleSpec: m.pvModuleSpec,
+    powerOutput: m.powerOutput,
+  }));
+}
 
 export interface CreateShareParams {
   webodm_server_url: string;
