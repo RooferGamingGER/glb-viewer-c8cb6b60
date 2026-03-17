@@ -251,10 +251,16 @@ const Index = () => {
           <ChangelogSection />
         </div>
 
-        {/* Row 2: Server-Zugang + Demo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          {/* Primary: Server cards with logos */}
-          <div className="grid grid-cols-1 gap-3">
+        {/* Row 2: Login-Bereich – exklusiv für Kunden */}
+        <div className="glass-panel p-5 md:p-6 rounded-lg shadow-lg border border-primary/20">
+          <div className="text-center mb-4">
+            <h2 className="text-base md:text-lg font-semibold">Anmelden & loslegen</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              DrohnenGLB ist exklusiv für Kunden von Drohnenvermessung by RooferGaming® verfügbar.
+              Melden Sie sich mit Ihrem Zugang an, um 3D-Modelle zu laden und zu vermessen.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {SERVERS.map((srv, idx) => (
               <button
                 key={srv.url}
@@ -272,21 +278,26 @@ const Index = () => {
               </button>
             ))}
           </div>
-          <DemoSection />
+          <p className="text-[11px] text-muted-foreground text-center mt-3">
+            Noch kein Kunde?{" "}
+            <a href="https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+              Jetzt Abo abschließen
+            </a>
+          </p>
         </div>
 
-        {/* Row 3: Eturnity (secondary) */}
-        <div className="glass-panel p-4 rounded-lg border border-border/10">
-          <details className="group">
-            <summary className="flex items-center justify-between cursor-pointer list-none">
-              <h3 className="text-sm font-medium">GLB für Eturnity konvertieren</h3>
-              <span className="text-xs text-muted-foreground group-open:hidden">Aufklappen ▸</span>
-              <span className="text-xs text-muted-foreground hidden group-open:inline">Zuklappen ▾</span>
-            </summary>
-            <div className="mt-4">
+        {/* Row 3: Demo + Eturnity nebeneinander */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          <DemoSection />
+          <div className="glass-panel p-4 md:p-5 rounded-lg border border-border/10 flex flex-col">
+            <h3 className="text-sm md:text-base font-medium mb-3">GLB für Eturnity konvertieren</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Laden Sie ein GLB-Modell hoch, um es für den Import in Eturnity vorzubereiten.
+            </p>
+            <div className="flex-1">
               <FileUpload />
             </div>
-          </details>
+          </div>
         </div>
 
         {/* Row 3: Features */}
