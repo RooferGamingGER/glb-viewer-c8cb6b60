@@ -1888,13 +1888,149 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
     
     if (areaMeasurements.length > 0) {
       // Each area gets its own page for better visibility
+      let solarIndex = 0;
       areaMeasurements.forEach((measurement, index) => {
         const areaPage = document.createElement('div');
         areaPage.className = 'page-break';
         areaPage.style.pageBreakBefore = 'always';
         areaPage.style.pageBreakAfter = 'always';
         areaPage.style.pageBreakInside = 'avoid';
-        
+
+        // ========== SOLAR-SPECIFIC PAGE ==========
+        if (measurement.type === 'solar' && measurement.pvModuleInfo) {
+          solarIndex++;
+          const pvInfo = measurement.pvModuleInfo;
+          const spec = pvInfo.pvModuleSpec || measurement.pvModuleSpec;
+          const modulePower = spec?.power || 425;
+          const totalKWp = (pvInfo.moduleCount * modulePower) / 1000;
+          const annualYield = calculateAnnualYieldWithOrientation(totalKWp, pvInfo);
+
+          // Header
+          const areaHeader = document.createElement('div');
+          areaHeader.style.borderBottom = '2px solid #3b82f6';
+          areaHeader.style.paddingBottom = '10px';
+          areaHeader.style.marginBottom = '20px';
+          const areaTitle = document.createElement('h2');
+          areaTitle.style.margin = '0';
+          areaTitle.style.color = '#1e40af';
+          areaTitle.textContent = `PV-Fläche ${solarIndex}${measurement.description ? `: ${measurement.description}` : ''}`;
+          areaHeader.appendChild(areaTitle);
+          areaPage.appendChild(areaHeader);
+
+          // Two-column layout
+          const contentRow = document.createElement('div');
+          contentRow.style.display = 'flex';
+          contentRow.style.gap = '20px';
+          contentRow.style.marginBottom = '20px';
+
+          // Left: PV layout image
+          const imageColumn = document.createElement('div');
+          imageColumn.style.flex = '1';
+          imageColumn.style.minWidth = '0';
+
+          const stringAssignments = calculateStringAssignments(pvInfo);
+          const pvLayoutDataUrl = renderSolarLayout2D(measurement, 800, 700, stringAssignments);
+          if (pvLayoutDataUrl) {
+            const layoutImg = document.createElement('img');
+            layoutImg.src = pvLayoutDataUrl;
+            layoutImg.style.width = '100%';
+            layoutImg.style.height = 'auto';
+            layoutImg.style.maxHeight = '400px';
+            layoutImg.style.objectFit = 'contain';
+            layoutImg.style.border = '1px solid #e5e7eb';
+            layoutImg.style.borderRadius = '8px';
+            layoutImg.style.backgroundColor = '#f9fafb';
+            imageColumn.appendChild(layoutImg);
+          } else if (measurement.screenshot || measurement.polygon2D) {
+            const fallbackImg = document.createElement('img');
+            fallbackImg.src = measurement.screenshot || measurement.polygon2D || '';
+            fallbackImg.style.width = '100%';
+            fallbackImg.style.height = 'auto';
+            fallbackImg.style.maxHeight = '400px';
+            fallbackImg.style.objectFit = 'contain';
+            fallbackImg.style.border = '1px solid #e5e7eb';
+            fallbackImg.style.borderRadius = '8px';
+            imageColumn.appendChild(fallbackImg);
+          }
+          contentRow.appendChild(imageColumn);
+
+          // Right: Metrics boxes
+          const detailsColumn = document.createElement('div');
+          detailsColumn.style.width = '200px';
+          detailsColumn.style.flexShrink = '0';
+
+          const metrics: { label: string; value: string; bg: string; border: string; color: string }[] = [
+            { label: 'Anzahl Module', value: `${pvInfo.moduleCount}`, bg: '#eff6ff', border: '#3b82f6', color: '#1e40af' },
+            { label: 'Leistung', value: `${totalKWp.toFixed(1)} kWp`, bg: '#fef3c7', border: '#f59e0b', color: '#b45309' },
+            { label: 'Jahresertrag', value: `${Math.round(annualYield).toLocaleString('de-DE')} kWh`, bg: '#f0fdf4', border: '#22c55e', color: '#166534' },
+          ];
+
+          if (pvInfo.roofDirection || pvInfo.roofAzimuth !== undefined) {
+            metrics.push({ label: 'Ausrichtung', value: `${pvInfo.roofDirection || ''}${pvInfo.roofAzimuth !== undefined ? ` ${pvInfo.roofAzimuth}°` : ''}`, bg: '#faf5ff', border: '#a855f7', color: '#7e22ce' });
+          }
+          if (pvInfo.roofInclination !== undefined) {
+            metrics.push({ label: 'Dachneigung', value: `${pvInfo.roofInclination.toFixed(1)}°`, bg: '#f0fdf4', border: '#22c55e', color: '#166534' });
+          }
+          if (spec) {
+            metrics.push({ label: 'Modulgröße', value: `${spec.width} × ${spec.height} m`, bg: '#f8fafc', border: '#94a3b8', color: '#334155' });
+          }
+          if (pvInfo.columns && pvInfo.rows) {
+            metrics.push({ label: 'Raster', value: `${pvInfo.columns} × ${pvInfo.rows}`, bg: '#f8fafc', border: '#94a3b8', color: '#334155' });
+          }
+          if (pvInfo.coveragePercent) {
+            metrics.push({ label: 'Flächennutzung', value: `${pvInfo.coveragePercent.toFixed(1)}%`, bg: '#fff7ed', border: '#fb923c', color: '#c2410c' });
+          }
+          metrics.push({ label: 'Dachtyp', value: pvInfo.roofType === 'flat' ? 'Flachdach' : 'Steildach', bg: '#f8fafc', border: '#94a3b8', color: '#334155' });
+
+          metrics.forEach(m => {
+            const box = document.createElement('div');
+            box.style.backgroundColor = m.bg;
+            box.style.border = `1px solid ${m.border}`;
+            box.style.borderRadius = '8px';
+            box.style.padding = '8px 10px';
+            box.style.marginBottom = '8px';
+            box.style.textAlign = 'center';
+
+            const lbl = document.createElement('div');
+            lbl.style.fontSize = '10px';
+            lbl.style.color = '#6b7280';
+            lbl.style.marginBottom = '2px';
+            lbl.textContent = m.label;
+            box.appendChild(lbl);
+
+            const val = document.createElement('div');
+            val.style.fontSize = '16px';
+            val.style.fontWeight = 'bold';
+            val.style.color = m.color;
+            val.textContent = m.value;
+            box.appendChild(val);
+
+            detailsColumn.appendChild(box);
+          });
+
+          contentRow.appendChild(detailsColumn);
+          areaPage.appendChild(contentRow);
+
+          // Segments table
+          if (measurement.segments && measurement.segments.length > 0) {
+            const segmentsSection = document.createElement('div');
+            segmentsSection.style.marginTop = '10px';
+            const segmentsTitle = document.createElement('h4');
+            segmentsTitle.style.margin = '0 0 10px 0';
+            segmentsTitle.style.color = '#374151';
+            segmentsTitle.textContent = 'Kantenlängen';
+            segmentsSection.appendChild(segmentsTitle);
+            const segmentsTable = createAreaSegmentsTable(measurement, index);
+            segmentsTable.style.marginTop = '0';
+            segmentsSection.appendChild(segmentsTable);
+            areaPage.appendChild(segmentsSection);
+          }
+
+          container.appendChild(areaPage);
+          return; // skip generic area rendering
+        }
+
+        // ========== GENERIC AREA PAGE (unchanged) ==========
         // Page header with area title
         const areaHeader = document.createElement('div');
         areaHeader.style.borderBottom = '2px solid #3b82f6';
