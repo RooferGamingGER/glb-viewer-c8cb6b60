@@ -251,31 +251,24 @@ const Index = () => {
 
         {/* Row 2: Server-Zugang + Demo */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          {/* Primary: Server buttons */}
-          <div className="glass-panel p-5 md:p-6 rounded-lg shadow-lg border border-primary/20 flex flex-col justify-center">
-            <h2 className="text-base md:text-lg font-semibold mb-2 text-center">3D-Modell vom Server laden</h2>
-            <p className="text-xs text-muted-foreground text-center mb-5">
-              Melden Sie sich an, um Ihre Drohnenvermessungs-Projekte zu öffnen und direkt zu vermessen.
-            </p>
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={() => navigate("/server-login?server=0")}
-                className="w-full"
-                size={isMobile ? "default" : "lg"}
+          {/* Primary: Server cards with logos */}
+          <div className="grid grid-cols-1 gap-3">
+            {SERVERS.map((srv, idx) => (
+              <button
+                key={srv.url}
+                onClick={() => navigate(`/server-login?server=${idx}`)}
+                className="glass-panel p-4 rounded-lg border border-border/10 hover:border-primary/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-4 text-left group"
               >
-                <Server className="mr-2 h-4 w-4" />
-                Kunde Drohnenvermessung by RooferGaming
-              </Button>
-              <Button
-                onClick={() => navigate("/server-login?server=1")}
-                className="w-full"
-                size={isMobile ? "default" : "lg"}
-                variant="outline"
-              >
-                <Server className="mr-2 h-4 w-4" />
-                Kunde Drohnenvermessung Digitab
-              </Button>
-            </div>
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-background/80 border border-border/20 shrink-0 flex items-center justify-center p-1.5 group-hover:scale-105 transition-transform">
+                  <img src={srv.logo} alt={srv.shortLabel} className="w-full h-full object-contain" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold truncate">{srv.label}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{srv.description}</p>
+                </div>
+                <LogIn className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              </button>
+            ))}
           </div>
           <DemoSection />
         </div>
