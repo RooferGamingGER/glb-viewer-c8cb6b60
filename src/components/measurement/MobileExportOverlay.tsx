@@ -14,11 +14,13 @@ import { useToast } from '@/components/ui/use-toast';
 interface MobileExportOverlayProps {
   measurements: Measurement[];
   onClose: () => void;
+  materialList?: CompleteMaterialList | null;
 }
 
 const MobileExportOverlay: React.FC<MobileExportOverlayProps> = ({
   measurements,
   onClose,
+  materialList,
 }) => {
   const { toast } = useToast();
 
