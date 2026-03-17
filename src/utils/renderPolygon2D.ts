@@ -463,7 +463,7 @@ export const renderSolarLayout2D = (
     }
 
     // Title and legend
-    const activeModules = (pvInfo.moduleCount || 0) - (pvInfo.removedModuleIndices?.length || 0);
+    const activeModules = pvInfo.moduleCount || 0;
     const modulePowerW = pvInfo.pvModuleSpec?.power || 425;
     const totalPowerKWp = (activeModules * modulePowerW) / 1000;
 
