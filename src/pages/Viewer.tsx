@@ -239,18 +239,20 @@ const Viewer = () => {
             size="sm" 
             className="glass-button"
             onClick={() => {
-              // Ensure we cleanup the blob URL when navigating away
               if (fileUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(fileUrl);
               }
-              // Navigate back to task detail if coming from WebODM, otherwise home
-              const params = new URLSearchParams(window.location.search);
-              const projectId = params.get('projectId');
-              const taskId = params.get('taskId');
-              if (projectId && taskId) {
-                navigate('/server-projects', { state: { returnToTask: { projectId, taskId } } });
-              } else {
+              if (isShareMode) {
                 navigate('/');
+              } else {
+                const p = new URLSearchParams(window.location.search);
+                const pid = p.get('projectId');
+                const tid = p.get('taskId');
+                if (pid && tid) {
+                  navigate('/server-projects', { state: { returnToTask: { projectId: pid, taskId: tid } } });
+                } else {
+                  navigate('/');
+                }
               }
             }}
           >
@@ -258,33 +260,40 @@ const Viewer = () => {
             Zurück
           </Button>
           
-        <div className="flex items-center">
           <h1 className="text-lg font-medium ml-4">
             {isShareMode ? `${fileName} (geteilte Ansicht)` : '3D-Viewer'}
           </h1>
         </div>
         
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            size="sm"
-            className="glass-button"
-            onClick={handleOpenTutorial}
-          >
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Tutorial
-          </Button>
+          {canShare && (
+            <ShareDialog getShareParams={getShareParams} />
+          )}
+          
+          {!isShareMode && (
+            <>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="glass-button"
+                onClick={handleOpenTutorial}
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Tutorial
+              </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="glass-button"
-            onClick={() => setShowWebGLWarning(true)}
-            title="Information zur 3D-Darstellung"
-          >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            3D-Info
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="glass-button"
+                onClick={() => setShowWebGLWarning(true)}
+                title="Information zur 3D-Darstellung"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                3D-Info
+              </Button>
+            </>
+          )}
 
           {isFullscreen && (
             <Button
