@@ -335,7 +335,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       {/* Sun Simulation Panel */}
       {sunSimulation && (
         <div className="border-t border-border/30">
-          <SunSimulationPanel simulation={sunSimulation} />
+          <SunSimulationPanel
+            simulation={sunSimulation}
+            heatmapProgress={heatmapProgress}
+            heatmapReady={heatmapReady}
+            onRunHeatmap={handleRunHeatmap}
+            onClearHeatmap={handleClearHeatmap}
+          />
         </div>
       )}
     </div>
