@@ -61,7 +61,7 @@ const toLitMaterial = (mat: THREE.Material): THREE.Material => {
   return mat;
 };
 
-const SunLight: React.FC<SunLightProps> = ({ active, position, intensity, ambientIntensity }) => {
+const SunLight: React.FC<SunLightProps> = ({ active, position, intensity, ambientIntensity, elevation }) => {
   const { scene, gl } = useThree();
   const directionalRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
