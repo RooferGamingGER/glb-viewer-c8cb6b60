@@ -3,7 +3,7 @@
  * Manages shadow mapping, frustum, and mesh shadow settings
  */
 
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -25,74 +25,58 @@ const SunLight: React.FC<SunLightProps> = ({
   const directionalRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const { scene, gl } = useThree();
-  const shadowConfiguredRef = useRef(false);
-
-  // Configure shadow map on renderer
-  useEffect(() => {
-    if (active && !shadowConfiguredRef.current) {
-      gl.shadowMap.enabled = true;
-      gl.shadowMap.type = THREE.PCFSoftShadowMap;
-      shadowConfiguredRef.current = true;
-    }
-  }, [active, gl]);
-
-  // Calculate shadow camera frustum from scene bounding box
-  const shadowFrustum = useMemo(() => {
-    if (!active) return null;
-    
-    const box = new THREE.Box3();
-    scene.traverse((obj) => {
-      if (obj instanceof THREE.Mesh && !obj.userData?.isMeasurement) {
-        box.expandByObject(obj);
-      }
-    });
-
-    if (box.isEmpty()) {
-      return { size: 20, near: 0.5, far: 100 };
-    }
-
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const frustumSize = maxDim * 1.5;
-    
-    return { 
-      size: Math.max(frustumSize, 10), 
-      near: 0.1, 
-      far: maxDim * 4 
-    };
-  }, [active, scene]);
+  const frustumConfiguredRef = useRef(false);
 
   // Determine shadow map resolution based on device
-  const shadowMapSize = useMemo(() => {
-    if (!active) return 1024;
+  const getShadowMapSize = useCallback(() => {
     const maxSize = gl.capabilities.maxTextureSize;
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     if (isMobile) return Math.min(1024, maxSize);
     return Math.min(2048, maxSize);
+  }, [gl]);
+
+  // Configure renderer shadow map
+  useEffect(() => {
+    if (!active) return;
+    gl.shadowMap.enabled = true;
+    gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    gl.shadowMap.needsUpdate = true;
   }, [active, gl]);
 
   // Enable castShadow/receiveShadow on all model meshes
   useEffect(() => {
     if (!active) return;
-    
+
+    const meshes: THREE.Mesh[] = [];
     scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
-        const isMeasurement = obj.userData?.isMeasurement || 
+        const isMeasurement = obj.userData?.isMeasurement ||
           obj.parent?.userData?.isMeasurement ||
           obj.name?.includes('measurement') ||
-          obj.name?.includes('label');
-        
+          obj.name?.includes('label') ||
+          obj.name?.includes('points') ||
+          obj.name?.includes('lines');
+
         if (!isMeasurement) {
           obj.castShadow = true;
           obj.receiveShadow = true;
+          // Ensure material responds to shadows
+          if (obj.material) {
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach(m => {
+              if (m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial) {
+                m.needsUpdate = true;
+              }
+            });
+          }
+          meshes.push(obj);
         }
       }
     });
 
     return () => {
-      // Restore when deactivated
-      scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
+      meshes.forEach((obj) => {
+        if (obj.parent) { // still in scene
           obj.castShadow = false;
           obj.receiveShadow = false;
         }
@@ -100,28 +84,88 @@ const SunLight: React.FC<SunLightProps> = ({
     };
   }, [active, scene]);
 
-  // Update light position smoothly
+  // Configure shadow camera frustum from model bounding box
+  const configureShadowCamera = useCallback(() => {
+    const light = directionalRef.current;
+    if (!light || !active) return;
+
+    const box = new THREE.Box3();
+    let hasMeshes = false;
+    scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && !obj.userData?.isMeasurement &&
+        !obj.name?.includes('measurement') && !obj.name?.includes('label')) {
+        box.expandByObject(obj);
+        hasMeshes = true;
+      }
+    });
+
+    if (!hasMeshes || box.isEmpty()) return;
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const frustumSize = Math.max(maxDim * 1.5, 10);
+
+    const cam = light.shadow.camera;
+    cam.left = -frustumSize;
+    cam.right = frustumSize;
+    cam.top = frustumSize;
+    cam.bottom = -frustumSize;
+    cam.near = 0.1;
+    cam.far = maxDim * 5;
+    cam.updateProjectionMatrix();
+
+    // Point light target at model center
+    light.target.position.copy(center);
+    light.target.updateMatrixWorld();
+
+    const mapSize = getShadowMapSize();
+    light.shadow.mapSize.set(mapSize, mapSize);
+    light.shadow.bias = -0.001;
+    light.shadow.normalBias = 0.02;
+
+    // Force shadow map regeneration
+    if (light.shadow.map) {
+      light.shadow.map.dispose();
+      light.shadow.map = null as any;
+    }
+    gl.shadowMap.needsUpdate = true;
+
+    frustumConfiguredRef.current = true;
+  }, [active, scene, gl, getShadowMapSize]);
+
+  // Configure frustum once when activated or when meshes are ready
+  useEffect(() => {
+    if (!active) {
+      frustumConfiguredRef.current = false;
+      return;
+    }
+    // Delay slightly to ensure model meshes are loaded
+    const timer = setTimeout(() => configureShadowCamera(), 500);
+    return () => clearTimeout(timer);
+  }, [active, configureShadowCamera]);
+
+  // Update light position and intensity each frame
   useFrame(() => {
     if (!active || !directionalRef.current) return;
-    
+
     const light = directionalRef.current;
-    light.position.lerp(position, 0.1);
-    light.intensity = THREE.MathUtils.lerp(light.intensity, intensity, 0.1);
-    
-    if (target) {
-      light.target.position.copy(target);
+
+    // Update position (directly, not lerp — more responsive)
+    light.position.copy(position);
+    light.intensity = intensity;
+
+    // Reconfigure frustum if not yet done (model may have loaded late)
+    if (!frustumConfiguredRef.current) {
+      configureShadowCamera();
     }
-    
+
     if (ambientRef.current) {
-      ambientRef.current.intensity = THREE.MathUtils.lerp(
-        ambientRef.current.intensity, 
-        ambientIntensity, 
-        0.1
-      );
+      ambientRef.current.intensity = ambientIntensity;
     }
   });
 
-  if (!active || !shadowFrustum) return null;
+  if (!active) return null;
 
   return (
     <>
@@ -130,21 +174,16 @@ const SunLight: React.FC<SunLightProps> = ({
         position={[position.x, position.y, position.z]}
         intensity={intensity}
         castShadow
-        shadow-mapSize-width={shadowMapSize}
-        shadow-mapSize-height={shadowMapSize}
-        shadow-camera-left={-shadowFrustum.size}
-        shadow-camera-right={shadowFrustum.size}
-        shadow-camera-top={shadowFrustum.size}
-        shadow-camera-bottom={-shadowFrustum.size}
-        shadow-camera-near={shadowFrustum.near}
-        shadow-camera-far={shadowFrustum.far}
-        shadow-bias={-0.0005}
-        color={new THREE.Color(0xfff4e0)} // warm sunlight
+        color={0xfff4e0}
       />
+      {/* Add the light target to the scene */}
+      {directionalRef.current && (
+        <primitive object={directionalRef.current.target} />
+      )}
       <ambientLight
         ref={ambientRef}
         intensity={ambientIntensity}
-        color={new THREE.Color(0xe8f0ff)} // cool sky ambient
+        color={0xe8f0ff}
       />
     </>
   );
