@@ -2227,8 +2227,26 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       }
     }
     
-    // ============ SOLARPLANUNG PAGE(S) - before appendix ============
-    // Solarplanung pages removed from PDF export
+    // ============ SOLARPLANUNG / STRINGPLAN / MATERIALLISTE ============
+    const pvInfoMap = new Map<string, PVModuleInfo>();
+    sortedMeasurements.forEach(m => {
+      if (m.pvModuleInfo) pvInfoMap.set(m.id, m.pvModuleInfo);
+    });
+
+    if (stringPlan && pvInfoMap.size > 0) {
+      const pvLayoutPage = createPVLayoutPageWithStrings(pvInfoMap, sortedMeasurements, stringPlan);
+      container.appendChild(pvLayoutPage);
+      const stringPlanPage = createStringPlanPage(stringPlan, pvInfoMap, sortedMeasurements);
+      container.appendChild(stringPlanPage);
+    }
+
+    if (materialList) {
+      const materialPage = createMaterialListPage(materialList, {
+        projectNumber: coverData?.projectNumber,
+        address: coverData?.projectAddress,
+      });
+      container.appendChild(materialPage);
+    }
 
     // Add calculation methods appendix (always last)
     const calculationMethodsSection = createCalculationMethodsSection();
