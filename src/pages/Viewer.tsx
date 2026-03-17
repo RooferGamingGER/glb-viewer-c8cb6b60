@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
-import { useRequiredURLParam, useURLParam } from '@/hooks/useURLState';
+import { useURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, X, HelpCircle, AlertTriangle } from 'lucide-react';
