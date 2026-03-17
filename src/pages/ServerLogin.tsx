@@ -5,7 +5,7 @@ import { authenticate, prefetchProjects } from "@/lib/webodm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogIn, ArrowLeft, Server } from "lucide-react";
+import { Loader2, LogIn, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 const ServerLogin = () => {
@@ -16,7 +16,6 @@ const ServerLogin = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Determine target server from URL param (?server=0 or ?server=1)
   const targetServer = useMemo(() => {
     const idx = parseInt(searchParams.get("server") || "0", 10);
     return SERVERS[idx] || SERVERS[0];
@@ -46,8 +45,7 @@ const ServerLogin = () => {
       ]);
       setActiveServer(targetServer.url);
 
-      toast.success(`Angemeldet bei ${targetServer.label}`);
-      // Prefetch projects while navigating – they'll be cached for instant display
+      toast.success(`Angemeldet bei ${targetServer.shortLabel}`);
       prefetchProjects(token, targetServer.url);
       navigate("/server-projects", { replace: true });
     } catch (err: any) {
@@ -60,13 +58,21 @@ const ServerLogin = () => {
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-secondary/40 px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Server className="w-7 h-7 text-primary" />
+        {/* Server branding header */}
+        <div className="text-center mb-8">
+          <div
+            className="w-20 h-20 rounded-2xl mx-auto mb-4 overflow-hidden border-2 border-border/20 bg-background/80 flex items-center justify-center p-2 shadow-lg"
+            style={{ borderColor: targetServer.accentColor + "40" }}
+          >
+            <img
+              src={targetServer.logo}
+              alt={targetServer.shortLabel}
+              className="w-full h-full object-contain"
+            />
           </div>
-          <h1 className="text-xl font-bold">Server-Anmeldung</h1>
+          <h1 className="text-xl font-bold">{targetServer.label}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {targetServer.label}
+            {targetServer.description}
           </p>
         </div>
 
@@ -98,7 +104,15 @@ const ServerLogin = () => {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading || !username.trim() || !password.trim()}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || !username.trim() || !password.trim()}
+            style={{
+              backgroundColor: loading ? undefined : targetServer.accentColor,
+              borderColor: targetServer.accentColor,
+            }}
+          >
             {loading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
