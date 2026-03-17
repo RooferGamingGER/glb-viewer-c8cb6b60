@@ -371,7 +371,7 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
 }
 
 // --- TaskCard ---
-function TaskCard({ task, projectId, onClick }: { task: Task; projectId: number; onClick: () => void }) {
+function TaskCard({ task, projectId, token, onClick }: { task: Task; projectId: number; token: string; onClick: () => void }) {
   const status = TASK_STATUS[task.status] || { label: "Unbekannt", color: "muted" };
   const pendingLabel = task.pending_action != null ? PENDING_ACTION[task.pending_action] : null;
   const isProcessing = task.status === 20;
@@ -381,13 +381,41 @@ function TaskCard({ task, projectId, onClick }: { task: Task; projectId: number;
   const stageName = isProcessing ? getProcessingStage(task.running_progress ?? 0) : null;
   const filteredAssets = getFilteredAssets(task.available_assets);
 
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token || task.images_count === 0) return;
+    let revoked = false;
+    (async () => {
+      try {
+        const shots = await getTaskShots(token, projectId, task.id);
+        if (revoked) return;
+        const filename = shots?.features?.[0]?.properties?.filename;
+        if (!filename) return;
+        const blobUrl = await loadThumbnailBlob(token, projectId, task.id, filename);
+        if (revoked) return;
+        setThumbnailUrl(blobUrl);
+      } catch {
+        // silently ignore — fallback to placeholder
+      }
+    })();
+    return () => {
+      revoked = true;
+      setThumbnailUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    };
+  }, [token, projectId, task.id, task.images_count]);
+
   return (
     <Card
       onClick={onClick}
       className="cursor-pointer border-border/50 shadow-sm overflow-hidden transition-all duration-300 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 group"
     >
       <div className="relative h-32 overflow-hidden bg-muted flex items-center justify-center">
-        <Camera className="h-10 w-10 text-muted-foreground/30" />
+        {thumbnailUrl ? (
+          <img src={thumbnailUrl} alt={task.name || 'Task'} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <Camera className="h-10 w-10 text-muted-foreground/30" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
       </div>
 
