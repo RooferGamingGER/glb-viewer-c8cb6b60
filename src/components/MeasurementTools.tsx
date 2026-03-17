@@ -96,19 +96,28 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Import measurements provided by share mode (set by Viewer)
   React.useEffect(() => {
-    const sharedRaw = (window as any).__sharedMeasurements;
-    if (!enabled || !sharedRaw) return;
+    const tryImportSharedMeasurements = () => {
+      const sharedRaw = (window as any).__sharedMeasurements;
+      if (!enabled || !sharedRaw) return;
 
-    const sharedList = Array.isArray(sharedRaw)
-      ? sharedRaw
-      : Array.isArray(sharedRaw?.measurements)
-        ? sharedRaw.measurements
-        : [];
+      const sharedList = Array.isArray(sharedRaw)
+        ? sharedRaw
+        : Array.isArray(sharedRaw?.measurements)
+          ? sharedRaw.measurements
+          : [];
 
-    if (sharedList.length === 0 || (scene as any)?.userData?._sharedMeasurementsImported) return;
+      if (sharedList.length === 0 || (scene as any)?.userData?._sharedMeasurementsImported) return;
 
-    importMeasurements(sharedList as any[], false, true);
-    (scene as any).userData._sharedMeasurementsImported = true;
+      importMeasurements(sharedList as any[], false, true);
+      (scene as any).userData._sharedMeasurementsImported = true;
+    };
+
+    tryImportSharedMeasurements();
+    window.addEventListener('share-measurements-ready', tryImportSharedMeasurements);
+
+    return () => {
+      window.removeEventListener('share-measurements-ready', tryImportSharedMeasurements);
+    };
   }, [enabled, scene, importMeasurements]);
 
   // Three.js object references

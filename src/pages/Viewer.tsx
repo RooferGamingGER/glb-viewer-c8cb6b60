@@ -125,6 +125,7 @@ const Viewer = () => {
     if (payload.length === 0) return;
 
     (window as any).__sharedMeasurements = payload;
+    window.dispatchEvent(new Event('share-measurements-ready'));
     return () => {
       delete (window as any).__sharedMeasurements;
     };
