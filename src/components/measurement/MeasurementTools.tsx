@@ -29,12 +29,14 @@ import RoofElementControls from './RoofElementControls';
 import TabbedMeasurementSidebar from './TabbedMeasurementSidebar';
 import { Measurement } from '@/types/measurements';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SunSimulationState } from '@/hooks/useSunSimulation';
 
 interface MeasurementToolsProps {
   enabled: boolean;
   scene: THREE.Scene;
   camera: THREE.Camera;
   autoOpenSidebar?: boolean;
+  sunSimulation?: SunSimulationState;
 }
 
 // Wrapper component that provides contexts
