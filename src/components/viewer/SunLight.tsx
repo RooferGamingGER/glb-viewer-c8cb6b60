@@ -125,7 +125,12 @@ const SunLight: React.FC<SunLightProps> = ({ active, position, intensity, ambien
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    const frustum = Math.max(10, maxDim * 1.3);
+
+    // Dynamically scale frustum based on sun elevation:
+    // Low sun (< 20°) produces very long shadows → enlarge frustum
+    const elevClamped = Math.max(2, elevation);
+    const elevFactor = elevClamped < 20 ? 1.5 + (20 - elevClamped) * 0.05 : 1.0;
+    const frustum = Math.max(10, maxDim * 1.3 * elevFactor);
 
     const cam = light.shadow.camera as THREE.OrthographicCamera;
     cam.left = -frustum;
@@ -133,15 +138,18 @@ const SunLight: React.FC<SunLightProps> = ({ active, position, intensity, ambien
     cam.top = frustum;
     cam.bottom = -frustum;
     cam.near = 0.1;
-    cam.far = Math.max(50, maxDim * 6);
+    // Increase far plane for low sun angles to capture long shadows
+    cam.far = Math.max(50, maxDim * (elevClamped < 20 ? 10 : 6));
     cam.updateProjectionMatrix();
 
     targetObject.position.copy(center);
     targetObject.updateMatrixWorld();
 
-    light.shadow.mapSize.set(getShadowMapSize(), getShadowMapSize());
-    light.shadow.bias = -0.0015;
-    light.shadow.normalBias = 0.05;
+    const shadowSize = getShadowMapSize();
+    light.shadow.mapSize.set(shadowSize, shadowSize);
+    // Tighter bias for sharper contact shadows
+    light.shadow.bias = -0.001;
+    light.shadow.normalBias = 0.02;
 
     if (light.shadow.map) {
       light.shadow.map.dispose();
