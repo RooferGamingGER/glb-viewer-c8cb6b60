@@ -108,7 +108,7 @@ const MobileExportOverlay: React.FC<MobileExportOverlayProps> = ({
               ABS-Export (Test)
             </Button>
 
-            <ExportPdfButton measurements={measurements} />
+            <ExportPdfButton measurements={measurements} materialList={materialList} />
           </div>
         )}
       </ScrollArea>

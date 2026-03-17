@@ -721,6 +721,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           return map;
         })()}
         measurements={allMeasurements.length > 0 ? allMeasurements : [measurement]}
+        onMaterialListChange={onMaterialListChange}
       />
     </div>
   );

@@ -213,7 +213,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
               </AlertDialog>
             )}
             {measurements.length > 0 && (
-              <ExportDialog measurements={measurements} />
+              <ExportDialog measurements={measurements} materialList={materialList} />
             )}
             <SaveMeasurementsButton
               measurements={measurements}

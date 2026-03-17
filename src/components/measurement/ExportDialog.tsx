@@ -64,7 +64,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ measurements, materialList 
         </DialogHeader>
         <div className="flex flex-col gap-2 py-2">
           {/* PDF */}
-          <ExportPdfButton measurements={measurements} />
+          <ExportPdfButton measurements={measurements} materialList={materialList} />
           
           {/* CSV */}
           <Button variant="outline" size="sm" className="w-full justify-start text-left" onClick={exportCSV} disabled={!measurements.length}>
