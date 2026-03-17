@@ -22,10 +22,9 @@ import {
   LayoutGrid,
   FileText,
 } from 'lucide-react';
-import { StringPlan, PVString, MPPTTracker } from '@/types/pvPlanning';
-import { generateStringPlanText, DEFAULT_MODULE_ELECTRICAL, ModuleElectricalSpec } from '@/utils/pvStringPlanning';
+import { StringPlan, PVString, MPPTTracker, ModuleElectricalSpec, DEFAULT_MODULE_ELECTRICAL } from '@/types/pvPlanning';
+import { generateStringPlanText } from '@/utils/pvStringPlanning';
 import { PVModuleInfo } from '@/types/measurements';
-import { DEFAULT_MODULE_ELECTRICAL as DME } from '@/utils/pvStringPlanning';
 
 interface StringPlanPanelProps {
   stringPlan: StringPlan | null;
