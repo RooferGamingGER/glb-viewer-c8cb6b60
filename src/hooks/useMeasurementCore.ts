@@ -162,7 +162,9 @@ export const useMeasurementCore = () => {
             removedIndices.push(moduleIndex);
           }
           
-          const newCount = Math.max(0, m.pvModuleInfo.moduleCount - 1);
+          // moduleCount should reflect active modules; removedModuleIndices tracks which are removed
+          const totalSlots = m.pvModuleInfo.moduleCorners?.length || m.pvModuleInfo.modulePositions?.length || m.pvModuleInfo.moduleCount || 0;
+          const newCount = Math.max(0, totalSlots - removedIndices.length);
           const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
           const area = m.pvModuleInfo.actualArea || 1;
           
