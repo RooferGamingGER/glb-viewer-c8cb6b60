@@ -33,7 +33,6 @@ serve(async (req) => {
       });
     }
 
-    // Validate server against allowlist
     const baseUrl = server && ALLOWED_SERVERS.includes(server)
       ? server
       : ALLOWED_SERVERS[0];
@@ -63,7 +62,18 @@ serve(async (req) => {
         typeof body === "string" ? body : new URLSearchParams(body).toString();
     }
 
-    const response = await fetch(targetUrl, fetchOptions);
+    // Timeout: 15s for API calls, 60s for binary downloads
+    const timeoutMs = isBinary ? 60000 : 15000;
+    const controller = new AbortController();
+    fetchOptions.signal = controller.signal;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, fetchOptions);
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -79,32 +89,38 @@ serve(async (req) => {
       );
     }
 
-    // For binary data (downloads, thumbnails, images), stream the response
+    // For binary data, stream directly without buffering the whole thing
     if (isBinary) {
-      const arrayBuffer = await response.arrayBuffer();
       const contentType =
         response.headers.get("content-type") || "application/octet-stream";
-      return new Response(arrayBuffer, {
+      const contentLength = response.headers.get("content-length");
+      const responseHeaders: Record<string, string> = {
+        ...corsHeaders,
+        "Content-Type": contentType,
+      };
+      if (contentLength) {
+        responseHeaders["Content-Length"] = contentLength;
+      }
+      return new Response(response.body, {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": contentType,
-          "Content-Length": String(arrayBuffer.byteLength),
-        },
+        headers: responseHeaders,
       });
     }
 
-    // For JSON API responses
-    const data = await response.json();
-    return new Response(JSON.stringify(data), {
+    // For JSON API responses – stream through
+    return new Response(response.body, {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === "AbortError";
     return new Response(
-      JSON.stringify({ error: "Proxy error", detail: String(err) }),
+      JSON.stringify({
+        error: isTimeout ? "Timeout" : "Proxy error",
+        detail: String(err),
+      }),
       {
-        status: 500,
+        status: isTimeout ? 504 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

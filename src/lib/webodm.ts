@@ -182,12 +182,59 @@ export async function authenticate(username: string, password: string, server?: 
   return data.token;
 }
 
+// --- Project Cache ---
+
+const PROJECT_CACHE_KEY = "webodm_projects_cache";
+const CACHE_TTL_MS = 60_000; // 1 minute
+
+interface ProjectCache {
+  server: string;
+  projects: Project[];
+  timestamp: number;
+}
+
+function getCachedProjects(server: string): Project[] | null {
+  try {
+    const raw = sessionStorage.getItem(PROJECT_CACHE_KEY);
+    if (!raw) return null;
+    const cache: ProjectCache = JSON.parse(raw);
+    if (cache.server !== server) return null;
+    if (Date.now() - cache.timestamp > CACHE_TTL_MS) return null;
+    return cache.projects;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedProjects(server: string, projects: Project[]) {
+  try {
+    sessionStorage.setItem(PROJECT_CACHE_KEY, JSON.stringify({
+      server,
+      projects,
+      timestamp: Date.now(),
+    }));
+  } catch {}
+}
+
 // --- Projects ---
 
-export async function getProjects(token: string): Promise<Project[]> {
-  const res = await proxyFetch("/api/projects/?ordering=-created_at", { token });
+export async function getProjects(token: string, server?: string): Promise<Project[]> {
+  const srv = server || getActiveServerUrl();
+  
+  // Return cache immediately if fresh
+  const cached = getCachedProjects(srv);
+  if (cached) return cached;
+  
+  const res = await proxyFetch("/api/projects/?ordering=-created_at", { token, server: srv });
   if (!res.ok) throw new Error("Projekte konnten nicht geladen werden.");
-  return res.json();
+  const projects = await res.json();
+  setCachedProjects(srv, projects);
+  return projects;
+}
+
+/** Prefetch projects in the background (fire-and-forget) */
+export function prefetchProjects(token: string, server?: string) {
+  getProjects(token, server).catch(() => {});
 }
 
 // --- Tasks ---
