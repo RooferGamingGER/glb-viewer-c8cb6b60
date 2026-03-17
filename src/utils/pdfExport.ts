@@ -9,6 +9,7 @@ import {
 } from './exportUtils';
 import { renderSolarLayout2D } from './renderPolygon2D';
 import { PVModuleInfo } from '@/types/measurements';
+import { calculateAnnualYieldWithOrientation } from './pvCalculations';
 import { CompleteMaterialList } from '@/types/pvPlanning';
 
 const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'];
