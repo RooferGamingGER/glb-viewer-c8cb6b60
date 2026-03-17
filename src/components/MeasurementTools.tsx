@@ -14,6 +14,7 @@ import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
 import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 
 // Import visualization utilities
 import { 
