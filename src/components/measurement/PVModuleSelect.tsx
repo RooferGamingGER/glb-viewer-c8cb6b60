@@ -14,11 +14,14 @@ import { Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PVModuleInfo, PVModuleSpec } from '@/types/measurements';
-import { PV_MODULE_TEMPLATES, DEFAULT_EDGE_DISTANCE, DEFAULT_MODULE_SPACING } from '@/utils/pvCalculations';
+import { DEFAULT_EDGE_DISTANCE, DEFAULT_MODULE_SPACING } from '@/utils/pvCalculations';
+import { PV_MODULE_DATABASE, ExtendedPVModuleSpec, getModuleManufacturers, cellTypeLabel, getModuleCellTypes } from '@/data/germanPVCatalog';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -50,8 +53,11 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   disabled = false
 }) => {
   const [selectedModule, setSelectedModule] = useState<PVModuleSpec>(
-    currentModule || PV_MODULE_TEMPLATES[0]
+    currentModule || PV_MODULE_DATABASE[0]
   );
+  
+  const [filterManufacturer, setFilterManufacturer] = useState<string>('all');
+  const [filterCellType, setFilterCellType] = useState<string>('all');
   
   const [manualWidth, setManualWidth] = useState<number>(
     pvModuleInfo?.userDefinedWidth || 0
@@ -79,10 +85,26 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
   const [orientationMode, setOrientationMode] = useState<'auto' | 'portrait' | 'landscape'>(
     pvModuleInfo?.orientation === 'landscape' ? 'landscape' : 'portrait'
   );
+
+  // Filter modules
+  const filteredModules = PV_MODULE_DATABASE.filter(m => {
+    if (filterManufacturer !== 'all' && m.manufacturer !== filterManufacturer) return false;
+    if (filterCellType !== 'all' && m.cellType !== filterCellType) return false;
+    return true;
+  });
+
+  // Group by manufacturer
+  const groupedModules = filteredModules.reduce<Record<string, ExtendedPVModuleSpec[]>>((acc, m) => {
+    if (!acc[m.manufacturer]) acc[m.manufacturer] = [];
+    acc[m.manufacturer].push(m);
+    return acc;
+  }, {});
   
   const handleModuleSelect = (value: string) => {
-    const selectedModuleSpec = PV_MODULE_TEMPLATES.find(m => m.name === value) || PV_MODULE_TEMPLATES[0];
+    const selectedModuleSpec = PV_MODULE_DATABASE.find(m => m.name === value) || PV_MODULE_DATABASE[0];
     setSelectedModule(selectedModuleSpec);
+    setModuleWidthInput(selectedModuleSpec.width);
+    setModuleHeightInput(selectedModuleSpec.height);
     onModuleSelect(selectedModuleSpec);
   };
   
@@ -117,6 +139,9 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
     }
   };
 
+  const manufacturers = getModuleManufacturers();
+  const cellTypes = getModuleCellTypes();
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -134,6 +159,38 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          {/* Filter row */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Hersteller</Label>
+              <Select value={filterManufacturer} onValueChange={setFilterManufacturer}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Hersteller</SelectItem>
+                  {manufacturers.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Zelltyp</Label>
+              <Select value={filterCellType} onValueChange={setFilterCellType}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Typen</SelectItem>
+                  {cellTypes.map(ct => (
+                    <SelectItem key={ct} value={ct}>{cellTypeLabel(ct)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Modultyp</Label>
             <Select
@@ -144,10 +201,20 @@ const PVModuleSelect: React.FC<PVModuleSelectProps> = ({
                 <SelectValue placeholder="Modul auswählen" />
               </SelectTrigger>
               <SelectContent>
-                {PV_MODULE_TEMPLATES.map((module) => (
-                  <SelectItem key={module.name} value={module.name}>
-                    {module.name} - {module.power}W ({module.width.toFixed(3)}m × {module.height.toFixed(3)}m)
-                  </SelectItem>
+                {Object.entries(groupedModules).map(([manufacturer, modules]) => (
+                  <SelectGroup key={manufacturer}>
+                    <SelectLabel className="text-xs font-bold text-primary">{manufacturer}</SelectLabel>
+                    {modules.map((module) => (
+                      <SelectItem key={module.name} value={module.name}>
+                        <div className="flex flex-col">
+                          <span className="text-xs">{module.name} — {module.power}W</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {module.width.toFixed(3)}×{module.height.toFixed(3)}m · {module.efficiency}% · {cellTypeLabel(module.cellType)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>

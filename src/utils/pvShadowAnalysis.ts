@@ -81,7 +81,7 @@ export const runShadowAnalysis = async (
       const pos = calculateSolarPosition(latitude, longitude, testDate, tzOffset);
       if (pos.elevation < SUN_MIN_ELEVATION) continue;
 
-      const sunVec = solarPositionToVector3(pos.azimuth, pos.elevation, 100, northAngle);
+      const sunVec = solarPositionToVector3(pos.azimuth, pos.elevation, northAngle, 100);
       const dir = sunVec.clone().normalize();
 
       // Weight by cos(zenith) ≈ sin(elevation) for irradiance weighting
