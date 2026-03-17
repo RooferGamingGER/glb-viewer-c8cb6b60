@@ -88,7 +88,7 @@ export function calculateSolarPosition(
   // Azimuth
   const cosAz = (Math.sin(delta) - Math.sin(latRad) * sinElevation) / (Math.cos(latRad) * Math.cos(elevation * DEG2RAD));
   let azimuth = Math.acos(Math.max(-1, Math.min(1, cosAz))) * RAD2DEG;
-  if (Math.sin(lha) > 0) {
+  if (Math.sin(lha) < 0) {
     azimuth = 360 - azimuth;
   }
   
