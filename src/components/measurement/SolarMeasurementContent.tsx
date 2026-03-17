@@ -566,7 +566,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                         );
                         const grid = generatePVModuleGrid(updatedPVInfo, 0);
                         updateMeasurement(sm.id, {
-                          pvModuleInfo: { ...updatedPVInfo, moduleCount: grid.modulePoints.length }
+                          pvModuleInfo: applyGridData(updatedPVInfo, grid)
                         });
                       }
                     }}
