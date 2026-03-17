@@ -167,6 +167,7 @@ export const SolarPlanningExtension: React.FC<SolarPlanningExtensionProps> = ({
           onGreenRoofAreaChange={setGreenRoofAreaM2}
           onRecalculate={handleCalcMaterials}
           isCalculating={isMaterialCalc}
+          username={username}
         />
       </TabsContent>
     </Tabs>
