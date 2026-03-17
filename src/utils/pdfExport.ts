@@ -1067,7 +1067,7 @@ const createNotesPage = (notes: string): HTMLElement => {
 /**
  * Export measurements to PDF with cover page
  */
-export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save'): Promise<boolean | Blob> => {
+export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save', stringPlan?: StringPlan, materialList?: CompleteMaterialList): Promise<boolean | Blob> => {
   try {
     const sortedMeasurements = measurements.sort((a, b) => {
       const typeOrder: Record<string, number> = {
