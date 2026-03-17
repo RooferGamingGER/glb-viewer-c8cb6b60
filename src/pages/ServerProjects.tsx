@@ -309,6 +309,7 @@ const ServerProjects = () => {
                   key={t.id}
                   task={t}
                   projectId={view.project.id}
+                  token={token!}
                   onClick={() => openTaskDetail(view.project, t)}
                 />
               ))}
