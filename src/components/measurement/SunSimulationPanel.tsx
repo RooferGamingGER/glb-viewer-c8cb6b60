@@ -241,6 +241,12 @@ const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({ simulation }) =
                 <div className="font-mono">{solarPosition.elevation.toFixed(1)}°</div>
                 <div className="text-muted-foreground">Tageslänge</div>
                 <div className="font-mono">{solarPosition.dayLengthHours.toFixed(1)} h</div>
+                <div className="text-muted-foreground">Nord-Korrektur</div>
+                <div className="font-mono">{northAngle.toFixed(0)}° (PV)</div>
+                <div className="text-muted-foreground">Licht-Position</div>
+                <div className="font-mono text-[9px]">
+                  x:{simulation.sunLightPosition.x.toFixed(1)} y:{simulation.sunLightPosition.y.toFixed(1)} z:{simulation.sunLightPosition.z.toFixed(1)}
+                </div>
               </div>
               {solarPosition.elevation <= 0 && (
                 <div className="text-[10px] text-destructive font-medium mt-1">

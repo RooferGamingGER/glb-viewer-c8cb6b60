@@ -449,6 +449,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const { measurements } = useMeasurements();
   const sunSimulation = useSunSimulation();
 
+  // Sync northAngle from PV measurements into sun simulation
+  useEffect(() => {
+    const pvMeasurement = measurements.find(m => m.pvModuleInfo?.northAngle !== undefined);
+    if (pvMeasurement?.pvModuleInfo?.northAngle !== undefined) {
+      sunSimulation.setNorthAngle(pvMeasurement.pvModuleInfo.northAngle);
+    }
+  }, [measurements]);
+
   // Enhanced URL resolution with retry capability
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
