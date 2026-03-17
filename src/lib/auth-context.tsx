@@ -8,8 +8,22 @@ export interface ServerSession {
 }
 
 export const SERVERS = [
-  { url: "https://drohnenvermessung-server.de", label: "Kunde Drohnenvermessung by RooferGaming" },
-  { url: "https://drohnenvermessung-digitab.de", label: "Kunde Drohnenvermessung Digitab" },
+  {
+    url: "https://drohnenvermessung-server.de",
+    label: "Drohnenvermessung by RooferGaming",
+    shortLabel: "RooferGaming",
+    logo: "/lovable-uploads/2656e45c-bc18-44f7-8506-199c2edee8a2.png",
+    accentColor: "hsl(174, 65%, 39%)",
+    description: "Präzise Dachaufmaße mit Drohne",
+  },
+  {
+    url: "https://drohnenvermessung-digitab.de",
+    label: "Drohnenvermessung DigiTab",
+    shortLabel: "DigiTab",
+    logo: "/favicons/digitab-logo.png",
+    accentColor: "hsl(220, 60%, 50%)",
+    description: "Digitale Vermessungslösungen",
+  },
 ] as const;
 
 interface AuthContextType {
