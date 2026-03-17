@@ -193,9 +193,6 @@ const FileUpload: React.FC = () => {
     }
   };
 
-  const handleSwitchClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
 
   return <div className="w-full animate-fade-in">
       <div className={`file-drop-area glass-panel relative border-2 border-dashed border-border/50 p-6 rounded-lg 
