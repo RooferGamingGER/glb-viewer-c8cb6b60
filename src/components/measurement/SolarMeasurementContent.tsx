@@ -19,7 +19,20 @@ import {
   isRoofFlat,
   getDefaultFlatRoofConfig
 } from '@/utils/pvCalculations';
+import { Point } from '@/types/measurements';
 import PVModuleSelect from './PVModuleSelect';
+
+/** Helper: enrich pvInfo with moduleCorners + modulePositions from grid */
+const applyGridData = (pvInfo: any, grid: { modulePoints: Point[][] }) => ({
+  ...pvInfo,
+  moduleCount: grid.modulePoints.length,
+  moduleCorners: grid.modulePoints,
+  modulePositions: grid.modulePoints.map((corners: Point[]) => ({
+    x: corners.reduce((s: number, p: Point) => s + p.x, 0) / corners.length,
+    y: corners.reduce((s: number, p: Point) => s + p.y, 0) / corners.length,
+    z: corners.reduce((s: number, p: Point) => s + p.z, 0) / corners.length,
+  })),
+});
 import { Zap, ListTodo, Compass, Move, RotateCcw, RotateCw, Info, Sun, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from "@/components/ui/alert";
