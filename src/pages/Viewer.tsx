@@ -129,6 +129,7 @@ const Viewer = () => {
     return () => { delete (window as any).__currentMeasurements; };
   }, [measurements]);
 
+  useEffect(() => {
     // In share mode, skip URL validation
     if (isShareMode) return;
     
