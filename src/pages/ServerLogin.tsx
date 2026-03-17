@@ -47,6 +47,8 @@ const ServerLogin = () => {
       setActiveServer(targetServer.url);
 
       toast.success(`Angemeldet bei ${targetServer.label}`);
+      // Prefetch projects while navigating – they'll be cached for instant display
+      prefetchProjects(token, targetServer.url);
       navigate("/server-projects", { replace: true });
     } catch (err: any) {
       toast.error(err.message || "Anmeldung fehlgeschlagen");
