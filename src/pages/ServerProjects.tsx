@@ -82,6 +82,7 @@ const categoryIcon = (cat: string) => {
 
 const ServerProjects = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
   const hasMultipleServers = sessions.length > 1;
 
