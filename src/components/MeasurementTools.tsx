@@ -61,6 +61,71 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   // Shared material list state for PDF export
   const [sharedMaterialList, setSharedMaterialList] = useState<CompleteMaterialList | null>(null);
 
+  // Heatmap state
+  const [heatmapProgress, setHeatmapProgress] = useState<number>(0);
+  const [heatmapReady, setHeatmapReady] = useState(false);
+
+  const handleRunHeatmap = useCallback(async () => {
+    if (!scene) return;
+    setHeatmapProgress(1);
+    try {
+      const { runShadowAnalysis, applyHeatmapToMeshes } = await import('@/utils/pvShadowAnalysis');
+      
+      // Find PV module meshes and occluder meshes
+      const moduleMeshes: THREE.Mesh[] = [];
+      const occluderMeshes: THREE.Mesh[] = [];
+      scene.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return;
+        if (obj.name.includes('pv-module') || obj.name.includes('pvModule') || obj.userData?.isPVModule) {
+          moduleMeshes.push(obj);
+        } else if (obj.geometry && obj.visible) {
+          occluderMeshes.push(obj);
+        }
+      });
+      
+      if (moduleMeshes.length === 0) {
+        const { toast } = await import('sonner');
+        toast.error('Keine PV-Module in der Szene gefunden');
+        setHeatmapProgress(0);
+        return;
+      }
+
+      const lat = sunSimulation?.latitude || 51.1;
+      const lng = sunSimulation?.longitude || 10.4;
+      const na = sunSimulation?.northAngle || 0;
+
+      const results = await runShadowAnalysis({
+        moduleMeshes,
+        occluderMeshes,
+        latitude: lat,
+        longitude: lng,
+        northAngle: na,
+        onProgress: setHeatmapProgress,
+      });
+
+      applyHeatmapToMeshes(moduleMeshes, results);
+      setHeatmapReady(true);
+      setHeatmapProgress(100);
+    } catch (err) {
+      console.error('Shadow analysis failed:', err);
+      setHeatmapProgress(0);
+    }
+  }, [scene, sunSimulation]);
+
+  const handleClearHeatmap = useCallback(async () => {
+    if (!scene) return;
+    const { resetModuleMaterials } = await import('@/utils/pvShadowAnalysis');
+    const moduleMeshes: THREE.Mesh[] = [];
+    scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && (obj.name.includes('pv-module') || obj.name.includes('pvModule') || obj.userData?.isPVModule)) {
+        moduleMeshes.push(obj);
+      }
+    });
+    resetModuleMaterials(moduleMeshes);
+    setHeatmapReady(false);
+    setHeatmapProgress(0);
+  }, [scene]);
+
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
   
