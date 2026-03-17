@@ -12,7 +12,7 @@ import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
 import ShareDialog from '@/components/measurement/ShareDialog';
 import { getShareInfo, getModelProxyUrl, serializeMeasurementsForShare, type CreateShareParams } from '@/utils/shareView';
-import { useMeasurementContext } from '@/contexts/MeasurementContext';
+
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -112,24 +112,24 @@ const Viewer = () => {
       .finally(() => setShareLoading(false));
   }, [isShareMode, shareToken]);
 
-  // Import shared measurements into context when loaded
-  const { measurements, importMeasurements } = useMeasurementContext();
-  
+  // Pass shared measurements to MeasurementTools (state owner) for import in share mode
   useEffect(() => {
-    if (isShareMode && shareMeasurements && shareMeasurements.length > 0 && fileUrl) {
-      // Small delay to ensure ModelViewer is mounted
-      const timer = setTimeout(() => {
-        importMeasurements(shareMeasurements as any[], false);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [isShareMode, shareMeasurements, fileUrl, importMeasurements]);
+    if (!isShareMode || !shareMeasurements || !fileUrl) return;
 
-  // Expose current measurements on window for ShareDialog
-  useEffect(() => {
-    (window as any).__currentMeasurements = measurements;
-    return () => { delete (window as any).__currentMeasurements; };
-  }, [measurements]);
+    const payload = Array.isArray(shareMeasurements)
+      ? shareMeasurements
+      : Array.isArray((shareMeasurements as any).measurements)
+        ? (shareMeasurements as any).measurements
+        : [];
+
+    if (payload.length === 0) return;
+
+    (window as any).__sharedMeasurements = payload;
+    window.dispatchEvent(new Event('share-measurements-ready'));
+    return () => {
+      delete (window as any).__sharedMeasurements;
+    };
+  }, [isShareMode, shareMeasurements, fileUrl]);
 
   useEffect(() => {
     // In share mode, skip URL validation
@@ -237,7 +237,11 @@ const Viewer = () => {
       project_id: parseInt(projectId, 10),
       task_id: taskId,
       file_name: fileName,
-      measurements: serializeMeasurementsForShare((window as any).__currentMeasurements || []),
+      measurements: serializeMeasurementsForShare(
+        Array.isArray((window as any).__currentMeasurements)
+          ? (window as any).__currentMeasurements
+          : []
+      ),
       created_by: authUsername || 'unknown',
     };
   }, [fileName, authToken, activeServer, authUsername]);
