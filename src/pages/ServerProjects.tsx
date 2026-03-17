@@ -193,13 +193,37 @@ const ServerProjects = () => {
           </Button>
           <div>
             <h1 className="text-sm font-semibold">{headerTitle}</h1>
-            <p className="text-xs text-muted-foreground">Angemeldet als {username}</p>
+            <p className="text-xs text-muted-foreground">
+              Angemeldet als {username}
+              {hasMultipleServers && activeServer && (
+                <span className="ml-1">· {sessions.find(s => s.server === activeServer)?.label}</span>
+              )}
+            </p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Abmelden
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasMultipleServers && view.type === "projects" && (
+            <div className="flex rounded-md border border-border/50 overflow-hidden">
+              {sessions.map((s) => (
+                <button
+                  key={s.server}
+                  onClick={() => setActiveServer(s.server)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    s.server === activeServer
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Abmelden
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 container py-8">
