@@ -252,33 +252,32 @@ const Index = () => {
         </div>
 
         {/* Row 2: Login-Bereich – exklusiv für Kunden */}
-        <div className="glass-panel p-5 md:p-6 rounded-lg shadow-lg border border-primary/20">
-          <div className="text-center mb-4">
-            <h2 className="text-base md:text-lg font-semibold">Anmelden & loslegen</h2>
+        <div className="glass-panel p-6 md:p-8 rounded-xl shadow-lg border border-primary/20">
+          <div className="text-center mb-5">
+            <h2 className="text-lg md:text-xl font-bold">Anmelden & loslegen</h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
               DrohnenGLB ist exklusiv für Kunden von Drohnenvermessung by RooferGaming® verfügbar.
-              Melden Sie sich mit Ihrem Zugang an, um 3D-Modelle zu laden und zu vermessen.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {SERVERS.map((srv, idx) => (
               <button
                 key={srv.url}
                 onClick={() => navigate(`/server-login?server=${idx}`)}
-                className="glass-panel p-4 rounded-lg border border-border/10 hover:border-primary/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-4 text-left group"
+                className="relative p-5 rounded-xl border-2 border-border/20 hover:border-primary/40 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col items-center gap-3 text-center group bg-background/60"
               >
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-background/80 border border-border/20 shrink-0 flex items-center justify-center p-1.5 group-hover:scale-105 transition-transform">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-background border border-border/20 flex items-center justify-center p-2 group-hover:scale-110 transition-transform shadow-md">
                   <img src={srv.logo} alt={srv.shortLabel} className="w-full h-full object-contain" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold truncate">{srv.label}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">{srv.description}</p>
+                <h3 className="text-sm md:text-base font-semibold">{srv.label}</h3>
+                <div className="flex items-center gap-1.5 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  <LogIn className="w-3.5 h-3.5" />
+                  Anmelden
                 </div>
-                <LogIn className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-muted-foreground text-center mt-3">
+          <p className="text-[11px] text-muted-foreground text-center mt-4">
             Noch kein Kunde?{" "}
             <a href="https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
               Jetzt Abo abschließen
@@ -286,13 +285,13 @@ const Index = () => {
           </p>
         </div>
 
-        {/* Row 3: Demo + Eturnity nebeneinander */}
+        {/* Row 3: Demo + Eturnity */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <DemoSection />
           <div className="glass-panel p-4 md:p-5 rounded-lg border border-border/10 flex flex-col">
             <h3 className="text-sm md:text-base font-medium mb-3">GLB für Eturnity konvertieren</h3>
             <p className="text-xs text-muted-foreground mb-3">
-              Laden Sie ein GLB-Modell hoch, um es für den Import in Eturnity vorzubereiten.
+              GLB-Modell hochladen und für Eturnity vorbereiten.
             </p>
             <div className="flex-1">
               <FileUpload />
