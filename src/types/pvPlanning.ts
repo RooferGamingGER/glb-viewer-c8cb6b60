@@ -585,22 +585,23 @@ export const getGreenRoofMaterials = (
   return items;
 };
 
-// Gemeinsame Elektromateria lien (alle Dachtypen)
+// Gemeinsame Elektromaterialien (alle Dachtypen)
 export const getElectricalMaterials = (
-  stringPlan: StringPlan,
-  inverterSpec: InverterSpec
+  totalModules: number,
+  inverterSpec: InverterSpec,
+  inverterDistance: number = 15
 ): MaterialItem[] => {
   const items: MaterialItem[] = [];
-  const totalStrings = stringPlan.allStrings.length;
+  const estimatedStrings = Math.ceil(totalModules / (Math.floor(inverterSpec.maxDCVoltage / 41.5) || 10));
+  const dcCableLength = totalModules * 1.5 + inverterDistance * estimatedStrings;
+  const acCableLength = inverterDistance + 5;
 
-  // DC-Kabel
   items.push({
     id: 'dc_cable_4mm',
     category: 'electrical',
     description: 'PV-Kabel 6mm² (schwarz/rot) H1Z2Z2-K',
     unit: 'm',
-    quantity: Math.ceil(stringPlan.totalCableLength * 1.1), // 10% Reserve
-    pricePerUnit: 1.20,
+    quantity: Math.ceil(dcCableLength * 1.1),
     notes: 'Geprüft nach EN 50618'
   });
   items.push({
@@ -608,25 +609,14 @@ export const getElectricalMaterials = (
     category: 'electrical',
     description: 'MC4-Steckverbinder Pärchen (IP67)',
     unit: 'Paar',
-    quantity: Math.ceil(stringPlan.totalModules / 2) + totalStrings * 4,
-    pricePerUnit: 2.80
-  });
-  items.push({
-    id: 'string_combiner',
-    category: 'electrical',
-    description: `DC-Stringverteiler ${totalStrings}-fach mit Sicherungen`,
-    unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: 45.00,
-    notes: 'Bei mehr als 2 Strings je MPPT'
+    quantity: Math.ceil(totalModules / 2) + estimatedStrings * 4,
   });
   items.push({
     id: 'dc_disconnect',
     category: 'electrical',
     description: 'DC-Trennschalter 1000V / 32A (je Wechselrichter)',
     unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: 38.00,
+    quantity: 1,
     notes: 'Vorgeschrieben nach VDE 0100-712'
   });
 
@@ -637,8 +627,7 @@ export const getElectricalMaterials = (
     manufacturer: inverterSpec.manufacturer,
     description: `Wechselrichter ${inverterSpec.manufacturer} ${inverterSpec.model} (${inverterSpec.nominalPowerAC} kW, ${inverterSpec.phases}-phasig)`,
     unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: inverterSpec.nominalPowerAC <= 5 ? 650 : inverterSpec.nominalPowerAC <= 10 ? 950 : 1400,
+    quantity: 1,
     notes: `${inverterSpec.mpptCount} MPPT-Tracker, η=${inverterSpec.efficiency}%`
   });
 
@@ -648,38 +637,32 @@ export const getElectricalMaterials = (
     category: 'electrical',
     description: inverterSpec.phases === 1 ? 'NYM-J 3x6mm² (AC-Kabel einphasig)' : 'NYM-J 5x6mm² (AC-Kabel dreiphasig)',
     unit: 'm',
-    quantity: Math.ceil(stringPlan.acCableLength * 1.1),
-    pricePerUnit: inverterSpec.phases === 1 ? 2.20 : 3.50
+    quantity: Math.ceil(acCableLength * 1.1),
   });
   items.push({
     id: 'ac_protection',
     category: 'electrical',
     description: 'AC-Schutzeinrichtung LS-Schalter + FI (AC-seitig)',
     unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: 55.00
+    quantity: 1,
   });
 
   // Überspannungsschutz
-  if (stringPlan.surgeProtectionRequired) {
-    items.push({
-      id: 'surge_dc',
-      category: 'electrical',
-      description: 'DC-Überspannungsschutz Typ 2 (1000V)',
-      unit: 'Stk.',
-      quantity: stringPlan.inverterCount,
-      pricePerUnit: 85.00,
-      notes: 'Empfohlen nach IEC 61643-32'
-    });
-    items.push({
-      id: 'surge_ac',
-      category: 'electrical',
-      description: 'AC-Überspannungsschutz Typ 2',
-      unit: 'Stk.',
-      quantity: 1,
-      pricePerUnit: 65.00
-    });
-  }
+  items.push({
+    id: 'surge_dc',
+    category: 'electrical',
+    description: 'DC-Überspannungsschutz Typ 2 (1000V)',
+    unit: 'Stk.',
+    quantity: 1,
+    notes: 'Empfohlen nach IEC 61643-32'
+  });
+  items.push({
+    id: 'surge_ac',
+    category: 'electrical',
+    description: 'AC-Überspannungsschutz Typ 2',
+    unit: 'Stk.',
+    quantity: 1,
+  });
 
   // Einspeisezähler
   items.push({
@@ -688,7 +671,6 @@ export const getElectricalMaterials = (
     description: 'Bidirektionaler Smart Meter (Eigenverbrauchsoptimierung)',
     unit: 'Stk.',
     quantity: 1,
-    pricePerUnit: 120.00,
     notes: 'Pflicht für EEG-Einspeisung'
   });
 
@@ -699,7 +681,6 @@ export const getElectricalMaterials = (
     description: 'Monitoring-System / Datenlogger (inkl. 12 Monate Cloud)',
     unit: 'Stk.',
     quantity: 1,
-    pricePerUnit: 150.00
   });
 
   // Kabelkanal
@@ -708,8 +689,7 @@ export const getElectricalMaterials = (
     category: 'mounting',
     description: 'Kabelkanal / Kabelschutz (Dach und Innen)',
     unit: 'm',
-    quantity: Math.ceil(stringPlan.totalCableLength * 0.5),
-    pricePerUnit: 3.50
+    quantity: Math.ceil(dcCableLength * 0.5),
   });
 
   return items;
