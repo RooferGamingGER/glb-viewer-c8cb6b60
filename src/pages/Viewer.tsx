@@ -202,6 +202,32 @@ const Viewer = () => {
     setShowWebGLWarning(false);
   };
 
+  // Build share params callback for ShareDialog
+  const getShareParams = useCallback((): CreateShareParams | null => {
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('projectId');
+    const taskId = params.get('taskId');
+    const token = sessionStorage.getItem('webodm_token');
+    const server = sessionStorage.getItem('webodm_active_server');
+    
+    if (!projectId || !taskId || !token || !server) return null;
+    
+    // Access measurements from context isn't ideal here, so we pass a ref
+    return {
+      webodm_server_url: server,
+      webodm_token: token,
+      project_id: parseInt(projectId, 10),
+      task_id: taskId,
+      file_name: fileName,
+      measurements: (window as any).__currentMeasurements || [],
+      created_by: sessionStorage.getItem('webodm_username') || 'unknown',
+    };
+  }, [fileName]);
+
+  // Determine if share button should be visible
+  const params = new URLSearchParams(window.location.search);
+  const canShare = !isShareMode && !!params.get('projectId') && !!params.get('taskId');
+
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
       
