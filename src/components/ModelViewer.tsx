@@ -321,7 +321,8 @@ const ModelCanvas = React.memo(({
   canvasRef,
   rotateModel,
   onModelLoadComplete,
-  onRetryNeeded
+  onRetryNeeded,
+  sunSimulation
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
@@ -329,6 +330,7 @@ const ModelCanvas = React.memo(({
   rotateModel?: boolean;
   onModelLoadComplete?: () => void;
   onRetryNeeded?: (url: string) => void;
+  sunSimulation?: ReturnType<typeof useSunSimulation>;
 }) => {
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
