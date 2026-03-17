@@ -11,7 +11,7 @@ import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
 import ShareDialog from '@/components/measurement/ShareDialog';
-import { getShareInfo, getModelProxyUrl, type CreateShareParams } from '@/utils/shareView';
+import { getShareInfo, getModelProxyUrl, serializeMeasurementsForShare, type CreateShareParams } from '@/utils/shareView';
 import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { 
   AlertDialog,
