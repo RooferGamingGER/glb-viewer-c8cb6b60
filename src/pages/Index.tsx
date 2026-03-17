@@ -9,7 +9,6 @@ import {
   MoveHorizontal,
   Zap,
   Shield,
-  Upload,
   Eye,
   AlertTriangle,
   Loader2,
