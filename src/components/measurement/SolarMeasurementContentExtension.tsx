@@ -80,21 +80,13 @@ export const SolarPlanningExtension: React.FC<SolarPlanningExtensionProps> = ({
   const [materialList, setMaterialList] = useState<CompleteMaterialList | null>(null);
   const [isMaterialCalc, setIsMaterialCalc] = useState(false);
 
-  // Auto-select empfohlenen WR wenn KWp bekannt
+  // Auto-select empfohlenen WR basierend auf Dachtyp
   useEffect(() => {
     if (totalKWp > 0 && !selectedInverter) {
-      const phases = totalKWp > 6 ? 3 : 1;
-      const candidates = INVERTER_DATABASE.filter(inv =>
-        inv.phases === phases &&
-        inv.nominalPowerAC >= totalKWp * 0.85 &&
-        inv.nominalPowerAC <= totalKWp * 1.15
-      );
-      if (candidates.length > 0) {
-        const preferred = candidates.find(c => ['SMA', 'Fronius', 'Kostal'].includes(c.manufacturer));
-        setSelectedInverter(preferred || candidates[0]);
-      }
+      const auto = autoSelectInverter(totalKWp, roofType);
+      if (auto) setSelectedInverter(auto);
     }
-  }, [totalKWp]);
+  }, [totalKWp, roofType]);
 
   // Materialliste berechnen
   const handleCalcMaterials = useCallback(() => {
