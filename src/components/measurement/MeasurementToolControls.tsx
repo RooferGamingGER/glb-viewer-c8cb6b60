@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MeasurementMode, Measurement as MeasurementType, Segment } from '@/types/measurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { toast } from 'sonner';
 import SolarMeasurementContent from './SolarMeasurementContent';
@@ -57,6 +58,7 @@ interface MeasurementToolControlsProps {
   handleMoveMeasurementUp?: (id: string) => void;
   handleMoveMeasurementDown?: (id: string) => void;
   showMeasurementList?: boolean;
+  onMaterialListChange?: (list: CompleteMaterialList | null) => void;
 }
 
 const getTypeIcon = (type: string) => {
@@ -78,7 +80,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   handleClearMeasurements, toggleAllMeasurementsVisibility,
   toggleAllLabelsVisibility, allMeasurementsVisible, allLabelsVisible,
   showTable, setShowTable, handleMoveMeasurementUp, handleMoveMeasurementDown,
-  showMeasurementList = true
+  showMeasurementList = true,
+  onMaterialListChange
 }) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
@@ -171,8 +174,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      // Remove PV data, keep area type intact
+                      // Remove PV data, revert type to 'area'
                       updateMeasurement(m.id, { 
+                        type: 'area' as any,
                         pvModuleInfo: undefined as any, 
                         pvModuleSpec: undefined as any, 
                         powerOutput: undefined as any 
@@ -188,6 +192,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   measurement={m}
                   updateMeasurement={updateMeasurement}
                   allMeasurements={measurements}
+                  onMaterialListChange={onMaterialListChange}
                 />
               </CollapsibleSection>
             ))}

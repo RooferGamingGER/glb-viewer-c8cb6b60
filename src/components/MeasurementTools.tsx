@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -14,6 +14,7 @@ import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
 import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 
 // Import visualization utilities
 import { 
@@ -53,6 +54,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 }) => {
   // Sidebar collapsed state - default closed
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  // Shared material list state for PDF export
+  const [sharedMaterialList, setSharedMaterialList] = useState<CompleteMaterialList | null>(null);
 
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
@@ -266,6 +269,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         handleMoveMeasurementUp={handleMoveMeasurementUp}
         handleMoveMeasurementDown={handleMoveMeasurementDown}
         handleClearMeasurements={handleClearMeasurements}
+        onMaterialListChange={setSharedMaterialList}
       />
       {isRoofElementMode && (
         <RoofElementControls
@@ -315,6 +319,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           handleCancelEditing={handleCancelEditingWithCleanup}
           updateMeasurement={updateMeasurement}
           onConvertAreaToSolar={handleConvertAreaToSolar}
+          materialList={sharedMaterialList}
         />
       )}
 
@@ -408,6 +413,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <MobileExportOverlay
           measurements={measurements}
           onClose={() => setIsMobileExportOpen(false)}
+          materialList={sharedMaterialList}
         />
       )}
     </div>

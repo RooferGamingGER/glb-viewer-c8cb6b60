@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { MeasurementMode, Point, Measurement } from '@/types/measurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 import { smartToast } from '@/utils/smartToast';
@@ -42,6 +43,7 @@ interface MeasurementOverlayProps {
   handleCancelEditing: () => void;
   updateMeasurement?: (id: string, data: Partial<Measurement>) => void;
   onConvertAreaToSolar?: (areaId: string) => void;
+  materialList?: CompleteMaterialList | null;
 }
 
 const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
@@ -49,7 +51,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   editMeasurementId, movingPointInfo, handleFinalizeMeasurement,
   handleUndoLastPoint, clearCurrentPoints, handleClearMeasurements,
   handleDeleteMeasurement, toggleAllLabelsVisibility, allLabelsVisible,
-  handleCancelEditing, updateMeasurement, onConvertAreaToSolar
+  handleCancelEditing, updateMeasurement, onConvertAreaToSolar, materialList
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   const [solarOpen, setSolarOpen] = useState(false);
@@ -211,7 +213,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
               </AlertDialog>
             )}
             {measurements.length > 0 && (
-              <ExportDialog measurements={measurements} />
+              <ExportDialog measurements={measurements} materialList={materialList} />
             )}
             <SaveMeasurementsButton
               measurements={measurements}
