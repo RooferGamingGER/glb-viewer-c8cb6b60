@@ -363,7 +363,7 @@ export const renderSolarLayout2D = (
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
-    const roofPoints2D = projectPointsTo2D(measurement.points);
+    const roofPoints2D = projectPointsTo2DWithEaveDown(measurement.points);
     if (roofPoints2D.length < 3) return '';
 
     // Draw roof polygon
