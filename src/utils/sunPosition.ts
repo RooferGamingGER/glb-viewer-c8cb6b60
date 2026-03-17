@@ -155,10 +155,11 @@ export function calculateSolarPosition(
  * Convert solar azimuth + elevation to a THREE.Vector3 light direction,
  * accounting for northAngle in the model coordinate system.
  * 
- * In the model: after -90° X rotation, +Z = North (UTM standard)
- * northAngle rotates the compass: 0° = +Z is North
+ * After -90° X rotation: UTM Y(Nord) → -Z(World), UTM Z(Up) → +Y(World)
+ * So in world space: Nord = -Z, Süd = +Z, Ost = +X, West = -X
+ * northAngle rotates the compass: 0° = default UTM orientation
  * 
- * Returns a unit vector pointing FROM the sun TO the origin (for DirectionalLight position, negate it)
+ * Returns sun position vector (for DirectionalLight position)
  */
 export function solarPositionToVector3(
   azimuth: number,
@@ -169,12 +170,13 @@ export function solarPositionToVector3(
   const elevRad = elevation * DEG2RAD;
   const azRad = (azimuth + northAngle) * DEG2RAD;
   
-  // In Three.js: Y is up
-  // Azimuth 0° = North = +Z direction (after northAngle correction)
-  // Azimuth 90° = East = +X
+  // Y is up in Three.js
+  // After -90° X-Rotation: Nord(UTM) = -Z(World)
+  // Azimuth 0° (Nord) → z negativ (Licht aus Norden)
+  // Azimuth 180° (Süd) → z positiv (Licht aus Süden)
   const x = Math.sin(azRad) * Math.cos(elevRad);
   const y = Math.sin(elevRad);
-  const z = Math.cos(azRad) * Math.cos(elevRad);
+  const z = -Math.cos(azRad) * Math.cos(elevRad);
   
   return new THREE.Vector3(x, y, z).normalize().multiplyScalar(distance);
 }
