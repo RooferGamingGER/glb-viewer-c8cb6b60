@@ -2390,6 +2390,15 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
           currentSection.forEach(c => sectionDiv.appendChild(c.cloneNode(true)));
           sections.push(sectionDiv);
         }
+        
+        // Filter out empty sections (no visible content)
+        const filteredSections = sections.filter(section => {
+          const text = section.textContent?.trim() || '';
+          const hasImages = section.querySelectorAll('img, canvas').length > 0;
+          return text.length > 0 || hasImages;
+        });
+        sections.length = 0;
+        filteredSections.forEach(s => sections.push(s));
       }
       
       // If no page breaks found or sections are empty, render the entire container
