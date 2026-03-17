@@ -44,7 +44,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   enabled,
   scene,
   camera,
-  autoOpenSidebar = false
+  autoOpenSidebar = false,
+  sunSimulation
 }) => {
   return (
     <MeasurementProvider>
@@ -54,6 +55,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           scene={scene}
           camera={camera}
           autoOpenSidebar={autoOpenSidebar}
+          sunSimulation={sunSimulation}
         />
       </ThreeJsProvider>
     </MeasurementProvider>
