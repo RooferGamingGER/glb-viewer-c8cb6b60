@@ -178,7 +178,7 @@ export const renderPolygon2D = (measurement: Measurement, width = 800, height = 
     ctx.fillRect(0, 0, width, height);
     
     // Project 3D points to 2D
-    const points2D = projectPointsTo2D(measurement.points);
+    const points2D = projectPointsTo2DWithEaveDown(measurement.points);
     
     if (points2D.length < 3) {
       console.error('Failed to project points to 2D');
