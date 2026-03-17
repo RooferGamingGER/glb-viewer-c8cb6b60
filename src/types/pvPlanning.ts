@@ -706,8 +706,6 @@ export interface CompleteMaterialList {
     title: string;
     items: MaterialItem[];
   }[];
-  totalNetPrice: number;
-  totalGrossPrice: number; // 19% MwSt.
   moduleItems: MaterialItem[];
   mountingItems: MaterialItem[];
   electricalItems: MaterialItem[];
@@ -726,17 +724,6 @@ export const buildCompleteMaterialList = (
   safetyItems: MaterialItem[] = [],
   miscItems: MaterialItem[] = []
 ): CompleteMaterialList => {
-  const allItems = [...moduleItems, ...mountingItems, ...electricalItems, ...roofingItems, ...safetyItems, ...miscItems];
-  
-  // Berechne Gesamtpreise
-  allItems.forEach(item => {
-    if (item.pricePerUnit !== undefined) {
-      item.totalPrice = Math.round(item.pricePerUnit * item.quantity * 100) / 100;
-    }
-  });
-
-  const totalNetPrice = allItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-
   return {
     roofType,
     mountingSystem,
@@ -748,8 +735,6 @@ export const buildCompleteMaterialList = (
       { title: 'Sicherheitstechnik', items: safetyItems },
       { title: 'Sonstiges / Kleinmaterial', items: miscItems },
     ].filter(s => s.items.length > 0),
-    totalNetPrice: Math.round(totalNetPrice * 100) / 100,
-    totalGrossPrice: Math.round(totalNetPrice * 1.19 * 100) / 100,
     moduleItems,
     mountingItems,
     electricalItems,
