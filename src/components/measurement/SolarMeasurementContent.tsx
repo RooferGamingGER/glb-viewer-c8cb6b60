@@ -429,7 +429,7 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
                       const updated = { ...measurement.pvModuleInfo!, flatRoofEdgeDistance: val };
                       const grid = generatePVModuleGrid(updated, 0);
                       updateMeasurement(measurement.id, {
-                        pvModuleInfo: { ...updated, moduleCount: grid.modulePoints.length }
+                        pvModuleInfo: applyGridData(updated, grid)
                       });
                     }}
                     className="flex-1"
