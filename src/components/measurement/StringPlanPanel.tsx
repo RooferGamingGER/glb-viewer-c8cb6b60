@@ -92,7 +92,7 @@ const StringCard: React.FC<{ string: PVString; inverterMaxVdc: number }> = ({ st
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
         <div><span className="text-muted-foreground">Module:</span> {string.moduleCount}</div>
-        <div><span className="text-muted-foreground">Leistung:</span> {(string.moduleCount * DME.impp * DME.vmpp / 1000).toFixed(2)} kWp</div>
+        <div><span className="text-muted-foreground">Leistung:</span> {(string.moduleCount * DEFAULT_MODULE_ELECTRICAL.impp * DEFAULT_MODULE_ELECTRICAL.vmpp / 1000).toFixed(2)} kWp</div>
         <div><span className="text-muted-foreground">Voc (-10°C):</span> <span className={string.uocTotal > inverterMaxVdc * 0.95 ? 'text-orange-500' : ''}>{string.uocTotal.toFixed(0)} V</span></div>
         <div><span className="text-muted-foreground">Vmpp (STC):</span> {string.umppTotal.toFixed(0)} V</div>
         <div><span className="text-muted-foreground">Impp:</span> {string.impp.toFixed(1)} A</div>
