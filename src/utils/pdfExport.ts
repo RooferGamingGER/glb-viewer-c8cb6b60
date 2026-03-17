@@ -35,11 +35,9 @@ export const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number,
   const elec = pvInfo.pvMaterials?.electricalSystem;
 
   if (elec && elec.stringCount > 0 && elec.modulesPerString > 0) {
-    // Configured inverter available
     modulesPerString = elec.modulesPerString;
     numStrings = elec.stringCount;
   } else {
-    // Fallback: calculate strings independently
     const voc = (pvInfo.pvModuleSpec as any)?.voc ?? 41.8;
     const maxByVoltage = Math.floor(1000 / voc);
     modulesPerString = Math.min(maxByVoltage, 20);
@@ -53,23 +51,48 @@ export const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number,
     }
   }
 
-  // Sort by column for electrically sensible strings
-  const columns = pvInfo.columns || pvInfo.rows || Math.ceil(Math.sqrt(activeIndices.length));
-  const sortedActive = [...activeIndices].sort((a, b) => {
-    const colA = a % columns;
-    const colB = b % columns;
-    if (colA !== colB) return colA - colB;
-    return a - b;
-  });
+  // ── Spatial sorting: row-by-row using 3D centroids ──
+  if (pvInfo.moduleCorners && pvInfo.moduleCorners.length > 0) {
+    const centroids: { index: number; x: number; y: number; z: number }[] = [];
+    for (const idx of activeIndices) {
+      if (idx < pvInfo.moduleCorners.length) {
+        const corners = pvInfo.moduleCorners[idx];
+        const cx = corners.reduce((s, p) => s + p.x, 0) / corners.length;
+        const cy = corners.reduce((s, p) => s + p.y, 0) / corners.length;
+        const cz = corners.reduce((s, p) => s + p.z, 0) / corners.length;
+        centroids.push({ index: idx, x: cx, y: cy, z: cz });
+      }
+    }
 
+    // Sort by Y descending (top rows first = ridge), then X ascending (left to right)
+    // Row tolerance: modules within ±0.3m Y are same row
+    const ROW_TOLERANCE = 0.3;
+    centroids.sort((a, b) => {
+      const yDiff = b.y - a.y;
+      if (Math.abs(yDiff) > ROW_TOLERANCE) return yDiff;
+      return a.x - b.x;
+    });
+
+    for (let s = 0; s < numStrings; s++) {
+      const startIdx = s * modulesPerString;
+      const endIdx = Math.min(startIdx + modulesPerString, centroids.length);
+      const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+      const stringId = `String S${s + 1}`;
+      for (let m = startIdx; m < endIdx; m++) {
+        assignments[centroids[m].index] = { stringId, color };
+      }
+    }
+    return assignments;
+  }
+
+  // Fallback: numeric order
   for (let s = 0; s < numStrings; s++) {
     const startIdx = s * modulesPerString;
-    const endIdx = Math.min(startIdx + modulesPerString, sortedActive.length);
+    const endIdx = Math.min(startIdx + modulesPerString, activeIndices.length);
     const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
     const stringId = `String S${s + 1}`;
-
     for (let m = startIdx; m < endIdx; m++) {
-      assignments[sortedActive[m]] = { stringId, color };
+      assignments[activeIndices[m]] = { stringId, color };
     }
   }
 
