@@ -34,7 +34,9 @@ interface ExportPdfButtonProps {
 
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   measurements,
-  measurementGroups
+  measurementGroups,
+  stringPlan: externalStringPlan,
+  materialList: externalMaterialList,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
