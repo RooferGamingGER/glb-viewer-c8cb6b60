@@ -50,6 +50,7 @@ export interface SunSimulationState {
   ambientIntensity: number;
   sunriseHours: number;
   sunsetHours: number;
+  sunElevation: number;
   
   // North angle from model
   northAngle: number;
