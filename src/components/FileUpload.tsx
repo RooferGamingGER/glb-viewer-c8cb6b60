@@ -22,7 +22,7 @@ const FileUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [converting, setConverting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [rotateModel, setRotateModel] = useState(true);
+  const rotateModel = true;
   const [preloadedUrl, setPreloadedUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
