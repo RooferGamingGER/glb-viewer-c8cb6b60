@@ -413,6 +413,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <MobileExportOverlay
           measurements={measurements}
           onClose={() => setIsMobileExportOpen(false)}
+          materialList={sharedMaterialList}
         />
       )}
     </div>
