@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWebODMAuth, SERVERS } from "@/lib/auth-context";
-import { authenticate } from "@/lib/webodm";
+import { authenticate, prefetchProjects } from "@/lib/webodm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
