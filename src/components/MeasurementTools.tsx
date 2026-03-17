@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
