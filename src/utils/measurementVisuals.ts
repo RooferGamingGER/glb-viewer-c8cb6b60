@@ -647,6 +647,12 @@ export function renderMeasurements(
         shouldRecreateSegmentLabels
       );
       
+      // Render PV module grid if this area has pvModuleInfo overlay
+      if (measurement.pvModuleInfo && measurement.pvModuleInfo.moduleCount > 0) {
+        console.log(`Rendering PV module grid for area measurement ${measurement.id} with ${measurement.pvModuleInfo.moduleCount} modules`);
+        renderPVModuleGrid(measurement, measurementsRef, labelsRef);
+      }
+      
       if (!isMeasurementBeingEdited && existingLabels.length > 0) {
         const points3D = pointsToVector3Array(measurement.points);
         
