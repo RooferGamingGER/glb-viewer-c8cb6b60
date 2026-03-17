@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWebODMAuth } from '@/lib/auth-context';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
 import { useURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
@@ -58,6 +59,7 @@ export const normalizeSegmentType = (type: string): string => {
 
 const Viewer = () => {
   const navigate = useNavigate();
+  const { token: authToken, activeServer, username: authUsername } = useWebODMAuth();
   
   const [isFullscreen, setIsFullscreen] = useState(true);
   const { showTutorial, setShowTutorial } = useTutorial();
@@ -226,22 +228,19 @@ const Viewer = () => {
     const params = new URLSearchParams(window.location.search);
     const projectId = params.get('projectId');
     const taskId = params.get('taskId');
-    const token = sessionStorage.getItem('webodm_token');
-    const server = sessionStorage.getItem('webodm_active_server');
     
-    if (!projectId || !taskId || !token || !server) return null;
+    if (!projectId || !taskId || !authToken || !activeServer) return null;
     
-    // Access measurements from context isn't ideal here, so we pass a ref
     return {
-      webodm_server_url: server,
-      webodm_token: token,
+      webodm_server_url: activeServer,
+      webodm_token: authToken,
       project_id: parseInt(projectId, 10),
       task_id: taskId,
       file_name: fileName,
       measurements: (window as any).__currentMeasurements || [],
-      created_by: sessionStorage.getItem('webodm_username') || 'unknown',
+      created_by: authUsername || 'unknown',
     };
-  }, [fileName]);
+  }, [fileName, authToken, activeServer, authUsername]);
 
   // Determine if share button should be visible
   const params = new URLSearchParams(window.location.search);
