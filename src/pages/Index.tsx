@@ -55,6 +55,14 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "17.03.2026",
+    text: "Sonnensimulation korrigiert: Schattenrichtung wurde physikalisch korrigiert – Schatten fallen jetzt realistisch in die richtige Himmelsrichtung und passen sich dynamisch an die Sonnenhöhe an",
+  },
+  {
+    date: "17.03.2026",
+    text: "Navigation verbessert: Zurück-Button im Viewer führt jetzt direkt zum geöffneten Task statt zur Startseite – flüssigerer Arbeitsablauf bei der Modellvermessung",
+  },
+  {
     date: "16.03.2026",
     text: "PV-Planung verbessert: Modulbelegung wird jetzt als Overlay auf der Dachfläche gespeichert – Fläche bleibt in Messliste und allen Exporten erhalten",
   },
