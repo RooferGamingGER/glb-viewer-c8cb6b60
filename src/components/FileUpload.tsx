@@ -6,7 +6,7 @@ import { smartToast } from '@/utils/smartToast';
 import { devError } from '@/utils/consoleCleanup';
 import { Upload, File, AlertTriangle, Download } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+// Switch removed – rotateModel is always true
 import { rotateGLBDirect } from '@/utils/glbDirectManipulation';
 import { storeOriginalFile } from '@/hooks/useOriginalFileStorage';
 import { useGLTF } from '@react-three/drei';
