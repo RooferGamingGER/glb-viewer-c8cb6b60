@@ -138,7 +138,7 @@ const FileUpload: React.FC = () => {
           </div>
 
           <h3 className="text-lg font-medium mb-2">
-            {selectedFile ? selectedFile.name : 'GLB-Datei für Eturnitykonvertieren'}
+            {selectedFile ? selectedFile.name : 'GLB für Eturnity/PV-Sol konvertieren'}
           </h3>
 
           <p className="text-muted-foreground text-sm mb-4">
