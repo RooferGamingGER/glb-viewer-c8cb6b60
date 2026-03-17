@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { MeasurementMode, Point, Measurement } from '@/types/measurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 import { usePointSnapping } from '@/contexts/PointSnappingContext';
 
 import { smartToast } from '@/utils/smartToast';
