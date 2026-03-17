@@ -64,12 +64,25 @@ const Viewer = () => {
   const [showWebGLWarning, setShowWebGLWarning] = useState(false);
   const [webGLInfo, setWebGLInfo] = useState<ReturnType<typeof checkWebGLCompatibility> | null>(null);
   
-  // Get the file URL and name from the URL parameters
-  const fileUrl = useRequiredURLParam('fileUrl', '/', 'Keine Datei ausgewählt');
-  const fileName = useRequiredURLParam('fileName', '/', 'Unbekannte Datei');
+  // Share mode state
+  const shareToken = useURLParam('share');
+  const isShareMode = !!shareToken;
+  const [shareFileUrl, setShareFileUrl] = useState<string | null>(null);
+  const [shareFileName, setShareFileName] = useState<string | null>(null);
+  const [shareMeasurements, setShareMeasurements] = useState<unknown[] | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  
+  // Get the file URL and name from the URL parameters (only when not in share mode)
+  const fileUrlParam = useURLParam('fileUrl');
+  const fileNameParam = useURLParam('fileName');
   // Check rotateModel parameter
   const rotateModelParam = useURLParam('rotateModel');
   const rotateModel = rotateModelParam !== 'false'; // true, unless explicitly "false"
+  
+  // Determine effective file URL and name
+  const fileUrl = isShareMode ? (shareFileUrl || '') : (fileUrlParam || '');
+  const fileName = isShareMode ? (shareFileName || 'Geteiltes Modell') : (fileNameParam || 'Unbekannte Datei');
   
   // Check WebGL compatibility on component mount (no automatic prompts)
   useEffect(() => {
