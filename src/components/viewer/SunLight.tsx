@@ -71,7 +71,7 @@ const SunLight: React.FC<SunLightProps> = ({ active, position, intensity, ambien
   const getShadowMapSize = useCallback(() => {
     const maxSize = gl.capabilities.maxTextureSize;
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    return isMobile ? Math.min(1024, maxSize) : Math.min(2048, maxSize);
+    return isMobile ? Math.min(1024, maxSize) : Math.min(4096, maxSize);
   }, [gl]);
 
   const applyMeshOverrides = useCallback(() => {
