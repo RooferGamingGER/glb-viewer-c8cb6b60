@@ -28,7 +28,8 @@ import {
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
   extractRoofEdgeMeasurements,
-  extractExclusionZones
+  extractExclusionZones,
+  generatePVModuleGrid
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
