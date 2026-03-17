@@ -43,6 +43,7 @@ interface MeasurementOverlayProps {
   handleCancelEditing: () => void;
   updateMeasurement?: (id: string, data: Partial<Measurement>) => void;
   onConvertAreaToSolar?: (areaId: string) => void;
+  materialList?: CompleteMaterialList | null;
 }
 
 const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
