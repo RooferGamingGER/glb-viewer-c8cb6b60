@@ -384,7 +384,7 @@ function TaskCard({ task, projectId, token, onClick }: { task: Task; projectId: 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token || task.images_count === 0) return;
+    if (!token || task.images_count === 0 || task.status !== 40) return;
     let revoked = false;
     (async () => {
       try {
