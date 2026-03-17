@@ -322,7 +322,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         measurementsWithVisuals,
         coverDataWithLogo,
         'blob',
-        includeStringPlan && externalStringPlan ? externalStringPlan : undefined,
         includeMaterialList && externalMaterialList ? externalMaterialList : undefined,
       );
       setExportProgress(100);
