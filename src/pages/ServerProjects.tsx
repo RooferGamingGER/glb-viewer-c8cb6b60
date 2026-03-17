@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useWebODMAuth } from "@/lib/auth-context";
 import {
   getProjects,
@@ -82,6 +82,7 @@ const categoryIcon = (cat: string) => {
 
 const ServerProjects = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
   const hasMultipleServers = sessions.length > 1;
 
@@ -103,7 +104,33 @@ const ServerProjects = () => {
     setView({ type: "projects" });
     setTasks([]);
     getProjects(token)
-      .then(setProjects)
+      .then((loadedProjects) => {
+        setProjects(loadedProjects);
+        
+        // If returning from Viewer with returnToTask state, navigate to that task
+        const state = location.state as { returnToTask?: { projectId: string; taskId: string } } | null;
+        if (state?.returnToTask) {
+          const { projectId, taskId } = state.returnToTask;
+          const project = loadedProjects.find((p: Project) => String(p.id) === String(projectId));
+          if (project) {
+            // Clear the navigation state so it doesn't re-trigger
+            navigate(location.pathname, { replace: true, state: {} });
+            // Load tasks for this project and navigate to task detail
+            getProjectTasks(token, project.id).then((loadedTasks) => {
+              setTasks(loadedTasks);
+              const task = loadedTasks.find((t: Task) => t.id === taskId);
+              if (task) {
+                setView({ type: "taskDetail", project, task });
+              } else {
+                setView({ type: "tasks", project });
+              }
+            }).catch(() => {
+              setView({ type: "tasks", project });
+            });
+            return;
+          }
+        }
+      })
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
   }, [token, activeServer]);

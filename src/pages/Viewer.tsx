@@ -171,7 +171,15 @@ const Viewer = () => {
               if (fileUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(fileUrl);
               }
-              navigate('/');
+              // Navigate back to task detail if coming from WebODM, otherwise home
+              const params = new URLSearchParams(window.location.search);
+              const projectId = params.get('projectId');
+              const taskId = params.get('taskId');
+              if (projectId && taskId) {
+                navigate('/server-projects', { state: { returnToTask: { projectId, taskId } } });
+              } else {
+                navigate('/');
+              }
             }}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
