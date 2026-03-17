@@ -687,6 +687,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               scene={threeContext.scene} 
               camera={threeContext.camera} 
               autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
+              sunSimulation={sunSimulation}
             />
           )}
         </div>
