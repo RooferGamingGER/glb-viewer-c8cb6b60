@@ -1,28 +1,39 @@
 
-# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Status: Implementiert ✅
+## Erweiterte PV-Planung: Vollständige Umsetzung
 
-## Problem
-Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
+Integration aller 9 hochgeladenen Dateien (inkl. der neuen Edge Function) in das Projekt.
 
-## Lösung: `northAngle` Parameter
+---
 
-### 1. Typ-Erweiterung
-- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
-- 0° = +Z ist Nord (UTM-Standard)
+### Neue Dateien (8)
 
-### 2. `calculateRoofOrientation(points, northAngle)`
-- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
-- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
+| Datei | Zweck |
+|---|---|
+| `src/types/pvPlanning.ts` | Typen, WR-Datenbank (8 Hersteller), Materialkatalog, Montagesysteme |
+| `src/utils/pvStringPlanning.ts` | Stringplanung-Algorithmus (VDE/IEC), Temperaturkorrektur, Validierung |
+| `src/utils/pvMaterialCalculator.ts` | Materiallisten-Berechnung nach Dachtyp, CSV/Text-Export |
+| `src/utils/pvPdfExtensions.ts` | PDF-Seiten für Stringplan, Materialliste, PV-Layout |
+| `src/components/measurement/InverterPlanningPanel.tsx` | WR-Auswahl UI mit Auto-Empfehlung |
+| `src/components/measurement/StringPlanPanel.tsx` | String-Übersicht, MPPT-Karten, Spannungsdiagramme, KI-Planung |
+| `src/components/measurement/MaterialListPanel.tsx` | Materialliste mit Dachtyp-Konfiguration, Export |
+| `src/components/measurement/SolarMeasurementContentExtension.tsx` | Tab-Wrapper (WR / Strings / Material) |
 
-### 3. `placeModule` South-Tilt
-- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
-- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
+### Geänderte Dateien (3)
 
-### 4. UI: Kompass-Slider
-- 0°-359° Slider in SolarMeasurementContent
-- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
-- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
+1. **`src/components/measurement/SolarMeasurementContent.tsx`** — Import + Einbindung der `SolarPlanningExtension` unterhalb der bestehenden Tabs
+2. **`src/utils/pdfExport.ts`** — Parameter-Erweiterung um `stringPlan` + `materialList`, Einbindung der neuen PDF-Seiten aus `pvPdfExtensions`
+3. **`src/components/measurement/ExportPdfButton.tsx`** — Neue Toggle-Switches im Export-Dialog für Stringplan und Materialliste
 
-### 5. E-W bleibt grid-relativ (unverändert)
+### Edge Function Update (1)
+
+**`supabase/functions/solar-string-planning/index.ts`** — Erweiterter Prompt mit strukturiertem WR-Daten-Input (`inverterSpec`), Dachflächen-Details, vorberechneten Strings und verbesserter Fehlerbehandlung (Rate-Limit, Credits). Modell: `gemini-2.5-flash-preview`.
+
+### Reihenfolge der Umsetzung
+
+1. Typen + Utilities anlegen (pvPlanning.ts, pvStringPlanning.ts, pvMaterialCalculator.ts)
+2. UI-Komponenten anlegen (3 Panels + Extension-Wrapper)
+3. PDF-Extensions anlegen (pvPdfExtensions.ts)
+4. Bestehende Dateien anpassen (SolarMeasurementContent, pdfExport, ExportPdfButton)
+5. Edge Function ersetzen + deployen
+
