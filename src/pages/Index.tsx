@@ -256,7 +256,8 @@ const Index = () => {
           <div className="text-center mb-5">
             <h2 className="text-lg md:text-xl font-bold">Anmelden & loslegen</h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              DrohnenGLB ist exklusiv für Kunden von Drohnenvermessung by RooferGaming® verfügbar.
+              DrohnenGLB ist exklusiv für Kunden von Drohnenvermessung by RooferGaming® & Drohnenvermessung by DigiTab
+              verfügbar.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
