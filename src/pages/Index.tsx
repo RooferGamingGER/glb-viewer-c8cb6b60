@@ -249,32 +249,49 @@ const Index = () => {
           <ChangelogSection />
         </div>
 
-        {/* Row 2: Demo + Upload side by side on desktop */}
+        {/* Row 2: Server-Zugang + Demo */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          <DemoSection />
-          <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
-            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Eturnity-Konvertierung</h2>
-            <FileUpload />
-            <div className="flex flex-col gap-2 mt-4">
+          {/* Primary: Server buttons */}
+          <div className="glass-panel p-5 md:p-6 rounded-lg shadow-lg border border-primary/20 flex flex-col justify-center">
+            <h2 className="text-base md:text-lg font-semibold mb-2 text-center">3D-Modell vom Server laden</h2>
+            <p className="text-xs text-muted-foreground text-center mb-5">
+              Melden Sie sich an, um Ihre Drohnenvermessungs-Projekte zu öffnen und direkt zu vermessen.
+            </p>
+            <div className="flex flex-col gap-3">
               <Button
                 onClick={() => navigate("/server-login?server=0")}
                 className="w-full"
-                size={isMobile ? "sm" : "default"}
+                size={isMobile ? "default" : "lg"}
               >
                 <Server className="mr-2 h-4 w-4" />
                 Vom Server laden
               </Button>
               <Button
-                variant="outline"
                 onClick={() => navigate("/server-login?server=1")}
                 className="w-full"
-                size={isMobile ? "sm" : "default"}
+                size={isMobile ? "default" : "lg"}
+                variant="outline"
               >
                 <Server className="mr-2 h-4 w-4" />
                 Von Digitab laden
               </Button>
             </div>
           </div>
+          <DemoSection />
+        </div>
+
+        {/* Row 3: Eturnity (secondary) */}
+        <div className="glass-panel p-4 rounded-lg border border-border/10">
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer list-none">
+              <h3 className="text-sm font-medium">GLB für Eturnity konvertieren</h3>
+              <span className="text-xs text-muted-foreground group-open:hidden">Aufklappen ▸</span>
+              <span className="text-xs text-muted-foreground hidden group-open:inline">Zuklappen ▾</span>
+            </summary>
+            <div className="mt-4">
+              <FileUpload />
+            </div>
+          </details>
         </div>
 
         {/* Row 3: Features */}
