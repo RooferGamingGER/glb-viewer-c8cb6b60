@@ -279,7 +279,12 @@ const Index = () => {
           </div>
           <p className="text-[11px] text-muted-foreground text-center mt-4">
             Noch kein Kunde?{" "}
-            <a href="https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+            <a
+              href="https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
               Jetzt Abo abschließen
             </a>
           </p>
@@ -289,9 +294,9 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <DemoSection />
           <div className="glass-panel p-4 md:p-5 rounded-lg border border-border/10 flex flex-col">
-            <h3 className="text-sm md:text-base font-medium mb-3">GLB für Eturnity konvertieren</h3>
+            <h3 className="text-sm md:text-base font-medium mb-3">GLB für Eturnity/PV-Sol konvertieren</h3>
             <p className="text-xs text-muted-foreground mb-3">
-              GLB-Modell hochladen und für Eturnity vorbereiten.
+              GLB-Modell hochladen und für Eturnity/PV-Sol vorbereiten.
             </p>
             <div className="flex-1">
               <FileUpload />
