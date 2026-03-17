@@ -11,13 +11,15 @@ import { useToast } from '@/components/ui/use-toast';
 import ExportPdfButton from './ExportPdfButton';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 
 
 interface ExportDialogProps {
   measurements: Measurement[];
+  materialList?: CompleteMaterialList | null;
 }
 
-const ExportDialog: React.FC<ExportDialogProps> = ({ measurements }) => {
+const ExportDialog: React.FC<ExportDialogProps> = ({ measurements, materialList }) => {
   const { toast } = useToast();
 
   const exportCSV = () => {
