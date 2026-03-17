@@ -400,7 +400,7 @@ const ModelCanvas = React.memo(({
             ambientIntensity={sunSimulation.ambientIntensity}
           />
         )}
-        {!isLowMemory && <Environment preset="city" />}
+        {!isLowMemory && sunSimulation?.mode === 'off' && <Environment preset="city" />}
         <Model 
           url={fileUrl} 
           rotate={rotateModel !== false} 
