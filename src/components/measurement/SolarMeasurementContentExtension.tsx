@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useWebODMAuth } from '@/lib/auth-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -63,6 +64,7 @@ export const SolarPlanningExtension: React.FC<SolarPlanningExtensionProps> = ({
   measurements,
   onMaterialListChange,
 }) => {
+  const { username } = useWebODMAuth();
   const totalKWp = calcTotalKWp(pvInfoMap);
   const moduleSpec = getFirstModuleSpec(pvInfoMap);
 
@@ -165,6 +167,7 @@ export const SolarPlanningExtension: React.FC<SolarPlanningExtensionProps> = ({
           onGreenRoofAreaChange={setGreenRoofAreaM2}
           onRecalculate={handleCalcMaterials}
           isCalculating={isMaterialCalc}
+          username={username}
         />
       </TabsContent>
     </Tabs>
