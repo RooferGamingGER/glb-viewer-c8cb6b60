@@ -90,7 +90,37 @@ const Viewer = () => {
     setWebGLInfo(compatibility);
   }, []);
 
+  // Load share data when in share mode
   useEffect(() => {
+    if (!isShareMode || !shareToken) return;
+    
+    setShareLoading(true);
+    setShareError(null);
+    
+    getShareInfo(shareToken)
+      .then((info) => {
+        setShareFileName(info.file_name);
+        setShareMeasurements(info.measurements as unknown[]);
+        setShareFileUrl(getModelProxyUrl(shareToken));
+      })
+      .catch((err) => {
+        setShareError(err.message);
+        toast.error(`Share-Link ungültig: ${err.message}`);
+      })
+      .finally(() => setShareLoading(false));
+  }, [isShareMode, shareToken]);
+
+  useEffect(() => {
+    // In share mode, skip URL validation
+    if (isShareMode) return;
+    
+    // Redirect if no file URL in normal mode
+    if (!fileUrlParam) {
+      toast.error('Keine Datei ausgewählt');
+      navigate('/');
+      return;
+    }
+    
     // Validate URL: allow blob:, https:, and relative paths. Allow http: only on http origin (dev).
     const isString = typeof fileUrl === 'string';
     let isValid = false;
