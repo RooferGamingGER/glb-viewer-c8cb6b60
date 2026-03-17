@@ -725,5 +725,3 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
 };
 
 export default SolarMeasurementContent;
-
-export default SolarMeasurementContent;
