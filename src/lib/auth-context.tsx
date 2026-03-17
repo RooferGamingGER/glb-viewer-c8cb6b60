@@ -63,6 +63,11 @@ export function WebODMAuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const replaceSessions = useCallback((newSessions: ServerSession[]) => {
+    setSessions(newSessions);
+    saveSessions(newSessions);
+  }, []);
+
   const login = useCallback((token: string, username: string) => {
     // Legacy compat: use first server
     const server = SERVERS[0].url;
