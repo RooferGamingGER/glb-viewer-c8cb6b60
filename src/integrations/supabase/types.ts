@@ -163,6 +163,84 @@ export type Database = {
         }
         Relationships: []
       }
+      user_inverters: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          has_battery_input: boolean | null
+          id: string
+          inverter_key: string
+          is_public: boolean | null
+          manufacturer: string
+          model: string
+          nominal_power_ac: number
+          phases: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          has_battery_input?: boolean | null
+          id?: string
+          inverter_key: string
+          is_public?: boolean | null
+          manufacturer: string
+          model: string
+          nominal_power_ac: number
+          phases: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          has_battery_input?: boolean | null
+          id?: string
+          inverter_key?: string
+          is_public?: boolean | null
+          manufacturer?: string
+          model?: string
+          nominal_power_ac?: number
+          phases?: number
+        }
+        Relationships: []
+      }
+      user_mounting_systems: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          manufacturer: string
+          roof_type: string
+          system_key: string
+          system_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          manufacturer: string
+          roof_type: string
+          system_key: string
+          system_name: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          manufacturer?: string
+          roof_type?: string
+          system_key?: string
+          system_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
