@@ -273,7 +273,7 @@ const Index = () => {
                 variant="outline"
               >
                 <Server className="mr-2 h-4 w-4" />
-                Von Digitab laden
+                Kunde Drohnenvermessung Digitab
               </Button>
             </div>
           </div>
