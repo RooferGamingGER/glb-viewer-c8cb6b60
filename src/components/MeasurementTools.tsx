@@ -35,6 +35,7 @@ import MobileMeasureToolbar from './measurement/MobileMeasureToolbar';
 import MobileMassesOverlay from './measurement/MobileMassesOverlay';
 import MobileExportOverlay from './measurement/MobileExportOverlay';
 import MeasurementOverlay from './measurement/MeasurementOverlay';
+import SunSimulationPanel from './measurement/SunSimulationPanel';
 
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { PanelRight } from 'lucide-react';
