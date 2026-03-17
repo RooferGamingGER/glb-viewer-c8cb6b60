@@ -13,19 +13,14 @@ export const SERVERS = [
 ] as const;
 
 interface AuthContextType {
-  /** Active session's token (backward compat) */
   token: string | null;
-  /** Active session's username (backward compat) */
   username: string | null;
-  /** All authenticated sessions */
   sessions: ServerSession[];
-  /** Currently active server URL */
   activeServer: string | null;
-  /** Switch active server */
   setActiveServer: (server: string) => void;
-  /** Add a session for a server */
   addSession: (session: ServerSession) => void;
-  /** Legacy login – adds single session and sets active */
+  /** Replace all sessions at once */
+  replaceSessions: (sessions: ServerSession[]) => void;
   login: (token: string, username: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -68,6 +63,11 @@ export function WebODMAuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const replaceSessions = useCallback((newSessions: ServerSession[]) => {
+    setSessions(newSessions);
+    saveSessions(newSessions);
+  }, []);
+
   const login = useCallback((token: string, username: string) => {
     // Legacy compat: use first server
     const server = SERVERS[0].url;
@@ -94,6 +94,7 @@ export function WebODMAuthProvider({ children }: { children: ReactNode }) {
         activeServer: activeSession?.server || null,
         setActiveServer,
         addSession,
+        replaceSessions,
         login,
         logout,
         isAuthenticated: sessions.length > 0,
