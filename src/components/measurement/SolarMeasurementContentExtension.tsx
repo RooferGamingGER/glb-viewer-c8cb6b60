@@ -24,6 +24,7 @@ import {
   FlatRoofSystem,
   GreenRoofSystem,
   CompleteMaterialList,
+  autoSelectInverter,
 } from '@/types/pvPlanning';
 import { calculateCompleteMaterialList } from '@/utils/pvMaterialCalculator';
 import { PVModuleInfo, Measurement, PVModuleSpec } from '@/types/measurements';
