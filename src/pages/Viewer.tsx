@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWebODMAuth } from '@/lib/auth-context';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
 import { useURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
