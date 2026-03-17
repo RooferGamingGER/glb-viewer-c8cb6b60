@@ -28,7 +28,8 @@ import {
   DEFAULT_EDGE_DISTANCE,
   DEFAULT_MODULE_SPACING,
   extractRoofEdgeMeasurements,
-  extractExclusionZones
+  extractExclusionZones,
+  generatePVModuleGrid
 } from '@/utils/pvCalculations';
 import { formatMeasurement, MIN_INCLINATION_THRESHOLD, getMeasurementTypeDisplayName } from '@/constants/measurements';
 import * as THREE from 'three';
@@ -157,13 +158,37 @@ export const useMeasurementCore = () => {
       setMeasurements(prev => prev.map(m => {
         if (m.id === measurementId && m.pvModuleInfo) {
           // Track removed indices instead of filtering arrays (preserves index mapping)
-          const removedIndices = [...(m.pvModuleInfo.removedModuleIndices || [])];
-          if (!removedIndices.includes(moduleIndex)) {
+          const previousRemoved = m.pvModuleInfo.removedModuleIndices || [];
+          const removedIndices = [...previousRemoved];
+          const wasAlreadyRemoved = removedIndices.includes(moduleIndex);
+          if (!wasAlreadyRemoved) {
             removedIndices.push(moduleIndex);
           }
-          
-          // moduleCount should reflect active modules; removedModuleIndices tracks which are removed
-          const totalSlots = m.pvModuleInfo.moduleCorners?.length || m.pvModuleInfo.modulePositions?.length || m.pvModuleInfo.moduleCount || 0;
+
+          // Rebuild full slot count independent of current filtered visuals/state
+          let totalSlots = m.pvModuleInfo.moduleCount + previousRemoved.length;
+          let repairedModuleCorners = m.pvModuleInfo.moduleCorners;
+          let repairedModulePositions = m.pvModuleInfo.modulePositions;
+
+          try {
+            const fullGrid = generatePVModuleGrid(
+              { ...m.pvModuleInfo, removedModuleIndices: [] },
+              m.points[0]?.y || 0
+            );
+
+            if (fullGrid.modulePoints.length > 0) {
+              totalSlots = fullGrid.modulePoints.length;
+              repairedModuleCorners = fullGrid.modulePoints;
+              repairedModulePositions = fullGrid.modulePoints.map(corners => ({
+                x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+                y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+                z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
+              }));
+            }
+          } catch (e) {
+            console.warn('PV full-grid reconstruction failed during module removal', e);
+          }
+
           const newCount = Math.max(0, totalSlots - removedIndices.length);
           const moduleArea = newCount * m.pvModuleInfo.moduleWidth * m.pvModuleInfo.moduleHeight;
           const area = m.pvModuleInfo.actualArea || 1;
@@ -172,6 +197,8 @@ export const useMeasurementCore = () => {
             ...m,
             pvModuleInfo: {
               ...m.pvModuleInfo,
+              moduleCorners: repairedModuleCorners,
+              modulePositions: repairedModulePositions,
               moduleCount: newCount,
               coveragePercent: Math.min((moduleArea / area) * 100, 100),
               removedModuleIndices: removedIndices,

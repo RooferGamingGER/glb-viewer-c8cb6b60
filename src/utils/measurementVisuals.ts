@@ -1550,18 +1550,34 @@ function renderPVModuleGrid(
   // Generate the PV module grid (only module surfaces)
   const { modulePoints, moduleOriginalIndices, moduleDirections } = generatePVModuleGrid(measurement.pvModuleInfo, baseY);
 
-  // Persist moduleCorners for PDF export / 2D rendering
-  if (
-    modulePoints.length > 0 &&
-    (!measurement.pvModuleInfo.moduleCorners ||
-      measurement.pvModuleInfo.moduleCorners.length !== modulePoints.length)
-  ) {
-    (measurement.pvModuleInfo as any).moduleCorners = modulePoints;
-    (measurement.pvModuleInfo as any).modulePositions = modulePoints.map(corners => ({
-      x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
-      y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
-      z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
-    }));
+  // Persist canonical (unfiltered) module corners for stable indexing in PDF/2D
+  const existingSlots = measurement.pvModuleInfo.moduleCorners?.length || 0;
+  const removedCount = measurement.pvModuleInfo.removedModuleIndices?.length || 0;
+  const expectedTotalSlots = measurement.pvModuleInfo.moduleCount + removedCount;
+
+  if (modulePoints.length > 0 && (existingSlots === 0 || existingSlots < expectedTotalSlots)) {
+    try {
+      const fullGrid = generatePVModuleGrid(
+        { ...measurement.pvModuleInfo, removedModuleIndices: [] },
+        baseY
+      );
+
+      const canonicalPoints = fullGrid.modulePoints.length > 0 ? fullGrid.modulePoints : modulePoints;
+      (measurement.pvModuleInfo as any).moduleCorners = canonicalPoints;
+      (measurement.pvModuleInfo as any).modulePositions = canonicalPoints.map(corners => ({
+        x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+        y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+        z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
+      }));
+    } catch (e) {
+      console.warn('Could not repair canonical module corners, using active module points', e);
+      (measurement.pvModuleInfo as any).moduleCorners = modulePoints;
+      (measurement.pvModuleInfo as any).modulePositions = modulePoints.map(corners => ({
+        x: corners.reduce((s, p) => s + p.x, 0) / corners.length,
+        y: corners.reduce((s, p) => s + p.y, 0) / corners.length,
+        z: corners.reduce((s, p) => s + p.z, 0) / corners.length,
+      }));
+    }
   }
 
   // Visual defaults (can be overridden via pvModuleInfo.moduleVisuals)
