@@ -1,7 +1,6 @@
 /**
  * MaterialListPanel.tsx
- * UI-Komponente für die Materialliste nach Dachtyp
- * Steildach (Braas, BMI, K2), Flachdach (K2, Esdec, Renusol), Gründach (Bauder, Soprema, etc.)
+ * UI-Komponente für die Materialliste nach Dachtyp (ohne Preise)
  */
 
 import React, { useState } from 'react';
@@ -70,26 +69,8 @@ const GREEN_SYSTEMS: { value: GreenRoofSystem; label: string; manufacturer: stri
   { value: 'generic_green_ballast', label: 'Generisch (Gründach)', manufacturer: 'Generisch' },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  module: 'PV-Module',
-  mounting: 'Montagesystem',
-  electrical: 'Elektrik & Wechselrichter',
-  roofing: 'Dachaufbau & Abdichtung',
-  safety: 'Sicherheitstechnik',
-  misc: 'Kleinmaterial & Sonstiges',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  module: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
-  mounting: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  electrical: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300',
-  roofing: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300',
-  safety: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300',
-  misc: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
-};
-
 const MaterialItemRow: React.FC<{ item: MaterialItem; index: number }> = ({ item, index }) => (
-  <div className="grid grid-cols-12 gap-1 py-1.5 text-xs border-b last:border-b-0 items-start">
+  <div className="grid grid-cols-10 gap-1 py-1.5 text-xs border-b last:border-b-0 items-start">
     <div className="col-span-1 text-muted-foreground text-right">{index + 1}.</div>
     <div className="col-span-6">
       <div className="font-medium">{item.description}</div>
@@ -104,13 +85,7 @@ const MaterialItemRow: React.FC<{ item: MaterialItem; index: number }> = ({ item
       )}
     </div>
     <div className="col-span-1 text-center text-muted-foreground">{item.unit}</div>
-    <div className="col-span-1 text-right font-mono">{item.quantity}</div>
-    <div className="col-span-1 text-right text-muted-foreground font-mono">
-      {item.pricePerUnit !== undefined ? `${item.pricePerUnit.toFixed(2)}` : '–'}
-    </div>
-    <div className="col-span-2 text-right font-mono font-medium">
-      {item.totalPrice !== undefined ? `${item.totalPrice.toFixed(2)} €` : '–'}
-    </div>
+    <div className="col-span-2 text-right font-mono font-medium">{item.quantity}</div>
   </div>
 );
 
@@ -120,7 +95,6 @@ const SectionCollapsible: React.FC<{
   defaultOpen?: boolean;
 }> = ({ title, items, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
-  const sectionTotal = items.reduce((s, i) => s + (i.totalPrice || 0), 0);
 
   return (
     <div className="border rounded-md overflow-hidden">
@@ -133,20 +107,15 @@ const SectionCollapsible: React.FC<{
           <span className="text-sm font-medium">{title}</span>
           <Badge variant="secondary" className="text-[10px] h-4">{items.length} Pos.</Badge>
         </div>
-        <span className="text-sm font-semibold">
-          {sectionTotal > 0 ? `${sectionTotal.toFixed(2)} €` : '–'}
-        </span>
       </button>
       {open && (
         <div className="px-3 py-1">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-1 py-1 text-[10px] text-muted-foreground border-b">
+          <div className="grid grid-cols-10 gap-1 py-1 text-[10px] text-muted-foreground border-b">
             <div className="col-span-1 text-right">Pos.</div>
             <div className="col-span-6">Bezeichnung</div>
             <div className="col-span-1 text-center">Einh.</div>
-            <div className="col-span-1 text-right">Menge</div>
-            <div className="col-span-1 text-right">EP €</div>
-            <div className="col-span-2 text-right">GP €</div>
+            <div className="col-span-2 text-right">Menge</div>
           </div>
           {items.map((item, i) => (
             <MaterialItemRow key={item.id} item={item} index={i} />
@@ -184,7 +153,7 @@ export const MaterialListPanel: React.FC<MaterialListPanelProps> = ({
 
   const downloadCSV = () => {
     if (!materialList) return;
-    const lines = ['Pos;Kategorie;Bezeichnung;Hersteller;Artikelnummer;Einheit;Menge;EP netto;GP netto;Hinweise'];
+    const lines = ['Pos;Kategorie;Bezeichnung;Hersteller;Artikelnummer;Einheit;Menge;Hinweise'];
     let pos = 1;
     materialList.sections.forEach(section => {
       section.items.forEach(item => {
@@ -196,16 +165,10 @@ export const MaterialListPanel: React.FC<MaterialListPanelProps> = ({
           item.articleNumber || '',
           item.unit,
           item.quantity,
-          item.pricePerUnit?.toFixed(2) || '',
-          item.totalPrice?.toFixed(2) || '',
           `"${item.notes || ''}"`,
         ].join(';'));
       });
     });
-    lines.push('');
-    lines.push(`;;Gesamt netto;;;;;;;${materialList.totalNetPrice.toFixed(2)};`);
-    lines.push(`;;MwSt. 19%;;;;;;;${(materialList.totalGrossPrice - materialList.totalNetPrice).toFixed(2)};`);
-    lines.push(`;;Gesamt brutto;;;;;;;${materialList.totalGrossPrice.toFixed(2)};`);
 
     const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -235,15 +198,14 @@ export const MaterialListPanel: React.FC<MaterialListPanelProps> = ({
                   key={rt}
                   onClick={() => {
                     onRoofTypeChange(rt);
-                    // Erstes System des neuen Dachtyps vorauswählen
                     const firstSystem = rt === 'pitched' ? PITCHED_SYSTEMS[0].value :
                                         rt === 'flat' ? FLAT_SYSTEMS[0].value : GREEN_SYSTEMS[0].value;
                     onMountingSystemChange(firstSystem);
                   }}
                   className={`py-1.5 px-2 rounded text-xs border transition-colors ${
                     roofType === rt
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-400'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:border-primary/50'
                   }`}
                 >
                   {rt === 'pitched' ? 'Steildach' : rt === 'flat' ? 'Flachdach' : 'Gründach'}
@@ -329,29 +291,9 @@ export const MaterialListPanel: React.FC<MaterialListPanelProps> = ({
             </div>
           </ScrollArea>
 
-          <Separator />
-
-          {/* Gesamtpreise */}
-          <Card className="bg-muted/30">
-            <CardContent className="pt-3 pb-3 space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Gesamt netto:</span>
-                <span className="font-semibold">{materialList.totalNetPrice.toFixed(2)} €</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">MwSt. 19%:</span>
-                <span>{(materialList.totalGrossPrice - materialList.totalNetPrice).toFixed(2)} €</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-sm font-bold">
-                <span>Gesamt brutto:</span>
-                <span>{materialList.totalGrossPrice.toFixed(2)} €</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Richtwerte (Materialpreise netto, ohne Montage). Aktuelle Preise beim Lieferanten erfragen.
-              </p>
-            </CardContent>
-          </Card>
+          <p className="text-[10px] text-muted-foreground mt-2 italic">
+            Hinweis: Materialliste dient als Orientierung. Mengen und Kompatibilität durch Fachbetrieb prüfen lassen.
+          </p>
         </div>
       ) : (
         <div className="text-center py-6 text-muted-foreground text-sm">

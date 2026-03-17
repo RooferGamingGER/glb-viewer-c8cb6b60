@@ -9,12 +9,7 @@ import {
 } from './exportUtils';
 import { renderSolarLayout2D } from './renderPolygon2D';
 import { PVModuleInfo } from '@/types/measurements';
-import { StringPlan, CompleteMaterialList } from '@/types/pvPlanning';
-import {
-  createStringPlanPage,
-  createMaterialListPage,
-  createPVLayoutPageWithStrings,
-} from './pvPdfExtensions';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 
 const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'];
 
@@ -1065,9 +1060,103 @@ const createNotesPage = (notes: string): HTMLElement => {
 };
 
 /**
+ * Creates an inline material list page for PDF export (no prices)
+ */
+const createMaterialListPageInline = (materialList: CompleteMaterialList): HTMLElement => {
+  const container = document.createElement('div');
+  container.className = 'page-break';
+  container.style.pageBreakBefore = 'always';
+  container.style.pageBreakAfter = 'always';
+  container.style.padding = '20px';
+
+  const title = document.createElement('h2');
+  title.textContent = 'Materialliste PV-Anlage';
+  title.style.marginBottom = '10px';
+  title.style.color = '#333';
+  container.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  const roofLabels: Record<string, string> = { pitched: 'Steildach', flat: 'Flachdach', green: 'Gründach' };
+  subtitle.textContent = `Dachtyp: ${roofLabels[materialList.roofType] || materialList.roofType} · Montagesystem: ${materialList.mountingSystem}`;
+  subtitle.style.color = '#666';
+  subtitle.style.marginBottom = '20px';
+  subtitle.style.fontSize = '12px';
+  container.appendChild(subtitle);
+
+  materialList.sections.forEach(section => {
+    if (section.items.length === 0) return;
+
+    const sectionTitle = document.createElement('h3');
+    sectionTitle.textContent = section.title;
+    sectionTitle.style.marginTop = '15px';
+    sectionTitle.style.marginBottom = '8px';
+    sectionTitle.style.color = '#2563eb';
+    sectionTitle.style.fontSize = '13px';
+    container.appendChild(sectionTitle);
+
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.fontSize = '11px';
+    table.style.marginBottom = '10px';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Pos', 'Bezeichnung', 'Hersteller', 'Einheit', 'Menge', 'Hinweise'].forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col;
+      th.style.borderBottom = '2px solid #e9ecef';
+      th.style.padding = '4px 6px';
+      th.style.textAlign = col === 'Menge' ? 'right' : 'left';
+      th.style.fontSize = '10px';
+      th.style.color = '#666';
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    section.items.forEach((item, i) => {
+      const row = document.createElement('tr');
+      row.style.borderBottom = '1px solid #f0f0f0';
+
+      const cells = [
+        String(i + 1),
+        item.description,
+        item.manufacturer || '–',
+        item.unit,
+        String(item.quantity),
+        item.notes || '',
+      ];
+      cells.forEach((text, ci) => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        td.style.padding = '4px 6px';
+        if (ci === 4) td.style.textAlign = 'right';
+        if (ci === 5) { td.style.fontSize = '9px'; td.style.color = '#888'; }
+        row.appendChild(td);
+      });
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  });
+
+  const disclaimer = document.createElement('p');
+  disclaimer.textContent = 'Hinweis: Diese Materialliste dient als Orientierung und kann Fehler enthalten. Mengen und Kompatibilität müssen durch einen Fachbetrieb geprüft werden.';
+  disclaimer.style.marginTop = '20px';
+  disclaimer.style.fontSize = '9px';
+  disclaimer.style.color = '#999';
+  disclaimer.style.fontStyle = 'italic';
+  container.appendChild(disclaimer);
+
+  return container;
+};
+
+/**
  * Export measurements to PDF with cover page
  */
-export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save', stringPlan?: StringPlan, materialList?: CompleteMaterialList): Promise<boolean | Blob> => {
+export const exportMeasurementsToPdf = async (measurements: Measurement[], coverData: CoverPageData, outputMode: 'save' | 'blob' = 'save', materialList?: CompleteMaterialList): Promise<boolean | Blob> => {
   try {
     const sortedMeasurements = measurements.sort((a, b) => {
       const typeOrder: Record<string, number> = {
@@ -2233,18 +2322,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
       if (m.pvModuleInfo) pvInfoMap.set(m.id, m.pvModuleInfo);
     });
 
-    if (stringPlan && pvInfoMap.size > 0) {
-      const pvLayoutPage = createPVLayoutPageWithStrings(pvInfoMap, sortedMeasurements, stringPlan);
-      container.appendChild(pvLayoutPage);
-      const stringPlanPage = createStringPlanPage(stringPlan, pvInfoMap, sortedMeasurements);
-      container.appendChild(stringPlanPage);
-    }
-
     if (materialList) {
-      const materialPage = createMaterialListPage(materialList, {
-        projectNumber: coverData?.projectNumber,
-        address: coverData?.projectAddress,
-      });
+      const materialPage = createMaterialListPageInline(materialList);
       container.appendChild(materialPage);
     }
 

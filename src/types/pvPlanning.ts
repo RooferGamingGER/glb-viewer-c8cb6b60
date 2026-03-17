@@ -140,103 +140,17 @@ export const INVERTER_DATABASE: InverterSpec[] = [
 ];
 
 // ============================================================================
-// STRINGPLANUNG
-// ============================================================================
-
-export interface StringPlanModule {
-  moduleIndex: number;         // Index im pvInfo.modulePositions
-  row: number;                 // Zeile im Modulraster
-  col: number;                 // Spalte im Modulraster
-  roofFaceId: string;          // Welche Dachfläche (Measurement-ID)
-}
-
-export interface PVString {
-  id: string;                  // "S1", "S2", ...
-  mpptTracker: number;         // Welchem MPPT-Tracker zugeordnet (1-basiert)
-  modules: StringPlanModule[]; // Module in diesem String
-  moduleCount: number;
-  uocTotal: number;            // V Summe Leerlaufspannung bei -10°C
-  umppTotal: number;           // V Summe MPP-Spannung bei 70°C
-  impp: number;                // A MPP-Strom (gleich Modulstrom)
-  isc: number;                 // A Kurzschlussstrom
-  color: string;               // Farbe für Visualisierung
-  valid: boolean;              // true wenn Spannungsgrenzen eingehalten
-  warning?: string;            // Warnhinweis
-  roofFaceIds: string[];       // Dachflächen (können mehrere sein)
-  azimuth?: number;            // Azimuth der Hauptfläche
-  inclination?: number;        // Neigung der Hauptfläche
-}
-
-export interface MPPTTracker {
-  trackerId: number;           // 1-basiert
-  strings: PVString[];
-  totalModules: number;
-  uocMax: number;              // V max. Leerlaufspannung (kältester String)
-  umppRange: { min: number; max: number };
-  totalPower: number;          // kWp
-  currentBalance: number;      // Prozent Strombalance zwischen Strings (ideal: 100%)
-}
-
-export interface StringPlan {
-  inverter: InverterSpec;
-  inverterCount: number;
-  mpptTrackers: MPPTTracker[];
-  allStrings: PVString[];
-  totalModules: number;
-  totalPower: number;           // kWp
-  dcVoltageOk: boolean;
-  mppRangeOk: boolean;
-  currentOk: boolean;
-  warnings: string[];
-  errors: string[];
-  // Kabelplanung
-  stringCableLengthPerString: number; // m durchschnittlich
-  mainDCCableLength: number;     // m
-  acCableLength: number;         // m
-  totalCableLength: number;      // m
-  // Sicherheitstechnik
-  dcDisconnectRequired: boolean;
-  surgeProtectionRequired: boolean;
-  afciRequired: boolean;         // Lichtbogenfehlerschutz
-}
-
-// ============================================================================
-// ELEKTRISCHE MODULPARAMETER
-// ============================================================================
-
-export interface ModuleElectricalSpec {
-  voc: number;           // V Leerlaufspannung (STC)
-  vmpp: number;          // V MPP-Spannung (STC)
-  isc: number;           // A Kurzschlussstrom (STC)
-  impp: number;          // A MPP-Strom (STC)
-  tempCoeffVoc: number;  // %/°C Temperaturkoeffizient Spannung (typisch -0.29%)
-  tempCoeffPmax: number; // %/°C Temperaturkoeffizient Leistung (typisch -0.35%)
-}
-
-// Standard-Modulparameter (für 420W Modul)
-export const DEFAULT_MODULE_ELECTRICAL: ModuleElectricalSpec = {
-  voc: 41.5,
-  vmpp: 34.5,
-  isc: 12.8,
-  impp: 12.1,
-  tempCoeffVoc: -0.29,
-  tempCoeffPmax: -0.35,
-};
-
-// ============================================================================
 // DACHART-SPEZIFISCHE MATERIALLISTEN
 // ============================================================================
 
 export interface MaterialItem {
   id: string;
   category: 'module' | 'mounting' | 'electrical' | 'roofing' | 'safety' | 'misc';
-  manufacturer?: string;      // Hersteller (z.B. "Braas", "Bauder")
-  articleNumber?: string;     // Artikelnummer
-  description: string;        // Bezeichnung
-  unit: string;               // Einheit (Stk., m, m², kg)
+  manufacturer?: string;
+  articleNumber?: string;
+  description: string;
+  unit: string;
   quantity: number;
-  pricePerUnit?: number;      // EUR netto
-  totalPrice?: number;        // EUR netto
   notes?: string;
 }
 
@@ -669,22 +583,23 @@ export const getGreenRoofMaterials = (
   return items;
 };
 
-// Gemeinsame Elektromateria lien (alle Dachtypen)
+// Gemeinsame Elektromaterialien (alle Dachtypen)
 export const getElectricalMaterials = (
-  stringPlan: StringPlan,
-  inverterSpec: InverterSpec
+  totalModules: number,
+  inverterSpec: InverterSpec,
+  inverterDistance: number = 15
 ): MaterialItem[] => {
   const items: MaterialItem[] = [];
-  const totalStrings = stringPlan.allStrings.length;
+  const estimatedStrings = Math.ceil(totalModules / (Math.floor(inverterSpec.maxDCVoltage / 41.5) || 10));
+  const dcCableLength = totalModules * 1.5 + inverterDistance * estimatedStrings;
+  const acCableLength = inverterDistance + 5;
 
-  // DC-Kabel
   items.push({
     id: 'dc_cable_4mm',
     category: 'electrical',
     description: 'PV-Kabel 6mm² (schwarz/rot) H1Z2Z2-K',
     unit: 'm',
-    quantity: Math.ceil(stringPlan.totalCableLength * 1.1), // 10% Reserve
-    pricePerUnit: 1.20,
+    quantity: Math.ceil(dcCableLength * 1.1),
     notes: 'Geprüft nach EN 50618'
   });
   items.push({
@@ -692,25 +607,14 @@ export const getElectricalMaterials = (
     category: 'electrical',
     description: 'MC4-Steckverbinder Pärchen (IP67)',
     unit: 'Paar',
-    quantity: Math.ceil(stringPlan.totalModules / 2) + totalStrings * 4,
-    pricePerUnit: 2.80
-  });
-  items.push({
-    id: 'string_combiner',
-    category: 'electrical',
-    description: `DC-Stringverteiler ${totalStrings}-fach mit Sicherungen`,
-    unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: 45.00,
-    notes: 'Bei mehr als 2 Strings je MPPT'
+    quantity: Math.ceil(totalModules / 2) + estimatedStrings * 4,
   });
   items.push({
     id: 'dc_disconnect',
     category: 'electrical',
     description: 'DC-Trennschalter 1000V / 32A (je Wechselrichter)',
     unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: 38.00,
+    quantity: 1,
     notes: 'Vorgeschrieben nach VDE 0100-712'
   });
 
@@ -721,8 +625,7 @@ export const getElectricalMaterials = (
     manufacturer: inverterSpec.manufacturer,
     description: `Wechselrichter ${inverterSpec.manufacturer} ${inverterSpec.model} (${inverterSpec.nominalPowerAC} kW, ${inverterSpec.phases}-phasig)`,
     unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: inverterSpec.nominalPowerAC <= 5 ? 650 : inverterSpec.nominalPowerAC <= 10 ? 950 : 1400,
+    quantity: 1,
     notes: `${inverterSpec.mpptCount} MPPT-Tracker, η=${inverterSpec.efficiency}%`
   });
 
@@ -732,38 +635,32 @@ export const getElectricalMaterials = (
     category: 'electrical',
     description: inverterSpec.phases === 1 ? 'NYM-J 3x6mm² (AC-Kabel einphasig)' : 'NYM-J 5x6mm² (AC-Kabel dreiphasig)',
     unit: 'm',
-    quantity: Math.ceil(stringPlan.acCableLength * 1.1),
-    pricePerUnit: inverterSpec.phases === 1 ? 2.20 : 3.50
+    quantity: Math.ceil(acCableLength * 1.1),
   });
   items.push({
     id: 'ac_protection',
     category: 'electrical',
     description: 'AC-Schutzeinrichtung LS-Schalter + FI (AC-seitig)',
     unit: 'Stk.',
-    quantity: stringPlan.inverterCount,
-    pricePerUnit: 55.00
+    quantity: 1,
   });
 
   // Überspannungsschutz
-  if (stringPlan.surgeProtectionRequired) {
-    items.push({
-      id: 'surge_dc',
-      category: 'electrical',
-      description: 'DC-Überspannungsschutz Typ 2 (1000V)',
-      unit: 'Stk.',
-      quantity: stringPlan.inverterCount,
-      pricePerUnit: 85.00,
-      notes: 'Empfohlen nach IEC 61643-32'
-    });
-    items.push({
-      id: 'surge_ac',
-      category: 'electrical',
-      description: 'AC-Überspannungsschutz Typ 2',
-      unit: 'Stk.',
-      quantity: 1,
-      pricePerUnit: 65.00
-    });
-  }
+  items.push({
+    id: 'surge_dc',
+    category: 'electrical',
+    description: 'DC-Überspannungsschutz Typ 2 (1000V)',
+    unit: 'Stk.',
+    quantity: 1,
+    notes: 'Empfohlen nach IEC 61643-32'
+  });
+  items.push({
+    id: 'surge_ac',
+    category: 'electrical',
+    description: 'AC-Überspannungsschutz Typ 2',
+    unit: 'Stk.',
+    quantity: 1,
+  });
 
   // Einspeisezähler
   items.push({
@@ -772,7 +669,6 @@ export const getElectricalMaterials = (
     description: 'Bidirektionaler Smart Meter (Eigenverbrauchsoptimierung)',
     unit: 'Stk.',
     quantity: 1,
-    pricePerUnit: 120.00,
     notes: 'Pflicht für EEG-Einspeisung'
   });
 
@@ -783,7 +679,6 @@ export const getElectricalMaterials = (
     description: 'Monitoring-System / Datenlogger (inkl. 12 Monate Cloud)',
     unit: 'Stk.',
     quantity: 1,
-    pricePerUnit: 150.00
   });
 
   // Kabelkanal
@@ -792,8 +687,7 @@ export const getElectricalMaterials = (
     category: 'mounting',
     description: 'Kabelkanal / Kabelschutz (Dach und Innen)',
     unit: 'm',
-    quantity: Math.ceil(stringPlan.totalCableLength * 0.5),
-    pricePerUnit: 3.50
+    quantity: Math.ceil(dcCableLength * 0.5),
   });
 
   return items;
@@ -810,8 +704,6 @@ export interface CompleteMaterialList {
     title: string;
     items: MaterialItem[];
   }[];
-  totalNetPrice: number;
-  totalGrossPrice: number; // 19% MwSt.
   moduleItems: MaterialItem[];
   mountingItems: MaterialItem[];
   electricalItems: MaterialItem[];
@@ -830,17 +722,6 @@ export const buildCompleteMaterialList = (
   safetyItems: MaterialItem[] = [],
   miscItems: MaterialItem[] = []
 ): CompleteMaterialList => {
-  const allItems = [...moduleItems, ...mountingItems, ...electricalItems, ...roofingItems, ...safetyItems, ...miscItems];
-  
-  // Berechne Gesamtpreise
-  allItems.forEach(item => {
-    if (item.pricePerUnit !== undefined) {
-      item.totalPrice = Math.round(item.pricePerUnit * item.quantity * 100) / 100;
-    }
-  });
-
-  const totalNetPrice = allItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-
   return {
     roofType,
     mountingSystem,
@@ -852,8 +733,6 @@ export const buildCompleteMaterialList = (
       { title: 'Sicherheitstechnik', items: safetyItems },
       { title: 'Sonstiges / Kleinmaterial', items: miscItems },
     ].filter(s => s.items.length > 0),
-    totalNetPrice: Math.round(totalNetPrice * 100) / 100,
-    totalGrossPrice: Math.round(totalNetPrice * 1.19 * 100) / 100,
     moduleItems,
     mountingItems,
     electricalItems,
