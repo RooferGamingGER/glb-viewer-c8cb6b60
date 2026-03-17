@@ -8,8 +8,8 @@ export interface ServerSession {
 }
 
 export const SERVERS = [
-  { url: "https://drohnenvermessung-server.de", label: "Server 1" },
-  { url: "https://drohnenvermessung-digitab.de", label: "Server 2" },
+  { url: "https://drohnenvermessung-server.de", label: "Kunde Drohnenvermessung by RooferGaming" },
+  { url: "https://drohnenvermessung-digitab.de", label: "Kunde Drohnenvermessung Digitab" },
 ] as const;
 
 interface AuthContextType {
