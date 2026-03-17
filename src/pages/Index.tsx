@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // --- Constants & Data ---
+import { SERVERS } from "@/lib/auth-context";
+
 const DEMO_MODEL_URL = "/models/test-model.glb";
 
 interface FeatureItem {
