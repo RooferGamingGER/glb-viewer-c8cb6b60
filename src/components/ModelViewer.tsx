@@ -58,7 +58,7 @@ class R3FErrorBoundary extends React.Component<
   }
 }
 
-type ModelViewerProps = {
+export type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
   rotateModel?: boolean;

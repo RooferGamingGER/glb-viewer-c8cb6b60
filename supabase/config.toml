@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.pv-materials]
 verify_jwt = false
+
+[functions.share-view]
+verify_jwt = false

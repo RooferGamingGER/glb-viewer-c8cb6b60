@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer, { ThreeContext } from '@/components/ModelViewer';
-import { useRequiredURLParam, useURLParam } from '@/hooks/useURLState';
+import { useURLParam } from '@/hooks/useURLState';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, X, HelpCircle, AlertTriangle } from 'lucide-react';
@@ -9,6 +9,9 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { checkWebGLCompatibility } from '@/hooks/useThreeContext';
+import ShareDialog from '@/components/measurement/ShareDialog';
+import { getShareInfo, getModelProxyUrl, type CreateShareParams } from '@/utils/shareView';
+import { useMeasurementContext } from '@/contexts/MeasurementContext';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -61,12 +64,25 @@ const Viewer = () => {
   const [showWebGLWarning, setShowWebGLWarning] = useState(false);
   const [webGLInfo, setWebGLInfo] = useState<ReturnType<typeof checkWebGLCompatibility> | null>(null);
   
-  // Get the file URL and name from the URL parameters
-  const fileUrl = useRequiredURLParam('fileUrl', '/', 'Keine Datei ausgewählt');
-  const fileName = useRequiredURLParam('fileName', '/', 'Unbekannte Datei');
+  // Share mode state
+  const shareToken = useURLParam('share');
+  const isShareMode = !!shareToken;
+  const [shareFileUrl, setShareFileUrl] = useState<string | null>(null);
+  const [shareFileName, setShareFileName] = useState<string | null>(null);
+  const [shareMeasurements, setShareMeasurements] = useState<unknown[] | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  
+  // Get the file URL and name from the URL parameters (only when not in share mode)
+  const fileUrlParam = useURLParam('fileUrl');
+  const fileNameParam = useURLParam('fileName');
   // Check rotateModel parameter
   const rotateModelParam = useURLParam('rotateModel');
   const rotateModel = rotateModelParam !== 'false'; // true, unless explicitly "false"
+  
+  // Determine effective file URL and name
+  const fileUrl = isShareMode ? (shareFileUrl || '') : (fileUrlParam || '');
+  const fileName = isShareMode ? (shareFileName || 'Geteiltes Modell') : (fileNameParam || 'Unbekannte Datei');
   
   // Check WebGL compatibility on component mount (no automatic prompts)
   useEffect(() => {
@@ -74,7 +90,56 @@ const Viewer = () => {
     setWebGLInfo(compatibility);
   }, []);
 
+  // Load share data when in share mode
   useEffect(() => {
+    if (!isShareMode || !shareToken) return;
+    
+    setShareLoading(true);
+    setShareError(null);
+    
+    getShareInfo(shareToken)
+      .then((info) => {
+        setShareFileName(info.file_name);
+        setShareMeasurements(info.measurements as unknown[]);
+        setShareFileUrl(getModelProxyUrl(shareToken));
+      })
+      .catch((err) => {
+        setShareError(err.message);
+        toast.error(`Share-Link ungültig: ${err.message}`);
+      })
+      .finally(() => setShareLoading(false));
+  }, [isShareMode, shareToken]);
+
+  // Import shared measurements into context when loaded
+  const { measurements, importMeasurements } = useMeasurementContext();
+  
+  useEffect(() => {
+    if (isShareMode && shareMeasurements && shareMeasurements.length > 0 && fileUrl) {
+      // Small delay to ensure ModelViewer is mounted
+      const timer = setTimeout(() => {
+        importMeasurements(shareMeasurements as any[], false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isShareMode, shareMeasurements, fileUrl, importMeasurements]);
+
+  // Expose current measurements on window for ShareDialog
+  useEffect(() => {
+    (window as any).__currentMeasurements = measurements;
+    return () => { delete (window as any).__currentMeasurements; };
+  }, [measurements]);
+
+  useEffect(() => {
+    // In share mode, skip URL validation
+    if (isShareMode) return;
+    
+    // Redirect if no file URL in normal mode
+    if (!fileUrlParam) {
+      toast.error('Keine Datei ausgewählt');
+      navigate('/');
+      return;
+    }
+    
     // Validate URL: allow blob:, https:, and relative paths. Allow http: only on http origin (dev).
     const isString = typeof fileUrl === 'string';
     let isValid = false;
@@ -156,6 +221,32 @@ const Viewer = () => {
     setShowWebGLWarning(false);
   };
 
+  // Build share params callback for ShareDialog
+  const getShareParams = useCallback((): CreateShareParams | null => {
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('projectId');
+    const taskId = params.get('taskId');
+    const token = sessionStorage.getItem('webodm_token');
+    const server = sessionStorage.getItem('webodm_active_server');
+    
+    if (!projectId || !taskId || !token || !server) return null;
+    
+    // Access measurements from context isn't ideal here, so we pass a ref
+    return {
+      webodm_server_url: server,
+      webodm_token: token,
+      project_id: parseInt(projectId, 10),
+      task_id: taskId,
+      file_name: fileName,
+      measurements: (window as any).__currentMeasurements || [],
+      created_by: sessionStorage.getItem('webodm_username') || 'unknown',
+    };
+  }, [fileName]);
+
+  // Determine if share button should be visible
+  const params = new URLSearchParams(window.location.search);
+  const canShare = !isShareMode && !!params.get('projectId') && !!params.get('taskId');
+
   return (
     <div className="h-screen w-full flex flex-col bg-gradient-to-b from-background to-background overflow-hidden">
       
@@ -167,18 +258,20 @@ const Viewer = () => {
             size="sm" 
             className="glass-button"
             onClick={() => {
-              // Ensure we cleanup the blob URL when navigating away
               if (fileUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(fileUrl);
               }
-              // Navigate back to task detail if coming from WebODM, otherwise home
-              const params = new URLSearchParams(window.location.search);
-              const projectId = params.get('projectId');
-              const taskId = params.get('taskId');
-              if (projectId && taskId) {
-                navigate('/server-projects', { state: { returnToTask: { projectId, taskId } } });
-              } else {
+              if (isShareMode) {
                 navigate('/');
+              } else {
+                const p = new URLSearchParams(window.location.search);
+                const pid = p.get('projectId');
+                const tid = p.get('taskId');
+                if (pid && tid) {
+                  navigate('/server-projects', { state: { returnToTask: { projectId: pid, taskId: tid } } });
+                } else {
+                  navigate('/');
+                }
               }
             }}
           >
@@ -186,30 +279,40 @@ const Viewer = () => {
             Zurück
           </Button>
           
-          <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
+          <h1 className="text-lg font-medium ml-4">
+            {isShareMode ? `${fileName} (geteilte Ansicht)` : '3D-Viewer'}
+          </h1>
         </div>
         
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            size="sm"
-            className="glass-button"
-            onClick={handleOpenTutorial}
-          >
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Tutorial
-          </Button>
+          {canShare && (
+            <ShareDialog getShareParams={getShareParams} />
+          )}
+          
+          {!isShareMode && (
+            <>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="glass-button"
+                onClick={handleOpenTutorial}
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Tutorial
+              </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="glass-button"
-            onClick={() => setShowWebGLWarning(true)}
-            title="Information zur 3D-Darstellung"
-          >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            3D-Info
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="glass-button"
+                onClick={() => setShowWebGLWarning(true)}
+                title="Information zur 3D-Darstellung"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                3D-Info
+              </Button>
+            </>
+          )}
 
           {isFullscreen && (
             <Button
@@ -228,7 +331,25 @@ const Viewer = () => {
       <div className="flex-1 relative flex overflow-hidden">
         <SidebarProvider defaultOpen={true} open={true}>
           <main className="flex-1 relative w-full h-full">
-            {fileUrl && (
+            {shareLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
+                <div className="text-center space-y-3">
+                  <Progress value={30} className="w-48" />
+                  <p className="text-sm text-muted-foreground">Geteiltes Modell wird geladen…</p>
+                </div>
+              </div>
+            )}
+            {shareError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background z-20">
+                <div className="text-center space-y-3">
+                  <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
+                  <p className="text-lg font-medium">Share-Link ungültig</p>
+                  <p className="text-sm text-muted-foreground">{shareError}</p>
+                  <Button onClick={() => navigate('/')}>Zur Startseite</Button>
+                </div>
+              </div>
+            )}
+            {fileUrl && !shareError && (
               <ModelViewer 
                 fileUrl={fileUrl} 
                 fileName={fileName} 

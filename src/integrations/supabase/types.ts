@@ -121,6 +121,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_views: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          file_name: string
+          id: string
+          measurements: Json
+          project_id: number
+          share_token: string
+          task_id: string
+          webodm_server_url: string
+          webodm_token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          file_name: string
+          id?: string
+          measurements?: Json
+          project_id: number
+          share_token: string
+          task_id: string
+          webodm_server_url: string
+          webodm_token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          file_name?: string
+          id?: string
+          measurements?: Json
+          project_id?: number
+          share_token?: string
+          task_id?: string
+          webodm_server_url?: string
+          webodm_token?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
