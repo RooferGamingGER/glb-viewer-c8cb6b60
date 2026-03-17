@@ -46,6 +46,8 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
   const [topDownScreenshot, setTopDownScreenshot] = useState<string | null>(null);
   const [optimizedRoofPlanDimensions, setOptimizedRoofPlanDimensions] = useState<{width: number, height: number}>({width: 0, height: 0});
   const [pdfOpenMode, setPdfOpenMode] = useState<'open' | 'download'>('open');
+  const [includeStringPlan, setIncludeStringPlan] = useState(true);
+  const [includeMaterialList, setIncludeMaterialList] = useState(true);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
   const {
     scene,
