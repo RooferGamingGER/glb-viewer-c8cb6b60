@@ -335,8 +335,6 @@ const Viewer = () => {
                 fileUrl={fileUrl} 
                 fileName={fileName} 
                 rotateModel={rotateModel}
-                readOnly={isShareMode}
-                initialMeasurements={isShareMode ? shareMeasurements : undefined}
               />
             )}
           </main>
