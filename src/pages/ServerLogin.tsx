@@ -11,7 +11,7 @@ import { toast } from "sonner";
 const ServerLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { addSession, setActiveServer, isAuthenticated } = useWebODMAuth();
+  const { replaceSessions, setActiveServer } = useWebODMAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,25 +22,28 @@ const ServerLogin = () => {
     return SERVERS[idx] || SERVERS[0];
   }, [searchParams]);
 
-  // Redirect if already authenticated
-  React.useEffect(() => {
-    if (isAuthenticated) navigate("/server-projects", { replace: true });
-  }, [isAuthenticated, navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) return;
 
     setLoading(true);
     try {
-      const token = await authenticate(username.trim(), password, targetServer.url);
+      const timeoutMs = 12000;
+      const token = await Promise.race([
+        authenticate(username.trim(), password, targetServer.url),
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error("Login-Timeout. Bitte erneut versuchen.")), timeoutMs)
+        ),
+      ]);
 
-      addSession({
-        server: targetServer.url,
-        token,
-        username: username.trim(),
-        label: targetServer.label,
-      });
+      replaceSessions([
+        {
+          server: targetServer.url,
+          token,
+          username: username.trim(),
+          label: targetServer.label,
+        },
+      ]);
       setActiveServer(targetServer.url);
 
       toast.success(`Angemeldet bei ${targetServer.label}`);
