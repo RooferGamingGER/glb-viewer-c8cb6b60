@@ -66,7 +66,6 @@ export const SolarPlanningExtension: React.FC<SolarPlanningExtensionProps> = ({
 }) => {
   const { username } = useWebODMAuth();
   const totalKWp = calcTotalKWp(pvInfoMap);
-  const totalKWp = calcTotalKWp(pvInfoMap);
   const moduleSpec = getFirstModuleSpec(pvInfoMap);
 
   // Wechselrichter
