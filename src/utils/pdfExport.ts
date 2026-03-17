@@ -19,30 +19,60 @@ const STRING_COLORS_PDF = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed'
  */
 export const calculateStringAssignments = (pvInfo: PVModuleInfo): Record<number, { stringId: string; color: string }> => {
   const assignments: Record<number, { stringId: string; color: string }> = {};
-  const elec = pvInfo.pvMaterials?.electricalSystem;
-  if (!elec || elec.stringCount === 0) return assignments;
-  
+
   const removedSet = new Set(pvInfo.removedModuleIndices || []);
-  const totalModules = pvInfo.moduleCorners?.length || pvInfo.moduleCount || 0;
+  const totalSlots = pvInfo.moduleCorners?.length || pvInfo.modulePositions?.length || pvInfo.moduleCount || 0;
+
   const activeIndices: number[] = [];
-  for (let i = 0; i < totalModules; i++) {
+  for (let i = 0; i < totalSlots; i++) {
     if (!removedSet.has(i)) activeIndices.push(i);
   }
-  
-  const modulesPerStr = elec.modulesPerString;
-  const numStrings = elec.stringCount;
-  
-  for (let s = 0; s < numStrings; s++) {
-    const startIdx = s * modulesPerStr;
-    const endIdx = Math.min(startIdx + modulesPerStr, activeIndices.length);
-    const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
-    const stringId = `String S${s + 1}`;
-    
-    for (let m = startIdx; m < endIdx; m++) {
-      assignments[activeIndices[m]] = { stringId, color };
+  if (activeIndices.length === 0) return assignments;
+
+  let modulesPerString: number;
+  let numStrings: number;
+
+  const elec = pvInfo.pvMaterials?.electricalSystem;
+
+  if (elec && elec.stringCount > 0 && elec.modulesPerString > 0) {
+    // Configured inverter available
+    modulesPerString = elec.modulesPerString;
+    numStrings = elec.stringCount;
+  } else {
+    // Fallback: calculate strings independently
+    const voc = (pvInfo.pvModuleSpec as any)?.voc ?? 41.8;
+    const maxByVoltage = Math.floor(1000 / voc);
+    modulesPerString = Math.min(maxByVoltage, 20);
+    modulesPerString = Math.max(modulesPerString, 4);
+    numStrings = Math.ceil(activeIndices.length / modulesPerString);
+
+    if (numStrings > 1) {
+      const evenMps = Math.round(activeIndices.length / numStrings);
+      modulesPerString = Math.max(evenMps, 4);
+      numStrings = Math.ceil(activeIndices.length / modulesPerString);
     }
   }
-  
+
+  // Sort by column for electrically sensible strings
+  const columns = pvInfo.columns || pvInfo.rows || Math.ceil(Math.sqrt(activeIndices.length));
+  const sortedActive = [...activeIndices].sort((a, b) => {
+    const colA = a % columns;
+    const colB = b % columns;
+    if (colA !== colB) return colA - colB;
+    return a - b;
+  });
+
+  for (let s = 0; s < numStrings; s++) {
+    const startIdx = s * modulesPerString;
+    const endIdx = Math.min(startIdx + modulesPerString, sortedActive.length);
+    const color = STRING_COLORS_PDF[s % STRING_COLORS_PDF.length];
+    const stringId = `String S${s + 1}`;
+
+    for (let m = startIdx; m < endIdx; m++) {
+      assignments[sortedActive[m]] = { stringId, color };
+    }
+  }
+
   return assignments;
 };
 
