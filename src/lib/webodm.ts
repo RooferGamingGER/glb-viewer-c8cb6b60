@@ -175,7 +175,23 @@ export async function authenticate(username: string, password: string, server?: 
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || `Anmeldung fehlgeschlagen (${res.status})`);
+    // Parse nested error detail for cleaner message
+    let message = `Anmeldung fehlgeschlagen (${res.status})`;
+    if (data.detail) {
+      try {
+        const parsed = JSON.parse(data.detail);
+        if (parsed.non_field_errors?.length) {
+          message = parsed.non_field_errors[0];
+        } else {
+          message = data.detail;
+        }
+      } catch {
+        message = data.detail;
+      }
+    }
+    const err = new Error(message);
+    (err as any).statusCode = res.status;
+    throw err;
   }
 
   const data = await res.json();
