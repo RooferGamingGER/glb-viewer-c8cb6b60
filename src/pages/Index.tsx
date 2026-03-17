@@ -55,6 +55,14 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "18.03.2026",
+    text: "Stringplanung hinzugefügt, weitere Wechselrichter und Materialien hinterlegt. Projekt Thumbnails implementiert. ",
+  },
+  {
+    date: "18.03.2026",
+    text: "Projekte können mit Mitarbeitern und Kunden geteilt werden. Massen und PV-Planung wird direkt mit angezeigt, wenn das Modell vermessen wurde. Links sind 30 Tage gültig.",
+  },
+  {
     date: "17.03.2026",
     text: "Sonnensimulation korrigiert: Schattenrichtung wurde physikalisch korrigiert – Schatten fallen jetzt realistisch in die richtige Himmelsrichtung und passen sich dynamisch an die Sonnenhöhe an",
   },
@@ -264,11 +272,27 @@ const Index = () => {
           <div className="text-center mb-5">
             <h2 className="text-lg md:text-xl font-bold">Anmelden & loslegen</h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              DrohnenGLB ist exklusiv für Kunden von<br />
-              <a href="https://drohnenvermessung-roofergaming.de/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Drohnenvermessung by RooferGaming®</a>
+              DrohnenGLB ist exklusiv für Kunden von
+              <br />
+              <a
+                href="https://drohnenvermessung-roofergaming.de/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                Drohnenvermessung by RooferGaming®
+              </a>
               {" & "}
-              <a href="https://digi-tab.de/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Drohnenvermessung by DigiTab</a>
-              <br />verfügbar.
+              <a
+                href="https://digi-tab.de/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                Drohnenvermessung by DigiTab
+              </a>
+              <br />
+              verfügbar.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
