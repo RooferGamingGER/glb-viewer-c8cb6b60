@@ -67,7 +67,8 @@ const MeasurementToolsContent: React.FC<MeasurementToolsProps> = ({
   enabled,
   scene,
   camera,
-  autoOpenSidebar = false
+  autoOpenSidebar = false,
+  sunSimulation
 }) => {
   const isMobile = useIsMobile();
   const { isTablet, isLandscape } = useScreenOrientation();
