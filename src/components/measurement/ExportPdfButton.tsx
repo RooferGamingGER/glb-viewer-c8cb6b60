@@ -278,6 +278,35 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
         }
         setExportProgress(50 + Math.floor(i / solarMeasurements.length * 10));
       }
+
+      // Pre-render solar layouts for all measurements with pvModuleInfo
+      const allPVMeasurements = measurementsWithVisuals.filter(m => m.pvModuleInfo);
+      for (const m of allPVMeasurements) {
+        if (m.pvModuleInfo && !m.pvSolarLayout) {
+          try {
+            const { renderSolarLayout2D } = await import('@/utils/renderPolygon2D');
+            const { calculateStringAssignments } = await import('@/utils/pdfExport');
+            const stringAssignments = calculateStringAssignments(m.pvModuleInfo);
+            const solarLayout = renderSolarLayout2D(
+              m.points,
+              m.pvModuleInfo,
+              800, 600,
+              stringAssignments
+            );
+            if (solarLayout) {
+              const index = measurementsWithVisuals.findIndex(mv => mv.id === m.id);
+              if (index !== -1) {
+                measurementsWithVisuals[index] = {
+                  ...measurementsWithVisuals[index],
+                  pvSolarLayout: solarLayout,
+                };
+              }
+            }
+          } catch (e) {
+            console.warn('Pre-render solar layout failed:', e);
+          }
+        }
+      }
       
       if (includeRoofPlan) {
         if (!generatedRoofPlan) {
