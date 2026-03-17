@@ -258,7 +258,10 @@ const Viewer = () => {
             Zurück
           </Button>
           
-          <h1 className="text-lg font-medium ml-4">3D-Viewer</h1>
+        <div className="flex items-center">
+          <h1 className="text-lg font-medium ml-4">
+            {isShareMode ? `${fileName} (geteilte Ansicht)` : '3D-Viewer'}
+          </h1>
         </div>
         
         <div className="flex gap-2">
