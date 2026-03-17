@@ -417,7 +417,7 @@ export const renderSolarLayout2D = (
     // PATH B: Fallback — modulePositions + module dimensions
     } else if (pvInfo.modulePositions && pvInfo.modulePositions.length > 0) {
       const allPoints = [...measurement.points, ...pvInfo.modulePositions];
-      const allProjected = projectPointsTo2D(allPoints);
+      const allProjected = projectPointsTo2DWithEaveDown(allPoints, measurement.points.length);
       const roofCount = measurement.points.length;
 
       const roofProj = allProjected.slice(0, roofCount);
