@@ -264,7 +264,7 @@ const Index = () => {
                 size={isMobile ? "default" : "lg"}
               >
                 <Server className="mr-2 h-4 w-4" />
-                Vom Server laden
+                Kunde Drohnenvermessung by RooferGaming
               </Button>
               <Button
                 onClick={() => navigate("/server-login?server=1")}
