@@ -22,6 +22,8 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { saveAs } from 'file-saver';
+import { StringPlan, CompleteMaterialList } from '@/types/pvPlanning';
+import { ExportPdfStringPlanTab, ExportPdfMaterialTab } from './ExportPdfButtonPatch';
 
 interface ExportPdfButtonProps {
   measurements: Measurement[];
