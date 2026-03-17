@@ -63,8 +63,6 @@ export type ModelViewerProps = {
   fileName: string;
   rotateModel?: boolean;
   showTools?: boolean;
-  readOnly?: boolean;
-  initialMeasurements?: unknown[] | null;
 };
 
 
