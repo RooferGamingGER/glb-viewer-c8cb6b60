@@ -380,18 +380,17 @@ const ModelCanvas = React.memo(({
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D fileUrl={fileUrl} />}>
         <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
-        {/* Default lights — dimmed when sun simulation is active */}
-        <ambientLight intensity={sunSimulation?.mode !== 'off' ? 0.1 : 0.7} />
-        <directionalLight 
-          position={[10, 10, 5]} 
-          intensity={sunSimulation?.mode !== 'off' ? 0.1 : 1.2} 
-          castShadow={sunSimulation?.mode === 'off'}
-          shadow-mapSize-width={1024} 
-          shadow-mapSize-height={1024} 
-        />
-        <directionalLight position={[-10, -10, -5]} intensity={sunSimulation?.mode !== 'off' ? 0.05 : 0.8} />
+        {/* Default lights — completely OFF when sun simulation is active */}
+        {(!sunSimulation || sunSimulation.mode === 'off') && (
+          <>
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+            <directionalLight position={[-10, -10, -5]} intensity={0.8} />
+            {!isLowMemory && <Environment preset="city" />}
+          </>
+        )}
         
-        {/* Sun simulation light */}
+        {/* Sun simulation light — sole light source when active */}
         {sunSimulation && (
           <SunLight
             active={sunSimulation.mode !== 'off'}
@@ -400,7 +399,6 @@ const ModelCanvas = React.memo(({
             ambientIntensity={sunSimulation.ambientIntensity}
           />
         )}
-        {!isLowMemory && sunSimulation?.mode === 'off' && <Environment preset="city" />}
         <Model 
           url={fileUrl} 
           rotate={rotateModel !== false} 
