@@ -6,7 +6,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const WEBODM_BASE = "https://drohnenvermessung-server.de";
+const ALLOWED_SERVERS = [
+  "https://drohnenvermessung-server.de",
+  "https://drohnenvermessung-digitab.de",
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { path, method = "GET", body, token } = await req.json();
+    const { path, method = "GET", body, token, server } = await req.json();
 
     if (!path || typeof path !== "string") {
       return new Response(JSON.stringify({ error: "Missing path" }), {
@@ -23,7 +26,6 @@ serve(async (req) => {
       });
     }
 
-    // Only allow requests to the WebODM API
     if (!path.startsWith("/api/")) {
       return new Response(JSON.stringify({ error: "Invalid path" }), {
         status: 400,
@@ -31,7 +33,12 @@ serve(async (req) => {
       });
     }
 
-    const targetUrl = `${WEBODM_BASE}${path}`;
+    // Validate server against allowlist
+    const baseUrl = server && ALLOWED_SERVERS.includes(server)
+      ? server
+      : ALLOWED_SERVERS[0];
+
+    const targetUrl = `${baseUrl}${path}`;
     const headers: Record<string, string> = {};
 
     if (token) {

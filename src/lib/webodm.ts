@@ -1,9 +1,18 @@
+import { SERVERS } from "@/lib/auth-context";
+
 const PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-proxy`;
+const UPLOAD_PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-upload`;
+
+/** Read the active server URL from sessionStorage */
+function getActiveServerUrl(): string {
+  return sessionStorage.getItem("webodm_active_server") || SERVERS[0].url;
+}
 
 async function proxyFetch(path: string, options: {
   method?: string;
   body?: Record<string, string>;
   token?: string;
+  server?: string;
 }): Promise<Response> {
   const res = await fetch(PROXY_URL, {
     method: "POST",
@@ -16,6 +25,7 @@ async function proxyFetch(path: string, options: {
       method: options.method || "GET",
       body: options.body,
       token: options.token,
+      server: options.server || getActiveServerUrl(),
     }),
   });
   return res;
@@ -152,10 +162,15 @@ export function getAssetIcon(asset: string): string {
 
 // --- Auth ---
 
-export async function authenticate(username: string, password: string): Promise<string> {
+/**
+ * Authenticate against a specific server.
+ * @param server The full server URL (e.g. "https://drohnenvermessung-server.de")
+ */
+export async function authenticate(username: string, password: string, server?: string): Promise<string> {
   const res = await proxyFetch("/api/token-auth/", {
     method: "POST",
     body: { username, password },
+    server: server || SERVERS[0].url,
   });
 
   if (!res.ok) {
@@ -319,8 +334,6 @@ export async function getPresets(token: string): Promise<Preset[]> {
 
 // --- Task Creation (two-step: create partial → upload images → commit) ---
 
-const UPLOAD_PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-upload`;
-
 export async function createTask(
   token: string,
   projectId: number,
@@ -330,6 +343,8 @@ export async function createTask(
   onProgress?: (pct: number) => void,
   processingNode?: number | null
 ): Promise<Task> {
+  const server = getActiveServerUrl();
+
   // Step 1: Create task in partial mode
   const createBody: Record<string, string> = {
     name,
@@ -346,6 +361,7 @@ export async function createTask(
     method: "POST",
     body: createBody,
     token,
+    server,
   });
 
   if (!createRes.ok) {
@@ -369,6 +385,7 @@ export async function createTask(
         "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         "x-webodm-token": token,
         "x-webodm-path": uploadPath,
+        "x-webodm-server": server,
       },
       body: formData,
     });
@@ -386,6 +403,7 @@ export async function createTask(
   const commitRes = await proxyFetch(`/api/projects/${projectId}/tasks/${task.id}/commit/`, {
     method: "POST",
     token,
+    server,
   });
 
   if (!commitRes.ok) {

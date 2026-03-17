@@ -3,10 +3,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-webodm-token, x-webodm-path",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-webodm-token, x-webodm-path, x-webodm-server",
 };
 
-const WEBODM_BASE = "https://drohnenvermessung-server.de";
+const ALLOWED_SERVERS = [
+  "https://drohnenvermessung-server.de",
+  "https://drohnenvermessung-digitab.de",
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,6 +19,7 @@ serve(async (req) => {
   try {
     const webodmToken = req.headers.get("x-webodm-token");
     const webodmPath = req.headers.get("x-webodm-path");
+    const webodmServer = req.headers.get("x-webodm-server");
 
     if (!webodmToken || !webodmPath) {
       return new Response(
@@ -31,7 +35,12 @@ serve(async (req) => {
       );
     }
 
-    const targetUrl = `${WEBODM_BASE}${webodmPath}`;
+    // Validate server against allowlist
+    const baseUrl = webodmServer && ALLOWED_SERVERS.includes(webodmServer)
+      ? webodmServer
+      : ALLOWED_SERVERS[0];
+
+    const targetUrl = `${baseUrl}${webodmPath}`;
 
     // Forward the multipart body as-is to WebODM
     const contentType = req.headers.get("content-type") || "";

@@ -6,7 +6,7 @@ import { smartToast } from '@/utils/smartToast';
 import { devError } from '@/utils/consoleCleanup';
 import { Upload, File, AlertTriangle, Download } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+// Switch removed – rotateModel is always true
 import { rotateGLBDirect } from '@/utils/glbDirectManipulation';
 import { storeOriginalFile } from '@/hooks/useOriginalFileStorage';
 import { useGLTF } from '@react-three/drei';
@@ -22,7 +22,7 @@ const FileUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [converting, setConverting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [rotateModel, setRotateModel] = useState(true);
+  const rotateModel = true;
   const [preloadedUrl, setPreloadedUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -193,9 +193,6 @@ const FileUpload: React.FC = () => {
     }
   };
 
-  const handleSwitchClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
 
   return <div className="w-full animate-fade-in">
       <div className={`file-drop-area glass-panel relative border-2 border-dashed border-border/50 p-6 rounded-lg 
@@ -222,18 +219,9 @@ const FileUpload: React.FC = () => {
               <AlertDescription>{fileError}</AlertDescription>
             </Alert>}
 
-          <div className="flex flex-col items-center gap-2 mt-4" onClick={handleSwitchClick}>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <Switch checked={rotateModel} onCheckedChange={setRotateModel} id="rotate-switch" />
-              <span className="text-sm">
-                {rotateModel ? "Modell von Drohnenvermessung by RooferGaming®" : "Fremdanbieter"}
-              </span>
-            </label>
+          <div className="flex flex-col items-center gap-2 mt-4">
             <span className="text-xs text-muted-foreground">
-              {rotateModel 
-                ? "Für RooferGaming-Modelle ist die Eturnity-Konvertierung verfügbar."
-                : "Für Fremdanbieter-Modelle ist keine Eturnity-Konvertierung verfügbar."
-              }
+              Modell von Drohnenvermessung by RooferGaming® · Eturnity-Konvertierung verfügbar
             </span>
           </div>
 
