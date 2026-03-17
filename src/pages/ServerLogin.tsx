@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWebODMAuth, SERVERS } from "@/lib/auth-context";
 import { authenticate } from "@/lib/webodm";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,17 @@ import { toast } from "sonner";
 
 const ServerLogin = () => {
   const navigate = useNavigate();
-  const { replaceSessions, setActiveServer, isAuthenticated } = useWebODMAuth();
+  const [searchParams] = useSearchParams();
+  const { addSession, setActiveServer, isAuthenticated } = useWebODMAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Determine target server from URL param (?server=0 or ?server=1)
+  const targetServer = useMemo(() => {
+    const idx = parseInt(searchParams.get("server") || "0", 10);
+    return SERVERS[idx] || SERVERS[0];
+  }, [searchParams]);
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -26,39 +33,17 @@ const ServerLogin = () => {
 
     setLoading(true);
     try {
-      // Try both servers in parallel with the same credentials
-      const results = await Promise.allSettled(
-        SERVERS.map(async (srv) => {
-          const token = await authenticate(username.trim(), password, srv.url);
-          return { server: srv.url as string, token, username: username.trim(), label: srv.label as string };
-        })
-      );
+      const token = await authenticate(username.trim(), password, targetServer.url);
 
-      const successfulSessions = results
-        .filter((r): r is PromiseFulfilledResult<{ server: string; token: string; username: string; label: string }> =>
-          r.status === "fulfilled"
-        )
-        .map((r) => r.value);
+      addSession({
+        server: targetServer.url,
+        token,
+        username: username.trim(),
+        label: targetServer.label,
+      });
+      setActiveServer(targetServer.url);
 
-      if (successfulSessions.length === 0) {
-        const firstError = results[0];
-        const errMsg = firstError.status === "rejected"
-          ? (firstError.reason?.message || "Anmeldung fehlgeschlagen")
-          : "Anmeldung fehlgeschlagen";
-        toast.error(errMsg);
-        return;
-      }
-
-      // Replace all sessions at once (no logout + delay needed)
-      replaceSessions(successfulSessions);
-      setActiveServer(successfulSessions[0].server);
-
-      if (successfulSessions.length > 1) {
-        toast.success(`Angemeldet auf ${successfulSessions.length} Servern`);
-      } else {
-        toast.success("Erfolgreich angemeldet");
-      }
-
+      toast.success(`Angemeldet bei ${targetServer.label}`);
       navigate("/server-projects", { replace: true });
     } catch (err: any) {
       toast.error(err.message || "Anmeldung fehlgeschlagen");
@@ -76,7 +61,7 @@ const ServerLogin = () => {
           </div>
           <h1 className="text-xl font-bold">Server-Anmeldung</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Anmeldung bei Drohnenvermessung-Servern
+            {targetServer.label}
           </p>
         </div>
 
