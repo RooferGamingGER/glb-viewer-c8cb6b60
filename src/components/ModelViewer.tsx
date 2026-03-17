@@ -9,6 +9,8 @@ import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
+import SunLight from '@/components/viewer/SunLight';
+import { useSunSimulation } from '@/hooks/useSunSimulation';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
@@ -319,7 +321,8 @@ const ModelCanvas = React.memo(({
   canvasRef,
   rotateModel,
   onModelLoadComplete,
-  onRetryNeeded
+  onRetryNeeded,
+  sunSimulation
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
@@ -327,6 +330,7 @@ const ModelCanvas = React.memo(({
   rotateModel?: boolean;
   onModelLoadComplete?: () => void;
   onRetryNeeded?: (url: string) => void;
+  sunSimulation?: ReturnType<typeof useSunSimulation>;
 }) => {
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
@@ -376,9 +380,26 @@ const ModelCanvas = React.memo(({
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D fileUrl={fileUrl} />}>
         <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-        <directionalLight position={[-10, -10, -5]} intensity={0.8} />
+        {/* Default lights — dimmed when sun simulation is active */}
+        <ambientLight intensity={sunSimulation?.mode !== 'off' ? 0.1 : 0.7} />
+        <directionalLight 
+          position={[10, 10, 5]} 
+          intensity={sunSimulation?.mode !== 'off' ? 0.1 : 1.2} 
+          castShadow={sunSimulation?.mode === 'off'}
+          shadow-mapSize-width={1024} 
+          shadow-mapSize-height={1024} 
+        />
+        <directionalLight position={[-10, -10, -5]} intensity={sunSimulation?.mode !== 'off' ? 0.05 : 0.8} />
+        
+        {/* Sun simulation light */}
+        {sunSimulation && (
+          <SunLight
+            active={sunSimulation.mode !== 'off'}
+            position={sunSimulation.sunLightPosition}
+            intensity={sunSimulation.sunIntensity}
+            ambientIntensity={sunSimulation.ambientIntensity}
+          />
+        )}
         {!isLowMemory && <Environment preset="city" />}
         <Model 
           url={fileUrl} 
@@ -428,6 +449,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [measurementToolsEverEnabled] = useState(true);
   
   const { measurements } = useMeasurements();
+  const sunSimulation = useSunSimulation();
 
   // Enhanced URL resolution with retry capability
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
@@ -655,6 +677,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               rotateModel={rotateModel}
               onModelLoadComplete={handleModelLoadComplete}
               onRetryNeeded={handleRetryNeeded}
+              sunSimulation={sunSimulation}
             />
           </div>
           
@@ -664,6 +687,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               scene={threeContext.scene} 
               camera={threeContext.camera} 
               autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
+              sunSimulation={sunSimulation}
             />
           )}
         </div>

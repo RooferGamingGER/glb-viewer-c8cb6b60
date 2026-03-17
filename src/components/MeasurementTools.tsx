@@ -15,6 +15,7 @@ import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCal
 import { smartToast } from '@/utils/smartToast';
 import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
 import { CompleteMaterialList } from '@/types/pvPlanning';
+import { SunSimulationState } from '@/hooks/useSunSimulation';
 
 // Import visualization utilities
 import { 
@@ -34,6 +35,7 @@ import MobileMeasureToolbar from './measurement/MobileMeasureToolbar';
 import MobileMassesOverlay from './measurement/MobileMassesOverlay';
 import MobileExportOverlay from './measurement/MobileExportOverlay';
 import MeasurementOverlay from './measurement/MeasurementOverlay';
+import SunSimulationPanel from './measurement/SunSimulationPanel';
 
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { PanelRight } from 'lucide-react';
@@ -44,13 +46,15 @@ interface MeasurementToolsProps {
   scene: THREE.Scene;
   camera: THREE.Camera;
   autoOpenSidebar?: boolean;
+  sunSimulation?: SunSimulationState;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
   camera,
-  autoOpenSidebar = false
+  autoOpenSidebar = false,
+  sunSimulation
 }) => {
   // Sidebar collapsed state - default closed
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -292,6 +296,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
               : false}
           />
+        </div>
+      )}
+      {/* Sun Simulation Panel */}
+      {sunSimulation && (
+        <div className="border-t border-border/30">
+          <SunSimulationPanel simulation={sunSimulation} />
         </div>
       )}
     </div>
