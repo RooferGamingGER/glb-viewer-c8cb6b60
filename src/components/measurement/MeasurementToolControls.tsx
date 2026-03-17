@@ -171,8 +171,9 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                     className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      // Remove PV data, keep area type intact
+                      // Remove PV data, revert type to 'area'
                       updateMeasurement(m.id, { 
+                        type: 'area' as any,
                         pvModuleInfo: undefined as any, 
                         pvModuleSpec: undefined as any, 
                         powerOutput: undefined as any 
