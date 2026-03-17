@@ -26,7 +26,7 @@ const ServerLogin = () => {
 
     setLoading(true);
     try {
-      // Try both servers in parallel
+      // Try both servers in parallel with the same credentials
       const results = await Promise.allSettled(
         SERVERS.map(async (srv) => {
           const token = await authenticate(username.trim(), password, srv.url);
@@ -41,7 +41,6 @@ const ServerLogin = () => {
         .map((r) => r.value);
 
       if (successfulSessions.length === 0) {
-        // Get error from first attempt
         const firstError = results[0];
         const errMsg = firstError.status === "rejected"
           ? (firstError.reason?.message || "Anmeldung fehlgeschlagen")
@@ -50,17 +49,8 @@ const ServerLogin = () => {
         return;
       }
 
-      // Clear old sessions first, then add new ones
-      logout();
-
-      // Small delay to let state clear
-      await new Promise((r) => setTimeout(r, 50));
-
-      for (const session of successfulSessions) {
-        addSession(session);
-      }
-
-      // Set first successful server as active
+      // Replace all sessions at once (no logout + delay needed)
+      replaceSessions(successfulSessions);
       setActiveServer(successfulSessions[0].server);
 
       if (successfulSessions.length > 1) {
