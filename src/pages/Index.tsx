@@ -195,7 +195,7 @@ const Index = () => {
       .catch(() => setDemoAvailable(false));
   }, []);
 
-  const handleStartClick = () => navigate("/viewer");
+  // Viewer is only accessible via server login
 
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
