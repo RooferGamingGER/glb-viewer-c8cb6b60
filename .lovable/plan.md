@@ -1,54 +1,50 @@
 
-# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Status: Implementiert ✅
+# Fix: Schatten zeigen in die falsche Richtung — Koordinatensystem-Bug
 
-## Problem
-Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
+## Ursache
 
-## Lösung: `northAngle` Parameter
+Das Modell wird mit `rotation.x = -π/2` geladen (Z-up → Y-up Konvertierung). Dadurch wird das UTM-Koordinatensystem so transformiert:
 
-### 1. Typ-Erweiterung
-- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
-- 0° = +Z ist Nord (UTM-Standard)
+```text
+UTM (Modell)     →   Three.js (World)
+X (Ost)          →   X (Ost)         ✓
+Y (Nord)         →   -Z              ← Nord = -Z in World!
+Z (Höhe)         →   +Y (oben)       ✓
+```
 
-### 2. `calculateRoofOrientation(points, northAngle)`
-- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
-- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
+`solarPositionToVector3()` nimmt aber an, dass **+Z = Nord** in World-Space ist. Tatsächlich ist **-Z = Nord**. Dadurch ist der Lichtvektor um 180° gedreht — die Schatten fallen in die exakt falsche Richtung.
 
-### 3. `placeModule` South-Tilt
-- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
-- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
+## Lösung
 
-### 4. UI: Kompass-Slider
-- 0°-359° Slider in SolarMeasurementContent
-- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
-- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
+**Datei: `src/utils/sunPosition.ts`** — Funktion `solarPositionToVector3()`
 
-### 5. E-W bleibt grid-relativ (unverändert)
+Die Z-Komponente negieren, damit die Konvention korrekt auf das rotierte Modell passt:
 
----
+```typescript
+// Vorher (falsch):
+const z = Math.cos(azRad) * Math.cos(elevRad);
 
-# Sonnensimulation — Tages- & Jahresverlauf
+// Nachher (korrekt):
+const z = -Math.cos(azRad) * Math.cos(elevRad);
+```
 
-## Status: Implementiert ✅
+Kommentar aktualisieren:
+```text
+// Nach -90° X-Rotation: Nord(UTM) = -Z(World)
+// Azimuth 0° (Nord) → z negativ (Light aus Norden)
+// Azimuth 180° (Süd) → z positiv (Light aus Süden)
+```
 
-## Neue Dateien
-- `src/utils/sunPosition.ts` — SPA-Algorithmus (NREL-basiert), azimuth/elevation/sunrise/sunset
-- `src/hooks/useSunSimulation.ts` — State & Animation (day/year mode, playback)
-- `src/components/viewer/SunLight.tsx` — DirectionalLight mit dynamischer Shadow-Map
-- `src/components/measurement/SunSimulationPanel.tsx` — UI mit Tages-/Jahres-Tabs
+**Nur diese eine Zeile ändert sich.** Keine anderen Dateien betroffen.
 
-## Geänderte Dateien
-- `src/components/ModelViewer.tsx` — SunLight-Komponente im Canvas, Default-Lights dimmen bei Simulation
-- `src/components/MeasurementTools.tsx` — SunSimulation-State durchleiten, Panel in Sidebar
-- `src/components/measurement/MeasurementTools.tsx` — Props erweitert für sunSimulation
+## Validierung
 
-## Features
-- Tagesverlauf: Datepicker, Time-Slider (Sonnenaufgang↔Sonnenuntergang), Play/Pause
-- Jahresverlauf: Monats-Slider, 12:00 Uhr fest, Play-Animation
-- Schnellauswahl: Equinox & Solstice (21.3 / 21.6 / 23.9 / 21.12)
-- Sonnenstand-Info: Azimut, Elevation, Tageslänge, Kompass-Richtung
-- Standort: Auto GPS oder manuell (Default: 51.1°N, 10.4°E)
-- Shadow-Map: dynamisch 1024 (Mobile) bis 2048 (Desktop)
-- Keine externe API — komplett clientseitig/offline
+Bei Azimut 180° (Süd), 12:00 Uhr:
+- `z = -cos(π) * cos(elev) = +cos(elev)` → Licht bei +Z
+- Licht scheint von +Z Richtung Mitte → Schatten fallen nach -Z = **Nord** ✓
+
+Bei Azimut 90° (Ost):
+- `x = sin(π/2) * cos(elev) = +cos(elev)` → Licht bei +X (Ost bleibt korrekt)
+- Schatten fallen nach -X = **West** ✓
+
