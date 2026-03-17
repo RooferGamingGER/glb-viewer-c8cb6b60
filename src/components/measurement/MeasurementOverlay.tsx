@@ -51,7 +51,7 @@ const MeasurementOverlay: React.FC<MeasurementOverlayProps> = ({
   editMeasurementId, movingPointInfo, handleFinalizeMeasurement,
   handleUndoLastPoint, clearCurrentPoints, handleClearMeasurements,
   handleDeleteMeasurement, toggleAllLabelsVisibility, allLabelsVisible,
-  handleCancelEditing, updateMeasurement, onConvertAreaToSolar
+  handleCancelEditing, updateMeasurement, onConvertAreaToSolar, materialList
 }) => {
   const { snapEnabled, setSnapEnabled } = usePointSnapping();
   const [solarOpen, setSolarOpen] = useState(false);
