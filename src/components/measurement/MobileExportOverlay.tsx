@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { X, FileText } from 'lucide-react';
 import { Measurement } from '@/hooks/useMeasurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 import { generateDetailedCSV, exportMeasurementsToAbsJson } from '@/utils/exportUtils';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
