@@ -9,7 +9,6 @@ import {
   MoveHorizontal,
   Zap,
   Shield,
-  Upload,
   Eye,
   AlertTriangle,
   Loader2,
@@ -196,7 +195,7 @@ const Index = () => {
       .catch(() => setDemoAvailable(false));
   }, []);
 
-  const handleStartClick = () => navigate("/viewer");
+  // Viewer is only accessible via server login
 
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
@@ -213,12 +212,6 @@ const Index = () => {
           <Eye className="mr-2 h-4 w-4" />
           Demo ansehen
         </Button>
-        {isMobile && (
-          <Button onClick={handleStartClick} size="sm">
-            <Upload className="mr-2 h-4 w-4" />
-            Eigenes Modell
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -260,15 +253,10 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <DemoSection />
           <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
-            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
+            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Eturnity-Konvertierung</h2>
             <FileUpload />
             <div className="flex flex-col gap-2 mt-4">
-              <Button onClick={handleStartClick} className="w-full" size={isMobile ? "sm" : "default"}>
-                <Upload className="mr-2 h-4 w-4" />
-                Viewer öffnen
-              </Button>
               <Button
-                variant="outline"
                 onClick={() => navigate("/server-login?server=0")}
                 className="w-full"
                 size={isMobile ? "sm" : "default"}
