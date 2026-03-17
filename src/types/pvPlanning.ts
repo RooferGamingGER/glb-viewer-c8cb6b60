@@ -173,154 +173,68 @@ export const getPitchedRoofMaterials = (
   const items: MaterialItem[] = [];
 
   if (system === 'braas_rapid2plus') {
-    // Braas Rapid² Plus System
     items.push({
-      id: 'braas_rapid2_hook',
-      category: 'mounting',
-      manufacturer: 'Braas',
-      articleNumber: 'RD2-H-UNI',
-      description: 'Braas Rapid² Universaldachhaken (Rapid² Plus)',
-      unit: 'Stk.',
-      quantity: roofHookCount,
-      pricePerUnit: 8.50,
+      id: 'braas_rapid2_hook', category: 'mounting', manufacturer: 'Braas', articleNumber: 'RD2-H-UNI',
+      description: 'Braas Rapid² Universaldachhaken (Rapid² Plus)', unit: 'Stk.', quantity: roofHookCount,
       notes: 'Passend für alle gängigen Tondachziegel'
     });
     items.push({
-      id: 'braas_rail_330',
-      category: 'mounting',
-      manufacturer: 'Braas',
-      articleNumber: 'RD-SCHIENE-330',
-      description: 'Braas Alu-Montageschiene 3,30m',
-      unit: 'Stk.',
-      quantity: Math.ceil(railLengthTotal / 3.30),
-      pricePerUnit: 28.00,
+      id: 'braas_rail_330', category: 'mounting', manufacturer: 'Braas', articleNumber: 'RD-SCHIENE-330',
+      description: 'Braas Alu-Montageschiene 3,30m', unit: 'Stk.', quantity: Math.ceil(railLengthTotal / 3.30),
       notes: 'Standard-Schienenmaß'
     });
     items.push({
-      id: 'braas_midclamp',
-      category: 'mounting',
-      manufacturer: 'Braas',
-      articleNumber: 'RD-MIDCLAMP-35',
-      description: 'Braas Mittelklemme 35mm (Modulstärke 30-35mm)',
-      unit: 'Stk.',
-      quantity: midClampCount,
-      pricePerUnit: 3.80
+      id: 'braas_midclamp', category: 'mounting', manufacturer: 'Braas', articleNumber: 'RD-MIDCLAMP-35',
+      description: 'Braas Mittelklemme 35mm (Modulstärke 30-35mm)', unit: 'Stk.', quantity: midClampCount
     });
     items.push({
-      id: 'braas_endclamp',
-      category: 'mounting',
-      manufacturer: 'Braas',
-      articleNumber: 'RD-ENDCLAMP-35',
-      description: 'Braas Endklemme 35mm',
-      unit: 'Stk.',
-      quantity: endClampCount,
-      pricePerUnit: 4.20
+      id: 'braas_endclamp', category: 'mounting', manufacturer: 'Braas', articleNumber: 'RD-ENDCLAMP-35',
+      description: 'Braas Endklemme 35mm', unit: 'Stk.', quantity: endClampCount
     });
     items.push({
-      id: 'braas_rail_connector',
-      category: 'mounting',
-      manufacturer: 'Braas',
-      articleNumber: 'RD-VERBINDER',
-      description: 'Braas Schienenverbinder',
-      unit: 'Stk.',
-      quantity: connectorCount,
-      pricePerUnit: 5.50
+      id: 'braas_rail_connector', category: 'mounting', manufacturer: 'Braas', articleNumber: 'RD-VERBINDER',
+      description: 'Braas Schienenverbinder', unit: 'Stk.', quantity: connectorCount
     });
   } else if (system === 'k2_systems_base') {
-    // K2 Systems BASE
     items.push({
-      id: 'k2_base_hook',
-      category: 'mounting',
-      manufacturer: 'K2 Systems',
-      articleNumber: 'K2-BASE-HOOK-UNI',
-      description: 'K2 Systems Dachhaken Universal BASE',
-      unit: 'Stk.',
-      quantity: roofHookCount,
-      pricePerUnit: 9.20
+      id: 'k2_base_hook', category: 'mounting', manufacturer: 'K2 Systems', articleNumber: 'K2-BASE-HOOK-UNI',
+      description: 'K2 Systems Dachhaken Universal BASE', unit: 'Stk.', quantity: roofHookCount
     });
     items.push({
-      id: 'k2_base_rail',
-      category: 'mounting',
-      manufacturer: 'K2 Systems',
-      articleNumber: 'K2-RAIL-360',
-      description: 'K2 Systems Alu-Montageschiene 3,60m',
-      unit: 'Stk.',
-      quantity: Math.ceil(railLengthTotal / 3.60),
-      pricePerUnit: 32.00
+      id: 'k2_base_rail', category: 'mounting', manufacturer: 'K2 Systems', articleNumber: 'K2-RAIL-360',
+      description: 'K2 Systems Alu-Montageschiene 3,60m', unit: 'Stk.', quantity: Math.ceil(railLengthTotal / 3.60)
     });
     items.push({
-      id: 'k2_midclamp',
-      category: 'mounting',
-      manufacturer: 'K2 Systems',
-      articleNumber: 'K2-MIDCLAMP-M',
-      description: 'K2 Systems Mittelklemme M',
-      unit: 'Stk.',
-      quantity: midClampCount,
-      pricePerUnit: 4.10
+      id: 'k2_midclamp', category: 'mounting', manufacturer: 'K2 Systems', articleNumber: 'K2-MIDCLAMP-M',
+      description: 'K2 Systems Mittelklemme M', unit: 'Stk.', quantity: midClampCount
     });
     items.push({
-      id: 'k2_endclamp',
-      category: 'mounting',
-      manufacturer: 'K2 Systems',
-      articleNumber: 'K2-ENDCLAMP-M',
-      description: 'K2 Systems Endklemme M',
-      unit: 'Stk.',
-      quantity: endClampCount,
-      pricePerUnit: 4.60
+      id: 'k2_endclamp', category: 'mounting', manufacturer: 'K2 Systems', articleNumber: 'K2-ENDCLAMP-M',
+      description: 'K2 Systems Endklemme M', unit: 'Stk.', quantity: endClampCount
     });
   } else if (system === 'bmi_ecobase') {
-    // BMI Ecobase
     items.push({
-      id: 'bmi_hook',
-      category: 'mounting',
-      manufacturer: 'BMI',
-      articleNumber: 'BMI-ECOBASE-HOOK',
-      description: 'BMI Ecobase Dachhaken (universal)',
-      unit: 'Stk.',
-      quantity: roofHookCount,
-      pricePerUnit: 8.80
+      id: 'bmi_hook', category: 'mounting', manufacturer: 'BMI', articleNumber: 'BMI-ECOBASE-HOOK',
+      description: 'BMI Ecobase Dachhaken (universal)', unit: 'Stk.', quantity: roofHookCount
     });
     items.push({
-      id: 'bmi_rail',
-      category: 'mounting',
-      manufacturer: 'BMI',
-      articleNumber: 'BMI-RAIL-315',
-      description: 'BMI Alu-Profil 3,15m',
-      unit: 'Stk.',
-      quantity: Math.ceil(railLengthTotal / 3.15),
-      pricePerUnit: 27.50
+      id: 'bmi_rail', category: 'mounting', manufacturer: 'BMI', articleNumber: 'BMI-RAIL-315',
+      description: 'BMI Alu-Profil 3,15m', unit: 'Stk.', quantity: Math.ceil(railLengthTotal / 3.15)
     });
     items.push({
-      id: 'bmi_midclamp',
-      category: 'mounting',
-      manufacturer: 'BMI',
-      articleNumber: 'BMI-MIDCLAMP',
-      description: 'BMI Mittelklemme',
-      unit: 'Stk.',
-      quantity: midClampCount,
-      pricePerUnit: 3.60
+      id: 'bmi_midclamp', category: 'mounting', manufacturer: 'BMI', articleNumber: 'BMI-MIDCLAMP',
+      description: 'BMI Mittelklemme', unit: 'Stk.', quantity: midClampCount
     });
     items.push({
-      id: 'bmi_endclamp',
-      category: 'mounting',
-      manufacturer: 'BMI',
-      articleNumber: 'BMI-ENDCLAMP',
-      description: 'BMI Endklemme',
-      unit: 'Stk.',
-      quantity: endClampCount,
-      pricePerUnit: 4.00
+      id: 'bmi_endclamp', category: 'mounting', manufacturer: 'BMI', articleNumber: 'BMI-ENDCLAMP',
+      description: 'BMI Endklemme', unit: 'Stk.', quantity: endClampCount
     });
   }
 
-  // Gemeinsame Schraub- und Kleinmaterialien (alle Steildach-Systeme)
   items.push({
-    id: 'stainless_screws',
-    category: 'mounting',
-    description: 'Edelstahlschrauben M8 x 30 (Montagesatz)',
-    unit: 'Pkg.',
-    quantity: Math.ceil(roofHookCount / 10),
-    pricePerUnit: 6.50,
-    notes: 'Edelstahl A4'
+    id: 'stainless_screws', category: 'mounting',
+    description: 'Edelstahlschrauben M8 x 30 (Montagesatz)', unit: 'Pkg.',
+    quantity: Math.ceil(roofHookCount / 10), notes: 'Edelstahl A4'
   });
 
   return items;
@@ -334,76 +248,41 @@ export const getFlatRoofMaterials = (
   system: FlatRoofSystem = 'k2_flat_evo_one'
 ): MaterialItem[] => {
   const items: MaterialItem[] = [];
-  const isEW = tiltAngle <= 15; // Ost-West-Anlage bei kleinem Neigungswinkel
+  const isEW = tiltAngle <= 15;
 
   if (system === 'k2_flat_evo_one') {
     items.push({
-      id: 'k2_flatfix_evo_base',
-      category: 'mounting',
-      manufacturer: 'K2 Systems',
-      articleNumber: 'K2-FLATFIX-EVO-BASE',
-      description: `K2 Systems FlatFix EVO One Basis (${isEW ? 'Ost-West' : 'Süd'})`,
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 35.00,
-      notes: 'Inkl. Ballasttablett'
+      id: 'k2_flatfix_evo_base', category: 'mounting', manufacturer: 'K2 Systems', articleNumber: 'K2-FLATFIX-EVO-BASE',
+      description: `K2 Systems FlatFix EVO One Basis (${isEW ? 'Ost-West' : 'Süd'})`, unit: 'Set/Modul',
+      quantity: moduleCount, notes: 'Inkl. Ballasttablett'
     });
     items.push({
-      id: 'k2_flat_ballast_paving',
-      category: 'mounting',
-      manufacturer: 'K2 Systems',
-      articleNumber: 'K2-PFLASTERSTEIN-40',
-      description: 'Pflasterstein 400x400x40mm als Ballast',
-      unit: 'Stk.',
-      quantity: Math.ceil(moduleCount * 1.5),
-      pricePerUnit: 4.20,
-      notes: 'Anzahl abhängig von Windlastzone'
+      id: 'k2_flat_ballast_paving', category: 'mounting', manufacturer: 'K2 Systems', articleNumber: 'K2-PFLASTERSTEIN-40',
+      description: 'Pflasterstein 400x400x40mm als Ballast', unit: 'Stk.',
+      quantity: Math.ceil(moduleCount * 1.5), notes: 'Anzahl abhängig von Windlastzone'
     });
   } else if (system === 'esdec_flatfix_wave') {
     items.push({
-      id: 'esdec_wave_mount',
-      category: 'mounting',
-      manufacturer: 'Esdec',
-      articleNumber: 'FF-WAVE-BASE',
-      description: 'Esdec FlatFix Wave Montagesystem',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 38.00,
-      notes: 'Ballaststeine erforderlich'
+      id: 'esdec_wave_mount', category: 'mounting', manufacturer: 'Esdec', articleNumber: 'FF-WAVE-BASE',
+      description: 'Esdec FlatFix Wave Montagesystem', unit: 'Set/Modul',
+      quantity: moduleCount, notes: 'Ballaststeine erforderlich'
     });
   } else if (system === 'renusol_cs60') {
     items.push({
-      id: 'renusol_cs60_mount',
-      category: 'mounting',
-      manufacturer: 'Renusol',
-      articleNumber: 'CS60-MOUNT',
-      description: 'Renusol CS60 Montagesystem',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 42.00
+      id: 'renusol_cs60_mount', category: 'mounting', manufacturer: 'Renusol', articleNumber: 'CS60-MOUNT',
+      description: 'Renusol CS60 Montagesystem', unit: 'Set/Modul', quantity: moduleCount
     });
   } else if (system === 'schletter_freeform') {
     items.push({
-      id: 'schletter_ff_mount',
-      category: 'mounting',
-      manufacturer: 'Schletter',
-      articleNumber: 'FF-BASE-SET',
-      description: 'Schletter FreeForm Basis-Set',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 40.00
+      id: 'schletter_ff_mount', category: 'mounting', manufacturer: 'Schletter', articleNumber: 'FF-BASE-SET',
+      description: 'Schletter FreeForm Basis-Set', unit: 'Set/Modul', quantity: moduleCount
     });
   }
 
-  // Dachdurchdringungsschutz / Dachschutz
   items.push({
-    id: 'protection_mat',
-    category: 'roofing',
-    description: 'Schutzunterlage / Schutzmatte unter Ballastelementen',
-    unit: 'm²',
-    quantity: Math.ceil(roofAreaM2 * 0.05),
-    pricePerUnit: 12.00,
-    notes: 'Schutz der Dachabdichtung'
+    id: 'protection_mat', category: 'roofing',
+    description: 'Schutzunterlage / Schutzmatte unter Ballastelementen', unit: 'm²',
+    quantity: Math.ceil(roofAreaM2 * 0.05), notes: 'Schutz der Dachabdichtung'
   });
 
   return items;
@@ -420,164 +299,77 @@ export const getGreenRoofMaterials = (
 
   if (system === 'bauder_thermofin') {
     items.push({
-      id: 'bauder_thermofin_te',
-      category: 'mounting',
-      manufacturer: 'Bauder',
-      articleNumber: 'BAUDER-THERMOFIN-TE',
-      description: 'Bauder Thermofin TE Aufdach-Dämmplatte (kombiniert Begrünung + Solar)',
-      unit: 'm²',
-      quantity: roofAreaM2,
-      pricePerUnit: 85.00,
-      notes: 'Kombisystem Gründach + PV-Fundament'
+      id: 'bauder_thermofin_te', category: 'mounting', manufacturer: 'Bauder', articleNumber: 'BAUDER-THERMOFIN-TE',
+      description: 'Bauder Thermofin TE Aufdach-Dämmplatte (kombiniert Begrünung + Solar)', unit: 'm²',
+      quantity: roofAreaM2, notes: 'Kombisystem Gründach + PV-Fundament'
     });
     items.push({
-      id: 'bauder_pv_mount_green',
-      category: 'mounting',
-      manufacturer: 'Bauder',
-      articleNumber: 'BAUDER-PV-BALLAST',
-      description: 'Bauder PV-Ballast-Aufnahme für Thermofin',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 55.00,
-      notes: 'Keine Dachdurchdringung erforderlich'
+      id: 'bauder_pv_mount_green', category: 'mounting', manufacturer: 'Bauder', articleNumber: 'BAUDER-PV-BALLAST',
+      description: 'Bauder PV-Ballast-Aufnahme für Thermofin', unit: 'Set/Modul',
+      quantity: moduleCount, notes: 'Keine Dachdurchdringung erforderlich'
     });
     items.push({
-      id: 'bauder_sedum_extensive',
-      category: 'roofing',
-      manufacturer: 'Bauder',
-      articleNumber: 'BAUDER-SEDUM-EXT',
-      description: 'Bauder Sedum-Matte extensiv (4-8cm Aufbau)',
-      unit: 'm²',
-      quantity: greenRoofAreaM2,
-      pricePerUnit: 45.00,
-      notes: 'Extensive Begrünung rund um PV-Module'
+      id: 'bauder_sedum_extensive', category: 'roofing', manufacturer: 'Bauder', articleNumber: 'BAUDER-SEDUM-EXT',
+      description: 'Bauder Sedum-Matte extensiv (4-8cm Aufbau)', unit: 'm²',
+      quantity: greenRoofAreaM2, notes: 'Extensive Begrünung rund um PV-Module'
     });
   } else if (system === 'soprema_soprasolar') {
     items.push({
-      id: 'soprema_soprasolar_ballast',
-      category: 'mounting',
-      manufacturer: 'Soprema',
-      articleNumber: 'SOPRASOLAR-BALLAST',
-      description: 'Soprema Soprasolar Ballast-Befestigung',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 48.00,
-      notes: 'Geeignet für bituminöse und synthetische Abdichtungen'
+      id: 'soprema_soprasolar_ballast', category: 'mounting', manufacturer: 'Soprema', articleNumber: 'SOPRASOLAR-BALLAST',
+      description: 'Soprema Soprasolar Ballast-Befestigung', unit: 'Set/Modul',
+      quantity: moduleCount, notes: 'Geeignet für bituminöse und synthetische Abdichtungen'
     });
     items.push({
-      id: 'soprema_protection_layer',
-      category: 'roofing',
-      manufacturer: 'Soprema',
-      articleNumber: 'SOPRAFLOR-PV',
-      description: 'Soprema Sopraflor PV Schutzlage unter Ballastsystem',
-      unit: 'm²',
-      quantity: roofAreaM2,
-      pricePerUnit: 18.00
+      id: 'soprema_protection_layer', category: 'roofing', manufacturer: 'Soprema', articleNumber: 'SOPRAFLOR-PV',
+      description: 'Soprema Sopraflor PV Schutzlage unter Ballastsystem', unit: 'm²', quantity: roofAreaM2
     });
     items.push({
-      id: 'soprema_sedum',
-      category: 'roofing',
-      manufacturer: 'Soprema',
-      articleNumber: 'SOPREMA-SEDUM-EXT',
-      description: 'Soprema Sedum-Matte extensiv',
-      unit: 'm²',
-      quantity: greenRoofAreaM2,
-      pricePerUnit: 42.00
+      id: 'soprema_sedum', category: 'roofing', manufacturer: 'Soprema', articleNumber: 'SOPREMA-SEDUM-EXT',
+      description: 'Soprema Sedum-Matte extensiv', unit: 'm²', quantity: greenRoofAreaM2
     });
   } else if (system === 'vedag_vedagreen') {
     items.push({
-      id: 'vedag_vedagreen_solar',
-      category: 'mounting',
-      manufacturer: 'Vedag',
-      articleNumber: 'VEDAGREEN-SOLAR',
-      description: 'Vedag VedaGreen Solar Montagesystem (Ballast)',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 50.00
+      id: 'vedag_vedagreen_solar', category: 'mounting', manufacturer: 'Vedag', articleNumber: 'VEDAGREEN-SOLAR',
+      description: 'Vedag VedaGreen Solar Montagesystem (Ballast)', unit: 'Set/Modul', quantity: moduleCount
     });
     items.push({
-      id: 'vedag_protection',
-      category: 'roofing',
-      manufacturer: 'Vedag',
-      articleNumber: 'VEDAFLOR-PROTECT',
-      description: 'Vedag VedaFlor Schutzlage',
-      unit: 'm²',
-      quantity: roofAreaM2,
-      pricePerUnit: 15.00
+      id: 'vedag_protection', category: 'roofing', manufacturer: 'Vedag', articleNumber: 'VEDAFLOR-PROTECT',
+      description: 'Vedag VedaFlor Schutzlage', unit: 'm²', quantity: roofAreaM2
     });
   } else if (system === 'icopal_solarbase') {
     items.push({
-      id: 'icopal_solarbase_mount',
-      category: 'mounting',
-      manufacturer: 'Icopal',
-      articleNumber: 'ICOPAL-SOLARBASE',
-      description: 'Icopal SolarBase Ballast-Unterkonstruktion',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 47.00
+      id: 'icopal_solarbase_mount', category: 'mounting', manufacturer: 'Icopal', articleNumber: 'ICOPAL-SOLARBASE',
+      description: 'Icopal SolarBase Ballast-Unterkonstruktion', unit: 'Set/Modul', quantity: moduleCount
     });
   } else if (system === 'optigruen_type_f') {
     items.push({
-      id: 'optigruen_f_substrate',
-      category: 'roofing',
-      manufacturer: 'Optigrün',
-      articleNumber: 'OG-SUBSTRAT-F',
-      description: 'Optigrün Leichtsubstrat Typ F (extensiv, 8-10cm)',
-      unit: 'm²',
-      quantity: greenRoofAreaM2,
-      pricePerUnit: 55.00,
-      notes: 'Inkl. Vlies und Drainmatte'
+      id: 'optigruen_f_substrate', category: 'roofing', manufacturer: 'Optigrün', articleNumber: 'OG-SUBSTRAT-F',
+      description: 'Optigrün Leichtsubstrat Typ F (extensiv, 8-10cm)', unit: 'm²',
+      quantity: greenRoofAreaM2, notes: 'Inkl. Vlies und Drainmatte'
     });
     items.push({
-      id: 'optigruen_pv_support',
-      category: 'mounting',
-      manufacturer: 'Optigrün',
-      articleNumber: 'OG-PV-STANDER',
-      description: 'Optigrün PV-Ständer für Gründachkonstruktion',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 62.00
+      id: 'optigruen_pv_support', category: 'mounting', manufacturer: 'Optigrün', articleNumber: 'OG-PV-STANDER',
+      description: 'Optigrün PV-Ständer für Gründachkonstruktion', unit: 'Set/Modul', quantity: moduleCount
     });
   } else if (system === 'laumanns_greenroof') {
     items.push({
-      id: 'laumanns_substrate',
-      category: 'roofing',
-      manufacturer: 'Laumanns',
-      articleNumber: 'LA-SUBSTRAT-EXT',
-      description: 'Laumanns Extensiv-Substrat (6-8cm)',
-      unit: 'm²',
-      quantity: greenRoofAreaM2,
-      pricePerUnit: 48.00
+      id: 'laumanns_substrate', category: 'roofing', manufacturer: 'Laumanns', articleNumber: 'LA-SUBSTRAT-EXT',
+      description: 'Laumanns Extensiv-Substrat (6-8cm)', unit: 'm²', quantity: greenRoofAreaM2
     });
     items.push({
-      id: 'laumanns_pv_tray',
-      category: 'mounting',
-      manufacturer: 'Laumanns',
-      articleNumber: 'LA-PV-TRAY',
-      description: 'Laumanns PV-Aufständerung Gründach',
-      unit: 'Set/Modul',
-      quantity: moduleCount,
-      pricePerUnit: 58.00
+      id: 'laumanns_pv_tray', category: 'mounting', manufacturer: 'Laumanns', articleNumber: 'LA-PV-TRAY',
+      description: 'Laumanns PV-Aufständerung Gründach', unit: 'Set/Modul', quantity: moduleCount
     });
   }
 
-  // Allgemeine Gründach-Items
   items.push({
-    id: 'green_protection_membrane',
-    category: 'roofing',
-    description: 'Wurzelschutzbahn (nach DIN 4062)',
-    unit: 'm²',
-    quantity: roofAreaM2,
-    pricePerUnit: 8.00,
-    notes: 'Pflicht bei Gründach mit bituminöser Abdichtung'
+    id: 'green_protection_membrane', category: 'roofing',
+    description: 'Wurzelschutzbahn (nach DIN 4062)', unit: 'm²',
+    quantity: roofAreaM2, notes: 'Pflicht bei Gründach mit bituminöser Abdichtung'
   });
   items.push({
-    id: 'green_drain_layer',
-    category: 'roofing',
-    description: 'Drainmatte / Filtervlies',
-    unit: 'm²',
-    quantity: greenRoofAreaM2,
-    pricePerUnit: 6.50
+    id: 'green_drain_layer', category: 'roofing',
+    description: 'Drainmatte / Filtervlies', unit: 'm²', quantity: greenRoofAreaM2
   });
 
   return items;
