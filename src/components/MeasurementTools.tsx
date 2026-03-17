@@ -45,13 +45,15 @@ interface MeasurementToolsProps {
   scene: THREE.Scene;
   camera: THREE.Camera;
   autoOpenSidebar?: boolean;
+  sunSimulation?: SunSimulationState;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
   camera,
-  autoOpenSidebar = false
+  autoOpenSidebar = false,
+  sunSimulation
 }) => {
   // Sidebar collapsed state - default closed
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
