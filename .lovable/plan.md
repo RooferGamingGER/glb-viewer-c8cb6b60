@@ -52,3 +52,52 @@ Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90�
 - Standort: Auto GPS oder manuell (Default: 51.1°N, 10.4°E)
 - Shadow-Map: dynamisch 1024 (Mobile) bis 2048 (Desktop)
 - Keine externe API — komplett clientseitig/offline
+
+---
+
+# Lücke 4: PV-Modulkatalog & Montagesysteme
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/data/germanPVCatalog.ts` — 12 PV-Module (Solarwatt, Heckert, IBC, Energetica, Meyer Burger, Aleo, JA Solar, LONGi) + 20 Montagesysteme (Steildach/Flachdach/Gründach)
+- Erweiterte Spezifikationen: Voc, Isc, Vmpp, Impp, Gewicht, Rahmenfarbe, Zelltyp, Garantie, Temp-Koeffizient
+
+### Geänderte Dateien
+- `src/components/measurement/PVModuleSelect.tsx` — Filter nach Hersteller/Zelltyp, gruppierte Anzeige
+
+---
+
+# Lücke 3: PVGIS Ertragsprognose
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/utils/pvGisData.ts` — 24 GHI-Stützpunkte für Deutschland, IDW-Interpolation, PVGIS-basierte Ertragsberechnung
+
+### Geänderte Dateien
+- `src/utils/pvCalculations.ts` — `calculateAnnualYieldWithOrientation` erweitert um optionale GPS-Koordinaten, nutzt PVGIS-Daten wenn verfügbar
+
+---
+
+# Lücke 2: Verschattungs-Heatmap
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/utils/pvShadowAnalysis.ts` — Raycasting-basierte Jahresverschattung, Heatmap-Rendering (grün→gelb→rot), Reset-Funktion
+
+### Geänderte Dateien
+- `src/components/measurement/SunSimulationPanel.tsx` — Heatmap-UI: Button, Progress-Bar, Farbskala-Legende
+- `src/components/MeasurementTools.tsx` — Heatmap-State und Handler (`handleRunHeatmap`, `handleClearHeatmap`)
+
+---
+
+# Lücke 1: PDF-Export Teile 3+4
+
+## Status: Implementiert ✅
+
+### Geänderte Dateien
+- `src/utils/pdfExport.ts` — `calculateStringAssignments` exportiert für Pre-Rendering
+- `src/types/measurements.ts` — `pvSolarLayout?: string` Feld hinzugefügt
+- `src/components/measurement/ExportPdfButton.tsx` — Pre-Rendering von Solar-Layouts vor PDF-Export
