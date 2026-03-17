@@ -321,7 +321,13 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       const filename = `${coverData.title || 'Vermessungsbericht'}.pdf`;
       const provisionalTab = pdfOpenMode === 'open' ? window.open('', '_blank') : null;
 
-      const result = await exportMeasurementsToPdf(measurementsWithVisuals, coverDataWithLogo, 'blob');
+      const result = await exportMeasurementsToPdf(
+        measurementsWithVisuals,
+        coverDataWithLogo,
+        'blob',
+        includeStringPlan && externalStringPlan ? externalStringPlan : undefined,
+        includeMaterialList && externalMaterialList ? externalMaterialList : undefined,
+      );
       setExportProgress(100);
 
       if (result instanceof Blob) {
