@@ -80,7 +80,8 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
   handleClearMeasurements, toggleAllMeasurementsVisibility,
   toggleAllLabelsVisibility, allMeasurementsVisible, allLabelsVisible,
   showTable, setShowTable, handleMoveMeasurementUp, handleMoveMeasurementDown,
-  showMeasurementList = true
+  showMeasurementList = true,
+  onMaterialListChange
 }) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
