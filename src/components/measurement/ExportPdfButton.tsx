@@ -28,6 +28,8 @@ import { ExportPdfStringPlanTab, ExportPdfMaterialTab } from './ExportPdfButtonP
 interface ExportPdfButtonProps {
   measurements: Measurement[];
   measurementGroups?: THREE.Group[];
+  stringPlan?: StringPlan | null;
+  materialList?: CompleteMaterialList | null;
 }
 
 const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
