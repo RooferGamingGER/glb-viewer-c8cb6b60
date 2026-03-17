@@ -633,13 +633,6 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
               </Card>
             </TabsContent>}
 
-          <TabsContent value="stringplan">
-            <ExportPdfStringPlanTab
-              stringPlan={externalStringPlan ?? null}
-              includeStringPlan={includeStringPlan}
-              onIncludeStringPlanChange={setIncludeStringPlan}
-            />
-          </TabsContent>
 
           <TabsContent value="material">
             <ExportPdfMaterialTab
