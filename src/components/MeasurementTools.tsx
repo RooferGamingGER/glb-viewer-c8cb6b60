@@ -269,6 +269,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         handleMoveMeasurementUp={handleMoveMeasurementUp}
         handleMoveMeasurementDown={handleMoveMeasurementDown}
         handleClearMeasurements={handleClearMeasurements}
+        onMaterialListChange={setSharedMaterialList}
       />
       {isRoofElementMode && (
         <RoofElementControls
