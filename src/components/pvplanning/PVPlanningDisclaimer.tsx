@@ -40,7 +40,10 @@ const PVPlanningDisclaimer: React.FC<PVPlanningDisclaimerProps> = ({
             Die hier dargestellte Planung ist eine erste, unverbindliche Vorplanung. Bei dieser ersten Einschätzung wurden die exakte Ausrichtung der potenziellen PV-Anlage sowie die genaue Dachneigung noch nicht berücksichtigt. Diese Vorplanung dient lediglich einer ersten Orientierung und ersetzt keine detaillierte Fachplanung.
           </p>
           <p>
-            Für eine präzise und verbindliche Planung, die alle relevanten Aspekte einbezieht, empfehlen wir Ihnen, ein professionelles Angebot von einem Fachbetrieb einzuholen..
+            Die automatisch generierte Materialliste dient als Orientierung und kann Fehler enthalten. Mengen, Materialtypen und Kompatibilität müssen vor der Bestellung durch einen Fachbetrieb geprüft und bestätigt werden.
+          </p>
+          <p>
+            Für eine präzise und verbindliche Planung, die alle relevanten Aspekte einbezieht, empfehlen wir Ihnen, ein professionelles Angebot von einem Fachbetrieb einzuholen.
           </p>
         </DialogDescription>
         
