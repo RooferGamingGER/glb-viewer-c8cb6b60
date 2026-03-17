@@ -1331,8 +1331,32 @@ export const updatePVModuleInfoWithOrientation = (
 
 export const calculateAnnualYieldWithOrientation = (
   totalPower: number,
-  pvInfo: PVModuleInfo
+  pvInfo: PVModuleInfo,
+  latitude?: number,
+  longitude?: number
 ): number => {
+  // Try PVGIS-based calculation if GPS coordinates available
+  if (latitude && longitude && pvInfo.roofAzimuth !== undefined && pvInfo.roofInclination !== undefined) {
+    try {
+      const { calculateYieldPVGIS } = require('@/utils/pvGisData');
+      
+      if (pvInfo.roofType === 'flat' && pvInfo.tiltAngle) {
+        const effectiveInclination = pvInfo.tiltAngle;
+        if (pvInfo.flatRoofLayout === 'east-west') {
+          const eastYield = calculateYieldPVGIS(totalPower, latitude, longitude, 90, effectiveInclination);
+          const westYield = calculateYieldPVGIS(totalPower, latitude, longitude, 270, effectiveInclination);
+          return (eastYield + westYield) / 2;
+        }
+        return calculateYieldPVGIS(totalPower, latitude, longitude, 180, effectiveInclination);
+      }
+      
+      return calculateYieldPVGIS(totalPower, latitude, longitude, pvInfo.roofAzimuth, pvInfo.roofInclination);
+    } catch {
+      // Fallback to table-based calculation
+    }
+  }
+
+  // Fallback: table-based calculation
   // For flat roofs, use tilt angle as effective inclination and azimuth based on layout
   if (pvInfo.roofType === 'flat' && pvInfo.tiltAngle) {
     const effectiveInclination = pvInfo.tiltAngle;

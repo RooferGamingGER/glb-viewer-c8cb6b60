@@ -1,9 +1,9 @@
 /**
- * SunSimulationPanel — UI for daily & yearly sun simulation
+ * SunSimulationPanel — UI for daily & yearly sun simulation + shadow heatmap
  */
 
 import React, { useCallback } from 'react';
-import { Sun, Play, Pause, SkipForward, Calendar as CalendarIcon, MapPin } from 'lucide-react';
+import { Sun, Play, Pause, SkipForward, Calendar as CalendarIcon, MapPin, Thermometer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   formatTime,
   azimuthToCompass,
@@ -20,17 +21,28 @@ import {
   IMPORTANT_DATES
 } from '@/utils/sunPosition';
 import { SunSimulationState, SunSimulationMode } from '@/hooks/useSunSimulation';
+import { HEATMAP_LEGEND } from '@/utils/pvShadowAnalysis';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface SunSimulationPanelProps {
   simulation: SunSimulationState;
+  heatmapProgress?: number;
+  heatmapReady?: boolean;
+  onRunHeatmap?: () => void;
+  onClearHeatmap?: () => void;
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 const SPEED_OPTIONS = [0.5, 1, 2, 4];
 
-const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({ simulation }) => {
+const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({
+  simulation,
+  heatmapProgress,
+  heatmapReady,
+  onRunHeatmap,
+  onClearHeatmap,
+}) => {
   const {
     mode, setMode,
     latitude, longitude, setLatitude, setLongitude,
@@ -59,6 +71,7 @@ const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({ simulation }) =
 
   const currentTime = dateFromDecimalHours(date, timeOfDay);
   const isActive = mode !== 'off';
+  const isAnalyzing = heatmapProgress !== undefined && heatmapProgress > 0 && heatmapProgress < 100;
 
   return (
     <div className="p-3 space-y-3">
@@ -251,6 +264,67 @@ const SunSimulationPanel: React.FC<SunSimulationPanelProps> = ({ simulation }) =
               {solarPosition.elevation <= 0 && (
                 <div className="text-[10px] text-destructive font-medium mt-1">
                   ☽ Sonne unter dem Horizont
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Shadow Heatmap Section */}
+          {onRunHeatmap && (
+            <div className="border-t pt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Thermometer className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Verschattungs-Heatmap</span>
+              </div>
+
+              {isAnalyzing && (
+                <div className="space-y-1">
+                  <Progress value={heatmapProgress} className="h-2" />
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Analyse läuft… {heatmapProgress}%
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {!heatmapReady ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={onRunHeatmap}
+                    disabled={isAnalyzing}
+                  >
+                    <Thermometer className="h-3 w-3 mr-1" />
+                    Heatmap berechnen
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={onClearHeatmap}
+                  >
+                    Heatmap zurücksetzen
+                  </Button>
+                )}
+              </div>
+
+              {/* Legend */}
+              {heatmapReady && (
+                <div className="bg-muted/50 rounded-md p-2">
+                  <p className="text-[10px] text-muted-foreground mb-1">Verschattungsgrad</p>
+                  <div className="flex gap-2">
+                    {HEATMAP_LEGEND.map(entry => (
+                      <div key={entry.label} className="flex items-center gap-1">
+                        <div
+                          className="w-3 h-3 rounded-sm"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-[9px] text-muted-foreground">{entry.label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
