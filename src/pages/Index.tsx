@@ -212,12 +212,6 @@ const Index = () => {
           <Eye className="mr-2 h-4 w-4" />
           Demo ansehen
         </Button>
-        {isMobile && (
-          <Button onClick={handleStartClick} size="sm">
-            <Upload className="mr-2 h-4 w-4" />
-            Eigenes Modell
-          </Button>
-        )}
       </div>
     </div>
   );
