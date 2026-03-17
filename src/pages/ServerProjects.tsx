@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useWebODMAuth } from "@/lib/auth-context";
 import {
   getProjects,
@@ -82,7 +82,9 @@ const categoryIcon = (cat: string) => {
 
 const ServerProjects = () => {
   const navigate = useNavigate();
-  const { token, username, logout, isAuthenticated } = useWebODMAuth();
+  const location = useLocation();
+  const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
+  const hasMultipleServers = sessions.length > 1;
 
   const [view, setView] = useState<View>({ type: "projects" });
   const [projects, setProjects] = useState<Project[]>([]);
@@ -99,11 +101,39 @@ const ServerProjects = () => {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setView({ type: "projects" });
+    setTasks([]);
     getProjects(token)
-      .then(setProjects)
+      .then((loadedProjects) => {
+        setProjects(loadedProjects);
+        
+        // If returning from Viewer with returnToTask state, navigate to that task
+        const state = location.state as { returnToTask?: { projectId: string; taskId: string } } | null;
+        if (state?.returnToTask) {
+          const { projectId, taskId } = state.returnToTask;
+          const project = loadedProjects.find((p: Project) => String(p.id) === String(projectId));
+          if (project) {
+            // Clear the navigation state so it doesn't re-trigger
+            navigate(location.pathname, { replace: true, state: {} });
+            // Load tasks for this project and navigate to task detail
+            getProjectTasks(token, project.id).then((loadedTasks) => {
+              setTasks(loadedTasks);
+              const task = loadedTasks.find((t: Task) => t.id === taskId);
+              if (task) {
+                setView({ type: "taskDetail", project, task });
+              } else {
+                setView({ type: "tasks", project });
+              }
+            }).catch(() => {
+              setView({ type: "tasks", project });
+            });
+            return;
+          }
+        }
+      })
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, activeServer]);
 
   const openProject = async (project: Project) => {
     if (!token) return;
@@ -190,13 +220,37 @@ const ServerProjects = () => {
           </Button>
           <div>
             <h1 className="text-sm font-semibold">{headerTitle}</h1>
-            <p className="text-xs text-muted-foreground">Angemeldet als {username}</p>
+            <p className="text-xs text-muted-foreground">
+              Angemeldet als {username}
+              {hasMultipleServers && activeServer && (
+                <span className="ml-1">· {sessions.find(s => s.server === activeServer)?.label}</span>
+              )}
+            </p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Abmelden
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasMultipleServers && view.type === "projects" && (
+            <div className="flex rounded-md border border-border/50 overflow-hidden">
+              {sessions.map((s) => (
+                <button
+                  key={s.server}
+                  onClick={() => setActiveServer(s.server)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    s.server === activeServer
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Abmelden
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 container py-8">

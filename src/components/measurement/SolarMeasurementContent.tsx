@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import SolarPlanningExtension from './SolarMeasurementContentExtension';
 import { Measurement, PVMaterials } from '@/types/measurements';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -27,12 +28,14 @@ interface SolarMeasurementContentProps {
   measurement: Measurement;
   updateMeasurement: (id: string, updatedData: Partial<Measurement>) => void;
   allMeasurements?: Measurement[];
+  onMaterialListChange?: (list: import('@/types/pvPlanning').CompleteMaterialList | null) => void;
 }
 
 const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({ 
   measurement, 
   updateMeasurement,
-  allMeasurements = []
+  allMeasurements = [],
+  onMaterialListChange
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const exclusionZones = React.useMemo(() => extractExclusionZones(allMeasurements), [allMeasurements]);
@@ -706,6 +709,20 @@ const SolarMeasurementContent: React.FC<SolarMeasurementContentProps> = ({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Extended PV Planning: Inverter, String, Material */}
+      <SolarPlanningExtension
+        pvInfoMap={(() => {
+          const map = new Map<string, import('@/types/measurements').PVModuleInfo>();
+          if (measurement.pvModuleInfo) map.set(measurement.id, measurement.pvModuleInfo);
+          allMeasurements.filter(m => m.pvModuleInfo && m.id !== measurement.id).forEach(m => {
+            map.set(m.id, m.pvModuleInfo!);
+          });
+          return map;
+        })()}
+        measurements={allMeasurements.length > 0 ? allMeasurements : [measurement]}
+        onMaterialListChange={onMaterialListChange}
+      />
     </div>
   );
 };

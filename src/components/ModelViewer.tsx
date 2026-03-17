@@ -9,6 +9,8 @@ import { Loader2 } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import { useMeasurements } from '@/hooks/useMeasurements';
 import { PointSnappingProvider } from '@/contexts/PointSnappingContext';
+import SunLight from '@/components/viewer/SunLight';
+import { useSunSimulation } from '@/hooks/useSunSimulation';
 import { Progress } from "@/components/ui/progress";
 import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
@@ -56,7 +58,7 @@ class R3FErrorBoundary extends React.Component<
   }
 }
 
-type ModelViewerProps = {
+export type ModelViewerProps = {
   fileUrl: string;
   fileName: string;
   rotateModel?: boolean;
@@ -319,7 +321,8 @@ const ModelCanvas = React.memo(({
   canvasRef,
   rotateModel,
   onModelLoadComplete,
-  onRetryNeeded
+  onRetryNeeded,
+  sunSimulation
 }: {
   fileUrl: string;
   onSceneReady: (scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) => void;
@@ -327,6 +330,7 @@ const ModelCanvas = React.memo(({
   rotateModel?: boolean;
   onModelLoadComplete?: () => void;
   onRetryNeeded?: (url: string) => void;
+  sunSimulation?: ReturnType<typeof useSunSimulation>;
 }) => {
   const isMobile = useIsMobile();
   const { isLowMemory, optimizeRenderer } = useMemoryOptimization();
@@ -376,10 +380,26 @@ const ModelCanvas = React.memo(({
       <SceneSetup onSceneReady={onSceneReady} />
       <Suspense fallback={<Loader3D fileUrl={fileUrl} />}>
         <PerspectiveCamera makeDefault fov={45} near={0.1} far={1000} />
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-        <directionalLight position={[-10, -10, -5]} intensity={0.8} />
-        {!isLowMemory && <Environment preset="city" />}
+        {/* Default lights — completely OFF when sun simulation is active */}
+        {(!sunSimulation || sunSimulation.mode === 'off') && (
+          <>
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+            <directionalLight position={[-10, -10, -5]} intensity={0.8} />
+            {!isLowMemory && <Environment preset="city" />}
+          </>
+        )}
+        
+        {/* Sun simulation light — sole light source when active */}
+        {sunSimulation && (
+          <SunLight
+            active={sunSimulation.mode !== 'off'}
+            position={sunSimulation.sunLightPosition}
+            intensity={sunSimulation.sunIntensity}
+            ambientIntensity={sunSimulation.ambientIntensity}
+            elevation={sunSimulation.sunElevation}
+          />
+        )}
         <Model 
           url={fileUrl} 
           rotate={rotateModel !== false} 
@@ -428,6 +448,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [measurementToolsEverEnabled] = useState(true);
   
   const { measurements } = useMeasurements();
+  const sunSimulation = useSunSimulation();
+
+  // Sync northAngle from PV measurements into sun simulation
+  useEffect(() => {
+    const pvMeasurement = measurements.find(m => m.pvModuleInfo?.northAngle !== undefined);
+    if (pvMeasurement?.pvModuleInfo?.northAngle !== undefined) {
+      sunSimulation.setNorthAngle(pvMeasurement.pvModuleInfo.northAngle);
+    }
+  }, [measurements]);
 
   // Enhanced URL resolution with retry capability
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
@@ -655,6 +684,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               rotateModel={rotateModel}
               onModelLoadComplete={handleModelLoadComplete}
               onRetryNeeded={handleRetryNeeded}
+              sunSimulation={sunSimulation}
             />
           </div>
           
@@ -664,6 +694,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               scene={threeContext.scene} 
               camera={threeContext.camera} 
               autoOpenSidebar={!isMobile && measurementToolsEverEnabled}
+              sunSimulation={sunSimulation}
             />
           )}
         </div>

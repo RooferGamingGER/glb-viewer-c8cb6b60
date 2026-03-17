@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { X, FileText } from 'lucide-react';
 import { Measurement } from '@/hooks/useMeasurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
 import { generateDetailedCSV, exportMeasurementsToAbsJson } from '@/utils/exportUtils';
 import ExportGLBWithMeasurementsButton from './ExportGLBWithMeasurementsButton';
 import GenerateRoofPlanButton from './GenerateRoofPlanButton';
@@ -13,11 +14,13 @@ import { useToast } from '@/components/ui/use-toast';
 interface MobileExportOverlayProps {
   measurements: Measurement[];
   onClose: () => void;
+  materialList?: CompleteMaterialList | null;
 }
 
 const MobileExportOverlay: React.FC<MobileExportOverlayProps> = ({
   measurements,
   onClose,
+  materialList,
 }) => {
   const { toast } = useToast();
 
@@ -105,7 +108,7 @@ const MobileExportOverlay: React.FC<MobileExportOverlayProps> = ({
               ABS-Export (Test)
             </Button>
 
-            <ExportPdfButton measurements={measurements} />
+            <ExportPdfButton measurements={measurements} materialList={materialList} />
           </div>
         )}
       </ScrollArea>

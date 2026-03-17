@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      pv_material_reports: {
+        Row: {
+          created_at: string
+          id: string
+          material_id: string
+          reason: string
+          reported_by: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_id: string
+          reason: string
+          reported_by: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_id?: string
+          reason?: string
+          reported_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pv_material_reports_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "pv_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pv_materials: {
+        Row: {
+          article_number: string | null
+          category: string
+          created_at: string
+          created_by: string
+          id: string
+          manufacturer: string
+          notes: string | null
+          product_name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          article_number?: string | null
+          category: string
+          created_at?: string
+          created_by: string
+          id?: string
+          manufacturer: string
+          notes?: string | null
+          product_name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          article_number?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          manufacturer?: string
+          notes?: string | null
+          product_name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       saved_measurements: {
         Row: {
           created_at: string
@@ -47,6 +118,48 @@ export type Database = {
           task_name?: string | null
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      shared_views: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          file_name: string
+          id: string
+          measurements: Json
+          project_id: number
+          share_token: string
+          task_id: string
+          webodm_server_url: string
+          webodm_token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          file_name: string
+          id?: string
+          measurements?: Json
+          project_id: number
+          share_token: string
+          task_id: string
+          webodm_server_url: string
+          webodm_token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          file_name?: string
+          id?: string
+          measurements?: Json
+          project_id?: number
+          share_token?: string
+          task_id?: string
+          webodm_server_url?: string
+          webodm_token?: string
         }
         Relationships: []
       }

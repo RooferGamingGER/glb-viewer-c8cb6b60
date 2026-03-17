@@ -3,8 +3,11 @@ project_id = "bsnytpiojvtpgshbubsb"
 [functions.webodm-upload]
 verify_jwt = false
 
-[functions.solar-string-planning]
+[functions.measurement-storage]
 verify_jwt = false
 
-[functions.measurement-storage]
+[functions.pv-materials]
+verify_jwt = false
+
+[functions.share-view]
 verify_jwt = false

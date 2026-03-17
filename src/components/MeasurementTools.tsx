@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as THREE from 'three';
 
 // Import custom hooks
@@ -14,6 +14,8 @@ import { importMeasurementsFromGLB } from '@/utils/glbMeasurementImport';
 import { calculatePVModulePlacement, extractExclusionZones } from '@/utils/pvCalculations';
 import { smartToast } from '@/utils/smartToast';
 import { useAutoLoadMeasurements } from '@/hooks/useAutoLoadMeasurements';
+import { CompleteMaterialList } from '@/types/pvPlanning';
+import { SunSimulationState } from '@/hooks/useSunSimulation';
 
 // Import visualization utilities
 import { 
@@ -33,6 +35,7 @@ import MobileMeasureToolbar from './measurement/MobileMeasureToolbar';
 import MobileMassesOverlay from './measurement/MobileMassesOverlay';
 import MobileExportOverlay from './measurement/MobileExportOverlay';
 import MeasurementOverlay from './measurement/MeasurementOverlay';
+import SunSimulationPanel from './measurement/SunSimulationPanel';
 
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { PanelRight } from 'lucide-react';
@@ -43,16 +46,20 @@ interface MeasurementToolsProps {
   scene: THREE.Scene;
   camera: THREE.Camera;
   autoOpenSidebar?: boolean;
+  sunSimulation?: SunSimulationState;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({ 
   enabled,
   scene,
   camera,
-  autoOpenSidebar = false
+  autoOpenSidebar = false,
+  sunSimulation
 }) => {
   // Sidebar collapsed state - default closed
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  // Shared material list state for PDF export
+  const [sharedMaterialList, setSharedMaterialList] = useState<CompleteMaterialList | null>(null);
 
   // Register the scene with the point snapping context
   const { registerScene } = usePointSnapping();
@@ -78,6 +85,40 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Auto-load saved measurements from server
   useAutoLoadMeasurements(importMeasurements, measurements);
+
+  // Expose current measurements globally for share creation in Viewer
+  React.useEffect(() => {
+    (window as any).__currentMeasurements = measurements;
+    return () => {
+      delete (window as any).__currentMeasurements;
+    };
+  }, [measurements]);
+
+  // Import measurements provided by share mode (set by Viewer)
+  React.useEffect(() => {
+    const tryImportSharedMeasurements = () => {
+      const sharedRaw = (window as any).__sharedMeasurements;
+      if (!enabled || !sharedRaw) return;
+
+      const sharedList = Array.isArray(sharedRaw)
+        ? sharedRaw
+        : Array.isArray(sharedRaw?.measurements)
+          ? sharedRaw.measurements
+          : [];
+
+      if (sharedList.length === 0 || (scene as any)?.userData?._sharedMeasurementsImported) return;
+
+      importMeasurements(sharedList as any[], false, true);
+      (scene as any).userData._sharedMeasurementsImported = true;
+    };
+
+    tryImportSharedMeasurements();
+    window.addEventListener('share-measurements-ready', tryImportSharedMeasurements);
+
+    return () => {
+      window.removeEventListener('share-measurements-ready', tryImportSharedMeasurements);
+    };
+  }, [enabled, scene, importMeasurements]);
 
   // Three.js object references
   const {
@@ -266,6 +307,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         handleMoveMeasurementUp={handleMoveMeasurementUp}
         handleMoveMeasurementDown={handleMoveMeasurementDown}
         handleClearMeasurements={handleClearMeasurements}
+        onMaterialListChange={setSharedMaterialList}
       />
       {isRoofElementMode && (
         <RoofElementControls
@@ -288,6 +330,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               measurements.find(m => m.id === editMeasurementId)?.type === 'solar'
               : false}
           />
+        </div>
+      )}
+      {/* Sun Simulation Panel */}
+      {sunSimulation && (
+        <div className="border-t border-border/30">
+          <SunSimulationPanel simulation={sunSimulation} />
         </div>
       )}
     </div>
@@ -315,6 +363,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           handleCancelEditing={handleCancelEditingWithCleanup}
           updateMeasurement={updateMeasurement}
           onConvertAreaToSolar={handleConvertAreaToSolar}
+          materialList={sharedMaterialList}
         />
       )}
 
@@ -408,6 +457,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <MobileExportOverlay
           measurements={measurements}
           onClose={() => setIsMobileExportOpen(false)}
+          materialList={sharedMaterialList}
         />
       )}
     </div>

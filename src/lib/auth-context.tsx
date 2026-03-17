@@ -1,8 +1,40 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
+export interface ServerSession {
+  server: string;
+  token: string;
+  username: string;
+  label: string;
+}
+
+export const SERVERS = [
+  {
+    url: "https://drohnenvermessung-server.de",
+    label: "Drohnenvermessung by RooferGaming",
+    shortLabel: "RooferGaming",
+    logo: "/lovable-uploads/2656e45c-bc18-44f7-8506-199c2edee8a2.png",
+    accentColor: "hsl(174, 65%, 39%)",
+    description: "Präzise Dachaufmaße mit Drohne",
+  },
+  {
+    url: "https://drohnenvermessung-digitab.de",
+    label: "Drohnenvermessung DigiTab",
+    shortLabel: "DigiTab",
+    logo: "/favicons/digitab-logo.png",
+    accentColor: "hsl(220, 60%, 50%)",
+    description: "Digitale Vermessungslösungen",
+  },
+] as const;
+
 interface AuthContextType {
   token: string | null;
   username: string | null;
+  sessions: ServerSession[];
+  activeServer: string | null;
+  setActiveServer: (server: string) => void;
+  addSession: (session: ServerSession) => void;
+  /** Replace all sessions at once */
+  replaceSessions: (sessions: ServerSession[]) => void;
   login: (token: string, username: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -10,26 +42,78 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function WebODMAuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem("webodm_token"));
-  const [username, setUsername] = useState<string | null>(() => sessionStorage.getItem("webodm_user"));
+function loadSessions(): ServerSession[] {
+  try {
+    const raw = sessionStorage.getItem("webodm_sessions");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
-  const login = useCallback((t: string, u: string) => {
-    sessionStorage.setItem("webodm_token", t);
-    sessionStorage.setItem("webodm_user", u);
-    setToken(t);
-    setUsername(u);
+function saveSessions(sessions: ServerSession[]) {
+  sessionStorage.setItem("webodm_sessions", JSON.stringify(sessions));
+}
+
+export function WebODMAuthProvider({ children }: { children: ReactNode }) {
+  const [sessions, setSessions] = useState<ServerSession[]>(loadSessions);
+  const [activeServer, setActiveServerState] = useState<string | null>(
+    () => sessionStorage.getItem("webodm_active_server")
+  );
+
+  const activeSession = sessions.find((s) => s.server === activeServer) || sessions[0] || null;
+
+  const setActiveServer = useCallback((server: string) => {
+    sessionStorage.setItem("webodm_active_server", server);
+    setActiveServerState(server);
+  }, []);
+
+  const addSession = useCallback((session: ServerSession) => {
+    setSessions((prev) => {
+      const filtered = prev.filter((s) => s.server !== session.server);
+      const next = [...filtered, session];
+      saveSessions(next);
+      return next;
+    });
+  }, []);
+
+  const replaceSessions = useCallback((newSessions: ServerSession[]) => {
+    setSessions(newSessions);
+    saveSessions(newSessions);
+  }, []);
+
+  const login = useCallback((token: string, username: string) => {
+    // Legacy compat: use first server
+    const server = SERVERS[0].url;
+    const session: ServerSession = { server, token, username, label: SERVERS[0].label };
+    setSessions([session]);
+    saveSessions([session]);
+    sessionStorage.setItem("webodm_active_server", server);
+    setActiveServerState(server);
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem("webodm_token");
-    sessionStorage.removeItem("webodm_user");
-    setToken(null);
-    setUsername(null);
+    sessionStorage.removeItem("webodm_sessions");
+    sessionStorage.removeItem("webodm_active_server");
+    setSessions([]);
+    setActiveServerState(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, username, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider
+      value={{
+        token: activeSession?.token || null,
+        username: activeSession?.username || null,
+        sessions,
+        activeServer: activeSession?.server || null,
+        setActiveServer,
+        addSession,
+        replaceSessions,
+        login,
+        logout,
+        isAuthenticated: sessions.length > 0,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

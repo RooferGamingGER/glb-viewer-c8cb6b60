@@ -9,7 +9,6 @@ import {
   MoveHorizontal,
   Zap,
   Shield,
-  Upload,
   Eye,
   AlertTriangle,
   Loader2,
@@ -17,12 +16,14 @@ import {
   LucideIcon,
   ExternalLink,
   Newspaper,
-  Server,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // --- Constants & Data ---
+import { SERVERS } from "@/lib/auth-context";
+
 const DEMO_MODEL_URL = "/models/test-model.glb";
 
 interface FeatureItem {
@@ -53,6 +54,14 @@ interface ChangelogEntry {
 }
 
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: "17.03.2026",
+    text: "Sonnensimulation korrigiert: Schattenrichtung wurde physikalisch korrigiert – Schatten fallen jetzt realistisch in die richtige Himmelsrichtung und passen sich dynamisch an die Sonnenhöhe an",
+  },
+  {
+    date: "17.03.2026",
+    text: "Navigation verbessert: Zurück-Button im Viewer führt jetzt direkt zum geöffneten Task statt zur Startseite – flüssigerer Arbeitsablauf bei der Modellvermessung",
+  },
   {
     date: "16.03.2026",
     text: "PV-Planung verbessert: Modulbelegung wird jetzt als Overlay auf der Dachfläche gespeichert – Fläche bleibt in Messliste und allen Exporten erhalten",
@@ -196,7 +205,7 @@ const Index = () => {
       .catch(() => setDemoAvailable(false));
   }, []);
 
-  const handleStartClick = () => navigate("/viewer");
+  // Viewer is only accessible via server login
 
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
@@ -213,12 +222,6 @@ const Index = () => {
           <Eye className="mr-2 h-4 w-4" />
           Demo ansehen
         </Button>
-        {isMobile && (
-          <Button onClick={handleStartClick} size="sm">
-            <Upload className="mr-2 h-4 w-4" />
-            Eigenes Modell
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -256,26 +259,59 @@ const Index = () => {
           <ChangelogSection />
         </div>
 
-        {/* Row 2: Demo + Upload side by side on desktop */}
+        {/* Row 2: Login-Bereich – exklusiv für Kunden */}
+        <div className="glass-panel p-6 md:p-8 rounded-xl shadow-lg border border-primary/20">
+          <div className="text-center mb-5">
+            <h2 className="text-lg md:text-xl font-bold">Anmelden & loslegen</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              DrohnenGLB ist exklusiv für Kunden von<br />
+              <a href="https://drohnenvermessung-roofergaming.de/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Drohnenvermessung by RooferGaming®</a>
+              {" & "}
+              <a href="https://digi-tab.de/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Drohnenvermessung by DigiTab</a>
+              <br />verfügbar.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SERVERS.map((srv, idx) => (
+              <button
+                key={srv.url}
+                onClick={() => navigate(`/server-login?server=${idx}`)}
+                className="relative p-5 rounded-xl border-2 border-border/20 hover:border-primary/40 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col items-center gap-3 text-center group bg-background/60"
+              >
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-background border border-border/20 flex items-center justify-center p-2 group-hover:scale-110 transition-transform shadow-md">
+                  <img src={srv.logo} alt={srv.shortLabel} className="w-full h-full object-contain" />
+                </div>
+                <h3 className="text-sm md:text-base font-semibold">{srv.label}</h3>
+                <div className="flex items-center gap-1.5 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  <LogIn className="w-3.5 h-3.5" />
+                  Anmelden
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground text-center mt-4">
+            Noch kein Kunde?{" "}
+            <a
+              href="https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Jetzt Abo abschließen
+            </a>
+          </p>
+        </div>
+
+        {/* Row 3: Demo + Eturnity */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <DemoSection />
-          <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10 flex flex-col justify-center">
-            <h2 className="text-base md:text-lg font-semibold mb-4 text-center">Modell hochladen</h2>
-            <FileUpload />
-            <div className="flex flex-col gap-2 mt-4">
-              <Button onClick={handleStartClick} className="w-full" size={isMobile ? "sm" : "default"}>
-                <Upload className="mr-2 h-4 w-4" />
-                Viewer öffnen
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/server-login")}
-                className="w-full"
-                size={isMobile ? "sm" : "default"}
-              >
-                <Server className="mr-2 h-4 w-4" />
-                Vom Server laden
-              </Button>
+          <div className="glass-panel p-4 md:p-5 rounded-lg border border-border/10 flex flex-col">
+            <h3 className="text-sm md:text-base font-medium mb-3">GLB für Eturnity/PV-Sol konvertieren</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              GLB-Modell hochladen und für Eturnity/PV-Sol vorbereiten.
+            </p>
+            <div className="flex-1">
+              <FileUpload />
             </div>
           </div>
         </div>

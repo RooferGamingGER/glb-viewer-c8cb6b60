@@ -1,9 +1,18 @@
+import { SERVERS } from "@/lib/auth-context";
+
 const PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-proxy`;
+const UPLOAD_PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-upload`;
+
+/** Read the active server URL from sessionStorage */
+function getActiveServerUrl(): string {
+  return sessionStorage.getItem("webodm_active_server") || SERVERS[0].url;
+}
 
 async function proxyFetch(path: string, options: {
   method?: string;
   body?: Record<string, string>;
   token?: string;
+  server?: string;
 }): Promise<Response> {
   const res = await fetch(PROXY_URL, {
     method: "POST",
@@ -16,6 +25,7 @@ async function proxyFetch(path: string, options: {
       method: options.method || "GET",
       body: options.body,
       token: options.token,
+      server: options.server || getActiveServerUrl(),
     }),
   });
   return res;
@@ -152,27 +162,95 @@ export function getAssetIcon(asset: string): string {
 
 // --- Auth ---
 
-export async function authenticate(username: string, password: string): Promise<string> {
+/**
+ * Authenticate against a specific server.
+ * @param server The full server URL (e.g. "https://drohnenvermessung-server.de")
+ */
+export async function authenticate(username: string, password: string, server?: string): Promise<string> {
   const res = await proxyFetch("/api/token-auth/", {
     method: "POST",
     body: { username, password },
+    server: server || SERVERS[0].url,
   });
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || `Anmeldung fehlgeschlagen (${res.status})`);
+    // Parse nested error detail for cleaner message
+    let message = `Anmeldung fehlgeschlagen (${res.status})`;
+    if (data.detail) {
+      try {
+        const parsed = JSON.parse(data.detail);
+        if (parsed.non_field_errors?.length) {
+          message = parsed.non_field_errors[0];
+        } else {
+          message = data.detail;
+        }
+      } catch {
+        message = data.detail;
+      }
+    }
+    const err = new Error(message);
+    (err as any).statusCode = res.status;
+    throw err;
   }
 
   const data = await res.json();
   return data.token;
 }
 
+// --- Project Cache ---
+
+const PROJECT_CACHE_KEY = "webodm_projects_cache";
+const CACHE_TTL_MS = 60_000; // 1 minute
+
+interface ProjectCache {
+  server: string;
+  projects: Project[];
+  timestamp: number;
+}
+
+function getCachedProjects(server: string): Project[] | null {
+  try {
+    const raw = sessionStorage.getItem(PROJECT_CACHE_KEY);
+    if (!raw) return null;
+    const cache: ProjectCache = JSON.parse(raw);
+    if (cache.server !== server) return null;
+    if (Date.now() - cache.timestamp > CACHE_TTL_MS) return null;
+    return cache.projects;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedProjects(server: string, projects: Project[]) {
+  try {
+    sessionStorage.setItem(PROJECT_CACHE_KEY, JSON.stringify({
+      server,
+      projects,
+      timestamp: Date.now(),
+    }));
+  } catch {}
+}
+
 // --- Projects ---
 
-export async function getProjects(token: string): Promise<Project[]> {
-  const res = await proxyFetch("/api/projects/?ordering=-created_at", { token });
+export async function getProjects(token: string, server?: string): Promise<Project[]> {
+  const srv = server || getActiveServerUrl();
+  
+  // Return cache immediately if fresh
+  const cached = getCachedProjects(srv);
+  if (cached) return cached;
+  
+  const res = await proxyFetch("/api/projects/?ordering=-created_at", { token, server: srv });
   if (!res.ok) throw new Error("Projekte konnten nicht geladen werden.");
-  return res.json();
+  const projects = await res.json();
+  setCachedProjects(srv, projects);
+  return projects;
+}
+
+/** Prefetch projects in the background (fire-and-forget) */
+export function prefetchProjects(token: string, server?: string) {
+  getProjects(token, server).catch(() => {});
 }
 
 // --- Tasks ---
@@ -319,8 +397,6 @@ export async function getPresets(token: string): Promise<Preset[]> {
 
 // --- Task Creation (two-step: create partial → upload images → commit) ---
 
-const UPLOAD_PROXY_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webodm-upload`;
-
 export async function createTask(
   token: string,
   projectId: number,
@@ -330,6 +406,8 @@ export async function createTask(
   onProgress?: (pct: number) => void,
   processingNode?: number | null
 ): Promise<Task> {
+  const server = getActiveServerUrl();
+
   // Step 1: Create task in partial mode
   const createBody: Record<string, string> = {
     name,
@@ -346,6 +424,7 @@ export async function createTask(
     method: "POST",
     body: createBody,
     token,
+    server,
   });
 
   if (!createRes.ok) {
@@ -369,6 +448,7 @@ export async function createTask(
         "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         "x-webodm-token": token,
         "x-webodm-path": uploadPath,
+        "x-webodm-server": server,
       },
       body: formData,
     });
@@ -386,6 +466,7 @@ export async function createTask(
   const commitRes = await proxyFetch(`/api/projects/${projectId}/tasks/${task.id}/commit/`, {
     method: "POST",
     token,
+    server,
   });
 
   if (!commitRes.ok) {
