@@ -312,11 +312,31 @@ const Viewer = () => {
       <div className="flex-1 relative flex overflow-hidden">
         <SidebarProvider defaultOpen={true} open={true}>
           <main className="flex-1 relative w-full h-full">
-            {fileUrl && (
+            {shareLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
+                <div className="text-center space-y-3">
+                  <Progress value={30} className="w-48" />
+                  <p className="text-sm text-muted-foreground">Geteiltes Modell wird geladen…</p>
+                </div>
+              </div>
+            )}
+            {shareError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background z-20">
+                <div className="text-center space-y-3">
+                  <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
+                  <p className="text-lg font-medium">Share-Link ungültig</p>
+                  <p className="text-sm text-muted-foreground">{shareError}</p>
+                  <Button onClick={() => navigate('/')}>Zur Startseite</Button>
+                </div>
+              </div>
+            )}
+            {fileUrl && !shareError && (
               <ModelViewer 
                 fileUrl={fileUrl} 
                 fileName={fileName} 
                 rotateModel={rotateModel}
+                readOnly={isShareMode}
+                initialMeasurements={isShareMode ? shareMeasurements : undefined}
               />
             )}
           </main>
