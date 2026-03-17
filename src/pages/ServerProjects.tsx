@@ -82,7 +82,8 @@ const categoryIcon = (cat: string) => {
 
 const ServerProjects = () => {
   const navigate = useNavigate();
-  const { token, username, logout, isAuthenticated } = useWebODMAuth();
+  const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
+  const hasMultipleServers = sessions.length > 1;
 
   const [view, setView] = useState<View>({ type: "projects" });
   const [projects, setProjects] = useState<Project[]>([]);
@@ -99,11 +100,13 @@ const ServerProjects = () => {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setView({ type: "projects" });
+    setTasks([]);
     getProjects(token)
       .then(setProjects)
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, activeServer]);
 
   const openProject = async (project: Project) => {
     if (!token) return;
