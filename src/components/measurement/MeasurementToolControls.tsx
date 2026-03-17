@@ -192,6 +192,7 @@ const MeasurementToolControls: React.FC<MeasurementToolControlsProps> = ({
                   measurement={m}
                   updateMeasurement={updateMeasurement}
                   allMeasurements={measurements}
+                  onMaterialListChange={onMaterialListChange}
                 />
               </CollapsibleSection>
             ))}
