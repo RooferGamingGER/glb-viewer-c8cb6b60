@@ -110,7 +110,25 @@ const Viewer = () => {
       .finally(() => setShareLoading(false));
   }, [isShareMode, shareToken]);
 
+  // Import shared measurements into context when loaded
+  const { measurements, importMeasurements } = useMeasurementContext();
+  
   useEffect(() => {
+    if (isShareMode && shareMeasurements && shareMeasurements.length > 0 && fileUrl) {
+      // Small delay to ensure ModelViewer is mounted
+      const timer = setTimeout(() => {
+        importMeasurements(shareMeasurements as any[], false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isShareMode, shareMeasurements, fileUrl, importMeasurements]);
+
+  // Expose current measurements on window for ShareDialog
+  useEffect(() => {
+    (window as any).__currentMeasurements = measurements;
+    return () => { delete (window as any).__currentMeasurements; };
+  }, [measurements]);
+
     // In share mode, skip URL validation
     if (isShareMode) return;
     
