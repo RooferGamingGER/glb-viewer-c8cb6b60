@@ -287,9 +287,9 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
             const { renderSolarLayout2D } = await import('@/utils/renderPolygon2D');
             const { calculateStringAssignments } = await import('@/utils/pdfExport');
             const stringAssignments = calculateStringAssignments(m.pvModuleInfo);
+            // Create a temporary measurement-like object for the renderer
             const solarLayout = renderSolarLayout2D(
-              m.points,
-              m.pvModuleInfo,
+              m as any,
               800, 600,
               stringAssignments
             );
