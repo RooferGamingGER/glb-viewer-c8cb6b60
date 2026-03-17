@@ -298,6 +298,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           />
         </div>
       )}
+      {/* Sun Simulation Panel */}
+      {sunSimulation && (
+        <div className="border-t border-border/30">
+          <SunSimulationPanel simulation={sunSimulation} />
+        </div>
+      )}
     </div>
   );
 
