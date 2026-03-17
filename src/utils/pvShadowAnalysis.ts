@@ -78,7 +78,7 @@ export const runShadowAnalysis = async (
       const minutes = totalMinutes % 60;
       const testDate = new Date(year, month, SAMPLE_DAY, hours, minutes);
 
-      const pos = calculateSolarPosition(latitude, longitude, testDate, tzOffset);
+      const pos = calculateSolarPosition(testDate, latitude, longitude);
       if (pos.elevation < SUN_MIN_ELEVATION) continue;
 
       const sunVec = solarPositionToVector3(pos.azimuth, pos.elevation, northAngle, 100);
