@@ -16,7 +16,7 @@ import {
   LucideIcon,
   ExternalLink,
   Newspaper,
-  Server,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
