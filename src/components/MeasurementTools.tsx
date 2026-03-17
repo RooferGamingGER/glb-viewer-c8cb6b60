@@ -319,6 +319,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           handleCancelEditing={handleCancelEditingWithCleanup}
           updateMeasurement={updateMeasurement}
           onConvertAreaToSolar={handleConvertAreaToSolar}
+          materialList={sharedMaterialList}
         />
       )}
 
