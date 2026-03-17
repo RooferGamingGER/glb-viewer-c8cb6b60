@@ -677,6 +677,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
               rotateModel={rotateModel}
               onModelLoadComplete={handleModelLoadComplete}
               onRetryNeeded={handleRetryNeeded}
+              sunSimulation={sunSimulation}
             />
           </div>
           
