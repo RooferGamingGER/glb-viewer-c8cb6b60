@@ -211,6 +211,52 @@ export const renderPolygon2D = (measurement: Measurement, width = 800, height = 
 };
 
 /**
+ * Draws a single module rectangle on the canvas.
+ * Used by both moduleCorners and modulePositions paths.
+ */
+function drawModuleRect(
+  ctx: CanvasRenderingContext2D,
+  corners: Point2D[],
+  moduleIndex: number,
+  moduleNumber: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  stringAssignments?: Record<number, { stringId: string; color: string }>
+) {
+  let strokeColor = '#2563eb';
+  let fillColor = 'rgba(37, 99, 235, 0.55)';
+
+  if (stringAssignments && stringAssignments[moduleIndex]) {
+    strokeColor = stringAssignments[moduleIndex].color;
+    const hex = strokeColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    fillColor = `rgba(${r}, ${g}, ${b}, 0.55)`;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x * canvasWidth, corners[0].y * canvasHeight);
+  for (let c = 1; c < corners.length; c++) {
+    ctx.lineTo(corners[c].x * canvasWidth, corners[c].y * canvasHeight);
+  }
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = strokeColor;
+  ctx.stroke();
+
+  const cx = corners.reduce((s, p) => s + p.x, 0) / corners.length * canvasWidth;
+  const cy = corners.reduce((s, p) => s + p.y, 0) / corners.length * canvasHeight;
+  ctx.font = 'bold 8px Arial';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${moduleNumber}`, cx, cy);
+}
+
+/**
  * Renders a solar layout with roof polygon and PV modules as a 2D canvas image.
  * Shows numbered module rectangles on the roof polygon with string coloring.
  */
@@ -238,11 +284,9 @@ export const renderSolarLayout2D = (
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // White background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
-    // Project roof polygon points to 2D
     const roofPoints2D = projectPointsTo2D(measurement.points);
     if (roofPoints2D.length < 3) return '';
 
@@ -259,29 +303,21 @@ export const renderSolarLayout2D = (
     ctx.strokeStyle = '#333333';
     ctx.stroke();
 
-    // No edge dimension labels in solar layout - keep it clean
+    // ── MODULE DRAWING ──────────────────────────────────────────────────
 
-    // Draw PV modules
+    const removedIndices = new Set(pvInfo.removedModuleIndices || []);
+
+    // PATH A: moduleCorners available — project real 3D corner points
     if (pvInfo.moduleCorners && pvInfo.moduleCorners.length > 0) {
-      const removedIndices = new Set(pvInfo.removedModuleIndices || []);
-      let moduleNumber = 0;
-
-      // Build projection helper: use same coordinate system as roof polygon
       const allModulePoints: Point[] = [];
       pvInfo.moduleCorners.forEach(corners => corners.forEach(c => allModulePoints.push(c)));
-      
-      // Project module corners using the same projection as roof
       const allPoints = [...measurement.points, ...allModulePoints];
       const allProjected = projectPointsTo2D(allPoints);
       const roofCount = measurement.points.length;
 
-      // String colors for visual differentiation
-      const defaultStringColors = [
-        '#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed',
-        '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488'
-      ];
-
       let cornerIdx = roofCount;
+      let moduleNumber = 0;
+
       for (let mIdx = 0; mIdx < pvInfo.moduleCorners.length; mIdx++) {
         const corners = pvInfo.moduleCorners[mIdx];
         if (removedIndices.has(mIdx)) {
@@ -290,51 +326,63 @@ export const renderSolarLayout2D = (
         }
         moduleNumber++;
 
-        // Get projected corners for this module
-        const projectedCorners = [];
+        const projectedCorners: Point2D[] = [];
         for (let c = 0; c < corners.length; c++) {
           if (cornerIdx + c < allProjected.length) {
             projectedCorners.push(allProjected[cornerIdx + c]);
           }
         }
         cornerIdx += corners.length;
-
         if (projectedCorners.length < 4) continue;
 
-        // Determine module color
-        let moduleColor = '#2563eb';
-        let moduleFill = 'rgba(37, 99, 235, 0.6)';
-        if (stringAssignments && stringAssignments[mIdx]) {
-          moduleColor = stringAssignments[mIdx].color;
-          // Parse hex to rgba
-          const hex = moduleColor.replace('#', '');
-          const r = parseInt(hex.substring(0, 2), 16);
-          const g = parseInt(hex.substring(2, 4), 16);
-          const b = parseInt(hex.substring(4, 6), 16);
-          moduleFill = `rgba(${r}, ${g}, ${b}, 0.6)`;
-        }
+        drawModuleRect(ctx, projectedCorners, mIdx, moduleNumber, width, height, stringAssignments);
+      }
 
-        // Draw module rectangle
-        ctx.beginPath();
-        ctx.moveTo(projectedCorners[0].x * width, projectedCorners[0].y * height);
-        for (let c = 1; c < projectedCorners.length; c++) {
-          ctx.lineTo(projectedCorners[c].x * width, projectedCorners[c].y * height);
-        }
-        ctx.closePath();
-        ctx.fillStyle = moduleFill;
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = moduleColor;
-        ctx.stroke();
+    // PATH B: Fallback — modulePositions + module dimensions
+    } else if (pvInfo.modulePositions && pvInfo.modulePositions.length > 0) {
+      const allPoints = [...measurement.points, ...pvInfo.modulePositions];
+      const allProjected = projectPointsTo2D(allPoints);
+      const roofCount = measurement.points.length;
 
-        // Draw module number
-        const cx = projectedCorners.reduce((s, p) => s + p.x, 0) / projectedCorners.length * width;
-        const cy = projectedCorners.reduce((s, p) => s + p.y, 0) / projectedCorners.length * height;
-        ctx.font = 'bold 9px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`M${moduleNumber}`, cx, cy);
+      const roofProj = allProjected.slice(0, roofCount);
+      const roofMinX = Math.min(...roofProj.map(p => p.x));
+      const roofMaxX = Math.max(...roofProj.map(p => p.x));
+      const roofMinY = Math.min(...roofProj.map(p => p.y));
+      const roofMaxY = Math.max(...roofProj.map(p => p.y));
+      const roofSpanX = roofMaxX - roofMinX;
+      const roofSpanY = roofMaxY - roofMinY;
+
+      const roofWidthM = pvInfo.boundingWidth || pvInfo.availableWidth || 10;
+      const roofLengthM = pvInfo.boundingLength || pvInfo.availableLength || 10;
+
+      const pxPerMeterX = (roofSpanX * width) / roofWidthM;
+      const pxPerMeterY = (roofSpanY * height) / roofLengthM;
+      const pxPerMeter = Math.min(pxPerMeterX, pxPerMeterY) * 0.9;
+
+      const moduleWpx = (pvInfo.moduleWidth || 1.134) * pxPerMeter;
+      const moduleHpx = (pvInfo.moduleHeight || 1.722) * pxPerMeter;
+
+      let moduleNumber = 0;
+      for (let mIdx = 0; mIdx < pvInfo.modulePositions.length; mIdx++) {
+        if (removedIndices.has(mIdx)) continue;
+        moduleNumber++;
+
+        const proj = allProjected[roofCount + mIdx];
+        if (!proj) continue;
+
+        const cx = proj.x * width;
+        const cy = proj.y * height;
+        const halfW = moduleWpx / 2;
+        const halfH = moduleHpx / 2;
+
+        const rectCorners: Point2D[] = [
+          { x: (cx - halfW) / width, y: (cy - halfH) / height },
+          { x: (cx + halfW) / width, y: (cy - halfH) / height },
+          { x: (cx + halfW) / width, y: (cy + halfH) / height },
+          { x: (cx - halfW) / width, y: (cy + halfH) / height },
+        ];
+
+        drawModuleRect(ctx, rectCorners, mIdx, moduleNumber, width, height, stringAssignments);
       }
     }
 
@@ -360,7 +408,7 @@ export const renderSolarLayout2D = (
       ctx.fillText(`Dachneigung: ${pvInfo.roofInclination.toFixed(1)}°`, 10, 66);
     }
 
-    // String legend if assignments provided
+    // String legend
     if (stringAssignments) {
       const strings = new Map<string, string>();
       Object.values(stringAssignments).forEach(sa => strings.set(sa.stringId, sa.color));

@@ -115,6 +115,9 @@ export interface PVModuleSpec {
   height: number;           // Height in meters
   power: number;            // Power in watts
   efficiency: number;       // Efficiency percentage
+  voc?: number;             // Open-circuit voltage in V (optional, default ~41.8V)
+  isc?: number;             // Short-circuit current in A (optional)
+  tempCoeff?: number;       // Temperature coefficient %/°C (optional)
 }
 
 export interface PVMountingSystem {
