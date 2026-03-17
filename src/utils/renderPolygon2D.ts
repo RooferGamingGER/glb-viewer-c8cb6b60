@@ -11,7 +11,14 @@ export const projectPointsTo2D = (points: Point[]): Point2D[] => {
     return [];
   }
 
-  // Calculate the normal vector to determine the plane
+  return projectPointsTo2DRaw(points);
+};
+
+/**
+ * Raw 2D projection: projects 3D points onto the polygon's plane
+ * and normalizes to 0-1 range with padding.
+ */
+const projectPointsTo2DRaw = (points: Point[]): Point2D[] => {
   const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
   const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
   const p3 = new THREE.Vector3(points[2].x, points[2].y, points[2].z);
@@ -20,60 +27,128 @@ export const projectPointsTo2D = (points: Point[]): Point2D[] => {
   const v2 = new THREE.Vector3().subVectors(p3, p1);
   const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
   
-  // Define the projection plane
-  // We'll use the first point as our origin
-  const origin = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
-  
-  // Create primary axes for our 2D coordinate system
-  // First axis: normalized vector from p1 to p2
+  const origin = p1.clone();
   const xAxis = new THREE.Vector3().subVectors(p2, p1).normalize();
-  
-  // Second axis: perpendicular to both normal and xAxis
   const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
   
-  // Project all points onto this 2D coordinate system
-  const projected2D: Point2D[] = [];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   
-  // Find bounds for normalization
-  let minX = Number.MAX_VALUE;
-  let minY = Number.MAX_VALUE;
-  let maxX = Number.MIN_VALUE;
-  let maxY = Number.MIN_VALUE;
-  
-  // First pass: calculate raw 2D coordinates
   const raw2D: Point2D[] = [];
   for (const point of points) {
-    const p = new THREE.Vector3(point.x, point.y, point.z);
-    const relativePos = new THREE.Vector3().subVectors(p, origin);
-    
-    // Project onto our 2D axes
-    const x = relativePos.dot(xAxis);
-    const y = relativePos.dot(yAxis);
-    
+    const rel = new THREE.Vector3(point.x - origin.x, point.y - origin.y, point.z - origin.z);
+    const x = rel.dot(xAxis);
+    const y = rel.dot(yAxis);
     raw2D.push({ x, y });
-    
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
     maxX = Math.max(maxX, x);
     maxY = Math.max(maxY, y);
   }
   
-  // Calculate ranges for normalization
-  const rangeX = maxX - minX;
-  const rangeY = maxY - minY;
-  const maxRange = Math.max(rangeX, rangeY);
-  
-  // Second pass: normalize coordinates to 0-1 range
-  // We'll scale based on the max dimension to keep aspect ratio
-  for (const point of raw2D) {
-    // Add a padding of 10%
-    const x = (point.x - minX) / (maxRange * 1.2) + 0.1;
-    // Flip Y:Canvas Y grows downward, 3D world Y grows upward → Traufe unten, First oben
-    const y = (maxY - point.y) / (maxRange * 1.2) + 0.1;
-    projected2D.push({ x, y });
+  const maxRange = Math.max(maxX - minX, maxY - minY);
+  if (maxRange === 0) return raw2D.map(() => ({ x: 0.5, y: 0.5 }));
+
+  return raw2D.map(p => ({
+    x: (p.x - minX) / (maxRange * 1.2) + 0.1,
+    y: (maxY - p.y) / (maxRange * 1.2) + 0.1,
+  }));
+};
+
+/**
+ * Projects 3D points to 2D with the eave (Traufe = lowest 3D Y edge) at the bottom.
+ * 1. Project onto polygon plane
+ * 2. Find the edge with lowest average 3D Y
+ * 3. Rotate 2D so that edge is horizontal at the bottom
+ * 4. Normalize to 0-1
+ */
+export const projectPointsTo2DWithEaveDown = (
+  points: Point[],
+  roofPointCount?: number
+): Point2D[] => {
+  if (points.length < 3) return [];
+
+  const roofCount = roofPointCount ?? points.length;
+
+  // Step 1: project onto plane (unnormalized)
+  const p1 = new THREE.Vector3(points[0].x, points[0].y, points[0].z);
+  const p2 = new THREE.Vector3(points[1].x, points[1].y, points[1].z);
+  const p3 = new THREE.Vector3(points[2].x, points[2].y, points[2].z);
+  const v1 = new THREE.Vector3().subVectors(p2, p1);
+  const v2 = new THREE.Vector3().subVectors(p3, p1);
+  const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+  const origin = p1.clone();
+  const xAxis = new THREE.Vector3().subVectors(p2, p1).normalize();
+  const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+
+  const raw2D: Point2D[] = [];
+  for (const point of points) {
+    const rel = new THREE.Vector3(point.x - origin.x, point.y - origin.y, point.z - origin.z);
+    raw2D.push({ x: rel.dot(xAxis), y: rel.dot(yAxis) });
   }
+
+  // Step 2: find eave edge (lowest avg 3D Y among roof polygon edges)
+  let lowestAvgY = Infinity;
+  let eaveIdx1 = 0;
+  let eaveIdx2 = 1;
+  for (let i = 0; i < roofCount; i++) {
+    const j = (i + 1) % roofCount;
+    const avgY = (points[i].y + points[j].y) / 2;
+    if (avgY < lowestAvgY) {
+      lowestAvgY = avgY;
+      eaveIdx1 = i;
+      eaveIdx2 = j;
+    }
+  }
+
+  // Step 3: calculate rotation to make eave edge horizontal
+  const eave2D1 = raw2D[eaveIdx1];
+  const eave2D2 = raw2D[eaveIdx2];
+  const edgeDx = eave2D2.x - eave2D1.x;
+  const edgeDy = eave2D2.y - eave2D1.y;
+  const edgeAngle = Math.atan2(edgeDy, edgeDx);
+  // We want this edge horizontal → rotate by -edgeAngle
+  const cosA = Math.cos(-edgeAngle);
+  const sinA = Math.sin(-edgeAngle);
+
+  const rotated: Point2D[] = raw2D.map(p => ({
+    x: p.x * cosA - p.y * sinA,
+    y: p.x * sinA + p.y * cosA,
+  }));
+
+  // Step 4: ensure eave is at bottom (highest canvas Y = bottom)
+  // After rotation, the eave edge should have the same Y for both points.
+  // The eave should be at the bottom → it should have the LARGEST normalized Y.
+  const eaveRotY = (rotated[eaveIdx1].y + rotated[eaveIdx2].y) / 2;
+  const roofCenterY = rotated.slice(0, roofCount).reduce((s, p) => s + p.y, 0) / roofCount;
   
-  return projected2D;
+  // If the eave is above center (smaller Y), we need to flip
+  const needsFlip = eaveRotY < roofCenterY;
+
+  let finalPoints = rotated;
+  if (needsFlip) {
+    // Flip vertically around center
+    const allCenterY = rotated.reduce((s, p) => s + p.y, 0) / rotated.length;
+    finalPoints = rotated.map(p => ({ x: p.x, y: 2 * allCenterY - p.y }));
+  }
+
+  // Step 5: normalize to 0-1 with padding
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of finalPoints) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+
+  const maxRange = Math.max(maxX - minX, maxY - minY);
+  if (maxRange === 0) return finalPoints.map(() => ({ x: 0.5, y: 0.5 }));
+
+  // Canvas Y grows downward, so larger Y → bottom.
+  // After our rotation + flip, larger Y = eave = should be bottom of canvas.
+  return finalPoints.map(p => ({
+    x: (p.x - minX) / (maxRange * 1.2) + 0.1,
+    y: (p.y - minY) / (maxRange * 1.2) + 0.1,
+  }));
 };
 
 /**
