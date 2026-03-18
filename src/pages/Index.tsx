@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import FileUpload from "@/components/FileUpload";
-const ModelViewer = lazy(() => import("@/components/ModelViewer"));
 import {
   Smartphone,
   Box,
@@ -10,8 +9,6 @@ import {
   Zap,
   Shield,
   Eye,
-  AlertTriangle,
-  Loader2,
   Save,
   LucideIcon,
   ExternalLink,
@@ -24,7 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 // --- Constants & Data ---
 import { SERVERS } from "@/lib/auth-context";
 
-const DEMO_MODEL_URL = "/models/test-model.glb";
+
 
 interface FeatureItem {
   icon: LucideIcon;
@@ -133,18 +130,6 @@ const useSeoMetadata = () => {
 
 // --- Sub-Components ---
 
-const DemoFallback = ({ loading }: { loading?: boolean }) => (
-  <div className="flex flex-col items-center justify-center h-full bg-muted/30 rounded-lg min-h-[12rem]">
-    {loading ? (
-      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-    ) : (
-      <>
-        <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-xs text-muted-foreground">Demo nicht verfügbar</p>
-      </>
-    )}
-  </div>
-);
 
 const FeatureCard = ({ item }: { item: FeatureItem }) => (
   <div className="glass-panel p-3 md:p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90 border border-border/10">
@@ -207,41 +192,19 @@ const HeaderSection = () => (
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [demoVisible, setDemoVisible] = useState(false);
-  const demoRef = useRef<HTMLDivElement>(null);
 
   useSeoMetadata();
-
-  // Only load demo when scrolled into view
-  useEffect(() => {
-    const el = demoRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setDemoVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Viewer is only accessible via server login
 
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
       <h3 className="text-sm md:text-base font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
-      <div ref={demoRef} className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
-        {demoVisible ? (
-          <Suspense fallback={<DemoFallback loading />}>
-            <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
-          </Suspense>
-        ) : (
-          <DemoFallback loading />
-        )}
+      <div className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
+        <img
+          src="/images/demo-preview.jpg"
+          alt="3D-Modell Demo Vorschau"
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-3">
         <Button onClick={() => navigate("/test")} variant="outline" size={isMobile ? "sm" : "default"}>
