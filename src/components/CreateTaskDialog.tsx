@@ -505,6 +505,15 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
           </DialogFooter>
         )}
 
+        {step === "gps_review" && (
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setStep("config")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Zurück
+            </Button>
+          </DialogFooter>
+        )}
+
         {step === "boundary" && (
           <DialogFooter className="flex-row justify-between sm:justify-between">
             <Button variant="ghost" onClick={() => setStep("config")}>
