@@ -512,7 +512,19 @@ function TaskCard({ task, projectId, token, onClick }: { task: Task; projectId: 
               </span>
               {isProcessing && <span className="font-medium text-sky-400">{progressPct}%</span>}
             </div>
-            {isProcessing && <Progress value={progressPct} className="h-1.5" />}
+            {isProcessing && (
+              <>
+                <Progress value={progressPct} className="h-1.5" />
+                {(() => {
+                  const info = getProcessingStageInfo(task.running_progress ?? 0);
+                  return (
+                    <p className="text-[10px] text-muted-foreground">
+                      Schritt {info.stepNumber}/{info.totalSteps} · ca. {info.estimatedMinutes} Min.
+                    </p>
+                  );
+                })()}
+              </>
+            )}
           </div>
         )}
 
