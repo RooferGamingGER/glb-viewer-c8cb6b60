@@ -282,6 +282,17 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">GPS-Daten werden aus {files.length} Bildern gelesen…</p>
           </div>
+        ) : step === "gps_review" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {gpsValidation && (
+              <GpsReviewStep
+                validation={gpsValidation}
+                totalFiles={files.length}
+                onRemoveFlagged={handleRemoveFlagged}
+                onContinue={handleContinueDespiteGps}
+              />
+            )}
+          </div>
         ) : step === "boundary" ? (
           <div className="flex-1 min-h-0 overflow-y-auto">
             <Suspense fallback={
