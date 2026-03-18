@@ -412,63 +412,7 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
   );
 }
 
-// --- GlbUploadCard ---
-function GlbUploadCard({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith('.glb')) {
-      toast.error('Bitte eine gültige GLB-Datei auswählen.');
-      return;
-    }
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error('Datei zu groß. Maximale Größe: 100 MB.');
-      return;
-    }
-
-    try {
-      const header = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-      if (header[0] !== 0x67 || header[1] !== 0x6C || header[2] !== 0x54 || header[3] !== 0x46) {
-        toast.error('Ungültiges Dateiformat – keine gültige GLB-Datei.');
-        return;
-      }
-    } catch {
-      toast.error('Datei konnte nicht geprüft werden.');
-      return;
-    }
-
-    const blobUrl = URL.createObjectURL(file);
-    const params = new URLSearchParams({
-      fileUrl: blobUrl,
-      fileName: file.name,
-      rotateModel: 'true',
-    });
-    navigate(`/viewer?${params.toString()}`);
-  };
-
-  return (
-    <Card
-      onClick={() => fileInputRef.current?.click()}
-      className="cursor-pointer border-2 border-dashed border-border/50 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 flex flex-col items-center justify-center min-h-[200px]"
-    >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".glb"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-      <Upload className="h-10 w-10 text-muted-foreground/40 mb-3" />
-      <p className="text-sm font-medium text-muted-foreground">GLB hochladen</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">Eigene GLB-Datei vermessen</p>
-    </Card>
-  );
-}
-
-
+// --- TaskCard ---
 function TaskCard({ task, projectId, token, onClick }: { task: Task; projectId: number; token: string; onClick: () => void }) {
   const status = TASK_STATUS[task.status] || { label: "Unbekannt", color: "muted" };
   const pendingLabel = task.pending_action != null ? PENDING_ACTION[task.pending_action] : null;
