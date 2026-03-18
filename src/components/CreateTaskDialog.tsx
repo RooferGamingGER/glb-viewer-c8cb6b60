@@ -43,9 +43,10 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
   const [selectedPreset, setSelectedPreset] = useState<string>("default");
   const [presetsLoading, setPresetsLoading] = useState(false);
 
-  // Boundary state
+  // Boundary & GPS validation state
   const [gpsPhotos, setGpsPhotos] = useState<PhotoGps[]>([]);
   const [boundary, setBoundary] = useState<string | null>(null);
+  const [gpsValidation, setGpsValidation] = useState<GpsValidationResult | null>(null);
 
   useEffect(() => {
     if (!open || !token) return;
