@@ -534,3 +534,16 @@ export function formatFileSize(mb: number): string {
 export function isTaskActive(task: Task): boolean {
   return task.status === 10 || task.status === 20;
 }
+
+// --- Task Deletion ---
+
+export async function deleteTask(token: string, projectId: number, taskId: string): Promise<void> {
+  const res = await proxyFetch(`/api/projects/${projectId}/tasks/${taskId}/remove/`, {
+    method: "POST",
+    token,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Task konnte nicht gelöscht werden (${res.status}). ${detail}`);
+  }
+}
