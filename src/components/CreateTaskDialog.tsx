@@ -11,8 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, Loader2, CheckCircle2, AlertCircle, Server, Map, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { extractGpsFromImages, type PhotoGps } from "@/utils/exifGps";
+import { extractGpsFromImages, validateGpsData, type PhotoGps, type GpsValidationResult } from "@/utils/exifGps";
 import { lazy, Suspense } from "react";
+import GpsReviewStep from "@/components/GpsReviewStep";
 
 const TaskBoundaryMap = lazy(() => import("@/components/TaskBoundaryMap"));
 
