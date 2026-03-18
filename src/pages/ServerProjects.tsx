@@ -102,6 +102,7 @@ const ServerProjects = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
+  const hasMultipleServers = sessions.length > 1;
   const isAdminAccount = (username ?? "").trim().toLowerCase() === "roofergaming";
 
   const [view, setView] = useState<View>({ type: "projects" });
