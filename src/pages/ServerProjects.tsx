@@ -292,9 +292,11 @@ const ServerProjects = () => {
               ))}
             </div>
           )}
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} title="Administration">
-            <Shield className="h-4 w-4" />
-          </Button>
+          {sessions.some((s) => s.server.includes("drohnenvermessung-server.de")) && (
+            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} title="Administration">
+              <Shield className="h-4 w-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Abmelden
