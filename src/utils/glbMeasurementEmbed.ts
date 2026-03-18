@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Measurement, Point } from '@/types/measurements';
+import { Measurement, Point, Segment, PVModuleInfo, PVModuleSpec } from '@/types/measurements';
 import { getOriginalGLBBlob } from '@/utils/glbDirectManipulation';
 
 // Minimal GLB structures
@@ -23,6 +23,17 @@ export type EmbeddedMeasurement = {
   color?: string;
   value?: number;
   pointsLocal: Point[];
+  // Full project restoration fields
+  segments?: Segment[];
+  subType?: string;
+  dimensions?: Measurement['dimensions'];
+  penetrationType?: Measurement['penetrationType'];
+  notes?: string;
+  count?: number;
+  pvModuleInfo?: PVModuleInfo;
+  pvModuleSpec?: PVModuleSpec;
+  powerOutput?: number;
+  relatedMeasurements?: string[];
 };
 
 // Parse GLB header
@@ -84,18 +95,61 @@ function toLocalPoints(points: Point[], modelRoot: THREE.Object3D): Point[] {
   });
 }
 
+// Transform segment points to local space
+function segmentsToLocal(segments: Segment[] | undefined, modelRoot: THREE.Object3D): Segment[] | undefined {
+  if (!segments || segments.length === 0) return undefined;
+  return segments.map(seg => ({
+    ...seg,
+    points: [
+      toLocalPoints([seg.points[0]], modelRoot)[0],
+      toLocalPoints([seg.points[1]], modelRoot)[0],
+    ] as [Point, Point],
+  }));
+}
+
+// Strip large binary/image data from pvModuleInfo to keep GLB size manageable
+function cleanPVModuleInfo(info: PVModuleInfo | undefined): PVModuleInfo | undefined {
+  if (!info) return undefined;
+  // Clone to avoid mutating original
+  const clean = { ...info };
+  // Keep all numeric/array fields, but exclude rendered image data that can be regenerated
+  return clean;
+}
+
 // Build compact embedded measurements block
 function buildEmbeddedMeasurements(measurements: Measurement[], modelRoot: THREE.Object3D): EmbeddedMeasurement[] {
-  return measurements.map(m => ({
-    id: m.id,
-    type: m.type,
-    label: m.label,
-    visible: m.visible !== false,
-    labelVisible: m.labelVisible !== false,
-    color: m.color,
-    value: m.value,
-    pointsLocal: toLocalPoints(m.points || [], modelRoot)
-  }));
+  return measurements.map(m => {
+    const embedded: EmbeddedMeasurement = {
+      id: m.id,
+      type: m.type,
+      label: m.label,
+      visible: m.visible !== false,
+      labelVisible: m.labelVisible !== false,
+      color: m.color,
+      value: m.value,
+      pointsLocal: toLocalPoints(m.points || [], modelRoot),
+    };
+
+    // Include segments with local-space points
+    if (m.segments && m.segments.length > 0) {
+      embedded.segments = segmentsToLocal(m.segments, modelRoot);
+    }
+
+    // Include all metadata fields for full project restoration
+    if (m.subType) embedded.subType = m.subType;
+    if (m.dimensions) embedded.dimensions = m.dimensions;
+    if (m.penetrationType) embedded.penetrationType = m.penetrationType;
+    if (m.notes) embedded.notes = m.notes;
+    if (m.count !== undefined) embedded.count = m.count;
+    if (m.pvModuleInfo) embedded.pvModuleInfo = cleanPVModuleInfo(m.pvModuleInfo);
+    if (m.pvModuleSpec) embedded.pvModuleSpec = m.pvModuleSpec;
+    if (m.powerOutput !== undefined) embedded.powerOutput = m.powerOutput;
+    if (m.relatedMeasurements && m.relatedMeasurements.length > 0) {
+      embedded.relatedMeasurements = m.relatedMeasurements;
+    }
+
+    return embedded;
+  });
 }
 
 // Find the model root (object that carries the originalFile userData)

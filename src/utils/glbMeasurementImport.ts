@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Measurement, Point, Segment } from '@/types/measurements';
 import { getOriginalGLBBlob } from '@/utils/glbDirectManipulation';
 import { generateSegments, calculateArea } from '@/utils/measurementCalculations';
-
+import type { EmbeddedMeasurement } from '@/utils/glbMeasurementEmbed';
 // Minimal GLB structures
 interface GLBHeader { magic: number; version: number; length: number; }
 interface GLBChunk { length: number; type: number; data: ArrayBuffer; }
@@ -49,6 +49,17 @@ function toWorldPoints(pointsLocal: Point[], modelRoot: THREE.Object3D): Point[]
   });
 }
 
+function segmentsToWorld(segments: Segment[] | undefined, modelRoot: THREE.Object3D): Segment[] | undefined {
+  if (!segments || segments.length === 0) return undefined;
+  return segments.map(seg => ({
+    ...seg,
+    points: [
+      toWorldPoints([seg.points[0]], modelRoot)[0],
+      toWorldPoints([seg.points[1]], modelRoot)[0],
+    ] as [Point, Point],
+  }));
+}
+
 export async function importMeasurementsFromGLB(
   scene: THREE.Scene | THREE.Group
 ): Promise<Measurement[] | null> {
@@ -76,14 +87,16 @@ export async function importMeasurementsFromGLB(
     const modelRoot = findModelRoot(scene);
     if (!modelRoot) return null;
 
-    const imported: Measurement[] = meta.items.map((item: any, idx: number) => {
+    const imported: Measurement[] = meta.items.map((item: EmbeddedMeasurement & { pointsLocal?: Point[] }, idx: number) => {
       const id = typeof item.id === 'string' ? item.id : `imp_${idx}`;
       const type = item.type as Measurement['type'];
       const points = toWorldPoints(item.pointsLocal || [], modelRoot);
 
-      // Build segments for area-like measurements so edge labels render
+      // Restore segments: prefer embedded segments (converted to world), fallback to generated
       let segments: Segment[] | undefined = undefined;
-      if ((type === 'area' || type === 'solar') && points.length >= 2) {
+      if (item.segments && item.segments.length > 0) {
+        segments = segmentsToWorld(item.segments, modelRoot);
+      } else if ((type === 'area' || type === 'solar') && points.length >= 2) {
         segments = generateSegments(points);
       }
 
@@ -102,7 +115,17 @@ export async function importMeasurementsFromGLB(
         visible: item.visible !== false,
         labelVisible: item.labelVisible !== false,
         color: item.color,
-        value
+        value,
+        // Restore full project data
+        subType: item.subType,
+        dimensions: item.dimensions,
+        penetrationType: item.penetrationType,
+        notes: item.notes,
+        count: item.count,
+        pvModuleInfo: item.pvModuleInfo,
+        pvModuleSpec: item.pvModuleSpec,
+        powerOutput: item.powerOutput,
+        relatedMeasurements: item.relatedMeasurements,
       } as Measurement;
       return measurement;
     });
