@@ -25,6 +25,7 @@ import {
   type ShotsGeoJSON,
 } from "@/lib/webodm";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
+import StorageOverview from "@/components/StorageOverview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -310,6 +311,7 @@ const ServerProjects = () => {
               <h2 className="text-xl font-semibold">Projekte</h2>
               <span className="text-sm text-muted-foreground">({projects.length})</span>
             </div>
+            <StorageOverview token={token!} username={username} />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
                 <ProjectCard key={p.id} project={p} onClick={() => openProject(p)} />
