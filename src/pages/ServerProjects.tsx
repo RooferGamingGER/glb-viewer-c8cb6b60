@@ -64,7 +64,6 @@ import {
   MapPin,
   Database,
   Plus,
-  Shield,
   Trash2,
   Upload,
   X,
@@ -103,7 +102,6 @@ const ServerProjects = () => {
   const location = useLocation();
   const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
   const hasMultipleServers = sessions.length > 1;
-  const isAdminAccount = (username ?? "").trim().toLowerCase() === "roofergaming";
 
   const [view, setView] = useState<View>({ type: "projects" });
   const [projects, setProjects] = useState<Project[]>([]);
@@ -292,11 +290,6 @@ const ServerProjects = () => {
                 </button>
               ))}
             </div>
-          )}
-          {isAdminAccount && (
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} title="Administration">
-              <Shield className="h-4 w-4" />
-            </Button>
           )}
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />

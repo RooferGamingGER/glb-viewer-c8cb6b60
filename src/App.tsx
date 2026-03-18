@@ -6,7 +6,6 @@ import Test from '@/pages/Test';
 import Viewer from '@/pages/Viewer';
 import ServerLogin from '@/pages/ServerLogin';
 import ServerProjects from '@/pages/ServerProjects';
-import AdminDashboard from '@/pages/AdminDashboard';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -31,7 +30,6 @@ function App() {
                   <Route path="/test" element={<Test />} />
                   <Route path="/server-login" element={<ServerLogin />} />
                   <Route path="/server-projects" element={<ServerProjects />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />
