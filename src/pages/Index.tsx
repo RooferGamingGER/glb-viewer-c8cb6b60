@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import FileUpload from "@/components/FileUpload";
 const ModelViewer = lazy(() => import("@/components/ModelViewer"));
@@ -207,14 +207,26 @@ const HeaderSection = () => (
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [demoAvailable, setDemoAvailable] = useState<boolean | null>(null);
+  const [demoVisible, setDemoVisible] = useState(false);
+  const demoRef = useRef<HTMLDivElement>(null);
 
   useSeoMetadata();
 
+  // Only load demo when scrolled into view
   useEffect(() => {
-    fetch(DEMO_MODEL_URL, { method: "HEAD" })
-      .then((res) => setDemoAvailable(res.ok))
-      .catch(() => setDemoAvailable(false));
+    const el = demoRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setDemoVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   // Viewer is only accessible via server login
@@ -222,13 +234,13 @@ const Index = () => {
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
       <h3 className="text-sm md:text-base font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
-      <div className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
-        {demoAvailable === true ? (
+      <div ref={demoRef} className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
+        {demoVisible ? (
           <Suspense fallback={<DemoFallback loading />}>
             <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
           </Suspense>
         ) : (
-          <DemoFallback loading={demoAvailable === null} />
+          <DemoFallback loading />
         )}
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-3">
