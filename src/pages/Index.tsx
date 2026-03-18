@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import FileUpload from "@/components/FileUpload";
 const ModelViewer = lazy(() => import("@/components/ModelViewer"));
