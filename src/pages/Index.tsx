@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import FileUpload from "@/components/FileUpload";
-import ModelViewer from "@/components/ModelViewer";
+const ModelViewer = lazy(() => import("@/components/ModelViewer"));
 import {
   Smartphone,
   Box,
@@ -224,7 +224,9 @@ const Index = () => {
       <h3 className="text-sm md:text-base font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
       <div className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
         {demoAvailable === true ? (
-          <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+          <Suspense fallback={<DemoFallback loading />}>
+            <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
+          </Suspense>
         ) : (
           <DemoFallback loading={demoAvailable === null} />
         )}
