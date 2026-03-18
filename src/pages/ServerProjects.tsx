@@ -314,6 +314,7 @@ const ServerProjects = () => {
                   onClick={() => openTaskDetail(view.project, t)}
                 />
               ))}
+              <GlbUploadCard navigate={navigate} />
               {tasks.length === 0 && (
                 <div className="col-span-full flex flex-col items-center py-20 text-muted-foreground">
                   <Box className="mb-3 h-12 w-12 opacity-40" />
