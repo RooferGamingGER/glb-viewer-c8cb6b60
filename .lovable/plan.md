@@ -1,50 +1,103 @@
 
+# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-# Plan: Task-Löschung, verbesserte Fortschrittsanzeige und Fehlerhilfe
+## Status: Implementiert ✅
 
-## 1. Task löschen (wenn WebODM-Berechtigung vorhanden)
+## Problem
+Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
 
-**`src/lib/webodm.ts`**: Neue Funktion `deleteTask(token, projectId, taskId)` hinzufügen — DELETE-Request via `proxyFetch` an `/api/projects/{projectId}/tasks/{taskId}/remove/`.
+## Lösung: `northAngle` Parameter
 
-**`src/pages/ServerProjects.tsx`**:
-- In `TaskDetail`: Lösch-Button (Trash-Icon, destructive variant) mit Bestätigungsdialog ("Task unwiderruflich löschen?")
-- Nach erfolgreichem Löschen: Toast + zurück zur Task-Liste + Tasks neu laden
-- Button nur anzeigen, wenn Task nicht gerade verarbeitet wird (`status !== 20`)
+### 1. Typ-Erweiterung
+- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
+- 0° = +Z ist Nord (UTM-Standard)
 
-## 2. Verbesserte Fortschrittsanzeige (TaskCard + TaskDetail)
+### 2. `calculateRoofOrientation(points, northAngle)`
+- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
+- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
 
-**`src/lib/webodm.ts`**: `getProcessingStage` erweitern — Rückgabe als Objekt `{ label, stepNumber, totalSteps, estimatedMinutes }` statt nur String. Die 11 Stufen werden nummeriert (z.B. "Schritt 3 von 11"), mit grober Zeitschätzung pro Phase.
+### 3. `placeModule` South-Tilt
+- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
+- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
 
-**`src/pages/ServerProjects.tsx`**:
-- **TaskCard**: Unter dem Fortschrittsbalken zusätzlich Schritt-Info anzeigen: "Schritt 3/11 · ca. 5 Min."
-- **TaskDetail** (status === 20): Statt der simplen Spinner-Karte eine detailliertere Ansicht mit:
-  - Fortschrittsbalken mit Prozent
-  - Aktueller Schritt-Name und Nummer
-  - Geschätzte Restdauer
-  - Visuelle Schritt-Indikatoren (kleine Punkte/Badges für alle 11 Schritte)
+### 4. UI: Kompass-Slider
+- 0°-359° Slider in SolarMeasurementContent
+- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
+- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
 
-## 3. Fehlgeschlagene Tasks: Erklärung und Support-Kontakt
+### 5. E-W bleibt grid-relativ (unverändert)
 
-**`src/pages/ServerProjects.tsx`** — `TaskDetail` bei `status === 30`:
-- Statt nur `last_error` eine strukturierte Fehlerkarte anzeigen mit:
-  - **Häufige Ursachen** (Accordion oder Liste):
-    - Zu wenige Bilder
-    - Fehlerhafte GPS-Daten, insbesondere bei den ersten Aufnahmen
-    - Hinweis: "Fehlerhafte oder fehlende GPS-Daten erkennen Sie daran, dass anstelle eines Straßennamens lediglich ein Aufgabenname angezeigt wird. Starten Sie das Projekt in diesem Fall ohne die ersten beiden Aufnahmen."
-  - **Support-Kontakt**: Server-abhängige E-Mail-Adresse (`info@drohnenvermessung-roofergaming.de` bzw. `info@drohnenvermessung-digitab.de`) — wird anhand von `activeServer` aus `SERVERS` abgeleitet
-  - **Fotos-Upload-Angebot**: Text mit Angebot, Fotos zur Prüfung bereitzustellen:
-    - Download-Link senden oder
-    - HiDrive Share nutzen (Link zu `https://share.hidrive.com/upload?lang=de`, kostenlos bis 2 GB)
-  - Die technische Fehlermeldung (`last_error`) wird weiterhin klein darunter angezeigt
+---
 
-### Server → E-Mail Mapping
-- `drohnenvermessung-server.de` → `info@drohnenvermessung-roofergaming.de`
-- `drohnenvermessung-digitab.de` → `info@drohnenvermessung-digitab.de`
+# Sonnensimulation — Tages- & Jahresverlauf
 
-Dies wird als einfaches Mapping in `ServerProjects.tsx` oder `auth-context.tsx` definiert (z.B. als Erweiterung der `SERVERS`-Konstante mit einem `supportEmail`-Feld).
+## Status: Implementiert ✅
 
-## Dateien
-- **`src/lib/webodm.ts`**: `deleteTask` + `getProcessingStage` erweitern
-- **`src/lib/auth-context.tsx`**: `SERVERS` um `supportEmail` erweitern
-- **`src/pages/ServerProjects.tsx`**: Lösch-Button, verbesserte Fortschrittsanzeige, Fehler-Hilfskarte
+## Neue Dateien
+- `src/utils/sunPosition.ts` — SPA-Algorithmus (NREL-basiert), azimuth/elevation/sunrise/sunset
+- `src/hooks/useSunSimulation.ts` — State & Animation (day/year mode, playback)
+- `src/components/viewer/SunLight.tsx` — DirectionalLight mit dynamischer Shadow-Map
+- `src/components/measurement/SunSimulationPanel.tsx` — UI mit Tages-/Jahres-Tabs
 
+## Geänderte Dateien
+- `src/components/ModelViewer.tsx` — SunLight-Komponente im Canvas, Default-Lights dimmen bei Simulation
+- `src/components/MeasurementTools.tsx` — SunSimulation-State durchleiten, Panel in Sidebar
+- `src/components/measurement/MeasurementTools.tsx` — Props erweitert für sunSimulation
+
+## Features
+- Tagesverlauf: Datepicker, Time-Slider (Sonnenaufgang↔Sonnenuntergang), Play/Pause
+- Jahresverlauf: Monats-Slider, 12:00 Uhr fest, Play-Animation
+- Schnellauswahl: Equinox & Solstice (21.3 / 21.6 / 23.9 / 21.12)
+- Sonnenstand-Info: Azimut, Elevation, Tageslänge, Kompass-Richtung
+- Standort: Auto GPS oder manuell (Default: 51.1°N, 10.4°E)
+- Shadow-Map: dynamisch 1024 (Mobile) bis 2048 (Desktop)
+- Keine externe API — komplett clientseitig/offline
+
+---
+
+# Lücke 4: PV-Modulkatalog & Montagesysteme
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/data/germanPVCatalog.ts` — 12 PV-Module (Solarwatt, Heckert, IBC, Energetica, Meyer Burger, Aleo, JA Solar, LONGi) + 20 Montagesysteme (Steildach/Flachdach/Gründach)
+- Erweiterte Spezifikationen: Voc, Isc, Vmpp, Impp, Gewicht, Rahmenfarbe, Zelltyp, Garantie, Temp-Koeffizient
+
+### Geänderte Dateien
+- `src/components/measurement/PVModuleSelect.tsx` — Filter nach Hersteller/Zelltyp, gruppierte Anzeige
+
+---
+
+# Lücke 3: PVGIS Ertragsprognose
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/utils/pvGisData.ts` — 24 GHI-Stützpunkte für Deutschland, IDW-Interpolation, PVGIS-basierte Ertragsberechnung
+
+### Geänderte Dateien
+- `src/utils/pvCalculations.ts` — `calculateAnnualYieldWithOrientation` erweitert um optionale GPS-Koordinaten, nutzt PVGIS-Daten wenn verfügbar
+
+---
+
+# Lücke 2: Verschattungs-Heatmap
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/utils/pvShadowAnalysis.ts` — Raycasting-basierte Jahresverschattung, Heatmap-Rendering (grün→gelb→rot), Reset-Funktion
+
+### Geänderte Dateien
+- `src/components/measurement/SunSimulationPanel.tsx` — Heatmap-UI: Button, Progress-Bar, Farbskala-Legende
+- `src/components/MeasurementTools.tsx` — Heatmap-State und Handler (`handleRunHeatmap`, `handleClearHeatmap`)
+
+---
+
+# Lücke 1: PDF-Export Teile 3+4
+
+## Status: Implementiert ✅
+
+### Geänderte Dateien
+- `src/utils/pdfExport.ts` — `calculateStringAssignments` exportiert für Pre-Rendering
+- `src/types/measurements.ts` — `pvSolarLayout?: string` Feld hinzugefügt
+- `src/components/measurement/ExportPdfButton.tsx` — Pre-Rendering von Solar-Layouts vor PDF-Export

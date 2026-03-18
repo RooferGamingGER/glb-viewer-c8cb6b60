@@ -15,6 +15,7 @@ export const SERVERS = [
     logo: "/lovable-uploads/2656e45c-bc18-44f7-8506-199c2edee8a2.png",
     accentColor: "hsl(174, 65%, 39%)",
     description: "Präzise Dachaufmaße mit Drohne",
+    supportEmail: "info@drohnenvermessung-roofergaming.de",
   },
   {
     url: "https://drohnenvermessung-digitab.de",
@@ -23,6 +24,7 @@ export const SERVERS = [
     logo: "/favicons/digitab-logo.png",
     accentColor: "hsl(220, 60%, 50%)",
     description: "Digitale Vermessungslösungen",
+    supportEmail: "info@drohnenvermessung-digitab.de",
   },
 ] as const;
 

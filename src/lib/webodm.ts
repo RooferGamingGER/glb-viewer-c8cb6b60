@@ -89,19 +89,52 @@ export const PENDING_ACTION: Record<number, string> = {
   4: "Wird importiert…",
 };
 
+export interface ProcessingStageInfo {
+  label: string;
+  stepNumber: number;
+  totalSteps: number;
+  estimatedMinutes: number;
+}
+
+const PROCESSING_STAGES: { threshold: number; label: string; minutes: number }[] = [
+  { threshold: 0,    label: "Wird initialisiert…",            minutes: 1 },
+  { threshold: 0.05, label: "Bilder werden hochgeladen…",     minutes: 3 },
+  { threshold: 0.15, label: "Bilder werden analysiert…",      minutes: 5 },
+  { threshold: 0.25, label: "Merkmale werden extrahiert…",    minutes: 8 },
+  { threshold: 0.35, label: "Bildausrichtung läuft…",         minutes: 10 },
+  { threshold: 0.45, label: "Punktwolke wird erstellt…",      minutes: 12 },
+  { threshold: 0.55, label: "Punktwolke wird verdichtet…",    minutes: 15 },
+  { threshold: 0.65, label: "Mesh wird generiert…",           minutes: 10 },
+  { threshold: 0.75, label: "Texturierung läuft…",            minutes: 8 },
+  { threshold: 0.85, label: "Orthophoto wird erstellt…",      minutes: 5 },
+  { threshold: 0.95, label: "Höhenmodelle werden berechnet…", minutes: 3 },
+];
+
 export function getProcessingStage(progress: number): string {
-  if (progress <= 0) return "Wird initialisiert…";
-  if (progress < 0.05) return "Bilder werden hochgeladen…";
-  if (progress < 0.15) return "Bilder werden analysiert…";
-  if (progress < 0.25) return "Merkmale werden extrahiert…";
-  if (progress < 0.35) return "Bildausrichtung läuft…";
-  if (progress < 0.45) return "Punktwolke wird erstellt…";
-  if (progress < 0.55) return "Punktwolke wird verdichtet…";
-  if (progress < 0.65) return "Mesh wird generiert…";
-  if (progress < 0.75) return "Texturierung läuft…";
-  if (progress < 0.85) return "Orthophoto wird erstellt…";
-  if (progress < 0.95) return "Höhenmodelle werden berechnet…";
-  return "Wird abgeschlossen…";
+  return getProcessingStageInfo(progress).label;
+}
+
+export function getProcessingStageInfo(progress: number): ProcessingStageInfo {
+  const totalSteps = PROCESSING_STAGES.length;
+  let stepIndex = 0;
+  for (let i = PROCESSING_STAGES.length - 1; i >= 0; i--) {
+    if (progress >= PROCESSING_STAGES[i].threshold) {
+      stepIndex = i;
+      break;
+    }
+  }
+  const stage = PROCESSING_STAGES[stepIndex];
+  // Estimate remaining minutes: sum of remaining stages
+  let remaining = 0;
+  for (let i = stepIndex; i < PROCESSING_STAGES.length; i++) {
+    remaining += PROCESSING_STAGES[i].minutes;
+  }
+  return {
+    label: stage.label,
+    stepNumber: stepIndex + 1,
+    totalSteps,
+    estimatedMinutes: remaining,
+  };
 }
 
 // --- Asset filtering ---
@@ -500,4 +533,17 @@ export function formatFileSize(mb: number): string {
 
 export function isTaskActive(task: Task): boolean {
   return task.status === 10 || task.status === 20;
+}
+
+// --- Task Deletion ---
+
+export async function deleteTask(token: string, projectId: number, taskId: string): Promise<void> {
+  const res = await proxyFetch(`/api/projects/${projectId}/tasks/${taskId}/remove/`, {
+    method: "POST",
+    token,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Task konnte nicht gelöscht werden (${res.status}). ${detail}`);
+  }
 }
