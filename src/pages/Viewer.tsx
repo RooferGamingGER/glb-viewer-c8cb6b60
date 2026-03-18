@@ -272,6 +272,9 @@ const Viewer = () => {
                 const tid = p.get('taskId');
                 if (pid && tid) {
                   navigate('/server-projects', { state: { returnToTask: { projectId: pid, taskId: tid } } });
+                } else if (authToken) {
+                  // Came from ServerProjects via local GLB upload — go back to task overview
+                  navigate('/server-projects');
                 } else {
                   navigate('/');
                 }
