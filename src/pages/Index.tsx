@@ -53,56 +53,43 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "18.03.2026",
-    text: "GLB-Upload für Kunden wieder ermöglicht. GLB-Dateien können mit Messdaten und PV-Planung exportiert werden und bei Bedarf wieder hochgeladen werden, auch wenn das Projekt nicht mehr in der Taskübersicht vorhanden ist.",
+    text: "NEU: GPS-Validierung beim Upload – fehlende Koordinaten und Ausreißer werden vor der Verarbeitung erkannt und können entfernt werden.",
   },
   {
     date: "18.03.2026",
-    text: "Stringplanung hinzugefügt, weitere Wechselrichter und Materialien hinterlegt. Projekt Thumbnails implementiert.",
+    text: "GLB-Upload wieder ermöglicht – Dateien mit Messdaten & PV-Planung exportieren und erneut hochladen.",
   },
   {
     date: "18.03.2026",
-    text: "Projekte können mit Mitarbeitern und Kunden geteilt werden. Massen und PV-Planung wird direkt mit angezeigt, wenn das Modell vermessen wurde. Links sind 30 Tage gültig.",
+    text: "Stringplanung, weitere Wechselrichter/Materialien & Projekt-Thumbnails.",
+  },
+  {
+    date: "18.03.2026",
+    text: "Projekte mit Mitarbeitern/Kunden teilen – inkl. Massen & PV-Anzeige (Links 30 Tage gültig).",
   },
   {
     date: "17.03.2026",
-    text: "Sonnensimulation korrigiert: Schattenrichtung wurde physikalisch korrigiert – Schatten fallen jetzt realistisch in die richtige Himmelsrichtung und passen sich dynamisch an die Sonnenhöhe an",
-  },
-  {
-    date: "17.03.2026",
-    text: "Navigation verbessert: Zurück-Button im Viewer führt jetzt direkt zum geöffneten Task statt zur Startseite – flüssigerer Arbeitsablauf bei der Modellvermessung",
+    text: "Sonnensimulation: Schattenrichtung physikalisch korrigiert. Navigation: Zurück-Button führt zum Task.",
   },
   {
     date: "16.03.2026",
-    text: "PV-Planung verbessert: Modulbelegung wird jetzt als Overlay auf der Dachfläche gespeichert – Fläche bleibt in Messliste und allen Exporten erhalten",
-  },
-  {
-    date: "16.03.2026",
-    text: "Schnelleres Laden vom Server: Messungen werden jetzt in einem Schritt geladen statt zwei – spürbar schnellerer Projektstart",
-  },
-  {
-    date: "16.03.2026",
-    text: "PV-Daten vollständig gespeichert: Alle PV-Einstellungen wie Neigung, Wartungswege und Reihenabstand werden beim Speichern komplett übernommen",
+    text: "PV-Planung: Modulbelegung als Overlay gespeichert; schnelleres Laden; alle PV-Einstellungen vollständig gespeichert.",
   },
   {
     date: "15.03.2026",
-    text: "Kunden von Drohnenvermessung by RooferGaming® können nun Projekte & Tasks verwalten, Drohnenbilder einsehen und neue Verarbeitungsaufträge starten – alles ohne die App zu verlassen",
+    text: "Server-Integration: Projekte & Tasks verwalten, Drohnenbilder einsehen, Aufträge starten.",
     link: { url: "https://drohnenvermessung-roofergaming.de/shop/Abonnement-c179036259/", label: "Jetzt Kunde werden" },
   },
   {
     date: "15.03.2026",
-    text: "GLB-Modelle können jetzt direkt vom Server geladen und sofort vermessen werden – kein manueller Download mehr nötig",
-  },
-  {
-    date: "15.03.2026",
-    text: "PDF-Export optimiert: Dachplan bereinigt und korrigierte Leistungsberechnung für PV-Anlagen",
+    text: "GLB direkt vom Server laden & vermessen; PDF-Export optimiert.",
   },
   {
     date: "07.02.2026",
-    text: "Export für Flachdächer nach ABS-Plan",
+    text: "Export für Flachdächer nach ABS-Plan.",
     link: { url: "https://apps.absturzsicherung.de", label: "ABS-Plan öffnen" },
   },
 ];
-
 // --- Custom Hooks ---
 const useSeoMetadata = () => {
   useEffect(() => {
