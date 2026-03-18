@@ -25,7 +25,7 @@ interface Props {
   onTaskCreated: () => void;
 }
 
-type DialogStep = "config" | "extracting_gps" | "boundary" | "uploading" | "done" | "error";
+type DialogStep = "config" | "extracting_gps" | "gps_review" | "boundary" | "uploading" | "done" | "error";
 
 export default function CreateTaskDialog({ open, onOpenChange, projectId, projectName, onTaskCreated }: Props) {
   const { token } = useWebODMAuth();
