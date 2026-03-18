@@ -141,7 +141,9 @@ function TasksOverviewTab({ sessions }: { sessions: { server: string; token: str
       })
     )
       .then((results) => {
-        if (!cancelled) setTasks(results.flat());
+        if (cancelled) return;
+        const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+        setTasks(results.flat().filter((t) => new Date(t.created_at).getTime() >= cutoff));
       })
       .catch((err) => toast.error(err.message))
       .finally(() => { if (!cancelled) setLoading(false); });
