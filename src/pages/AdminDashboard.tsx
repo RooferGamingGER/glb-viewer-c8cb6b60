@@ -61,9 +61,11 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { isAuthenticated, sessions, username } = useWebODMAuth();
 
+  const isRooferGaming = sessions.some((s) => s.server.includes("drohnenvermessung-server.de"));
+
   useEffect(() => {
-    if (!isAuthenticated) navigate("/server-login", { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (!isAuthenticated || !isRooferGaming) navigate("/server-projects", { replace: true });
+  }, [isAuthenticated, isRooferGaming, navigate]);
 
   return (
     <div className="min-h-svh flex flex-col bg-background">
