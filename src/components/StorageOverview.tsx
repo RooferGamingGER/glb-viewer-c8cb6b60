@@ -1,48 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { HardDrive, Database, Loader2 } from "lucide-react";
-import { getProjects, getProjectTasks, formatFileSize, type Task } from "@/lib/webodm";
+import { HardDrive, Database, Loader2, Folder } from "lucide-react";
 import { listSavedMeasurements } from "@/utils/measurementStorage";
+import { type Project } from "@/lib/webodm";
 
 interface StorageOverviewProps {
   token: string;
   username?: string;
+  projects: Project[];
 }
 
 const MAX_MEASUREMENTS = 100;
 
-const StorageOverview: React.FC<StorageOverviewProps> = ({ token, username }) => {
-  const [serverStorageMB, setServerStorageMB] = useState<number | null>(null);
+const StorageOverview: React.FC<StorageOverviewProps> = ({ token, username, projects }) => {
   const [measurementCount, setMeasurementCount] = useState<number | null>(null);
-  const [loadingServer, setLoadingServer] = useState(true);
   const [loadingMeasurements, setLoadingMeasurements] = useState(true);
+
+  const totalTasks = projects.reduce((sum, p) => sum + (p.tasks?.length || 0), 0);
 
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
 
-    // Fetch all projects → all tasks → sum sizes
-    (async () => {
-      try {
-        const projects = await getProjects(token);
-        let totalMB = 0;
-        const taskPromises = projects.map((p) => getProjectTasks(token, p.id));
-        const taskArrays = await Promise.all(taskPromises);
-        for (const tasks of taskArrays) {
-          for (const t of tasks) {
-            totalMB += t.size || 0;
-          }
-        }
-        if (!cancelled) setServerStorageMB(totalMB);
-      } catch {
-        if (!cancelled) setServerStorageMB(0);
-      } finally {
-        if (!cancelled) setLoadingServer(false);
-      }
-    })();
-
-    // Fetch saved measurements count
     (async () => {
       try {
         const result = await listSavedMeasurements(token, username);
@@ -63,7 +43,7 @@ const StorageOverview: React.FC<StorageOverviewProps> = ({ token, username }) =>
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 mb-6">
-      {/* Server Storage */}
+      {/* Server Overview */}
       <Card className="border-border/50">
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
@@ -71,25 +51,23 @@ const StorageOverview: React.FC<StorageOverviewProps> = ({ token, username }) =>
               <HardDrive className="h-4 w-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Server-Speicher</p>
-              <p className="text-xs text-muted-foreground">Gesamter Speicherverbrauch aller Tasks</p>
+              <p className="text-sm font-medium">Server-Übersicht</p>
+              <p className="text-xs text-muted-foreground">Projekte & Tasks auf dem Server</p>
             </div>
           </div>
-          {loadingServer ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Wird berechnet…
+          <div className="space-y-1">
+            <div className="flex items-center gap-4">
+              <div>
+                <p className="text-2xl font-bold tracking-tight">{projects.length}</p>
+                <p className="text-xs text-muted-foreground">Projekte</p>
+              </div>
+              <div className="h-8 w-px bg-border" />
+              <div>
+                <p className="text-2xl font-bold tracking-tight">{totalTasks}</p>
+                <p className="text-xs text-muted-foreground">Tasks</p>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-1">
-              <p className="text-2xl font-bold tracking-tight">
-                {formatFileSize(serverStorageMB ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                über alle Projekte und Tasks
-              </p>
-            </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
