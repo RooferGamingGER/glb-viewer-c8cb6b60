@@ -26,14 +26,16 @@ function App() {
           <TutorialProvider>
             <WebODMAuthProvider>
               <Router>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/viewer" element={<Viewer />} />
-                  <Route path="/test" element={<Test />} />
-                  <Route path="/server-login" element={<ServerLogin />} />
-                  <Route path="/server-projects" element={<ServerProjects />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/viewer" element={<Viewer />} />
+                    <Route path="/test" element={<Test />} />
+                    <Route path="/server-login" element={<ServerLogin />} />
+                    <Route path="/server-projects" element={<ServerProjects />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
                 <Toaster />
                 <SonnerToaster richColors position="top-center" duration={2000} closeButton={false} />
                 <PWAInstallPrompt />
