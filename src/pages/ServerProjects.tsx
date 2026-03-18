@@ -286,10 +286,23 @@ const ServerProjects = () => {
                 <h2 className="text-xl font-semibold">{view.project.name}</h2>
                 <span className="text-sm text-muted-foreground">({tasks.length} Tasks)</span>
               </div>
-              <Button onClick={() => setCreateTaskOpen(true)} size="sm">
-                <Plus className="mr-1.5 h-4 w-4" />
-                Neuer Task
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => glbInputRef.current?.click()} size="sm" variant="outline">
+                  <Upload className="mr-1.5 h-4 w-4" />
+                  GLB hochladen
+                </Button>
+                <input
+                  ref={glbInputRef}
+                  type="file"
+                  accept=".glb"
+                  className="hidden"
+                  onChange={handleGlbUpload}
+                />
+                <Button onClick={() => setCreateTaskOpen(true)} size="sm">
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Neuer Task
+                </Button>
+              </div>
             </div>
             <CreateTaskDialog
               open={createTaskOpen}
