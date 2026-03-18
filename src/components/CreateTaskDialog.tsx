@@ -11,8 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, Loader2, CheckCircle2, AlertCircle, Server, Map, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { extractGpsFromImages, type PhotoGps } from "@/utils/exifGps";
+import { extractGpsFromImages, validateGpsData, type PhotoGps, type GpsValidationResult } from "@/utils/exifGps";
 import { lazy, Suspense } from "react";
+import GpsReviewStep from "@/components/GpsReviewStep";
 
 const TaskBoundaryMap = lazy(() => import("@/components/TaskBoundaryMap"));
 
@@ -24,7 +25,7 @@ interface Props {
   onTaskCreated: () => void;
 }
 
-type DialogStep = "config" | "extracting_gps" | "boundary" | "uploading" | "done" | "error";
+type DialogStep = "config" | "extracting_gps" | "gps_review" | "boundary" | "uploading" | "done" | "error";
 
 export default function CreateTaskDialog({ open, onOpenChange, projectId, projectName, onTaskCreated }: Props) {
   const { token } = useWebODMAuth();
@@ -42,9 +43,10 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
   const [selectedPreset, setSelectedPreset] = useState<string>("default");
   const [presetsLoading, setPresetsLoading] = useState(false);
 
-  // Boundary state
+  // Boundary & GPS validation state
   const [gpsPhotos, setGpsPhotos] = useState<PhotoGps[]>([]);
   const [boundary, setBoundary] = useState<string | null>(null);
+  const [gpsValidation, setGpsValidation] = useState<GpsValidationResult | null>(null);
 
   useEffect(() => {
     if (!open || !token) return;
@@ -74,6 +76,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     setErrorMsg("");
     setGpsPhotos([]);
     setBoundary(null);
+    setGpsValidation(null);
   }, []);
 
   const handleClose = useCallback((val: boolean) => {
@@ -81,6 +84,16 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     if (!val) reset();
     onOpenChange(val);
   }, [step, reset, onOpenChange]);
+
+  const proceedToBoundary = useCallback((photosToUse: PhotoGps[]) => {
+    setGpsPhotos(photosToUse);
+    if (photosToUse.length === 0) {
+      toast.info("Keine GPS-Daten in den Bildern gefunden. Karte wird übersprungen.");
+      handleStartUpload();
+      return;
+    }
+    setStep("boundary");
+  }, []);
 
   const handleFiles = useCallback((newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -111,7 +124,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     return () => { thumbnails.forEach(t => URL.revokeObjectURL(t.url)); };
   }, [thumbnails]);
 
-  // Step: Extract GPS and go to boundary map
+  // Step: Extract GPS, validate, then proceed
   const handleNextToBoundary = useCallback(async () => {
     if (files.length < 2) return;
     setStep("extracting_gps");
@@ -120,10 +133,20 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
       const photos = await extractGpsFromImages(files);
       setGpsPhotos(photos);
 
+      const validation = validateGpsData(files, photos);
+      setGpsValidation(validation);
+
+      const hasProblems = validation.noGps.length > 0 || validation.outliers.length > 0;
+
+      if (hasProblems) {
+        setStep("gps_review");
+        return;
+      }
+
+      // No problems → proceed directly
       if (photos.length === 0) {
-        // No GPS data → skip map, go straight to upload
         toast.info("Keine GPS-Daten in den Bildern gefunden. Karte wird übersprungen.");
-        handleStartUpload();
+        setStep("config");
         return;
       }
 
@@ -133,6 +156,31 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
       setStep("config");
     }
   }, [files]);
+
+  const handleRemoveFlagged = useCallback(() => {
+    if (!gpsValidation) return;
+    const flaggedFiles = new Set([
+      ...gpsValidation.noGps,
+      ...gpsValidation.outliers.map((o) => o.file),
+    ]);
+    const cleanedFiles = files.filter((f) => !flaggedFiles.has(f));
+    setFiles(cleanedFiles);
+    setGpsPhotos(gpsValidation.valid);
+    setGpsValidation(null);
+
+    if (cleanedFiles.length < 2) {
+      toast.warning("Nach dem Entfernen sind weniger als 2 Bilder übrig.");
+      setStep("config");
+      return;
+    }
+
+    proceedToBoundary(gpsValidation.valid);
+  }, [gpsValidation, files, proceedToBoundary]);
+
+  const handleContinueDespiteGps = useCallback(() => {
+    setGpsValidation(null);
+    proceedToBoundary(gpsPhotos);
+  }, [gpsPhotos, proceedToBoundary]);
 
   const buildOptions = useCallback(() => {
     const fallbackOptions = [
@@ -199,7 +247,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
       <DialogContent className={`bg-card border-border max-h-[85vh] flex flex-col ${step === "boundary" ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
         <DialogHeader>
           <DialogTitle>
-            {step === "boundary" ? "Verarbeitungsbereich" : "Neuer Task"}
+            {step === "boundary" ? "Verarbeitungsbereich" : step === "gps_review" ? "GPS-Prüfung" : "Neuer Task"}
           </DialogTitle>
           <DialogDescription>
             {step === "boundary" ? (
@@ -233,6 +281,17 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
           <div className="flex flex-col items-center gap-3 py-8">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">GPS-Daten werden aus {files.length} Bildern gelesen…</p>
+          </div>
+        ) : step === "gps_review" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {gpsValidation && (
+              <GpsReviewStep
+                validation={gpsValidation}
+                totalFiles={files.length}
+                onRemoveFlagged={handleRemoveFlagged}
+                onContinue={handleContinueDespiteGps}
+              />
+            )}
           </div>
         ) : step === "boundary" ? (
           <div className="flex-1 min-h-0 overflow-y-auto">
@@ -442,6 +501,15 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
             >
               <Map className="mr-2 h-4 w-4" />
               Weiter – Bereich wählen
+            </Button>
+          </DialogFooter>
+        )}
+
+        {step === "gps_review" && (
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setStep("config")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Zurück
             </Button>
           </DialogFooter>
         )}
