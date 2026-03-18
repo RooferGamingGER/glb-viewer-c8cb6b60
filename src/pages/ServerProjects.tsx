@@ -563,6 +563,7 @@ function TaskDetail({
   downloading,
   downloadProgress,
   token,
+  onTaskDeleted,
 }: {
   task: Task;
   projectId: number;
@@ -572,13 +573,19 @@ function TaskDetail({
   downloading: string | null;
   downloadProgress: number;
   token: string;
+  onTaskDeleted?: () => void;
 }) {
+  const { activeServer } = useWebODMAuth();
   const status = TASK_STATUS[task.status] || { label: "Unbekannt", color: "muted" };
   const filteredAssets = getFilteredAssets(task.available_assets);
   const isCompleted = task.status === 40;
+  const isFailed = task.status === 30;
+  const isProcessing = task.status === 20;
   const hasGlb = isCompleted && !!findGlbAsset(task.available_assets);
   const isDownloading = downloading === task.id;
   const [downloadingAsset, setDownloadingAsset] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const stats = task.statistics as Record<string, unknown> | undefined;
   const gsd = stats?.gsd as number | undefined;
@@ -586,6 +593,10 @@ function TaskDetail({
   const pointcloud = stats?.pointcloud as { points: number } | undefined;
 
   const taskDisplayName = task.name || `Task ${task.id.slice(0, 8)}`;
+
+  // Get support email for the active server
+  const serverConfig = SERVERS.find((s) => activeServer?.includes(s.url.replace("https://", "")));
+  const supportEmail = serverConfig?.supportEmail || SERVERS[0].supportEmail;
 
   const handleDownload = async (assetPath: string) => {
     setDownloadingAsset(assetPath);
@@ -595,6 +606,20 @@ function TaskDetail({
       toast.error(err.message || "Download fehlgeschlagen");
     } finally {
       setDownloadingAsset(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteTask(token, projectId, task.id);
+      toast.success("Task wurde gelöscht.");
+      setDeleteDialogOpen(false);
+      onTaskDeleted?.();
+    } catch (err: any) {
+      toast.error(err.message || "Löschen fehlgeschlagen");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -621,9 +646,21 @@ function TaskDetail({
               )}
             </div>
           </div>
-          <Badge variant="outline" className={`shrink-0 ${statusColorClass(status.color)}`}>
-            {status.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={`shrink-0 ${statusColorClass(status.color)}`}>
+              {status.label}
+            </Badge>
+            {task.status !== 20 && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Stats cards */}
@@ -746,20 +783,179 @@ function TaskDetail({
             </div>
           </TabsContent>
         </Tabs>
-      ) : task.status === 20 ? (
-        <Card className="bg-secondary/20 border-border/30">
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-sky-400" />
-            <p className="text-muted-foreground">Task wird verarbeitet...</p>
-          </CardContent>
-        </Card>
-      ) : task.status === 30 ? (
-        <Card className="bg-destructive/5 border-destructive/20">
-          <CardContent className="py-8">
-            <p className="text-sm text-destructive">{task.last_error || "Unbekannter Fehler"}</p>
-          </CardContent>
-        </Card>
+      ) : isProcessing ? (
+        <ProcessingDetailCard task={task} />
+      ) : isFailed ? (
+        <FailedTaskCard task={task} supportEmail={supportEmail} />
       ) : null}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Task unwiderruflich löschen?</DialogTitle>
+            <DialogDescription>
+              Der Task „{taskDisplayName}" und alle zugehörigen Daten werden dauerhaft gelöscht. 
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+              Abbrechen
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Endgültig löschen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// --- ProcessingDetailCard ---
+function ProcessingDetailCard({ task }: { task: Task }) {
+  const progress = task.running_progress ?? 0;
+  const progressPct = Math.round(progress * 100);
+  const stageInfo = getProcessingStageInfo(progress);
+  const pendingLabel = task.pending_action != null ? PENDING_ACTION[task.pending_action] : null;
+
+  return (
+    <Card className="bg-secondary/20 border-border/30">
+      <CardContent className="py-8 space-y-6">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="font-medium text-foreground">{pendingLabel || stageInfo.label}</p>
+        </div>
+
+        <div className="space-y-2 max-w-md mx-auto w-full">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Fortschritt</span>
+            <span className="font-semibold text-primary">{progressPct}%</span>
+          </div>
+          <Progress value={progressPct} className="h-2" />
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Check className="h-3 w-3" />
+              Schritt {stageInfo.stepNumber} von {stageInfo.totalSteps}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              ca. {stageInfo.estimatedMinutes} Min. verbleibend
+            </span>
+          </div>
+        </div>
+
+        {/* Step indicators */}
+        <div className="flex items-center justify-center gap-1.5 pt-2">
+          {Array.from({ length: stageInfo.totalSteps }, (_, i) => (
+            <div
+              key={i}
+              className={`h-2 w-2 rounded-full transition-colors ${
+                i < stageInfo.stepNumber
+                  ? "bg-primary"
+                  : i === stageInfo.stepNumber
+                    ? "bg-primary/40 animate-pulse"
+                    : "bg-muted-foreground/20"
+              }`}
+              title={`Schritt ${i + 1}`}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- FailedTaskCard ---
+function FailedTaskCard({ task, supportEmail }: { task: Task; supportEmail: string }) {
+  return (
+    <div className="space-y-4">
+      <Card className="bg-destructive/5 border-destructive/20">
+        <CardContent className="py-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Task fehlgeschlagen</h3>
+              <p className="text-sm text-muted-foreground">
+                Bei der Verarbeitung ist ein Fehler aufgetreten. Hier sind häufige Ursachen und Lösungen:
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3 pl-8">
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-foreground">Häufige Ursachen:</h4>
+              <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                <li><strong>Zu wenige Bilder</strong> — Für eine zuverlässige 3D-Rekonstruktion werden mindestens 20–30 Bilder mit ausreichender Überlappung benötigt.</li>
+                <li><strong>Fehlerhafte GPS-Daten</strong> — Insbesondere bei den ersten Aufnahmen können GPS-Daten ungenau sein.</li>
+                <li>
+                  <strong>Fehlende GPS-Daten erkennen:</strong> Wenn anstelle eines Straßennamens lediglich der Aufgabenname angezeigt wird, sind die GPS-Daten wahrscheinlich fehlerhaft. Starten Sie das Projekt in diesem Fall <strong>ohne die ersten beiden Aufnahmen</strong>.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {task.last_error && (
+            <div className="pl-8">
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                  Technische Fehlermeldung anzeigen
+                </summary>
+                <pre className="mt-2 p-3 bg-background/50 rounded-md text-destructive whitespace-pre-wrap break-all border border-border/30 max-h-32 overflow-y-auto">
+                  {task.last_error}
+                </pre>
+              </details>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-secondary/20 border-border/30">
+        <CardContent className="py-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Hilfe benötigt?</h3>
+              <p className="text-sm text-muted-foreground">
+                Wir schauen uns gerne Ihre Drohnenaufnahmen an und prüfen, ob ein Task erstellt werden kann. 
+                Senden Sie uns einfach einen Download-Link zu Ihren Bildern.
+              </p>
+            </div>
+          </div>
+
+          <div className="pl-8 space-y-3">
+            <a
+              href={`mailto:${supportEmail}?subject=Hilfe bei Task: ${task.name || task.id.slice(0, 8)}&body=Hallo,%0A%0Aich benötige Hilfe bei einem fehlgeschlagenen Task.%0A%0ATask-ID: ${task.id}%0ATask-Name: ${task.name || "–"}%0A%0AHier ist der Download-Link zu meinen Drohnenaufnahmen:%0A[Link einfügen]%0A%0AMit freundlichen Grüßen`}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              <Mail className="h-4 w-4" />
+              {supportEmail}
+            </a>
+
+            <div className="text-sm text-muted-foreground">
+              <p className="mb-2">So können Sie uns Ihre Fotos zukommen lassen:</p>
+              <ul className="space-y-1.5 list-disc list-inside">
+                <li>Senden Sie uns einen Download-Link (z.B. Google Drive, Dropbox)</li>
+                <li>
+                  Oder nutzen Sie{" "}
+                  <a
+                    href="https://share.hidrive.com/upload?lang=de"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    HiDrive Share von Strato
+                    <ExternalLink className="h-3 w-3" />
+                  </a>{" "}
+                  — kostenlos bis 2 GB
+                </li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
