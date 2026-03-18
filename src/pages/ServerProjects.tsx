@@ -94,6 +94,34 @@ const ServerProjects = () => {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const glbInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGlbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.glb')) {
+      toast.error('Bitte eine gültige GLB-Datei auswählen.');
+      return;
+    }
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('Datei zu groß. Maximale Größe: 100 MB.');
+      return;
+    }
+    try {
+      const header = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      if (header[0] !== 0x67 || header[1] !== 0x6C || header[2] !== 0x54 || header[3] !== 0x46) {
+        toast.error('Ungültiges Dateiformat – keine gültige GLB-Datei.');
+        return;
+      }
+    } catch {
+      toast.error('Datei konnte nicht geprüft werden.');
+      return;
+    }
+    const blobUrl = URL.createObjectURL(file);
+    const params = new URLSearchParams({ fileUrl: blobUrl, fileName: file.name, rotateModel: 'true' });
+    navigate(`/viewer?${params.toString()}`);
+  };
 
   useEffect(() => {
     if (!isAuthenticated) navigate("/server-login", { replace: true });
