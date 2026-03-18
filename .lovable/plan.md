@@ -1,61 +1,103 @@
 
+# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-# Plan: Admin-Dashboard mit Task-Übersicht, Accounts, Nodes und Suche
+## Status: Implementiert ✅
 
-## Übersicht
+## Problem
+Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
 
-Neue Admin-Seite (`/admin`) mit Tabs für: Task-Übersicht (alle Server), Account-Verwaltung, Processing Nodes und einer globalen Suche. Zugang nur für eingeloggte Benutzer.
+## Lösung: `northAngle` Parameter
 
-## 1. Neue API-Funktionen in `src/lib/webodm.ts`
+### 1. Typ-Erweiterung
+- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
+- 0° = +Z ist Nord (UTM-Standard)
 
-- **`getAdminUsers(token)`** — GET `/api/admin/users/` (WebODM Admin-API für Benutzerliste)
-- **`getAllTasks(token)`** — Alle Projekte laden, dann Tasks pro Projekt sammeln → flache Liste mit Projekt-Name/Server-Info angereichert
-- Bestehende `getProcessingNodes` wird bereits exportiert
+### 2. `calculateRoofOrientation(points, northAngle)`
+- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
+- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
 
-## 2. Neue Seite `src/pages/AdminDashboard.tsx`
+### 3. `placeModule` South-Tilt
+- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
+- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
 
-Vier Tabs:
+### 4. UI: Kompass-Slider
+- 0°-359° Slider in SolarMeasurementContent
+- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
+- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
 
-### Tab 1: Task-Übersicht
-- Lädt Tasks von **allen** verbundenen Servern (iteriert über `sessions`)
-- Tabelle mit Spalten: Task-Name, Projekt, Server, Status, Erstellt am, Bilder-Anzahl, Größe
-- Sortierbar nach Datum, Status
-- Farbige Status-Badges (bestehende `TASK_STATUS`-Map)
-- Klick auf Task → Navigation zur TaskDetail-Ansicht in ServerProjects
+### 5. E-W bleibt grid-relativ (unverändert)
 
-### Tab 2: Account-Verwaltung
-- Ruft `/api/admin/users/` auf (WebODM Admin-Endpoint, nur wenn Berechtigungen vorhanden)
-- Zeigt Benutzerliste: Username, E-Mail, aktiv/inaktiv, Erstelldatum
-- Falls API 403 zurückgibt: Hinweis "Keine Admin-Berechtigung auf diesem Server"
+---
 
-### Tab 3: Processing Nodes
-- Nutzt bestehende `getProcessingNodes()` pro Server
-- Zeigt: Hostname, Port, Label, Online-Status (grün/rot Badge)
-- Für jeden verbundenen Server separat
+# Sonnensimulation — Tages- & Jahresverlauf
 
-### Tab 4: Suche
-- Suchfeld das Projekte und Tasks gleichzeitig durchsucht
-- Client-seitige Filterung: Lädt alle Projekte + Tasks, filtert nach Name/ID
-- Ergebnisse gruppiert nach "Projekte" und "Tasks"
-- Klick navigiert zum entsprechenden Projekt/Task
+## Status: Implementiert ✅
 
-## 3. Navigation / Routing
+## Neue Dateien
+- `src/utils/sunPosition.ts` — SPA-Algorithmus (NREL-basiert), azimuth/elevation/sunrise/sunset
+- `src/hooks/useSunSimulation.ts` — State & Animation (day/year mode, playback)
+- `src/components/viewer/SunLight.tsx` — DirectionalLight mit dynamischer Shadow-Map
+- `src/components/measurement/SunSimulationPanel.tsx` — UI mit Tages-/Jahres-Tabs
 
-**`src/App.tsx`**: Neue Route `/admin` → `AdminDashboard`
+## Geänderte Dateien
+- `src/components/ModelViewer.tsx` — SunLight-Komponente im Canvas, Default-Lights dimmen bei Simulation
+- `src/components/MeasurementTools.tsx` — SunSimulation-State durchleiten, Panel in Sidebar
+- `src/components/measurement/MeasurementTools.tsx` — Props erweitert für sunSimulation
 
-**`src/pages/ServerProjects.tsx`**: Admin-Button (Shield-Icon) im Header neben Logout, nur sichtbar wenn eingeloggt. Navigiert zu `/admin`.
+## Features
+- Tagesverlauf: Datepicker, Time-Slider (Sonnenaufgang↔Sonnenuntergang), Play/Pause
+- Jahresverlauf: Monats-Slider, 12:00 Uhr fest, Play-Animation
+- Schnellauswahl: Equinox & Solstice (21.3 / 21.6 / 23.9 / 21.12)
+- Sonnenstand-Info: Azimut, Elevation, Tageslänge, Kompass-Richtung
+- Standort: Auto GPS oder manuell (Default: 51.1°N, 10.4°E)
+- Shadow-Map: dynamisch 1024 (Mobile) bis 2048 (Desktop)
+- Keine externe API — komplett clientseitig/offline
 
-## 4. Dateien
+---
 
-- **Neu:** `src/pages/AdminDashboard.tsx` — Komplette Admin-Seite mit 4 Tabs
-- **Edit:** `src/lib/webodm.ts` — `getAdminUsers()` hinzufügen
-- **Edit:** `src/App.tsx` — Route `/admin` hinzufügen
-- **Edit:** `src/pages/ServerProjects.tsx` — Admin-Button im Header
+# Lücke 4: PV-Modulkatalog & Montagesysteme
 
-## Technische Details
+## Status: Implementiert ✅
 
-- WebODM Admin-API (`/api/admin/users/`) ist nur für Superuser zugänglich — bei 403 wird ein freundlicher Hinweis angezeigt statt eines Fehlers
-- Task-Übersicht iteriert über alle `sessions` und merged die Ergebnisse mit Server-Label als Spalte
-- Suche arbeitet rein client-seitig auf den bereits geladenen Daten
-- Gleiche Dark-Theme-Styling wie ServerProjects (Slate/Gray-Palette)
+### Neue Dateien
+- `src/data/germanPVCatalog.ts` — 12 PV-Module (Solarwatt, Heckert, IBC, Energetica, Meyer Burger, Aleo, JA Solar, LONGi) + 20 Montagesysteme (Steildach/Flachdach/Gründach)
+- Erweiterte Spezifikationen: Voc, Isc, Vmpp, Impp, Gewicht, Rahmenfarbe, Zelltyp, Garantie, Temp-Koeffizient
 
+### Geänderte Dateien
+- `src/components/measurement/PVModuleSelect.tsx` — Filter nach Hersteller/Zelltyp, gruppierte Anzeige
+
+---
+
+# Lücke 3: PVGIS Ertragsprognose
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/utils/pvGisData.ts` — 24 GHI-Stützpunkte für Deutschland, IDW-Interpolation, PVGIS-basierte Ertragsberechnung
+
+### Geänderte Dateien
+- `src/utils/pvCalculations.ts` — `calculateAnnualYieldWithOrientation` erweitert um optionale GPS-Koordinaten, nutzt PVGIS-Daten wenn verfügbar
+
+---
+
+# Lücke 2: Verschattungs-Heatmap
+
+## Status: Implementiert ✅
+
+### Neue Dateien
+- `src/utils/pvShadowAnalysis.ts` — Raycasting-basierte Jahresverschattung, Heatmap-Rendering (grün→gelb→rot), Reset-Funktion
+
+### Geänderte Dateien
+- `src/components/measurement/SunSimulationPanel.tsx` — Heatmap-UI: Button, Progress-Bar, Farbskala-Legende
+- `src/components/MeasurementTools.tsx` — Heatmap-State und Handler (`handleRunHeatmap`, `handleClearHeatmap`)
+
+---
+
+# Lücke 1: PDF-Export Teile 3+4
+
+## Status: Implementiert ✅
+
+### Geänderte Dateien
+- `src/utils/pdfExport.ts` — `calculateStringAssignments` exportiert für Pre-Rendering
+- `src/types/measurements.ts` — `pvSolarLayout?: string` Feld hinzugefügt
+- `src/components/measurement/ExportPdfButton.tsx` — Pre-Rendering von Solar-Layouts vor PDF-Export
