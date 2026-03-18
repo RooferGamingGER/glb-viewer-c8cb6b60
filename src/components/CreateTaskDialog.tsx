@@ -76,6 +76,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     setErrorMsg("");
     setGpsPhotos([]);
     setBoundary(null);
+    setGpsValidation(null);
   }, []);
 
   const handleClose = useCallback((val: boolean) => {
