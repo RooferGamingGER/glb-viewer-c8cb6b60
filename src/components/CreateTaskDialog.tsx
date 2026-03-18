@@ -89,7 +89,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     setGpsPhotos(photosToUse);
     if (photosToUse.length === 0) {
       toast.info("Keine GPS-Daten in den Bildern gefunden. Karte wird übersprungen.");
-      handleStartUpload();
+      setStep("config");
       return;
     }
     setStep("boundary");
