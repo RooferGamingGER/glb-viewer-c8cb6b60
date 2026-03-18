@@ -103,6 +103,7 @@ const ServerProjects = () => {
   const location = useLocation();
   const { token, username, logout, isAuthenticated, sessions, activeServer, setActiveServer } = useWebODMAuth();
   const hasMultipleServers = sessions.length > 1;
+  const isAdminAccount = (username ?? "").trim().toLowerCase() === "roofergaming";
 
   const [view, setView] = useState<View>({ type: "projects" });
   const [projects, setProjects] = useState<Project[]>([]);
@@ -292,7 +293,7 @@ const ServerProjects = () => {
               ))}
             </div>
           )}
-          {sessions.some((s) => s.server.includes("drohnenvermessung-server.de")) && (
+          {isAdminAccount && (
             <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} title="Administration">
               <Shield className="h-4 w-4" />
             </Button>
