@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useWebODMAuth } from "@/lib/auth-context";
+import { useWebODMAuth, SERVERS } from "@/lib/auth-context";
 import {
   getProjects,
   getProjectTasks,
@@ -15,6 +15,8 @@ import {
   getAssetLabel,
   formatFileSize,
   getProcessingStage,
+  getProcessingStageInfo,
+  deleteTask,
   TASK_STATUS,
   PENDING_ACTION,
   ASSET_INFO,
@@ -29,13 +31,25 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertTriangle,
   ArrowLeft,
   Box,
   Camera,
   Calendar,
+  Check,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Download,
+  ExternalLink,
   FileText,
   Folder,
   FolderOpen,
@@ -45,10 +59,12 @@ import {
   LayoutGrid,
   Loader2,
   LogOut,
+  Mail,
   Map,
   MapPin,
   Database,
   Plus,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
