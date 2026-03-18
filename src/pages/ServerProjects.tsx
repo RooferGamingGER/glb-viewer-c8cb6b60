@@ -64,6 +64,7 @@ import {
   MapPin,
   Database,
   Plus,
+  Shield,
   Trash2,
   Upload,
   X,
