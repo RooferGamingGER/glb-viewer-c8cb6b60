@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Measurement, Point, Segment } from '@/types/measurements';
 import { getOriginalGLBBlob } from '@/utils/glbDirectManipulation';
 import { generateSegments, calculateArea } from '@/utils/measurementCalculations';
-
+import type { EmbeddedMeasurement } from '@/utils/glbMeasurementEmbed';
 // Minimal GLB structures
 interface GLBHeader { magic: number; version: number; length: number; }
 interface GLBChunk { length: number; type: number; data: ArrayBuffer; }
