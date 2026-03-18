@@ -56,7 +56,11 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "18.03.2026",
-    text: "Stringplanung hinzugefügt, weitere Wechselrichter und Materialien hinterlegt. Projekt Thumbnails implementiert. ",
+    text: "GLB-Upload für Kunden wieder ermöglicht. GLB-Dateien können mit Messdaten und PV-Planung exportiert werden und bei Bedarf wieder hochgeladen werden, auch wenn das Projekt nicht mehr in der Taskübersicht vorhanden ist.",
+  },
+  {
+    date: "18.03.2026",
+    text: "Stringplanung hinzugefügt, weitere Wechselrichter und Materialien hinterlegt. Projekt Thumbnails implementiert.",
   },
   {
     date: "18.03.2026",
