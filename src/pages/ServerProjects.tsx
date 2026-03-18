@@ -389,6 +389,15 @@ const ServerProjects = () => {
             downloading={downloading}
             downloadProgress={downloadProgress}
             token={token!}
+            onTaskDeleted={async () => {
+              setView({ type: "tasks", project: view.project });
+              if (token) {
+                try {
+                  const t = await getProjectTasks(token, view.project.id);
+                  setTasks(t);
+                } catch {}
+              }
+            }}
           />
         )}
       </main>
