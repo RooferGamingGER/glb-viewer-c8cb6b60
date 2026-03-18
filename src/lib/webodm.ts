@@ -567,7 +567,9 @@ export async function getAdminUsers(token: string, server?: string): Promise<Adm
     throw new Error("NO_PERMISSION");
   }
   if (!res.ok) throw new Error("Benutzerliste konnte nicht geladen werden.");
-  return res.json();
+  const data = await res.json();
+  // Handle paginated response (Django REST returns { results: [...] })
+  return Array.isArray(data) ? data : (data.results ?? []);
 }
 
 // --- All Tasks across projects ---
