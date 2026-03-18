@@ -206,41 +206,19 @@ const HeaderSection = () => (
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [demoVisible, setDemoVisible] = useState(false);
-  const demoRef = useRef<HTMLDivElement>(null);
 
   useSeoMetadata();
-
-  // Only load demo when scrolled into view
-  useEffect(() => {
-    const el = demoRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setDemoVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Viewer is only accessible via server login
 
   const DemoSection = () => (
     <div className="glass-panel p-4 md:p-5 rounded-lg shadow-lg border border-border/10">
       <h3 className="text-sm md:text-base font-medium mb-3 text-center">Demo-Modell Vorschau</h3>
-      <div ref={demoRef} className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
-        {demoVisible ? (
-          <Suspense fallback={<DemoFallback loading />}>
-            <ModelViewer fileUrl={DEMO_MODEL_URL} fileName="Demo Modell" rotateModel={true} showTools={false} />
-          </Suspense>
-        ) : (
-          <DemoFallback loading />
-        )}
+      <div className="relative w-full h-48 md:h-64 lg:h-72 rounded-md overflow-hidden bg-secondary/20">
+        <img
+          src="/images/demo-preview.jpg"
+          alt="3D-Modell Demo Vorschau"
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-3">
         <Button onClick={() => navigate("/test")} variant="outline" size={isMobile ? "sm" : "default"}>
