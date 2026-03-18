@@ -85,6 +85,16 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     onOpenChange(val);
   }, [step, reset, onOpenChange]);
 
+  const proceedToBoundary = useCallback((photosToUse: PhotoGps[]) => {
+    setGpsPhotos(photosToUse);
+    if (photosToUse.length === 0) {
+      toast.info("Keine GPS-Daten in den Bildern gefunden. Karte wird übersprungen.");
+      handleStartUpload();
+      return;
+    }
+    setStep("boundary");
+  }, []);
+
   const handleFiles = useCallback((newFiles: FileList | null) => {
     if (!newFiles) return;
     const imageFiles = Array.from(newFiles).filter(f =>
