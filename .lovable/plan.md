@@ -1,103 +1,41 @@
 
-# PV-Belegung: Nordrichtung (northAngle) & Kompass-Korrektur
 
-## Status: Implementiert ✅
+# Plan: GPS-Validierung vor Task-Upload
 
-## Problem
-Das System nahm `+Z = Süd` an, aber UTM-Modelle haben `+Y = Nord` → nach -90° X-Rotation ist `+Z = Nord`. Die Azimut-Berechnung und Süd-Neigung waren invertiert.
+## Konzept
 
-## Lösung: `northAngle` Parameter
+Nach dem GPS-Extrahieren (Schritt `extracting_gps`) wird eine Validierung durchgeführt, bevor die Boundary-Karte gezeigt wird. Zwei Prüfungen:
 
-### 1. Typ-Erweiterung
-- `northAngle?: number` in `PVModuleInfo` (beide Type-Dateien)
-- 0° = +Z ist Nord (UTM-Standard)
+1. **Fehlende GPS-Daten**: Bilder ohne GPS-Koordinaten werden identifiziert
+2. **Ausreißer-Erkennung**: Bilder, deren GPS-Position weit vom Median der Aufnahmen entfernt liegt (z.B. >500m), werden als verdächtig markiert
 
-### 2. `calculateRoofOrientation(points, northAngle)`
-- Rotiert die Horizontal-Normalprojektion um `-northAngle` vor der Azimut-Berechnung
-- `atan2(rhx, rhz)` gibt Winkel von Nord (CW)
+Falls Probleme gefunden werden, wird ein neuer Zwischenschritt `gps_review` angezeigt, der die Ergebnisse zusammenfasst und dem Nutzer ermöglicht, problematische Bilder einzeln oder gesammelt zu entfernen.
 
-### 3. `placeModule` South-Tilt
-- Berechnet Süd-Vektor aus `northAngle`: `(-sin(na), -cos(na))`
-- Hebt die Nordkante an (korrekt für jede Modell-Orientierung)
+## Dateien
 
-### 4. UI: Kompass-Slider
-- 0°-359° Slider in SolarMeasurementContent
-- Bei Änderung: Neuberechnung Azimut + Ertrag + Grid-Neigung
-- Hinweis: "0° = +Z ist Nord (UTM-Standard)"
+### `src/utils/exifGps.ts` — Neue Funktion `validateGpsData`
 
-### 5. E-W bleibt grid-relativ (unverändert)
+- Berechnet den Median-Punkt aller GPS-Koordinaten
+- Berechnet die Entfernung jedes Fotos zum Median (Haversine)
+- Gibt zurück: `{ noGps: File[], outliers: { file, latitude, longitude, distanceMeters }[], valid: PhotoGps[] }`
+- Schwellenwert: 500m vom Median = Ausreißer
 
----
+### `src/components/CreateTaskDialog.tsx` — Neuer Schritt `gps_review`
 
-# Sonnensimulation — Tages- & Jahresverlauf
+- Neuer `DialogStep`: `"gps_review"` zwischen `extracting_gps` und `boundary`
+- Nach GPS-Extraktion: `validateGpsData` aufrufen
+- Wenn keine Probleme: direkt zu `boundary` weiter
+- Wenn Probleme gefunden:
+  - Warnung mit Anzahl der Bilder ohne GPS
+  - Liste der Ausreißer mit Dateiname und Entfernung
+  - Besonderer Hinweis wenn die ersten 2 Aufnahmen betroffen sind (häufiges DJI-Problem)
+  - Buttons: "Markierte entfernen" (entfernt problematische Bilder aus `files` und `gpsPhotos`) und "Trotzdem fortfahren"
+  - "Zurück" Button zum Config-Schritt
 
-## Status: Implementiert ✅
+### Visuelles Design
 
-## Neue Dateien
-- `src/utils/sunPosition.ts` — SPA-Algorithmus (NREL-basiert), azimuth/elevation/sunrise/sunset
-- `src/hooks/useSunSimulation.ts` — State & Animation (day/year mode, playback)
-- `src/components/viewer/SunLight.tsx` — DirectionalLight mit dynamischer Shadow-Map
-- `src/components/measurement/SunSimulationPanel.tsx` — UI mit Tages-/Jahres-Tabs
+- Gelbe/orange Warnkarte mit `AlertTriangle`-Icon
+- Auflistung der problematischen Dateien mit Entfernungsangabe
+- Klarer Hinweistext: "Bilder ohne GPS-Daten oder mit abweichenden Positionen können zu Verarbeitungsfehlern führen"
+- Spezialhinweis bei ersten Aufnahmen: "Die ersten Aufnahmen einer Drohnenflug-Session haben häufig fehlerhafte GPS-Daten"
 
-## Geänderte Dateien
-- `src/components/ModelViewer.tsx` — SunLight-Komponente im Canvas, Default-Lights dimmen bei Simulation
-- `src/components/MeasurementTools.tsx` — SunSimulation-State durchleiten, Panel in Sidebar
-- `src/components/measurement/MeasurementTools.tsx` — Props erweitert für sunSimulation
-
-## Features
-- Tagesverlauf: Datepicker, Time-Slider (Sonnenaufgang↔Sonnenuntergang), Play/Pause
-- Jahresverlauf: Monats-Slider, 12:00 Uhr fest, Play-Animation
-- Schnellauswahl: Equinox & Solstice (21.3 / 21.6 / 23.9 / 21.12)
-- Sonnenstand-Info: Azimut, Elevation, Tageslänge, Kompass-Richtung
-- Standort: Auto GPS oder manuell (Default: 51.1°N, 10.4°E)
-- Shadow-Map: dynamisch 1024 (Mobile) bis 2048 (Desktop)
-- Keine externe API — komplett clientseitig/offline
-
----
-
-# Lücke 4: PV-Modulkatalog & Montagesysteme
-
-## Status: Implementiert ✅
-
-### Neue Dateien
-- `src/data/germanPVCatalog.ts` — 12 PV-Module (Solarwatt, Heckert, IBC, Energetica, Meyer Burger, Aleo, JA Solar, LONGi) + 20 Montagesysteme (Steildach/Flachdach/Gründach)
-- Erweiterte Spezifikationen: Voc, Isc, Vmpp, Impp, Gewicht, Rahmenfarbe, Zelltyp, Garantie, Temp-Koeffizient
-
-### Geänderte Dateien
-- `src/components/measurement/PVModuleSelect.tsx` — Filter nach Hersteller/Zelltyp, gruppierte Anzeige
-
----
-
-# Lücke 3: PVGIS Ertragsprognose
-
-## Status: Implementiert ✅
-
-### Neue Dateien
-- `src/utils/pvGisData.ts` — 24 GHI-Stützpunkte für Deutschland, IDW-Interpolation, PVGIS-basierte Ertragsberechnung
-
-### Geänderte Dateien
-- `src/utils/pvCalculations.ts` — `calculateAnnualYieldWithOrientation` erweitert um optionale GPS-Koordinaten, nutzt PVGIS-Daten wenn verfügbar
-
----
-
-# Lücke 2: Verschattungs-Heatmap
-
-## Status: Implementiert ✅
-
-### Neue Dateien
-- `src/utils/pvShadowAnalysis.ts` — Raycasting-basierte Jahresverschattung, Heatmap-Rendering (grün→gelb→rot), Reset-Funktion
-
-### Geänderte Dateien
-- `src/components/measurement/SunSimulationPanel.tsx` — Heatmap-UI: Button, Progress-Bar, Farbskala-Legende
-- `src/components/MeasurementTools.tsx` — Heatmap-State und Handler (`handleRunHeatmap`, `handleClearHeatmap`)
-
----
-
-# Lücke 1: PDF-Export Teile 3+4
-
-## Status: Implementiert ✅
-
-### Geänderte Dateien
-- `src/utils/pdfExport.ts` — `calculateStringAssignments` exportiert für Pre-Rendering
-- `src/types/measurements.ts` — `pvSolarLayout?: string` Feld hinzugefügt
-- `src/components/measurement/ExportPdfButton.tsx` — Pre-Rendering von Solar-Layouts vor PDF-Export
