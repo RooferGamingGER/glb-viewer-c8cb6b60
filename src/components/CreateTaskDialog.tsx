@@ -247,7 +247,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
       <DialogContent className={`bg-card border-border max-h-[85vh] flex flex-col ${step === "boundary" ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
         <DialogHeader>
           <DialogTitle>
-            {step === "boundary" ? "Verarbeitungsbereich" : "Neuer Task"}
+            {step === "boundary" ? "Verarbeitungsbereich" : step === "gps_review" ? "GPS-Prüfung" : "Neuer Task"}
           </DialogTitle>
           <DialogDescription>
             {step === "boundary" ? (
