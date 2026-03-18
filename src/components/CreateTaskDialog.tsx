@@ -124,7 +124,7 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
     return () => { thumbnails.forEach(t => URL.revokeObjectURL(t.url)); };
   }, [thumbnails]);
 
-  // Step: Extract GPS and go to boundary map
+  // Step: Extract GPS, validate, then proceed
   const handleNextToBoundary = useCallback(async () => {
     if (files.length < 2) return;
     setStep("extracting_gps");
@@ -133,10 +133,20 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
       const photos = await extractGpsFromImages(files);
       setGpsPhotos(photos);
 
+      const validation = validateGpsData(files, photos);
+      setGpsValidation(validation);
+
+      const hasProblems = validation.noGps.length > 0 || validation.outliers.length > 0;
+
+      if (hasProblems) {
+        setStep("gps_review");
+        return;
+      }
+
+      // No problems → proceed directly
       if (photos.length === 0) {
-        // No GPS data → skip map, go straight to upload
         toast.info("Keine GPS-Daten in den Bildern gefunden. Karte wird übersprungen.");
-        handleStartUpload();
+        setStep("config");
         return;
       }
 
@@ -146,6 +156,31 @@ export default function CreateTaskDialog({ open, onOpenChange, projectId, projec
       setStep("config");
     }
   }, [files]);
+
+  const handleRemoveFlagged = useCallback(() => {
+    if (!gpsValidation) return;
+    const flaggedFiles = new Set([
+      ...gpsValidation.noGps,
+      ...gpsValidation.outliers.map((o) => o.file),
+    ]);
+    const cleanedFiles = files.filter((f) => !flaggedFiles.has(f));
+    setFiles(cleanedFiles);
+    setGpsPhotos(gpsValidation.valid);
+    setGpsValidation(null);
+
+    if (cleanedFiles.length < 2) {
+      toast.warning("Nach dem Entfernen sind weniger als 2 Bilder übrig.");
+      setStep("config");
+      return;
+    }
+
+    proceedToBoundary(gpsValidation.valid);
+  }, [gpsValidation, files, proceedToBoundary]);
+
+  const handleContinueDespiteGps = useCallback(() => {
+    setGpsValidation(null);
+    proceedToBoundary(gpsPhotos);
+  }, [gpsPhotos, proceedToBoundary]);
 
   const buildOptions = useCallback(() => {
     const fallbackOptions = [
