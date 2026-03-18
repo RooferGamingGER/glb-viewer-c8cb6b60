@@ -49,6 +49,17 @@ function toWorldPoints(pointsLocal: Point[], modelRoot: THREE.Object3D): Point[]
   });
 }
 
+function segmentsToWorld(segments: Segment[] | undefined, modelRoot: THREE.Object3D): Segment[] | undefined {
+  if (!segments || segments.length === 0) return undefined;
+  return segments.map(seg => ({
+    ...seg,
+    points: [
+      toWorldPoints([seg.points[0]], modelRoot)[0],
+      toWorldPoints([seg.points[1]], modelRoot)[0],
+    ] as [Point, Point],
+  }));
+}
+
 export async function importMeasurementsFromGLB(
   scene: THREE.Scene | THREE.Group
 ): Promise<Measurement[] | null> {
