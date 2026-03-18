@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import FileUpload from "@/components/FileUpload";
-import ModelViewer from "@/components/ModelViewer";
+const ModelViewer = lazy(() => import("@/components/ModelViewer"));
 import {
   Smartphone,
   Box,
