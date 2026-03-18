@@ -130,18 +130,6 @@ const useSeoMetadata = () => {
 
 // --- Sub-Components ---
 
-const DemoFallback = ({ loading }: { loading?: boolean }) => (
-  <div className="flex flex-col items-center justify-center h-full bg-muted/30 rounded-lg min-h-[12rem]">
-    {loading ? (
-      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-    ) : (
-      <>
-        <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-xs text-muted-foreground">Demo nicht verfügbar</p>
-      </>
-    )}
-  </div>
-);
 
 const FeatureCard = ({ item }: { item: FeatureItem }) => (
   <div className="glass-panel p-3 md:p-4 rounded-lg hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-background/90 border border-border/10">
