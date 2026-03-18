@@ -79,7 +79,11 @@ export default function TaskBoundaryMap({ photos, onBoundaryChange }: Props) {
     const map = mapRef.current;
     const markers: L.CircleMarker[] = [];
 
-    photos.forEach((p) => {
+    const validPhotos = photos.filter(
+      (p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)
+    );
+
+    validPhotos.forEach((p) => {
       const m = L.circleMarker([p.latitude, p.longitude], {
         radius: 5,
         color: "#3b82f6",
@@ -91,7 +95,9 @@ export default function TaskBoundaryMap({ photos, onBoundaryChange }: Props) {
       markers.push(m);
     });
 
-    const bounds = L.latLngBounds(photos.map((p) => [p.latitude, p.longitude]));
+    if (validPhotos.length === 0) return;
+
+    const bounds = L.latLngBounds(validPhotos.map((p) => [p.latitude, p.longitude]));
     map.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
 
     return () => {
