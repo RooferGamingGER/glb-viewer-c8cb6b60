@@ -15,6 +15,26 @@ export const useMeasurementEditing = (
   setEditMeasurementId: React.Dispatch<React.SetStateAction<string | null>>,
   setEditingPointIndex: React.Dispatch<React.SetStateAction<number | null>>
 ) => {
+  // Undo stack for point deletions
+  const undoStackRef = useRef<Array<{ measurementId: string; previousMeasurement: Measurement }>>([]);
+
+  const undoDeletePoint = useCallback(() => {
+    const lastAction = undoStackRef.current.pop();
+    if (!lastAction) {
+      toast.info('Nichts zum Rückgängigmachen');
+      return;
+    }
+    setMeasurements(prev => {
+      const exists = prev.find(m => m.id === lastAction.measurementId);
+      if (exists) {
+        return prev.map(m => m.id === lastAction.measurementId ? lastAction.previousMeasurement : m);
+      }
+      // Measurement was fully deleted — re-add it
+      return [...prev, lastAction.previousMeasurement];
+    });
+    toast.success('Punkt wiederhergestellt');
+  }, [setMeasurements]);
+
   // Toggle edit mode for a measurement
   const toggleEditMode = useCallback((id: string) => {
     setMeasurements(prev => {
