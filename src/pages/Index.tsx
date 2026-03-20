@@ -317,8 +317,13 @@ const Index = () => {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-3 text-xs text-muted-foreground mt-4">
+      <footer className="text-center py-3 text-xs text-muted-foreground mt-4 space-y-1">
         <p>© {new Date().getFullYear()} DrohnenGLB by RooferGaming®</p>
+        <p>
+          <a href="https://drohnenvermessung-roofergaming.de/impressum/" target="_blank" rel="noopener noreferrer" className="hover:underline">Impressum</a>
+          {" · "}
+          <a href="https://drohnenvermessung-roofergaming.de/datenschutzerklarung/" target="_blank" rel="noopener noreferrer" className="hover:underline">Datenschutzerklärung</a>
+        </p>
       </footer>
     </div>
   );

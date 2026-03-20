@@ -43,6 +43,8 @@ export const useMeasurementEvents = (
   // Add throttle for mouse move events
   const lastMoveTimeRef = useRef<number>(0);
   const MOVE_THROTTLE = 30; // 30ms throttle for mouse move (about 33fps)
+  // Space key held = rotate mode (skip point placement)
+  const spaceHeldRef = useRef<boolean>(false);
 
   // Touch tap detection refs
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -105,6 +107,8 @@ export const useMeasurementEvents = (
   const processInteraction = useCallback((event: MouseEvent | TouchEvent) => {
     // Ensure we're enabled and the sidebar is open
     if (!enabled || !open || !scene || !camera) return;
+    // Space held = rotate mode, skip point placement
+    if (spaceHeldRef.current) return;
     
     const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
     if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
@@ -339,6 +343,8 @@ export const useMeasurementEvents = (
   const handleMouseDown = useCallback((event: MouseEvent) => {
     // Only process left mouse button clicks (button 0) for measurement
     if (event.button !== 0) return;
+    // Space held = rotate mode, skip point placement
+    if (spaceHeldRef.current) return;
     
     processInteraction(event);
   }, [processInteraction]);
@@ -544,7 +550,16 @@ export const useMeasurementEvents = (
     
     const canvasElement = document.querySelector('canvas');
     if (!canvasElement) return;
-    
+
+    // Disable right-click context menu
+    const preventContext = (e: Event) => e.preventDefault();
+    canvasElement.addEventListener('contextmenu', preventContext);
+
+    // Space key: hold to rotate instead of placing points
+    const onKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; } };
+    const onKeyUp = (e: KeyboardEvent) => { if (e.code === 'Space') { spaceHeldRef.current = false; } };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
     // Add mouse event listeners - NOT using 'pointerdown' to avoid conflict with touch
     canvasElement.addEventListener('mousedown', handleMouseDown);
     canvasElement.addEventListener('mousemove', handleMouseMove);
@@ -563,8 +578,10 @@ export const useMeasurementEvents = (
       canvasElement.removeEventListener('touchstart', handleTouchStart);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);
-      
-      // Clean up snap indicator
+      canvasElement.removeEventListener('contextmenu', preventContext);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      spaceHeldRef.current = false;
       clearSnapIndicator();
     };
   }, [

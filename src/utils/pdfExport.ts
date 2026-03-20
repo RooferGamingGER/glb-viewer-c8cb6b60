@@ -2645,7 +2645,8 @@ export const exportMeasurementsToPdf = async (measurements: Measurement[], cover
             row.appendChild(widthCell);
             
             const heightCell = document.createElement('td');
-            heightCell.textContent = measurement.dimensions?.height ? `${measurement.dimensions.height.toFixed(2)} m` : '-';
+            const skyH = measurement.dimensions?.height || measurement.dimensions?.length;
+            heightCell.textContent = skyH ? `${skyH.toFixed(2)} m` : '-';
             row.appendChild(heightCell);
             
             const areaCell = document.createElement('td');

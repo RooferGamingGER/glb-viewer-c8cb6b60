@@ -79,7 +79,7 @@ export const formatMeasurementValue = (measurement: Measurement): string => {
   
   if (type === 'skylight' && measurement.dimensions) {
     const width = measurement.dimensions.width?.toFixed(2) || '0.00';
-    const height = measurement.dimensions.height?.toFixed(2) || '0.00';
+    const height = (measurement.dimensions.height || measurement.dimensions.length)?.toFixed(2) || '0.00';
     return `${width} × ${height} m (${value.toFixed(2)} m²)`;
   } else if (type === 'area' || type === 'solar' || type === 'chimney' || type === 'deductionarea') {
     return `${value.toFixed(2)} m²`;

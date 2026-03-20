@@ -160,7 +160,7 @@ const ExportPdfButton: React.FC<ExportPdfButtonProps> = ({
       const skylightMeasurements = measurements.filter(m => m.type === 'skylight');
       skylightMeasurements.forEach(skylight => {
         // If dimensions are missing, try to calculate them from the area
-        if (!skylight.dimensions || (!skylight.dimensions.width && !skylight.dimensions.height)) {
+        if (!skylight.dimensions || (!skylight.dimensions.width && !skylight.dimensions.height && !skylight.dimensions.length)) {
           // Assuming a square skylight if dimensions are missing
           const estimatedDimension = Math.sqrt(skylight.value);
           const index = measurementsWithVisuals.findIndex(m => m.id === skylight.id);
