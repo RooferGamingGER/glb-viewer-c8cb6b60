@@ -339,6 +339,8 @@ export const useMeasurementEvents = (
   const handleMouseDown = useCallback((event: MouseEvent) => {
     // Only process left mouse button clicks (button 0) for measurement
     if (event.button !== 0) return;
+    // Space held = rotate mode, skip point placement
+    if (spaceHeldRef.current) return;
     
     processInteraction(event);
   }, [processInteraction]);
