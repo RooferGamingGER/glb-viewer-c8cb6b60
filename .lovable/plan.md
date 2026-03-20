@@ -1,40 +1,35 @@
 
 
-# 4 Änderungen: Impressum, Dachfenster-Bug, Rechtsklick, Leertaste
+# Undo für Punkt-Löschung im 3D-Viewer
 
-## 1. Impressum & Datenschutz im Footer
+## Konzept
 
-**Datei:** `src/pages/Index.tsx` (Zeile 319-322)
+Ein Undo-Stack speichert gelöschte Punkte (inkl. Messung-ID, Index und den alten Measurement-Snapshot). Nach dem Löschen erscheint ein Toast mit "Rückgängig"-Button (wie bei Gmail). Zusätzlich funktioniert `Strg+Z` als Tastenkürzel.
 
-Footer erweitern um zwei Links:
-- Impressum → `https://drohnenvermessung-roofergaming.de/impressum/`
-- Datenschutzerklärung → `https://drohnenvermessung-roofergaming.de/datenschutzerklarung/`
+## Änderungen
 
-Beide als externe Links mit `target="_blank"`, getrennt durch `·`.
+### `src/hooks/useMeasurementEditing.ts`
 
-## 2. Dachfenster PDF-Export: Zweites Maß = 0,00 m
+- Neuen `useRef<Array<{ measurementId, pointIndex, previousMeasurement }>>` als `undoStackRef` anlegen
+- In `deletePoint`: Vor dem Splice den aktuellen Measurement-Zustand im Stack speichern
+- Neue Funktion `undoDeletePoint`: Letzten Eintrag vom Stack poppen und die gespeicherte Messung wiederherstellen
+- Beides exportieren
 
-**Ursache:** Dachfenster-Dimensionen werden als `{ width, length }` gespeichert (in `useMeasurementCore.ts`), aber der PDF-Export und `exportUtils.ts` lesen `dimensions.height` statt `dimensions.length`.
+### `src/hooks/useMeasurements.ts`
 
-**Fix in 3 Dateien:**
-- **`src/utils/exportUtils.ts`** (Zeile 82): `measurement.dimensions.height` → `measurement.dimensions.height || measurement.dimensions.length` (Fallback auf `length`)
-- **`src/utils/pdfExport.ts`** (Zeile 2648): Gleicher Fallback bei `dimensions?.height`
-- **`src/components/measurement/ExportPdfButton.tsx`** (Zeile 163): Prüfung erweitern auf `!dimensions.height && !dimensions.length`
+- `undoDeletePoint` aus `useMeasurementEditing` durchreichen
 
-## 3. Rechtsklick im Viewer deaktivieren
+### `src/hooks/useMeasurementEvents.ts`
 
-**Datei:** `src/hooks/useMeasurementEvents.ts` (Zeile 541-575)
+- `undoDeletePoint` in die `handlers`-Schnittstelle aufnehmen
+- Bei jedem `deletePoint`-Aufruf (Rechtsklick + Delete-Taste): Toast mit `action`-Button "Rückgängig" anzeigen, der `undoDeletePoint` aufruft
+- `Strg+Z` / `Cmd+Z` Tastenkürzel im `keydown`-Listener: ruft `undoDeletePoint` auf
 
-Im `useEffect` wo die Event-Listener registriert werden, einen `contextmenu`-Handler auf dem Canvas hinzufügen:
-```
-canvasElement.addEventListener('contextmenu', (e) => e.preventDefault());
-```
+### `src/hooks/useMeasurementInteraction.ts`
 
-## 4. Leertaste gedrückt = Modell drehen statt Punkt setzen
+- `undoDeletePoint` durchreichen an `useMeasurementEvents`
 
-**Datei:** `src/hooks/useMeasurementEvents.ts`
+### `src/components/MeasurementTools.tsx`
 
-- Neuen `useRef<boolean>` für `spaceHeldRef` anlegen
-- `keydown`/`keyup`-Listener auf `window` registrieren (im gleichen `useEffect`): Bei Space `spaceHeldRef.current = true/false`
-- In `handleMouseDown` und `processInteraction`: Wenn `spaceHeldRef.current === true`, sofort `return` ohne Punkt zu setzen → OrbitControls übernimmt die Mausinteraktion automatisch
+- `undoDeletePoint` aus Context/Props durchreichen
 
