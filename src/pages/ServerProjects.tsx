@@ -40,6 +40,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   AlertTriangle,
+  BookOpen,
+  CheckCircle2,
+  Info,
+  Youtube,
   ArrowLeft,
   Box,
   Camera,
@@ -71,6 +75,74 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+/* ── RooferGaming guide (collapsible) ── */
+function RooferGamingGuide() {
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem("drohnenglb_guide_open") !== "false"; } catch { return true; }
+  });
+
+  const toggle = (v: boolean) => {
+    setOpen(v);
+    try { localStorage.setItem("drohnenglb_guide_open", String(v)); } catch {}
+  };
+
+  return (
+    <Collapsible open={open} onOpenChange={toggle} className="mb-6">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border bg-card px-4 py-3 text-left text-sm font-medium hover:bg-accent/50 transition-colors">
+        <BookOpen className="h-4 w-4 text-primary shrink-0" />
+        <span className="flex-1">Kurzanleitung &amp; Tipps</span>
+        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+      </CollapsibleTrigger>
+
+      <CollapsibleContent className="mt-2 rounded-lg border bg-card p-4 text-sm space-y-4">
+        {/* Schnellstart */}
+        <div>
+          <h4 className="font-semibold flex items-center gap-1.5 mb-1"><Camera className="h-4 w-4 text-primary" />Schnellstart</h4>
+          <ul className="list-disc pl-5 space-y-0.5 text-muted-foreground">
+            <li>Projekt öffnen → <strong>„Neuer Task"</strong> → Bilder hochladen</li>
+            <li>GPS-Daten werden <strong>automatisch geprüft</strong> – fehlerhafte Bilder können vor dem Upload entfernt werden</li>
+            <li>Bestehende Modelle über <strong>„GLB hochladen"</strong> wiederherstellen</li>
+          </ul>
+        </div>
+
+        {/* Tipps */}
+        <div>
+          <h4 className="font-semibold flex items-center gap-1.5 mb-1"><CheckCircle2 className="h-4 w-4 text-green-600" />Optimale Ergebnisse</h4>
+          <ul className="list-disc pl-5 space-y-0.5 text-muted-foreground">
+            <li><strong>60–80 Fotos</strong> für ein Einfamilienhaus empfohlen</li>
+            <li>Bildüberlappung mind. <strong>65 %</strong>, ideal 70–72 %</li>
+            <li>Mehr Bilder = präziseres 3D-Modell</li>
+          </ul>
+        </div>
+
+        {/* Fehlerquellen */}
+        <div>
+          <h4 className="font-semibold flex items-center gap-1.5 mb-1"><AlertTriangle className="h-4 w-4 text-amber-500" />Häufige Fehlerquellen</h4>
+          <ul className="list-disc pl-5 space-y-0.5 text-muted-foreground">
+            <li>Zu wenige Bilder oder zu geringe Überlappung</li>
+            <li>Fehlerhafte GPS-Daten – besonders die <strong>ersten Aufnahmen</strong> eines Drohnenflugs</li>
+            <li><strong>Tipp:</strong> Wird statt eines Straßennamens nur der Aufgabenname angezeigt, fehlen GPS-Daten – starten Sie ohne die ersten 2 Bilder</li>
+          </ul>
+        </div>
+
+        {/* Links */}
+        <div className="flex flex-wrap gap-3 pt-1 text-xs">
+          <a href="https://drohnenvermessung-roofergaming.de/durchfuhrung-drohnenflug/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <ExternalLink className="h-3.5 w-3.5" />Drohnenflug-Anleitung
+          </a>
+          <a href="https://www.youtube.com/watch?v=NJl2VcJXefI" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <Youtube className="h-3.5 w-3.5" />Praxisvideo
+          </a>
+          <a href="mailto:info@drohnenvermessung-roofergaming.de" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <Mail className="h-3.5 w-3.5" />Kontakt
+          </a>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 type View =
   | { type: "projects" }
@@ -310,6 +382,7 @@ const ServerProjects = () => {
               <h2 className="text-xl font-semibold">Projekte</h2>
               <span className="text-sm text-muted-foreground">({projects.length})</span>
             </div>
+            {activeServer?.includes("roofergaming") && <RooferGamingGuide />}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
                 <ProjectCard key={p.id} project={p} onClick={() => openProject(p)} />
