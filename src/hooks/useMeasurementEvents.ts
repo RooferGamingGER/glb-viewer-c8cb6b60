@@ -583,7 +583,9 @@ export const useMeasurementEvents = (
         }
 
         handlers.deletePoint(measurementId, pointIndex);
-        toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+        toast.info(`Punkt ${pointIndex + 1} gelöscht`, {
+          action: { label: 'Rückgängig', onClick: () => handlers.undoDeletePoint() }
+        });
         return;
       }
     }
