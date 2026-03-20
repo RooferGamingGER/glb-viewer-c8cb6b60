@@ -458,6 +458,7 @@ const ServerProjects = () => {
               <span className="text-sm text-muted-foreground">({projects.length})</span>
             </div>
             {activeServer?.includes("drohnenvermessung-server.de") && <RooferGamingGuide />}
+            {activeServer?.includes("drohnenvermessung-digitab.de") && <DigiTabGuide />}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => (
                 <ProjectCard key={p.id} project={p} onClick={() => openProject(p)} />
