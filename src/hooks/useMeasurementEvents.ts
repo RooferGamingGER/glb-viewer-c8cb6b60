@@ -578,8 +578,10 @@ export const useMeasurementEvents = (
       canvasElement.removeEventListener('touchstart', handleTouchStart);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);
-      
-      // Clean up snap indicator
+      canvasElement.removeEventListener('contextmenu', preventContext);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      spaceHeldRef.current = false;
       clearSnapIndicator();
     };
   }, [
