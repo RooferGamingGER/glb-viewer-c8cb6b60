@@ -114,10 +114,16 @@ export const useMeasurementEditing = (
       if (measurementIndex === -1) return prev;
       
       const measurement = measurements[measurementIndex];
+
+      // Save snapshot for undo BEFORE modifying
+      undoStackRef.current.push({ measurementId, previousMeasurement: JSON.parse(JSON.stringify(measurement)) });
+      // Keep stack bounded
+      if (undoStackRef.current.length > 50) undoStackRef.current.shift();
       
       // For area measurements, ensure we maintain at least 3 points
       if (measurement.type === 'area' && measurement.points.length <= 3) {
         toast.error('Eine Flächenmessung benötigt mindestens 3 Punkte.');
+        undoStackRef.current.pop(); // remove the snapshot we just added
         return prev;
       }
       
