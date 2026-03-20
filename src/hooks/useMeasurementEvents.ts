@@ -43,6 +43,8 @@ export const useMeasurementEvents = (
   // Add throttle for mouse move events
   const lastMoveTimeRef = useRef<number>(0);
   const MOVE_THROTTLE = 30; // 30ms throttle for mouse move (about 33fps)
+  // Space key held = rotate mode (skip point placement)
+  const spaceHeldRef = useRef<boolean>(false);
 
   // Touch tap detection refs
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
