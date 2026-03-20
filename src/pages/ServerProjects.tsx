@@ -40,6 +40,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   AlertTriangle,
+  BookOpen,
+  CheckCircle2,
+  Info,
+  Youtube,
   ArrowLeft,
   Box,
   Camera,
