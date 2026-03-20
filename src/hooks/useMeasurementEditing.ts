@@ -171,6 +171,7 @@ export const useMeasurementEditing = (
     updateSegment,
     deleteMeasurement,
     deletePoint,
-    cancelEditing
+    cancelEditing,
+    undoDeletePoint
   };
 };
