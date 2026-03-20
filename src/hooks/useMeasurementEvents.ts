@@ -644,8 +644,8 @@ export const useMeasurementEvents = (
       clearSnapIndicator();
     };
   }, [
-    enabled, scene, camera, 
-    handleMouseDown, handleMouseMove, 
+    enabled, scene, camera, measurements, handlers,
+    handleMouseDown, handleMouseMove, handleRightClick,
     handleTouchStart, handleTouchMove, handleTouchEnd,
     clearSnapIndicator
   ]);
