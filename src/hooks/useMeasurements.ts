@@ -61,7 +61,8 @@ export const useMeasurements = () => {
     updateMeasurement,
     deleteMeasurement,
     deletePoint,
-    cancelEditing
+    cancelEditing,
+    undoDeletePoint
   } = useMeasurementEditing(
     measurements,
     setMeasurements,
