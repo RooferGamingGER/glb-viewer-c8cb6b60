@@ -147,7 +147,7 @@ function RooferGamingGuide() {
 /* ── DigiTab guide (collapsible) ── */
 function DigiTabGuide() {
   const [open, setOpen] = useState(() => {
-    try { return localStorage.getItem("digitab_guide_open") !== "false"; } catch { return true; }
+    try { return localStorage.getItem("digitab_guide_open") === "true"; } catch { return false; }
   });
 
   const toggle = (v: boolean) => {
