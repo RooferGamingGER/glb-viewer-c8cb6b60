@@ -145,7 +145,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     toggleEditMode, updateMeasurement, deleteMeasurement, deletePoint,
     undoLastPoint, editMeasurementId, editingPointIndex, startPointEdit,
     cancelEditing, updateMeasurementPoint, allLabelsVisible,
-    moveMeasurementUp, moveMeasurementDown, importMeasurements
+    moveMeasurementUp, moveMeasurementDown, importMeasurements,
+    undoDeletePoint
   } = useMeasurements();
 
   // Auto-load saved measurements from server
