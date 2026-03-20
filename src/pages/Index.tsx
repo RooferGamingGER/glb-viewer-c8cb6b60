@@ -52,6 +52,14 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "20.03.2026",
+    text: "NEU: Messpunkte direkt im 3D-Viewer per Rechtsklick löschen – mit Rückgängig-Funktion (Strg+Z). Leertaste gedrückt halten zum Drehen statt Punkt setzen.",
+  },
+  {
+    date: "20.03.2026",
+    text: "NEU: Task-Verwaltung erweitert – Tasks löschen, detaillierte Fortschrittsanzeige mit Schritten & Zeitschätzung, und Fehlerhilfe mit Support-Kontakt bei gescheiterten Aufträgen.",
+  },
+  {
     date: "18.03.2026",
     text: "NEU: GPS-Validierung beim Upload – fehlende Koordinaten und Ausreißer werden vor der Verarbeitung erkannt und können entfernt werden.",
   },
