@@ -545,6 +545,49 @@ export const useMeasurementEvents = (
     handleDoubleSelect(event);
   }, [handleDoubleSelect]);
 
+  // Right-click on a measurement point to delete it
+  const handleRightClick = useCallback((event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!enabled || !open || !scene || !camera) return;
+
+    const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
+    if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
+
+    const mousePosition = calculateMousePosition(event, canvasElement);
+    if (!mousePosition) return;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    for (const intersect of intersects) {
+      const ud = intersect.object.userData;
+      if (!ud) continue;
+      if (ud.isMeasurementPoint || ud.isAreaPoint) {
+        const measurementId = ud.measurementId;
+        const pointIndex = ud.pointIndex;
+        if (!measurementId || pointIndex === undefined) continue;
+
+        const measurement = measurements.find(m => m.id === measurementId);
+        if (!measurement) continue;
+
+        if (measurement.points.length <= 3 && (measurement.type === 'area' || measurement.type === 'deductionarea' || measurement.type === 'solar')) {
+          toast.warning('Mindestens 3 Punkte müssen erhalten bleiben');
+          return;
+        }
+        if (measurement.points.length <= 2 && measurement.type === 'length') {
+          toast.warning('Eine Linie braucht mindestens 2 Punkte');
+          return;
+        }
+
+        handlers.deletePoint(measurementId, pointIndex);
+        toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+        return;
+      }
+    }
+  }, [enabled, open, scene, camera, measurements, calculateMousePosition, handlers]);
+
   // Setup event listeners
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
@@ -552,9 +595,8 @@ export const useMeasurementEvents = (
     const canvasElement = document.querySelector('canvas');
     if (!canvasElement) return;
 
-    // Disable right-click context menu
-    const preventContext = (e: Event) => e.preventDefault();
-    canvasElement.addEventListener('contextmenu', preventContext);
+    // Disable right-click context menu & use for point deletion
+    canvasElement.addEventListener('contextmenu', handleRightClick);
 
     // Space key: hold to rotate instead of placing points
     // Delete/Backspace: delete the currently active/moving point
