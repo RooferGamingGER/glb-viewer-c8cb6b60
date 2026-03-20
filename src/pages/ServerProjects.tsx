@@ -80,7 +80,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 /* ── RooferGaming guide (collapsible) ── */
 function RooferGamingGuide() {
   const [open, setOpen] = useState(() => {
-    try { return localStorage.getItem("drohnenglb_guide_open") !== "false"; } catch { return true; }
+    try { return localStorage.getItem("drohnenglb_guide_open") === "true"; } catch { return false; }
   });
 
   const toggle = (v: boolean) => {
