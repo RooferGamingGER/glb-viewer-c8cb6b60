@@ -550,7 +550,16 @@ export const useMeasurementEvents = (
     
     const canvasElement = document.querySelector('canvas');
     if (!canvasElement) return;
-    
+
+    // Disable right-click context menu
+    const preventContext = (e: Event) => e.preventDefault();
+    canvasElement.addEventListener('contextmenu', preventContext);
+
+    // Space key: hold to rotate instead of placing points
+    const onKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; } };
+    const onKeyUp = (e: KeyboardEvent) => { if (e.code === 'Space') { spaceHeldRef.current = false; } };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
     // Add mouse event listeners - NOT using 'pointerdown' to avoid conflict with touch
     canvasElement.addEventListener('mousedown', handleMouseDown);
     canvasElement.addEventListener('mousemove', handleMouseMove);
