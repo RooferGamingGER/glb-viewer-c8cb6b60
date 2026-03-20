@@ -557,7 +557,23 @@ export const useMeasurementEvents = (
     canvasElement.addEventListener('contextmenu', preventContext);
 
     // Space key: hold to rotate instead of placing points
-    const onKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; } };
+    // Delete/Backspace: delete the currently active/moving point
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; }
+      if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (handlers.movingPointInfo) {
+          e.preventDefault();
+          const { measurementId, pointIndex } = handlers.movingPointInfo;
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement && measurement.points.length > 3) {
+            handlers.deletePoint(measurementId, pointIndex);
+            toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+          } else if (measurement) {
+            toast.warning('Mindestens 3 Punkte müssen erhalten bleiben');
+          }
+        }
+      }
+    };
     const onKeyUp = (e: KeyboardEvent) => { if (e.code === 'Space') { spaceHeldRef.current = false; } };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
