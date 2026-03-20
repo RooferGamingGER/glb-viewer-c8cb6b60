@@ -1,5 +1,5 @@
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Measurement, Point, Segment } from '@/types/measurements';
 import { calculateArea, generateSegments } from '@/utils/measurementCalculations';
@@ -15,6 +15,26 @@ export const useMeasurementEditing = (
   setEditMeasurementId: React.Dispatch<React.SetStateAction<string | null>>,
   setEditingPointIndex: React.Dispatch<React.SetStateAction<number | null>>
 ) => {
+  // Undo stack for point deletions
+  const undoStackRef = useRef<Array<{ measurementId: string; previousMeasurement: Measurement }>>([]);
+
+  const undoDeletePoint = useCallback(() => {
+    const lastAction = undoStackRef.current.pop();
+    if (!lastAction) {
+      toast.info('Nichts zum Rückgängigmachen');
+      return;
+    }
+    setMeasurements(prev => {
+      const exists = prev.find(m => m.id === lastAction.measurementId);
+      if (exists) {
+        return prev.map(m => m.id === lastAction.measurementId ? lastAction.previousMeasurement : m);
+      }
+      // Measurement was fully deleted — re-add it
+      return [...prev, lastAction.previousMeasurement];
+    });
+    toast.success('Punkt wiederhergestellt');
+  }, [setMeasurements]);
+
   // Toggle edit mode for a measurement
   const toggleEditMode = useCallback((id: string) => {
     setMeasurements(prev => {
@@ -94,10 +114,16 @@ export const useMeasurementEditing = (
       if (measurementIndex === -1) return prev;
       
       const measurement = measurements[measurementIndex];
+
+      // Save snapshot for undo BEFORE modifying
+      undoStackRef.current.push({ measurementId, previousMeasurement: JSON.parse(JSON.stringify(measurement)) });
+      // Keep stack bounded
+      if (undoStackRef.current.length > 50) undoStackRef.current.shift();
       
       // For area measurements, ensure we maintain at least 3 points
       if (measurement.type === 'area' && measurement.points.length <= 3) {
         toast.error('Eine Flächenmessung benötigt mindestens 3 Punkte.');
+        undoStackRef.current.pop(); // remove the snapshot we just added
         return prev;
       }
       
@@ -145,6 +171,7 @@ export const useMeasurementEditing = (
     updateSegment,
     deleteMeasurement,
     deletePoint,
-    cancelEditing
+    cancelEditing,
+    undoDeletePoint
   };
 };

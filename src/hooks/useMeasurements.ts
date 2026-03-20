@@ -61,7 +61,8 @@ export const useMeasurements = () => {
     updateMeasurement,
     deleteMeasurement,
     deletePoint,
-    cancelEditing
+    cancelEditing,
+    undoDeletePoint
   } = useMeasurementEditing(
     measurements,
     setMeasurements,
@@ -445,6 +446,7 @@ export const useMeasurements = () => {
     updateSegment: updateSegmentWithSharing,
     deleteMeasurement,
     deletePoint,
+    undoDeletePoint,
     undoLastPoint,
     startPointEdit,
     updateMeasurementPoint,

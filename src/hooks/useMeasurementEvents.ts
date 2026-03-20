@@ -28,7 +28,8 @@ export const useMeasurementEvents = (
     movingPointInfo: { measurementId: string; pointIndex: number } | null,
     startPointEdit: (id: string, index: number) => void,
     toggleEditMode: (id: string) => void,
-    deletePoint: (measurementId: string, pointIndex: number) => void
+    deletePoint: (measurementId: string, pointIndex: number) => void,
+    undoDeletePoint: () => void
   },
   refs: {
     editPointsRef: React.RefObject<THREE.Group>,
@@ -582,7 +583,9 @@ export const useMeasurementEvents = (
         }
 
         handlers.deletePoint(measurementId, pointIndex);
-        toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+        toast.info(`Punkt ${pointIndex + 1} gelöscht`, {
+          action: { label: 'Rückgängig', onClick: () => handlers.undoDeletePoint() }
+        });
         return;
       }
     }
@@ -602,6 +605,12 @@ export const useMeasurementEvents = (
     // Delete/Backspace: delete the currently active/moving point
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; }
+      // Ctrl+Z / Cmd+Z: undo last point deletion
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
+        e.preventDefault();
+        handlers.undoDeletePoint();
+        return;
+      }
       if (e.code === 'Delete' || e.code === 'Backspace') {
         if (handlers.movingPointInfo) {
           e.preventDefault();
@@ -609,7 +618,9 @@ export const useMeasurementEvents = (
           const measurement = measurements.find(m => m.id === measurementId);
           if (measurement && measurement.points.length > 3) {
             handlers.deletePoint(measurementId, pointIndex);
-            toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+            toast.info(`Punkt ${pointIndex + 1} gelöscht`, {
+              action: { label: 'Rückgängig', onClick: () => handlers.undoDeletePoint() }
+            });
           } else if (measurement) {
             toast.warning('Mindestens 3 Punkte müssen erhalten bleiben');
           }
