@@ -111,7 +111,8 @@ export const useMeasurementInteraction = (
       movingPointInfo,
       startPointEdit: handlers.startPointEdit,
       toggleEditMode: handlers.toggleEditMode,
-      deletePoint: handlers.deletePoint
+      deletePoint: handlers.deletePoint,
+      undoDeletePoint: handlers.undoDeletePoint
     },
     {
       editPointsRef: refs.editPointsRef,
