@@ -27,7 +27,8 @@ export const useMeasurementEvents = (
     setPreviewPoint: (point: Point | null) => void,
     movingPointInfo: { measurementId: string; pointIndex: number } | null,
     startPointEdit: (id: string, index: number) => void,
-    toggleEditMode: (id: string) => void
+    toggleEditMode: (id: string) => void,
+    deletePoint: (measurementId: string, pointIndex: number) => void
   },
   refs: {
     editPointsRef: React.RefObject<THREE.Group>,
@@ -544,6 +545,49 @@ export const useMeasurementEvents = (
     handleDoubleSelect(event);
   }, [handleDoubleSelect]);
 
+  // Right-click on a measurement point to delete it
+  const handleRightClick = useCallback((event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!enabled || !open || !scene || !camera) return;
+
+    const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
+    if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
+
+    const mousePosition = calculateMousePosition(event, canvasElement);
+    if (!mousePosition) return;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    for (const intersect of intersects) {
+      const ud = intersect.object.userData;
+      if (!ud) continue;
+      if (ud.isMeasurementPoint || ud.isAreaPoint) {
+        const measurementId = ud.measurementId;
+        const pointIndex = ud.pointIndex;
+        if (!measurementId || pointIndex === undefined) continue;
+
+        const measurement = measurements.find(m => m.id === measurementId);
+        if (!measurement) continue;
+
+        if (measurement.points.length <= 3 && (measurement.type === 'area' || measurement.type === 'deductionarea' || measurement.type === 'solar')) {
+          toast.warning('Mindestens 3 Punkte müssen erhalten bleiben');
+          return;
+        }
+        if (measurement.points.length <= 2 && measurement.type === 'length') {
+          toast.warning('Eine Linie braucht mindestens 2 Punkte');
+          return;
+        }
+
+        handlers.deletePoint(measurementId, pointIndex);
+        toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+        return;
+      }
+    }
+  }, [enabled, open, scene, camera, measurements, calculateMousePosition, handlers]);
+
   // Setup event listeners
   useEffect(() => {
     if (!enabled || !scene || !camera) return;
@@ -551,12 +595,27 @@ export const useMeasurementEvents = (
     const canvasElement = document.querySelector('canvas');
     if (!canvasElement) return;
 
-    // Disable right-click context menu
-    const preventContext = (e: Event) => e.preventDefault();
-    canvasElement.addEventListener('contextmenu', preventContext);
+    // Disable right-click context menu & use for point deletion
+    canvasElement.addEventListener('contextmenu', handleRightClick);
 
     // Space key: hold to rotate instead of placing points
-    const onKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; } };
+    // Delete/Backspace: delete the currently active/moving point
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') { e.preventDefault(); spaceHeldRef.current = true; }
+      if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (handlers.movingPointInfo) {
+          e.preventDefault();
+          const { measurementId, pointIndex } = handlers.movingPointInfo;
+          const measurement = measurements.find(m => m.id === measurementId);
+          if (measurement && measurement.points.length > 3) {
+            handlers.deletePoint(measurementId, pointIndex);
+            toast.info(`Punkt ${pointIndex + 1} gelöscht`);
+          } else if (measurement) {
+            toast.warning('Mindestens 3 Punkte müssen erhalten bleiben');
+          }
+        }
+      }
+    };
     const onKeyUp = (e: KeyboardEvent) => { if (e.code === 'Space') { spaceHeldRef.current = false; } };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
@@ -578,15 +637,15 @@ export const useMeasurementEvents = (
       canvasElement.removeEventListener('touchstart', handleTouchStart);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);
-      canvasElement.removeEventListener('contextmenu', preventContext);
+      canvasElement.removeEventListener('contextmenu', handleRightClick);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       spaceHeldRef.current = false;
       clearSnapIndicator();
     };
   }, [
-    enabled, scene, camera, 
-    handleMouseDown, handleMouseMove, 
+    enabled, scene, camera, measurements, handlers,
+    handleMouseDown, handleMouseMove, handleRightClick,
     handleTouchStart, handleTouchMove, handleTouchEnd,
     clearSnapIndicator
   ]);

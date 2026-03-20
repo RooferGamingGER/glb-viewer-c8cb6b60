@@ -192,7 +192,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   // Handlers for measurement interaction
   const interactionHandlers = {
-    addPoint, startPointEdit, updateMeasurementPoint, toggleEditMode
+    addPoint, startPointEdit, updateMeasurementPoint, toggleEditMode, deletePoint
   };
 
   const { 
