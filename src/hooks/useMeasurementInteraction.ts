@@ -31,7 +31,8 @@ export const useMeasurementInteraction = (
     addPoint: (point: Point) => void,
     startPointEdit: (id: string, index: number) => void,
     updateMeasurementPoint: (id: string, index: number, point: Point) => void,
-    toggleEditMode: (id: string) => void
+    toggleEditMode: (id: string) => void,
+    deletePoint: (measurementId: string, pointIndex: number) => void
   },
   editMeasurementId: string | null,
   editingPointIndex: number | null
