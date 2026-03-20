@@ -27,7 +27,8 @@ export const useMeasurementEvents = (
     setPreviewPoint: (point: Point | null) => void,
     movingPointInfo: { measurementId: string; pointIndex: number } | null,
     startPointEdit: (id: string, index: number) => void,
-    toggleEditMode: (id: string) => void
+    toggleEditMode: (id: string) => void,
+    deletePoint: (measurementId: string, pointIndex: number) => void
   },
   refs: {
     editPointsRef: React.RefObject<THREE.Group>,
