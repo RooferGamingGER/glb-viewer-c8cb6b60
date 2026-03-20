@@ -105,6 +105,8 @@ export const useMeasurementEvents = (
   const processInteraction = useCallback((event: MouseEvent | TouchEvent) => {
     // Ensure we're enabled and the sidebar is open
     if (!enabled || !open || !scene || !camera) return;
+    // Space held = rotate mode, skip point placement
+    if (spaceHeldRef.current) return;
     
     const canvasElement = (event.target as HTMLCanvasElement) || document.querySelector('canvas');
     if (!canvasElement || !(canvasElement instanceof HTMLCanvasElement)) return;
