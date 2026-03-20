@@ -1,5 +1,5 @@
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Measurement, Point, Segment } from '@/types/measurements';
 import { calculateArea, generateSegments } from '@/utils/measurementCalculations';
