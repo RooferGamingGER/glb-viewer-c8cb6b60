@@ -28,7 +28,8 @@ export const useMeasurementEvents = (
     movingPointInfo: { measurementId: string; pointIndex: number } | null,
     startPointEdit: (id: string, index: number) => void,
     toggleEditMode: (id: string) => void,
-    deletePoint: (measurementId: string, pointIndex: number) => void
+    deletePoint: (measurementId: string, pointIndex: number) => void,
+    undoDeletePoint: () => void
   },
   refs: {
     editPointsRef: React.RefObject<THREE.Group>,
