@@ -637,7 +637,7 @@ export const useMeasurementEvents = (
       canvasElement.removeEventListener('touchstart', handleTouchStart);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);
-      canvasElement.removeEventListener('contextmenu', preventContext);
+      canvasElement.removeEventListener('contextmenu', handleRightClick);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       spaceHeldRef.current = false;
