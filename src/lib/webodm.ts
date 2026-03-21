@@ -546,3 +546,42 @@ export async function deleteTask(token: string, projectId: number, taskId: strin
     throw new Error(`Task konnte nicht gelöscht werden (${res.status}). ${detail}`);
   }
 }
+
+// --- Task Import (restore from all.zip backup) ---
+
+export async function importTask(
+  token: string,
+  projectId: number,
+  zipFile: File,
+  onProgress?: (pct: number) => void
+): Promise<Task> {
+  const server = getActiveServerUrl();
+  const importPath = `/api/projects/${projectId}/tasks/import`;
+
+  onProgress?.(10);
+
+  const formData = new FormData();
+  formData.append("file", zipFile, zipFile.name);
+
+  const res = await fetch(UPLOAD_PROXY_URL, {
+    method: "POST",
+    headers: {
+      "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      "x-webodm-token": token,
+      "x-webodm-path": importPath,
+      "x-webodm-server": server,
+    },
+    body: formData,
+  });
+
+  onProgress?.(90);
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Backup-Import fehlgeschlagen (${res.status}). ${detail}`);
+  }
+
+  const task: Task = await res.json();
+  onProgress?.(100);
+  return task;
+}
