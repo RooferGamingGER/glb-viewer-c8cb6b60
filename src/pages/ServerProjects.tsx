@@ -17,6 +17,7 @@ import {
   getProcessingStage,
   getProcessingStageInfo,
   deleteTask,
+  importTask,
   TASK_STATUS,
   PENDING_ACTION,
   ASSET_INFO,
