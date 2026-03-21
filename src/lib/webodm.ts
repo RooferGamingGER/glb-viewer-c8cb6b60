@@ -159,6 +159,7 @@ export function getFilteredAssets(assets: string[]): string[] {
 }
 
 export const ASSET_INFO: Record<string, { label: string; description: string; category: string }> = {
+  "all.zip": { label: "Komplett-Backup", description: "Alle Daten als ZIP-Archiv (Import-fähig)", category: "backup" },
   "orthophoto.tif": { label: "Orthophoto", description: "GeoTIFF Orthomosaik", category: "map" },
   "odm_orthophoto/odm_orthophoto.tif": { label: "Orthophoto", description: "GeoTIFF Orthomosaik", category: "map" },
   "georeferenced_model.laz": { label: "Punktwolke", description: "LAZ Punktwolke", category: "3d" },
