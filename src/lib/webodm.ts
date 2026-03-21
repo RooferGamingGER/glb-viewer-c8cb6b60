@@ -143,9 +143,7 @@ function isForbiddenAsset(asset: string): boolean {
   const name = String(asset || "").toLowerCase().trim();
   return (
     name === "report.pdf" ||
-    name.endsWith("/report.pdf") ||
-    name === "all.zip" ||
-    name.endsWith("/all.zip")
+    name.endsWith("/report.pdf")
   );
 }
 
