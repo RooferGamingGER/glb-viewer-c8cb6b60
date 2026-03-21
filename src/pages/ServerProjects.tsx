@@ -507,7 +507,18 @@ const ServerProjects = () => {
                 <h2 className="text-xl font-semibold">{view.project.name}</h2>
                 <span className="text-sm text-muted-foreground">({tasks.length} Tasks)</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button onClick={() => zipInputRef.current?.click()} size="sm" variant="outline" disabled={importing}>
+                  {importing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
+                  Importieren
+                </Button>
+                <input
+                  ref={zipInputRef}
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  onChange={handleZipImport}
+                />
                 <Button onClick={() => glbInputRef.current?.click()} size="sm" variant="outline">
                   <Upload className="mr-1.5 h-4 w-4" />
                   GLB hochladen
