@@ -17,6 +17,7 @@ import {
   getProcessingStage,
   getProcessingStageInfo,
   deleteTask,
+  importTask,
   TASK_STATUS,
   PENDING_ACTION,
   ASSET_INFO,
@@ -240,6 +241,7 @@ const categoryIcon = (cat: string) => {
     case "map": return <Map className="h-4 w-4 text-primary" />;
     case "3d": return <Box className="h-4 w-4 text-primary" />;
     case "data": return <Database className="h-4 w-4 text-primary" />;
+    case "backup": return <HardDrive className="h-4 w-4 text-primary" />;
     default: return <FileText className="h-4 w-4 text-primary" />;
   }
 };
@@ -258,6 +260,8 @@ const ServerProjects = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const glbInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
   const handleGlbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -284,6 +288,31 @@ const ServerProjects = () => {
     const blobUrl = URL.createObjectURL(file);
     const params = new URLSearchParams({ fileUrl: blobUrl, fileName: file.name, rotateModel: 'true' });
     navigate(`/viewer?${params.toString()}`);
+  };
+
+  const handleZipImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file || !token) return;
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      toast.error('Bitte eine gültige ZIP-Datei auswählen.');
+      return;
+    }
+    if (view.type !== "tasks") return;
+    const projectId = view.project.id;
+    setImporting(true);
+    const toastId = toast.loading('Backup wird importiert…');
+    try {
+      await importTask(token, projectId, file);
+      toast.success('Backup erfolgreich importiert!', { id: toastId });
+      // Reload tasks
+      const t = await getProjectTasks(token, projectId);
+      setTasks(t);
+    } catch (err: any) {
+      toast.error(err.message || 'Import fehlgeschlagen', { id: toastId });
+    } finally {
+      setImporting(false);
+    }
   };
 
   useEffect(() => {
@@ -479,7 +508,18 @@ const ServerProjects = () => {
                 <h2 className="text-xl font-semibold">{view.project.name}</h2>
                 <span className="text-sm text-muted-foreground">({tasks.length} Tasks)</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button onClick={() => zipInputRef.current?.click()} size="sm" variant="outline" disabled={importing}>
+                  {importing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
+                  Importieren
+                </Button>
+                <input
+                  ref={zipInputRef}
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  onChange={handleZipImport}
+                />
                 <Button onClick={() => glbInputRef.current?.click()} size="sm" variant="outline">
                   <Upload className="mr-1.5 h-4 w-4" />
                   GLB hochladen

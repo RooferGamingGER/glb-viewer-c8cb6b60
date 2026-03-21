@@ -143,9 +143,7 @@ function isForbiddenAsset(asset: string): boolean {
   const name = String(asset || "").toLowerCase().trim();
   return (
     name === "report.pdf" ||
-    name.endsWith("/report.pdf") ||
-    name === "all.zip" ||
-    name.endsWith("/all.zip")
+    name.endsWith("/report.pdf")
   );
 }
 
@@ -161,6 +159,7 @@ export function getFilteredAssets(assets: string[]): string[] {
 }
 
 export const ASSET_INFO: Record<string, { label: string; description: string; category: string }> = {
+  "all.zip": { label: "Komplett-Backup", description: "Alle Daten als ZIP-Archiv (Import-fähig)", category: "backup" },
   "orthophoto.tif": { label: "Orthophoto", description: "GeoTIFF Orthomosaik", category: "map" },
   "odm_orthophoto/odm_orthophoto.tif": { label: "Orthophoto", description: "GeoTIFF Orthomosaik", category: "map" },
   "georeferenced_model.laz": { label: "Punktwolke", description: "LAZ Punktwolke", category: "3d" },
@@ -546,4 +545,43 @@ export async function deleteTask(token: string, projectId: number, taskId: strin
     const detail = await res.text().catch(() => "");
     throw new Error(`Task konnte nicht gelöscht werden (${res.status}). ${detail}`);
   }
+}
+
+// --- Task Import (restore from all.zip backup) ---
+
+export async function importTask(
+  token: string,
+  projectId: number,
+  zipFile: File,
+  onProgress?: (pct: number) => void
+): Promise<Task> {
+  const server = getActiveServerUrl();
+  const importPath = `/api/projects/${projectId}/tasks/import`;
+
+  onProgress?.(10);
+
+  const formData = new FormData();
+  formData.append("file", zipFile, zipFile.name);
+
+  const res = await fetch(UPLOAD_PROXY_URL, {
+    method: "POST",
+    headers: {
+      "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      "x-webodm-token": token,
+      "x-webodm-path": importPath,
+      "x-webodm-server": server,
+    },
+    body: formData,
+  });
+
+  onProgress?.(90);
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Backup-Import fehlgeschlagen (${res.status}). ${detail}`);
+  }
+
+  const task: Task = await res.json();
+  onProgress?.(100);
+  return task;
 }
