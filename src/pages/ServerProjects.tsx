@@ -259,6 +259,8 @@ const ServerProjects = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const glbInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
   const handleGlbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
