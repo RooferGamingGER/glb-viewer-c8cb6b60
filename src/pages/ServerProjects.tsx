@@ -289,6 +289,31 @@ const ServerProjects = () => {
     navigate(`/viewer?${params.toString()}`);
   };
 
+  const handleZipImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file || !token) return;
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      toast.error('Bitte eine gültige ZIP-Datei auswählen.');
+      return;
+    }
+    if (view.type !== "tasks") return;
+    const projectId = view.project.id;
+    setImporting(true);
+    const toastId = toast.loading('Backup wird importiert…');
+    try {
+      await importTask(token, projectId, file);
+      toast.success('Backup erfolgreich importiert!', { id: toastId });
+      // Reload tasks
+      const t = await getProjectTasks(token, projectId);
+      setTasks(t);
+    } catch (err: any) {
+      toast.error(err.message || 'Import fehlgeschlagen', { id: toastId });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) navigate("/server-login", { replace: true });
   }, [isAuthenticated, navigate]);
