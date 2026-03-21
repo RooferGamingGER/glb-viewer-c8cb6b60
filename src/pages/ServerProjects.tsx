@@ -241,6 +241,7 @@ const categoryIcon = (cat: string) => {
     case "map": return <Map className="h-4 w-4 text-primary" />;
     case "3d": return <Box className="h-4 w-4 text-primary" />;
     case "data": return <Database className="h-4 w-4 text-primary" />;
+    case "backup": return <HardDrive className="h-4 w-4 text-primary" />;
     default: return <FileText className="h-4 w-4 text-primary" />;
   }
 };
